@@ -25,3 +25,9 @@ env/
 # Logs
 *.log
 logs/
+
+# Training data, experiments & notebooks (not needed at runtime)
+data1/
+Version5/
+*.ipynb
+train_model.py
