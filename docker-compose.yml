@@ -132,6 +132,11 @@ services:
       - PAYMENT_ZALOPAY_SECRET=${ZALOPAY_SECRET}
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
       - DATA_MINING_URL=http://data-mining-api:8000
+      # Demo data (Config/DataSeeder): off unless SEED_DEMO=true; seeds only an empty database, never deletes. The two
+      # passwords must pass @StrongPassword (8-72 chars, a letter and a digit) or the app stops at startup.
+      - APP_SEED_DEMO=${SEED_DEMO:-false}
+      - APP_SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-}
+      - APP_SEED_DEMO_PASSWORD=${SEED_DEMO_PASSWORD:-}
       # Statistics cache (core-backend/src/main/resources/redis-cache.properties); the CACHE_* settings come from .env.
       - REDIS_HOST=redis
       - REDIS_PORT=6379

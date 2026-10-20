@@ -131,7 +131,7 @@ public class BudgetAlertService {
     }
 
     /** The highest level whose share of the limit has been spent; a level counts as soon as the spending equals its share. */
-    private static Optional<NotificationType> highestReached(BigDecimal spent, BigDecimal limit) {
+    public static Optional<NotificationType> highestReached(BigDecimal spent, BigDecimal limit) {
         // Compared as spent * 100 >= limit * percent, so no division can round a threshold the wrong way.
         BigDecimal spentPercentPoints = spent.multiply(PERCENT_BASE);
         NotificationType reached = null;
@@ -144,7 +144,8 @@ public class BudgetAlertService {
         return Optional.ofNullable(reached);
     }
 
-    private static String messageFor(NotificationType type, Budget budget, BigDecimal spent) {
+    /** The text of a budget alert of the given level, as the user reads it. */
+    public static String messageFor(NotificationType type, Budget budget, BigDecimal spent) {
         String spentText = formatMoney(spent);
         String limitText = formatMoney(budget.getAmount());
         String scope = budget.getCategory() == null ? ALL_CATEGORIES_LABEL : budget.getCategory().getName();

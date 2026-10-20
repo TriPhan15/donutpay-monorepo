@@ -131,6 +131,7 @@ Tất cả lỗi dưới đây đã được kiểm chứng trong code ngày 202
 - `savings_page.dart:130,193,213` + `remote_api_helper.dart:752-758`: thêm/sửa/xóa không bắt lỗi, xóa không hoàn tác, `fetchSavings` nuốt lỗi.
 - `linked_services_page.dart:158`: polling hết lượt mà không báo gì.
 - `savings_page.dart:56-58`: controller trong dialog không dispose.
+- (Ghi chú sau T2b) `AdminController` gọi cứng `http://localhost:8000/admin/segment`: trong Docker không tới được ai-service → đọc URL từ cấu hình (`AI_SERVICE_URL`, mặc định `http://data-mining-api:8000`), lỗi trả thông báo cố định.
 - 🔒 `core-backend/.../Controller/AppReviewMobileController.java:28`: lấy `userId` từ body (IDOR) và trả `e.getMessage()`. → Dùng `CurrentUserProvider` + exception riêng, mobile thôi gửi `userId`.
 - `app_repository.dart:68-74`: `fullName` = phần đầu email. Nếu `/me` có tên thì dùng tên đó.
 
