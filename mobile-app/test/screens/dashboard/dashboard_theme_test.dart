@@ -173,14 +173,14 @@ void main() {
         await showDashboard(tester, mode);
         await tester.pumpAndSettle();
 
-        final card = boxDecoration(tester, find.text('Tổng tài sản hiện tại'));
+        final card = boxDecoration(tester, find.text('Số dư hiện tại'));
         expect(card.gradient, AppTheme.purpleCardGradient);
         expect(
           paintedColor(tester, find.text(_money.format(5000000 - 45000))),
           Colors.white,
         );
         expect(
-          paintedColor(tester, find.text('Tổng tài sản hiện tại')),
+          paintedColor(tester, find.text('Số dư hiện tại')),
           Colors.white.withValues(alpha: 0.75),
         );
       });

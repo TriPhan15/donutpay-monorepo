@@ -46,12 +46,34 @@ class AppRepository {
   @visibleForTesting
   set localStore(SqfliteHelper store) => _localStore = store;
 
+  /// The send of the whole outbox in flight (see [resendUnsyncedTransactions]); a second call joins it.
+  Future<void>? _outboxResend;
+
   /// The transactions of the server plus the ones created on this device that it has not confirmed yet (see
   /// [getUnsyncedTransactions]), those first because they need the attention of the user. Throws when the server cannot
   /// be reached.
+  ///
+  /// A waiting transaction whose clientId is already in the server list did arrive (only the answer got lost), so it is
+  /// left out, otherwise it would count twice, and flagged synced on this device.
   Future<List<TransactionModel>> getTransactions(int userId) async {
     final onServer = await RemoteApiHelper.instance.fetchTransactions();
-    return [...await getUnsyncedTransactions(userId), ...onServer];
+    final onServerClientIds = {
+      for (final tx in onServer)
+        if (tx.clientId != null) tx.clientId!,
+    };
+    final waiting = <TransactionModel>[];
+    for (final tx in await getUnsyncedTransactions(userId)) {
+      if (onServerClientIds.contains(tx.clientId)) {
+        await _localStore.updateTransactionSyncStatus(
+          userId,
+          tx.clientId!,
+          SyncStatus.synced,
+        );
+      } else {
+        waiting.add(tx);
+      }
+    }
+    return [...waiting, ...onServer];
   }
 
   /// The transactions created on this device that the server has not confirmed: waiting to be sent, or failed.
@@ -137,12 +159,48 @@ class AppRepository {
       _clientIdOf(transaction),
       SyncStatus.pending,
     );
-    return _send(userId, transaction);
+    try {
+      return await _send(userId, transaction);
+    } on TransactionRefusedException {
+      // Kept, flagged error; create shows nothing here because it deletes its row again.
+      _notifyOutboxChanged();
+      rethrow;
+    }
+  }
+
+  /// Sends every transaction waiting on this device once more, oldest first, without asking the user: called when the
+  /// app opens and when the user refreshes the Ledger. A refusal keeps the transaction flagged error, for the user to
+  /// correct or delete, and the others are still sent. Never throws.
+  ///
+  /// Each send moves dataChangedNotifier, so it must not be started from a listener of it: offline, every failed send
+  /// would start the next one.
+  ///
+  /// The server answers a clientId it already has with that transaction, so a row being resent by the user meanwhile is
+  /// not created twice.
+  Future<void> resendUnsyncedTransactions(int userId) {
+    return _outboxResend ??= _resendOutbox(
+      userId,
+    ).whenComplete(() => _outboxResend = null);
+  }
+
+  Future<void> _resendOutbox(int userId) async {
+    try {
+      for (final tx in await getUnsyncedTransactions(userId)) {
+        try {
+          await resendTransaction(userId, tx);
+        } on TransactionRefusedException catch (e) {
+          debugPrint('Máy chủ từ chối giao dịch ${tx.clientId}: ${e.message}');
+        }
+      }
+    } catch (e) {
+      debugPrint('Lỗi tự gửi lại giao dịch chờ: $e');
+    }
   }
 
   /// Throws away, for good, a transaction that the server never confirmed.
   Future<void> deleteUnsyncedTransaction(int userId, String clientId) async {
     await _localStore.deleteTransactionByClientId(userId, clientId);
+    _notifyOutboxChanged();
   }
 
   /// One attempt to send a transaction that is already in the local table, after which its flag says how it went. Only a
@@ -161,6 +219,7 @@ class AppRepository {
         SyncStatus.error,
       );
       if (_isRefusal(e)) throw TransactionRefusedException(_refusalMessage(e));
+      _notifyOutboxChanged();
       return SyncStatus.error;
     }
     await _localStore.updateTransactionSyncStatus(
@@ -168,7 +227,14 @@ class AppRepository {
       clientId,
       SyncStatus.synced,
     );
+    _notifyOutboxChanged();
     return SyncStatus.synced;
+  }
+
+  /// The outbox changed. After a send this repeats what addTransaction announced, because that came before the row was
+  /// flagged synced and a reload started then would still list the row as waiting.
+  static void _notifyOutboxChanged() {
+    RemoteApiHelper.instance.dataChangedNotifier.value++;
   }
 
   static String _clientIdOf(TransactionModel transaction) {

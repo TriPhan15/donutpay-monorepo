@@ -143,6 +143,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
           if (!mounted) return;
           setState(() => _syncing = false);
           if (status == 'SUCCESS') {
+            RemoteApiHelper.instance.dataChangedNotifier.value++;
             _snack('Đã đồng bộ ${_fmt(amount)} vào ngân sách chi tiêu.');
             if (mounted) Navigator.pop(context, true);
           } else {

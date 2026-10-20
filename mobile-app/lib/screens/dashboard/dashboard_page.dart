@@ -45,6 +45,9 @@ class DashboardPageState extends State<DashboardPage>
   /// Numbers the unread-count requests: only the answer to the latest one is shown, an older one arriving late is not.
   int _unreadRequest = 0;
 
+  /// Numbers the loads, like [_unreadRequest]: a pull-to-refresh and a reload on dataChangedNotifier can overlap.
+  int _loadRequest = 0;
+
   bool _isLoading = true;
   bool _balanceHidden = false;
   UserModel? _user;
@@ -52,7 +55,8 @@ class DashboardPageState extends State<DashboardPage>
   List<BudgetProgress> _budgetProgress = [];
   bool _budgetsFailed = false;
 
-  double _totalAssets = 0;
+  /// Σ income − Σ expense of every transaction, so it can be negative.
+  double _currentBalance = 0;
   double _monthlyIncome = 0;
   double _monthlyExpense = 0;
   double _prevMonthlyIncome = 0;
@@ -63,11 +67,14 @@ class DashboardPageState extends State<DashboardPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // The page stays alive in the IndexedStack of MainScaffold: a write on another tab must show here too.
+    RemoteApiHelper.instance.dataChangedNotifier.addListener(_load);
     _load();
   }
 
   @override
   void dispose() {
+    RemoteApiHelper.instance.dataChangedNotifier.removeListener(_load);
     WidgetsBinding.instance.removeObserver(this);
     _unreadNotifications.dispose();
     super.dispose();
@@ -83,6 +90,7 @@ class DashboardPageState extends State<DashboardPage>
   }
 
   Future<void> _load() async {
+    final request = ++_loadRequest;
     setState(() => _isLoading = true);
     final userId = SessionService.currentUserId;
     if (userId == null) {
@@ -101,15 +109,15 @@ class DashboardPageState extends State<DashboardPage>
       final summary = await AppRepository.instance.getHomeSummary(userId);
       final budgets = await budgetsRequest;
 
-      if (!mounted) return;
+      if (!mounted || request != _loadRequest) return;
 
       final List<TransactionModel> txs = summary['transactions'];
 
-      double assets = 0, mInc = 0, mExp = 0, pInc = 0, pExp = 0;
+      double balance = 0, mInc = 0, mExp = 0, pInc = 0, pExp = 0;
 
       for (var tx in txs) {
         if (tx.isExpense) {
-          assets -= tx.amount;
+          balance -= tx.amount;
           if (tx.date.year == now.year && tx.date.month == now.month) {
             mExp += tx.amount;
           }
@@ -118,7 +126,7 @@ class DashboardPageState extends State<DashboardPage>
             pExp += tx.amount;
           }
         } else {
-          assets += tx.amount;
+          balance += tx.amount;
           if (tx.date.year == now.year && tx.date.month == now.month) {
             mInc += tx.amount;
           }
@@ -141,7 +149,7 @@ class DashboardPageState extends State<DashboardPage>
         _budgetProgress = budgetProgress;
         _budgetsFailed = budgets == null;
 
-        _totalAssets = assets;
+        _currentBalance = balance;
         _monthlyIncome = mInc;
         _monthlyExpense = mExp;
         _prevMonthlyIncome = pInc;
@@ -160,7 +168,7 @@ class DashboardPageState extends State<DashboardPage>
       );
     } catch (e) {
       debugPrint('Lỗi tải trang chủ: $e');
-      if (!mounted) return;
+      if (!mounted || request != _loadRequest) return;
       setState(() => _isLoading = false);
     }
   }
@@ -525,7 +533,7 @@ class DashboardPageState extends State<DashboardPage>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Tổng tài sản hiện tại',
+                'Số dư hiện tại',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
                   fontSize: 14,
@@ -547,7 +555,7 @@ class DashboardPageState extends State<DashboardPage>
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
             child: Text(
-              _balanceHidden ? '••••••••' : _formatCurrency(_totalAssets),
+              _balanceHidden ? '••••••••' : _formatCurrency(_currentBalance),
               key: ValueKey(_balanceHidden),
               style: const TextStyle(
                 color: Colors.white,
@@ -657,15 +665,14 @@ class DashboardPageState extends State<DashboardPage>
                     Navigator.pop(context);
                     DashboardBottomSheets.showBankSources(context, _wallets);
                   },
-                  onLinkedServices: () async {
+                  onLinkedServices: () {
                     Navigator.pop(context);
-                    final synced = await Navigator.push(
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => const LinkedServicesPage(),
                       ),
                     );
-                    if (synced == true) reload();
                   },
                 );
               }),

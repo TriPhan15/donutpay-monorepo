@@ -141,7 +141,8 @@ class TransactionModel {
   }
 
   /// A transaction as core-backend sends it (TransactionResponseDto). Its title is already the note, or the category
-  /// when there is no note.
+  /// when there is no note. [clientId] is set when this device (or another one) created it, so the copy of it still
+  /// waiting on this device can be recognised.
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
     return TransactionModel(
       id: json['id']?.toString(),
@@ -153,6 +154,7 @@ class TransactionModel {
       iconName: (json['category'] ?? 'default').toString(),
       imageUrl: json['imageUrl']?.toString(),
       receiptStatus: ReceiptStatus.fromServer(json['receiptStatus']),
+      clientId: json['clientId']?.toString(),
     );
   }
 

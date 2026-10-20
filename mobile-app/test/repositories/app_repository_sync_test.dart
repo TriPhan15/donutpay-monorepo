@@ -443,4 +443,242 @@ void main() {
       },
     );
   });
+
+  group('the server already has a waiting transaction', () {
+    test(
+      'the copy on this device is left out, so it counts once, and flagged synced',
+      () async {
+        final arrived = _draft().withSyncStatus(SyncStatus.error);
+        final stillWaiting = _draft().withSyncStatus(SyncStatus.pending);
+        await store.insertTransaction(arrived, _userId);
+        await store.insertTransaction(stillWaiting, _userId);
+        backend.on(
+          'GET',
+          _mine,
+          (_) => okResponse([
+            {
+              'id': 9,
+              'title': 'Cà phê',
+              'amount': 45000,
+              'date': '2026-09-20T08:30:00',
+              'category': 'Ăn uống',
+              'isExpense': true,
+              'clientId': arrived.clientId,
+            },
+          ]),
+        );
+
+        final list = await AppRepository.instance.getTransactions(_userId);
+
+        expect(list.map((t) => t.id), [null, '9']);
+        expect(list.first.clientId, stillWaiting.clientId);
+        expect(
+          store.byClientId(arrived.clientId!)!.syncStatus,
+          SyncStatus.synced,
+        );
+        expect(
+          store.byClientId(stillWaiting.clientId!)!.syncStatus,
+          SyncStatus.pending,
+        );
+      },
+    );
+  });
+
+  group('resendUnsyncedTransactions', () {
+    test('sends every waiting transaction of the user once', () async {
+      final failed = _draft().withSyncStatus(SyncStatus.error);
+      final pending = _draft().withSyncStatus(SyncStatus.pending);
+      await store.insertTransaction(failed, _userId);
+      await store.insertTransaction(pending, _userId);
+      await store.insertTransaction(
+        _draft().withSyncStatus(SyncStatus.synced),
+        _userId,
+      );
+      await store.insertTransaction(
+        _draft().withSyncStatus(SyncStatus.error),
+        2,
+      );
+      backend.on('POST', _checkout, (_) => _created());
+
+      await AppRepository.instance.resendUnsyncedTransactions(_userId);
+
+      expect(sentBodies().map((b) => b['clientId']), [
+        failed.clientId,
+        pending.clientId,
+      ]);
+      expect(
+        await AppRepository.instance.getUnsyncedTransactions(_userId),
+        isEmpty,
+      );
+    });
+
+    test(
+      'a refusal keeps that transaction flagged error and the next one is still sent',
+      () {
+        return withCapturedLogs((logs) async {
+          final refused = _draft().withSyncStatus(SyncStatus.error);
+          final next = _draft().withSyncStatus(SyncStatus.error);
+          await store.insertTransaction(refused, _userId);
+          await store.insertTransaction(next, _userId);
+          backend.on('POST', _checkout, (options) {
+            final body = Map<String, dynamic>.from(options.data as Map);
+            return body['clientId'] == refused.clientId
+                ? jsonResponse(400, {
+                    'code': 400,
+                    'message': 'Danh mục không tồn tại',
+                  })
+                : _created();
+          });
+
+          await AppRepository.instance.resendUnsyncedTransactions(_userId);
+
+          expect(sentBodies(), hasLength(2));
+          expect(
+            store.byClientId(refused.clientId!)!.syncStatus,
+            SyncStatus.error,
+          );
+          expect(
+            store.byClientId(next.clientId!)!.syncStatus,
+            SyncStatus.synced,
+          );
+          expect(logs, contains(contains('Danh mục không tồn tại')));
+        });
+      },
+    );
+
+    test('offline it never throws and keeps everything flagged error', () {
+      return withCapturedLogs((logs) async {
+        final waiting = _draft().withSyncStatus(SyncStatus.pending);
+        await store.insertTransaction(waiting, _userId);
+        backend.on('POST', _checkout, _noNetwork);
+
+        await AppRepository.instance.resendUnsyncedTransactions(_userId);
+
+        expect(
+          store.byClientId(waiting.clientId!)!.syncStatus,
+          SyncStatus.error,
+        );
+        expect(logs, contains(startsWith(_sendFailedLog)));
+      });
+    });
+
+    test(
+      'a second call while the first one runs joins it instead of sending again',
+      () async {
+        await store.insertTransaction(
+          _draft().withSyncStatus(SyncStatus.error),
+          _userId,
+        );
+        final answer = Completer<void>();
+        backend.on('POST', _checkout, (_) async {
+          await answer.future;
+          return _created();
+        });
+
+        final first = AppRepository.instance.resendUnsyncedTransactions(
+          _userId,
+        );
+        final second = AppRepository.instance.resendUnsyncedTransactions(
+          _userId,
+        );
+        answer.complete();
+        await Future.wait([first, second]);
+
+        expect(sentBodies(), hasLength(1));
+      },
+    );
+
+    test('with nothing waiting no request goes out', () async {
+      await AppRepository.instance.resendUnsyncedTransactions(_userId);
+
+      expect(backend.requests, isEmpty);
+    });
+  });
+
+  group('dataChangedNotifier', () {
+    final notifier = RemoteApiHelper.instance.dataChangedNotifier;
+
+    /// The sync state of the row with [clientId] at every move of the notifier while [action] runs.
+    Future<List<SyncStatus?>> statesAtEachChange(
+      String clientId,
+      Future<void> Function() action,
+    ) async {
+      final states = <SyncStatus?>[];
+      void record() => states.add(store.byClientId(clientId)?.syncStatus);
+      notifier.addListener(record);
+      try {
+        await action();
+      } finally {
+        notifier.removeListener(record);
+      }
+      return states;
+    }
+
+    test(
+      'moves after a create, the last time once the row is flagged synced',
+      () async {
+        backend.on('POST', _checkout, (_) => _created());
+        final draft = _draft();
+
+        final states = await statesAtEachChange(
+          draft.clientId!,
+          () => AppRepository.instance.createTransaction(_userId, draft),
+        );
+
+        expect(states, isNotEmpty);
+        expect(states.last, SyncStatus.synced);
+      },
+    );
+
+    test('moves after a create that could not be sent', () {
+      return withCapturedLogs((logs) async {
+        backend.on('POST', _checkout, _noNetwork);
+        final draft = _draft();
+
+        final states = await statesAtEachChange(
+          draft.clientId!,
+          () => AppRepository.instance.createTransaction(_userId, draft),
+        );
+
+        expect(states, [SyncStatus.error]);
+      });
+    });
+
+    test('moves after a resend that was refused', () {
+      return withCapturedLogs((logs) async {
+        final tx = _draft().withSyncStatus(SyncStatus.error);
+        await store.insertTransaction(tx, _userId);
+        backend.on(
+          'POST',
+          _checkout,
+          (_) => jsonResponse(400, {'code': 400, 'message': 'Không hợp lệ'}),
+        );
+
+        final states = await statesAtEachChange(
+          tx.clientId!,
+          () => expectLater(
+            AppRepository.instance.resendTransaction(_userId, tx),
+            throwsA(isA<TransactionRefusedException>()),
+          ),
+        );
+
+        expect(states, [SyncStatus.error]);
+      });
+    });
+
+    test('moves after a waiting transaction is deleted', () async {
+      final tx = _draft().withSyncStatus(SyncStatus.error);
+      await store.insertTransaction(tx, _userId);
+
+      final states = await statesAtEachChange(
+        tx.clientId!,
+        () => AppRepository.instance.deleteUnsyncedTransaction(
+          _userId,
+          tx.clientId!,
+        ),
+      );
+
+      expect(states, [null], reason: 'once, after the row is gone');
+    });
+  });
 }

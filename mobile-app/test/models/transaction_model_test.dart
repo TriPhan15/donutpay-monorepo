@@ -222,7 +222,22 @@ void main() {
     );
 
     test(
-      'a transaction read from the server has none, because the server does not send it back',
+      'a transaction read from the server keeps the client id it was created with, and is synced',
+      () {
+        final tx = TransactionModel.fromJson({
+          'id': 1,
+          'amount': 1,
+          'category': 'Khác',
+          'clientId': '3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f7a8b9c',
+        });
+
+        expect(tx.clientId, '3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f7a8b9c');
+        expect(tx.syncStatus, SyncStatus.synced);
+      },
+    );
+
+    test(
+      'a transaction the server got from elsewhere has no client id',
       () {
         final tx = TransactionModel.fromJson({
           'id': 1,

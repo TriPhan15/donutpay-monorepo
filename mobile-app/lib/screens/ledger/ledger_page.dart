@@ -43,6 +43,9 @@ class LedgerPageState extends State<LedgerPage> {
 
   /// clientIds of the transactions being resent, so that a second tap on the same one cannot start a second send.
   final Set<String> _resendingClientIds = {};
+
+  /// Numbers the loads: a pull-to-refresh and a reload on dataChangedNotifier can overlap, only the latest one is shown.
+  int _loadRequest = 0;
   List<BudgetModel> _budgets = [];
   bool _budgetsFailed = false;
   List<BudgetProgress> _budgetProgress = [];
@@ -68,16 +71,20 @@ class LedgerPageState extends State<LedgerPage> {
   @override
   void initState() {
     super.initState();
+    // The page stays alive in the IndexedStack of MainScaffold: every write, on any tab, reloads it.
+    RemoteApiHelper.instance.dataChangedNotifier.addListener(_load);
     _load();
   }
 
   @override
   void dispose() {
+    RemoteApiHelper.instance.dataChangedNotifier.removeListener(_load);
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
+    final request = ++_loadRequest;
     final userId = SessionService.currentUserId;
     if (userId == null) {
       if (!mounted) return;
@@ -102,7 +109,7 @@ class LedgerPageState extends State<LedgerPage> {
     }
     final budgets = await budgetsRequest;
 
-    if (!mounted) return;
+    if (!mounted || request != _loadRequest) return;
     setState(() {
       _isLoading = false;
       _transactionsFailed = transactionsFailed;
@@ -123,7 +130,17 @@ class LedgerPageState extends State<LedgerPage> {
     }
   }
 
-  void reload() => _load();
+  void reload() => _refresh();
+
+  /// Asked for by the user (pull-to-refresh, a tap on the tab it is on): what waits in the outbox is sent again first.
+  /// Not awaited, the outcome of each send reaches the page through dataChangedNotifier.
+  Future<void> _refresh() {
+    final userId = SessionService.currentUserId;
+    if (userId != null) {
+      unawaited(AppRepository.instance.resendUnsyncedTransactions(userId));
+    }
+    return _load();
+  }
 
   /// The budgets that overlap the period on screen, each measured over its own dates. It is kept in state because a
   /// keystroke in the search box rebuilds the page, and that must not recompute it.
@@ -269,13 +286,7 @@ class LedgerPageState extends State<LedgerPage> {
                   builder: (_) =>
                       AddTransactionPage(initialDate: _selectedDate),
                 ),
-              ).then((added) {
-                if (added == true) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) _load();
-                  });
-                }
-              });
+              );
             },
           ),
         ],
@@ -283,7 +294,7 @@ class LedgerPageState extends State<LedgerPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _load,
+              onRefresh: _refresh,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                 children: [
@@ -1259,12 +1270,10 @@ class LedgerPageState extends State<LedgerPage> {
 
   Future<void> _editTransactionAction(TransactionModel tx) async {
     if (!mounted) return;
-    final saved = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => EditTransactionPage(transaction: tx)),
     );
-    if (saved != true || !mounted) return;
-    await _load();
   }
 
   Future<void> _deleteTransactionAction(String id) async {
@@ -1313,7 +1322,6 @@ class LedgerPageState extends State<LedgerPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã xóa giao dịch và hoàn tiền')),
         );
-        _load();
       }
     } else {
       if (mounted) {
@@ -1372,8 +1380,6 @@ class LedgerPageState extends State<LedgerPage> {
             'Chưa kết nối được máy chủ. Giao dịch vẫn được giữ trên thiết bị, bạn có thể gửi lại sau.',
       );
     }
-    if (!mounted) return;
-    await _load();
   }
 
   /// Removes a transaction that the server never confirmed from the device only: there is nothing on the server to
@@ -1399,7 +1405,6 @@ class LedgerPageState extends State<LedgerPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Đã xóa giao dịch chưa gửi')));
-    await _load();
   }
 
   Widget _buildLoadFailedNotice(ColorScheme colors, SemanticColors semantic) {

@@ -60,6 +60,8 @@ class RemoteApiHelper {
   SettingsRepository? _settings;
   // The renewal in flight: a 401 that arrives meanwhile waits for it instead of starting another refresh.
   Future<String?>? _renewal;
+  /// Moves on after every write of the user's data (transactions, budgets, savings), on the server or in the outbox of
+  /// this device. The tabs of MainScaffold stay alive in an IndexedStack, so they reload on it instead of in initState only.
   final ValueNotifier<int> dataChangedNotifier = ValueNotifier(0);
 
   /// [httpClientAdapter] replaces the real network layer of the core API, of the AI service and of the token refresh; only
@@ -671,6 +673,7 @@ class RemoteApiHelper {
 
   Future<BudgetModel> createBudget(BudgetModel budget) async {
     final res = await _dio.post('/api/budgets', data: budget.toJson());
+    dataChangedNotifier.value++;
     return BudgetModel.fromJson(
       Map<String, dynamic>.from(res.data['data'] as Map),
     );
@@ -681,6 +684,7 @@ class RemoteApiHelper {
       '/api/budgets/${budget.id}',
       data: budget.toJson(),
     );
+    dataChangedNotifier.value++;
     return BudgetModel.fromJson(
       Map<String, dynamic>.from(res.data['data'] as Map),
     );
@@ -688,6 +692,7 @@ class RemoteApiHelper {
 
   Future<void> deleteBudget(int budgetId) async {
     await _dio.delete('/api/budgets/$budgetId');
+    dataChangedNotifier.value++;
   }
 
   Future<bool> submitAppReview(int rating, String comment) async {

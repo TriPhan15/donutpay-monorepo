@@ -40,6 +40,19 @@ class TransactionResponseDtoTest {
     }
 
     @Test
+    void theClientIdTheAppGaveTheTransactionIsCarriedOver() {
+        Transaction fromTheApp = transaction("Bún bò");
+        fromTheApp.setClientId("3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f7a8b9c");
+
+        assertEquals("3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f7a8b9c", TransactionResponseDto.from(fromTheApp).getClientId());
+    }
+
+    @Test
+    void aTransactionMadeElsewhereHasNoClientId() {
+        assertNull(TransactionResponseDto.from(transaction("Bún bò")).getClientId());
+    }
+
+    @Test
     void anIncomeStaysAnIncome() {
         Transaction income = transaction("Lương");
         income.setExpense(false);

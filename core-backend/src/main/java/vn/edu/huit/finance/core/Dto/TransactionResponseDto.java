@@ -30,6 +30,11 @@ public class TransactionResponseDto {
      * status itself is part of ReceiptResponseDto.
      */
     private String receiptStatus;
+    /**
+     * The id the app gave the transaction when it created it offline; null for a transaction made elsewhere. The app drops
+     * its own pending copy when the server list already holds one with the same clientId.
+     */
+    private String clientId;
 
     /** The title is the note when there is one, otherwise the name of the category. */
     public static TransactionResponseDto from(Transaction transaction) {
@@ -48,6 +53,7 @@ public class TransactionResponseDto {
                 .isExpense(transaction.isExpense())
                 .imageUrl(imageUrl)
                 .receiptStatus(receiptStatus)
+                .clientId(transaction.getClientId())
                 .build();
     }
 }

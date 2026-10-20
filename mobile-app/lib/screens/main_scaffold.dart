@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
@@ -7,6 +9,8 @@ import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
+import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/services/session_service.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -15,7 +19,8 @@ class MainScaffold extends StatefulWidget {
   State<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends State<MainScaffold>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
 
   final _ledgerKey = GlobalKey<LedgerPageState>();
@@ -34,6 +39,33 @@ class _MainScaffoldState extends State<MainScaffold> {
     const AITabPage(),
     const ProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _resendOutbox();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Back from the background, like opening the app: the network may be back too.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _resendOutbox();
+  }
+
+  /// Sends again, without asking, the transactions that wait on this device. The tabs hear each outcome through
+  /// dataChangedNotifier.
+  void _resendOutbox() {
+    final userId = SessionService.currentUserId;
+    if (userId == null) return;
+    unawaited(AppRepository.instance.resendUnsyncedTransactions(userId));
+  }
 
   void _showScannerOptions(BuildContext context) {
     showModalBottomSheet(
@@ -108,7 +140,6 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         );
         if (saved == true && mounted) {
-          _ledgerKey.currentState?.reload();
           setState(() => _currentIndex = 1);
         }
       }
@@ -141,7 +172,6 @@ class _MainScaffoldState extends State<MainScaffold> {
         ),
       );
       if (saved == true && mounted) {
-        _ledgerKey.currentState?.reload();
         setState(() => _currentIndex = 1);
       }
     }

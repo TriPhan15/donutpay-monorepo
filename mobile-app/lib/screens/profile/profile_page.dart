@@ -33,16 +33,28 @@ class _ProfilePageState extends State<ProfilePage> {
   List<WalletModel> _wallets = [];
   List<TransactionModel> _recentTransactions = [];
 
+  /// Numbers the loads: reloads on dataChangedNotifier can overlap, only the latest one is shown.
+  int _loadRequest = 0;
+
   @override
   void initState() {
     super.initState();
+    // The page stays alive in the IndexedStack of MainScaffold: a write on another tab must show here too.
+    RemoteApiHelper.instance.dataChangedNotifier.addListener(_load);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _load();
     });
   }
 
+  @override
+  void dispose() {
+    RemoteApiHelper.instance.dataChangedNotifier.removeListener(_load);
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    final request = ++_loadRequest;
     final userId = SessionService.currentUserId;
     if (userId == null) {
       if (!mounted) return;
@@ -52,7 +64,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = await AppRepository.instance.getCurrentUser(userId);
     final wallets = await AppRepository.instance.getWallets(userId);
     final txs = await AppRepository.instance.getTransactions(userId);
-    if (!mounted) return;
+    if (!mounted || request != _loadRequest) return;
     final sorted = [...txs]..sort((a, b) => b.date.compareTo(a.date));
     setState(() {
       _isLoading = false;
