@@ -2,12 +2,10 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/services/sqflite_helper.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
@@ -26,7 +24,7 @@ class AccountCredentialsScreen extends StatefulWidget {
 }
 
 class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
-  /// Shown instead of the real password in full mode: the server never sends it.
+  /// Shown instead of the real password: the server never sends it.
   static const String _serverPasswordMask = '********';
   static const String _changePasswordFailedTitle = 'Đổi mật khẩu thất bại';
   static const String _sessionExpiredMessage =
@@ -91,16 +89,8 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
     });
   }
 
-  String _maskPassword(String password) {
-    if (AppConfig.isFull) return _serverPasswordMask;
-    if (password.isEmpty) return '';
-    final clampedLength = password.length > 12 ? 12 : password.length;
-    return List.filled(clampedLength, '*').join();
-  }
-
-  Future<void> _saveEmail() async {
-    final current = _user;
-    if (current == null) return;
+  void _saveEmail() {
+    if (_user == null) return;
 
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -110,42 +100,9 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
       return;
     }
 
-    if (AppConfig.isFull) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Chỉnh sửa tài khoản chưa hỗ trợ trên server (chỉ ở bản demo).',
-          ),
-        ),
-      );
-      return;
-    }
-    final updated = current.copyWith(email: email);
-    try {
-      await SqfliteHelper.instance.updateUser(updated);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã cập nhật tài khoản.')));
-      setState(() {
-        _user = updated;
-        _editingField = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('unique') ||
-          msg.contains('1555') ||
-          msg.contains('2067')) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Email đã tồn tại.')));
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Cập nhật thất bại: $e')));
-      }
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Máy chủ chưa hỗ trợ đổi tên đăng nhập.')),
+    );
   }
 
   Future<void> _changePassword({
@@ -153,8 +110,7 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    final current = _user;
-    if (current == null) return;
+    if (_user == null) return;
 
     if (currentPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -174,13 +130,7 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
       );
       return;
     }
-    // In full mode the server never sends the password, so only the server can tell that the old one is wrong.
-    if (!AppConfig.isFull && currentPassword != current.password) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Mật khẩu cũ không đúng.')));
-      return;
-    }
+    // The server never sends the password, so only the server can tell that the old one is wrong.
     final policyError = PasswordPolicy.validate(newPassword);
     if (policyError != null) {
       ScaffoldMessenger.of(
@@ -195,33 +145,13 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
       return;
     }
 
-    if (AppConfig.isFull) {
-      await _changePasswordOnServer(
-        currentPassword: currentPassword,
-        newPassword: newPassword,
-      );
-      return;
-    }
-    final updated = current.copyWith(password: newPassword);
-    try {
-      await SqfliteHelper.instance.updateUser(updated);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đổi mật khẩu thành công.')));
-      setState(() {
-        _user = updated;
-        _editingField = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Đổi mật khẩu thất bại: $e')));
-    }
+    await _changePasswordOnServer(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
   }
 
-  /// Full mode: PUT /api/auth/change-password. The server checks the old password; on failure the form stays open with
+  /// PUT /api/auth/change-password. The server checks the old password; on failure the form stays open with
   /// what the user typed, on success it closes. The token that made the call is revoked by the server, the next request
   /// renews it silently (see the 401 interceptor of RemoteApiHelper).
   Future<void> _changePasswordOnServer({
@@ -362,7 +292,7 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
                       _buildEditableInfoRow(
                         colors,
                         label: 'Mật khẩu',
-                        value: _maskPassword(user.password),
+                        value: _serverPasswordMask,
                         onTap: () => _startEdit(_EditingField.password),
                       ),
                     ],

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/cubits/language_cubit.dart';
 import 'package:finance_ai_app/cubits/theme_cubit.dart';
 import 'package:finance_ai_app/di/injection_container.dart';
@@ -50,9 +49,7 @@ class _DonutPayAppState extends State<DonutPayApp> {
 
   Future<void> _check() async {
     final loggedIn = await SessionService.isLoggedIn();
-    final ok = AppConfig.isFull
-        ? (loggedIn && SessionService.currentToken != null)
-        : loggedIn;
+    final ok = loggedIn && SessionService.currentToken != null;
     if (ok) {
       try {
         await TransactionCategories.loadFromApi();

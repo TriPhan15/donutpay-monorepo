@@ -294,10 +294,6 @@
   "@passwordRecoverySending": {
     "description": "Label of a disabled send or resend button while the one-time code request is on its way."
   },
-  "passwordRecoveryServerOnly": "Password recovery needs a connection to the server and isn't available in demo mode.",
-  "@passwordRecoveryServerOnly": {
-    "description": "Shown when the user tries to recover a password in the offline demo mode, where there is no server to send a code."
-  },
   "passwordRecoveryNetworkError": "Can't reach the server. Please check your connection and try again.",
   "@passwordRecoveryNetworkError": {
     "description": "Error dialog text when a password recovery request got no answer from the server."

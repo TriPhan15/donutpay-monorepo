@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/auth/reset_password_page.dart';
@@ -80,7 +79,6 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     // Nobody is signed in during a password recovery.
     await SessionService.clearSession();
     // SharedPreferences shares one Future, which must be created inside the test body (see budget_display_test.dart).
@@ -89,7 +87,6 @@ void main() {
   });
 
   tearDown(() {
-    AppConfig.mode = AppMode.full;
     // The language cubit of withAppSettings sets the default locale of intl.
     Intl.defaultLocale = null;
   });

@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -166,10 +165,10 @@ class DashboardPageState extends State<DashboardPage>
     }
   }
 
-  /// Notifications are kept by the server only, so there is nothing to count without it (demo mode) or signed out. On
-  /// failure the bell keeps its last number.
+  /// Notifications are kept by the server, so there is nothing to count when signed out. On failure the bell keeps its
+  /// last number.
   Future<void> _refreshUnreadNotifications() async {
-    if (!mounted || !AppConfig.isFull || SessionService.currentUserId == null) {
+    if (!mounted || SessionService.currentUserId == null) {
       return;
     }
     final request = ++_unreadRequest;
@@ -646,12 +645,6 @@ class DashboardPageState extends State<DashboardPage>
                 Icons.savings_rounded,
                 'Sổ tiết kiệm',
                 () => _navigateTo(const SavingsPage()),
-              ),
-              _buildUtilityIcon(
-                colors,
-                Icons.account_balance_rounded,
-                'Kết nối\nngân hàng',
-                () => DashboardBottomSheets.showBankConnect(context),
               ),
               _buildUtilityIcon(colors, Icons.grid_view_rounded, 'Tất cả', () {
                 DashboardBottomSheets.showAllFeatures(

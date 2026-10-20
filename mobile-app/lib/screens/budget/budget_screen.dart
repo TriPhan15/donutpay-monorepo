@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
@@ -17,8 +16,7 @@ import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 const int _httpUnauthorized = 401;
 const int _httpForbidden = 403;
 
-/// Lists the spending limits of the user and lets them add, edit and delete them. With the server (AppConfig.isFull)
-/// the data lives in the backend; offline it stays in the local database, which only knows monthly budgets.
+/// Lists the spending limits of the user, stored in the backend, and lets them add, edit and delete them.
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
 
@@ -102,7 +100,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
       ),
       builder: (_) => BudgetFormSheet(
         budget: budget,
-        weeklyEnabled: AppConfig.isFull,
         loadCategories: () =>
             AppRepository.instance.getExpenseCategories(userId),
         onSubmit: (edited) => _submit(userId, edited),
@@ -179,7 +176,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                 children: [
-                  if (!AppConfig.isFull) const _OfflineNotice(),
                   if (_budgets.isEmpty)
                     _EmptyState(onCreate: _openForm)
                   else
@@ -192,27 +188,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 ],
               ),
             ),
-    );
-  }
-}
-
-class _OfflineNotice extends StatelessWidget {
-  const _OfflineNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        'Chế độ ngoại tuyến: chỉ hỗ trợ ngân sách theo tháng.',
-        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-      ),
     );
   }
 }

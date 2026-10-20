@@ -3,9 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
-import 'package:finance_ai_app/models/category_model.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/user_model.dart';
@@ -48,37 +46,29 @@ class AppRepository {
   @visibleForTesting
   set localStore(SqfliteHelper store) => _localStore = store;
 
-  /// In full mode: the transactions of the server plus the ones created on this device that it has not confirmed yet
-  /// (see [getUnsyncedTransactions]), those first because they need the attention of the user. Throws when the server
-  /// cannot be reached.
+  /// The transactions of the server plus the ones created on this device that it has not confirmed yet (see
+  /// [getUnsyncedTransactions]), those first because they need the attention of the user. Throws when the server cannot
+  /// be reached.
   Future<List<TransactionModel>> getTransactions(int userId) async {
-    if (!AppConfig.isFull) {
-      return SqfliteHelper.instance.getTransactionsByUserId(userId);
-    }
     final onServer = await RemoteApiHelper.instance.fetchTransactions();
     return [...await getUnsyncedTransactions(userId), ...onServer];
   }
 
-  /// The transactions created on this device that the server has not confirmed: waiting to be sent, or failed. Always
-  /// empty without a server (there every transaction is local and counts as synced).
+  /// The transactions created on this device that the server has not confirmed: waiting to be sent, or failed.
   Future<List<TransactionModel>> getUnsyncedTransactions(int userId) async {
-    if (!AppConfig.isFull) return const [];
     return _localStore.getUnsyncedTransactions(userId);
   }
 
   Future<UserModel?> getCurrentUser(int userId) async {
-    if (AppConfig.isFull) {
-      final me = await RemoteApiHelper.instance.fetchMe();
-      final email = (me['email'] ?? '').toString();
-      return UserModel(
-        id: (me['id'] as num?)?.toInt(),
-        email: email,
-        password: '',
-        fullName: email.isNotEmpty ? email.split('@').first : 'Người dùng',
-        phone: me['phone']?.toString(),
-      );
-    }
-    return SqfliteHelper.instance.getUserById(userId);
+    final me = await RemoteApiHelper.instance.fetchMe();
+    final email = (me['email'] ?? '').toString();
+    return UserModel(
+      id: (me['id'] as num?)?.toInt(),
+      email: email,
+      password: '',
+      fullName: email.isNotEmpty ? email.split('@').first : 'Người dùng',
+      phone: me['phone']?.toString(),
+    );
   }
 
   Future<List<WalletModel>> getWallets(int userId) async {
@@ -110,51 +100,17 @@ class AppRepository {
     return {'user': user, 'transactions': txs, 'wallets': wallets};
   }
 
-  Future<void> addTransaction({
-    required int userId,
-    required double amount,
-    required bool isExpense,
-    required String category,
-    String? note,
-  }) async {
-    if (AppConfig.isFull) {
-      await RemoteApiHelper.instance.addTransaction({
-        'amount': amount,
-        'isExpense': isExpense,
-        'categoryName': category,
-        'location': (note != null && note.isNotEmpty) ? note : category,
-        'paymentMethod': 'Ví chính',
-        'transactionDate': DateTime.now().toIso8601String(),
-        'note': ?note,
-      });
-    } else {
-      final tx = TransactionModel.draft(
-        title: (note != null && note.isNotEmpty) ? note : category,
-        category: category,
-        amount: amount,
-        date: DateTime.now(),
-        isExpense: isExpense,
-      );
-      await SqfliteHelper.instance.insertTransaction(tx, userId);
-    }
-  }
-
   /// Saves a new transaction made on this device and returns where it ended up.
   ///
-  /// In full mode it is first written to the local table as pending, so that it survives a crash or a lost connection,
+  /// It is first written to the local table as pending, so that it survives a crash or a lost connection,
   /// and then sent to the server together with its clientId. The result is [SyncStatus.synced] once the server has it, or
   /// [SyncStatus.error] when it could not be sent for a reason that sending again can fix (no network, timeout, server
   /// error): it stays on the device, flagged, until the user resends it. Throws [TransactionRefusedException] when the
-  /// server refuses it, and keeps nothing then, because the user still has the form to correct. Without a server the row is
-  /// simply stored.
+  /// server refuses it, and keeps nothing then, because the user still has the form to correct.
   Future<SyncStatus> createTransaction(
     int userId,
     TransactionModel draft,
   ) async {
-    if (!AppConfig.isFull) {
-      await _localStore.insertTransaction(draft, userId);
-      return SyncStatus.synced;
-    }
     final clientId = _clientIdOf(draft);
     await _localStore.insertTransaction(
       draft.withSyncStatus(SyncStatus.pending),
@@ -242,11 +198,10 @@ class AppRepository {
         : message;
   }
 
-  /// All the budgets of the user, newest first: from the server, or from the local table (which only stores monthly
-  /// budgets). Callers pick the ones of a period themselves, see BudgetModel.coversDay and BudgetModel.overlaps.
+  /// All the budgets of the user from the server, newest first. Callers pick the ones of a period themselves, see
+  /// BudgetModel.coversDay and BudgetModel.overlaps.
   Future<List<BudgetModel>> getBudgets(int userId) {
-    if (AppConfig.isFull) return RemoteApiHelper.instance.getBudgets();
-    return SqfliteHelper.instance.getBudgetsByUserId(userId);
+    return RemoteApiHelper.instance.getBudgets();
   }
 
   /// Like [getBudgets] for screens that show budgets next to other data: a failure comes back as null, so the rest of
@@ -262,48 +217,25 @@ class AppRepository {
 
   /// Creates the budget, or updates it when it already has an id, and returns the stored copy.
   Future<BudgetModel> saveBudget(int userId, BudgetModel budget) async {
-    if (AppConfig.isFull) {
-      return budget.id == null
-          ? RemoteApiHelper.instance.createBudget(budget)
-          : RemoteApiHelper.instance.updateBudget(budget);
-    }
-    final local = budget.copyWith(userId: userId);
-    if (local.id == null) {
-      final id = await SqfliteHelper.instance.insertBudget(local);
-      return local.copyWith(id: id);
-    }
-    await SqfliteHelper.instance.updateBudget(local);
-    return local;
+    return budget.id == null
+        ? RemoteApiHelper.instance.createBudget(budget)
+        : RemoteApiHelper.instance.updateBudget(budget);
   }
 
   Future<void> deleteBudget(int budgetId) async {
-    if (AppConfig.isFull) {
-      await RemoteApiHelper.instance.deleteBudget(budgetId);
-    } else {
-      await SqfliteHelper.instance.deleteBudget(budgetId);
-    }
+    await RemoteApiHelper.instance.deleteBudget(budgetId);
   }
 
-  /// The expense categories a budget can be limited to, from the server or from the local table; empty when none load.
+  /// The expense categories a budget can be limited to, from the server; empty when there are none.
   Future<List<BudgetCategory>> getExpenseCategories(int userId) async {
-    if (AppConfig.isFull) {
-      final categories = await RemoteApiHelper.instance.fetchCategories();
-      return [
-        for (final category in categories)
-          if (category['type'] == _serverExpenseType)
-            (
-              id: (category['id'] as num).toInt(),
-              name: category['name'].toString(),
-            ),
-      ];
-    }
-    final categories = await SqfliteHelper.instance.getCategoriesByUserId(
-      userId,
-    );
+    final categories = await RemoteApiHelper.instance.fetchCategories();
     return [
       for (final category in categories)
-        if (category.type == CategoryType.expense && category.id != null)
-          (id: category.id!, name: category.name),
+        if (category['type'] == _serverExpenseType)
+          (
+            id: (category['id'] as num).toInt(),
+            name: category['name'].toString(),
+          ),
     ];
   }
 }

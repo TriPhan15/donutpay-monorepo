@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
@@ -11,7 +10,6 @@ import 'package:finance_ai_app/models/receipt_item_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/services/sqflite_helper.dart';
 
 class ReviewFormPage extends StatefulWidget {
   final String imagePath;
@@ -56,14 +54,12 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
         widget.imagePath,
       );
 
-      if (AppConfig.isFull) {
-        try {
-          _imageUrl = await RemoteApiHelper.instance.uploadImage(
-            widget.imagePath,
-          );
-        } catch (e) {
-          debugPrint('Upload anh receipt lỗi: $e');
-        }
+      try {
+        _imageUrl = await RemoteApiHelper.instance.uploadImage(
+          widget.imagePath,
+        );
+      } catch (e) {
+        debugPrint('Upload anh receipt lỗi: $e');
       }
 
       final seller = result['seller'] is Map
@@ -115,8 +111,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   }
 
   Future<void> _saveToDatabase() async {
-    final userId = SessionService.currentUserId;
-    if (userId == null) {
+    if (SessionService.currentUserId == null) {
       _showSnack('Vui lòng đăng nhập lại.');
       return;
     }
@@ -142,23 +137,19 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     );
 
     try {
-      if (AppConfig.isFull) {
-        await RemoteApiHelper.instance.addTransaction({
-          'amount': transaction.amount,
-          'note': transaction.title,
-          'location': transaction.title.isEmpty
-              ? 'Hóa đơn quét'
-              : transaction.title,
-          'paymentMethod': 'WALLET',
-          'transactionDate': transaction.date.toIso8601String(),
-          'categoryName': transaction.category,
-          'isExpense': true,
-          if (_rawScan != null) 'rawReceiptData': jsonEncode(_rawScan),
-          if (_imageUrl != null) 'imageUrl': _imageUrl,
-        });
-      } else {
-        await SqfliteHelper.instance.insertTransaction(transaction, userId);
-      }
+      await RemoteApiHelper.instance.addTransaction({
+        'amount': transaction.amount,
+        'note': transaction.title,
+        'location': transaction.title.isEmpty
+            ? 'Hóa đơn quét'
+            : transaction.title,
+        'paymentMethod': 'WALLET',
+        'transactionDate': transaction.date.toIso8601String(),
+        'categoryName': transaction.category,
+        'isExpense': true,
+        if (_rawScan != null) 'rawReceiptData': jsonEncode(_rawScan),
+        if (_imageUrl != null) 'imageUrl': _imageUrl,
+      });
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {

@@ -18,7 +18,6 @@ Future<void> _openSheet(
   WidgetTester tester, {
   required Future<String?> Function(BudgetModel budget) onSubmit,
   BudgetModel? budget,
-  bool weeklyEnabled = true,
   Future<List<BudgetCategory>> Function()? loadCategories,
   void Function(bool? result)? onClosed,
   bool settle = true,
@@ -35,7 +34,6 @@ Future<void> _openSheet(
                   isScrollControlled: true,
                   builder: (_) => BudgetFormSheet(
                     budget: budget,
-                    weeklyEnabled: weeklyEnabled,
                     loadCategories: loadCategories ?? _loadCategories,
                     onSubmit: onSubmit,
                   ),
@@ -237,24 +235,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Lưu ngân sách'), findsOneWidget);
       expect(closedWith, isNull);
-    },
-  );
-
-  testWidgets(
-    'offline, weekly budgets are switched off and the reason is shown',
-    (tester) async {
-      await _openSheet(
-        tester,
-        weeklyEnabled: false,
-        onSubmit: (_) async => null,
-      );
-
-      expect(_chip(tester, 'Tuần').onSelected, isNull);
-      expect(_chip(tester, 'Tháng').onSelected, isNotNull);
-      expect(
-        find.text('Ngân sách theo tuần cần kết nối máy chủ.'),
-        findsOneWidget,
-      );
     },
   );
 

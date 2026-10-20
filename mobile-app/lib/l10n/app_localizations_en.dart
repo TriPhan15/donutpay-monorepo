@@ -226,10 +226,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get passwordRecoverySending => 'Sending...';
 
   @override
-  String get passwordRecoveryServerOnly =>
-      'Password recovery needs a connection to the server and isn\'t available in demo mode.';
-
-  @override
   String get passwordRecoveryNetworkError =>
       'Can\'t reach the server. Please check your connection and try again.';
 

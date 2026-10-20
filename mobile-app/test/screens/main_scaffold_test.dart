@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/main.dart';
@@ -95,7 +94,6 @@ void main() {
       SettingsRepositoryImpl.languageKey: 'vi',
     });
     await configureDependencies();
-    AppConfig.mode = AppMode.full;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     await SessionService.setTokens('access-token', 'refresh-token');

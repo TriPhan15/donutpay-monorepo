@@ -21,9 +21,8 @@ const String _fieldNote = 'note';
 const int _httpUnauthorized = 401;
 const int _httpForbidden = 403;
 
-/// Form to correct the amount, category and note of a transaction. It needs the server, so the Ledger only offers it
-/// when AppConfig.isFull. It sends just what the user changed, which leaves the date, the type and the receipt alone,
-/// and pops with true once the server has saved the change.
+/// Form to correct the amount, category and note of a transaction that the server has. It sends just what the user
+/// changed, which leaves the date, the type and the receipt alone, and pops with true once the server has saved it.
 class EditTransactionPage extends StatefulWidget {
   final TransactionModel transaction;
 

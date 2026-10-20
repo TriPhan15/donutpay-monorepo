@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
@@ -28,7 +27,6 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     backend.reset();
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);

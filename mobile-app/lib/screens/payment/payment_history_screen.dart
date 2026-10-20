@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -25,13 +24,6 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   }
 
   Future<void> _load() async {
-    if (!AppConfig.isFull) {
-      setState(() {
-        _loading = false;
-        _error = 'Lịch sử nạp/rút chỉ có ở chế độ FULL (cần backend).';
-      });
-      return;
-    }
     setState(() {
       _loading = true;
       _error = null;

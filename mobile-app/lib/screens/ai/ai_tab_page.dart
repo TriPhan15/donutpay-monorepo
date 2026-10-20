@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:dio/dio.dart';
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -233,7 +232,6 @@ class _AITabPageState extends State<AITabPage> {
   Future<List<Map<String, dynamic>>> _analyze(
     List<TransactionModel> txs,
   ) async {
-    if (!AppConfig.isFull) return _computeLocalPatterns(txs);
     // Nothing to mine in an empty range, so the AI service is not called for it.
     if (txs.isEmpty) return const [];
     final data = txs
@@ -290,40 +288,6 @@ class _AITabPageState extends State<AITabPage> {
         message: _messageOf(error),
       );
     }
-  }
-
-  List<Map<String, dynamic>> _computeLocalPatterns(List<TransactionModel> txs) {
-    final expTxs = txs.where((t) => t.isExpense).toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
-    final Map<String, int> counts = {};
-    final Map<String, double> weights = {};
-    final total = expTxs.fold(0.0, (s, t) => s + t.amount);
-
-    for (int i = 0; i < expTxs.length - 1; i++) {
-      if (expTxs[i + 1].date.difference(expTxs[i].date).inDays <= 7 &&
-          expTxs[i].category != expTxs[i + 1].category) {
-        final key = '${expTxs[i].category} → ${expTxs[i + 1].category}';
-        counts[key] = (counts[key] ?? 0) + 1;
-        weights[key] =
-            (weights[key] ?? 0.0) +
-            (total > 0
-                ? (expTxs[i].amount + expTxs[i + 1].amount) / total
-                : 0.0);
-      }
-    }
-
-    final sorted = counts.entries.toList()
-      ..sort((a, b) => (weights[b.key] ?? 0).compareTo(weights[a.key] ?? 0));
-    return sorted
-        .take(5)
-        .map(
-          (e) => {
-            'pattern': e.key,
-            'count': e.value,
-            'wsupport': '${((weights[e.key] ?? 0) * 100).toStringAsFixed(1)}%',
-          },
-        )
-        .toList();
   }
 
   @override

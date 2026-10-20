@@ -383,30 +383,7 @@ class _SavingsPageState extends State<SavingsPage> {
   }
 
   Widget _buildActionGrid(ColorScheme colors) {
-    final actions = [
-      (Icons.add_circle_rounded, 'Thêm\nmục tiêu', _addGoal),
-      (
-        Icons.savings_rounded,
-        'Nạp tiền',
-        () => ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Tính năng sắp ra mắt'))),
-      ),
-      (
-        Icons.account_balance_wallet_rounded,
-        'Rút tiền',
-        () => ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Tính năng sắp ra mắt'))),
-      ),
-      (
-        Icons.share_rounded,
-        'Chia sẻ',
-        () => ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Tính năng sắp ra mắt'))),
-      ),
-    ];
+    final actions = [(Icons.add_circle_rounded, 'Thêm\nmục tiêu', _addGoal)];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

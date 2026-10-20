@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -88,7 +87,6 @@ void main() {
   setUp(() async {
     // SharedPreferences shares one Future that must be created inside the test body (see budget_display_test.dart).
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     SharedPreferences.setMockInitialValues({});

@@ -363,23 +363,6 @@ class RemoteApiHelper {
     }
   }
 
-  Future<Map<String, dynamic>> getWallet() async {
-    final userId = SessionService.currentUserId;
-    final res = await _dio.get('/api/wallets/user/$userId');
-    return Map<String, dynamic>.from(res.data['data'] ?? {});
-  }
-
-  Future<void> transfer({
-    required String recipientPhone,
-    required double amount,
-    String? note,
-  }) async {
-    await _dio.post(
-      '/api/wallets/transfer',
-      data: {'recipientPhone': recipientPhone, 'amount': amount, 'note': ?note},
-    );
-  }
-
   Future<Map<String, dynamic>> createPayment({
     required String type,
     required double amount,
@@ -411,14 +394,6 @@ class RemoteApiHelper {
   Future<Map<String, dynamic>> cancelPayment(String orderCode) async {
     final res = await _dio.put('/api/payment/cancel/$orderCode');
     return Map<String, dynamic>.from(res.data['data'] ?? {});
-  }
-
-  Future<List<Map<String, dynamic>>> getTransactions() async {
-    final userId = SessionService.currentUserId;
-    final res = await _dio.get(
-      '/api/transactions?userId=$userId&limit=100&sort=date,desc',
-    );
-    return List<Map<String, dynamic>>.from(res.data['data'] ?? []);
   }
 
   Future<List<Map<String, dynamic>>> fetchCategories() async {
@@ -549,12 +524,6 @@ class RemoteApiHelper {
       },
     );
     return Map<String, dynamic>.from(res.data);
-  }
-
-  Future<Map<String, dynamic>> getUserProfile() async {
-    final userId = SessionService.currentUserId;
-    final res = await _dio.get('/api/users/$userId');
-    return Map<String, dynamic>.from(res.data['data'] ?? {});
   }
 
   Future<void> updateUserProfile({

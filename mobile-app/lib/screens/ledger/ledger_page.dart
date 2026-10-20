@@ -7,7 +7,6 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 import 'dart:io';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
@@ -1183,8 +1182,8 @@ class LedgerPageState extends State<LedgerPage> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  // Editing goes through the server; offline there is no edit form, so the button is not offered.
-                  if (AppConfig.isFull && tx.id != null) ...[
+                  // Editing goes through the server, so only a transaction it already has can be edited.
+                  if (tx.id != null) ...[
                     SizedBox(
                       width: double.infinity,
                       height: 50,

@@ -224,10 +224,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get passwordRecoverySending => 'Đang gửi...';
 
   @override
-  String get passwordRecoveryServerOnly =>
-      'Khôi phục mật khẩu cần kết nối máy chủ và không khả dụng ở chế độ demo.';
-
-  @override
   String get passwordRecoveryNetworkError =>
       'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';
 

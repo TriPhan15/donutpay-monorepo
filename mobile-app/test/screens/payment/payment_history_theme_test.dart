@@ -4,7 +4,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -47,7 +46,6 @@ void main() {
   setUp(() async {
     // SharedPreferences shares one Future that must be created inside the test body (see budget_display_test.dart).
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     SharedPreferences.setMockInitialValues({});
@@ -68,7 +66,6 @@ void main() {
   tearDown(() {
     // The language cubit of withAppSettings sets the default locale of intl.
     Intl.defaultLocale = null;
-    AppConfig.mode = AppMode.full;
   });
 
   Future<ThemeData> show(WidgetTester tester, ThemeMode mode) async {
@@ -169,21 +166,11 @@ void main() {
         },
       );
 
-      testWidgets('the empty list and the offline message follow the theme', (
-        tester,
-      ) async {
+      testWidgets('the empty list follows the theme', (tester) async {
         backend.on('GET', '/api/payment/mine', (_) => okResponse([]));
         final colors = (await show(tester, mode)).colorScheme;
         expect(
           paintedColor(tester, find.text('Chưa có giao dịch nạp/rút.')),
-          colors.onSurfaceVariant,
-        );
-
-        AppConfig.mode = AppMode.demo;
-        await tester.pumpWidget(const SizedBox());
-        await show(tester, mode);
-        expect(
-          paintedColor(tester, find.textContaining('chỉ có ở chế độ FULL')),
           colors.onSurfaceVariant,
         );
       });

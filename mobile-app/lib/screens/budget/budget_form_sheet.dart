@@ -12,9 +12,6 @@ class BudgetFormSheet extends StatefulWidget {
   /// The budget being edited; null when creating a new one.
   final BudgetModel? budget;
 
-  /// Weekly budgets need the server; the local table only knows months.
-  final bool weeklyEnabled;
-
   final Future<List<BudgetCategory>> Function() loadCategories;
 
   /// Saves the budget. Returns null on success, or the message to show when it failed.
@@ -23,7 +20,6 @@ class BudgetFormSheet extends StatefulWidget {
   const BudgetFormSheet({
     super.key,
     this.budget,
-    required this.weeklyEnabled,
     required this.loadCategories,
     required this.onSubmit,
   });
@@ -196,14 +192,10 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
                   _OptionChip(
                     label: BudgetPeriodType.label(type),
                     selected: _periodType == type,
-                    enabled:
-                        widget.weeklyEnabled || type != BudgetPeriodType.week,
                     onSelected: () => setState(() => _periodType = type),
                   ),
               ],
             ),
-            if (!widget.weeklyEnabled)
-              const _Hint('Ngân sách theo tuần cần kết nối máy chủ.'),
             const SizedBox(height: 12),
             _PeriodPreview(
               label: _keepsDates && _isEditing
@@ -279,37 +271,15 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _Hint extends StatelessWidget {
-  final String text;
-
-  const _Hint(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}
-
 class _OptionChip extends StatelessWidget {
   final String label;
   final bool selected;
-  final bool enabled;
   final VoidCallback onSelected;
 
   const _OptionChip({
     required this.label,
     required this.selected,
     required this.onSelected,
-    this.enabled = true,
   });
 
   @override
@@ -319,7 +289,7 @@ class _OptionChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       showCheckmark: false,
-      onSelected: enabled ? (_) => onSelected() : null,
+      onSelected: (_) => onSelected(),
       selectedColor: colors.primary,
       backgroundColor: colors.surface,
       side: BorderSide(color: colors.outlineVariant),

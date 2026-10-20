@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/linked/linked_services_page.dart';
@@ -69,7 +68,6 @@ void main() {
   setUp(() async {
     // SharedPreferences shares one Future that must be created inside the test body (see budget_display_test.dart).
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     await SessionService.setTokens('access-token', 'refresh-token');
@@ -234,11 +232,11 @@ void main() {
             reason: 'the brand card keeps white text in both themes',
           );
 
-          final share = find.byIcon(Icons.share_rounded);
-          expect(boxColor(tester, share), colors.surface);
-          expect(paintedColor(tester, share), colors.primary);
+          final addGoal = find.byIcon(Icons.add_circle_rounded);
+          expect(boxColor(tester, addGoal), colors.surface);
+          expect(paintedColor(tester, addGoal), colors.primary);
           expect(
-            paintedColor(tester, find.text('Chia sẻ')),
+            paintedColor(tester, find.text('Thêm\nmục tiêu')),
             colors.onSurfaceVariant,
           );
 

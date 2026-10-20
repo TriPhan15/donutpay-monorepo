@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/email_format.dart';
 import 'package:finance_ai_app/screens/auth/password_recovery_errors.dart';
@@ -44,14 +43,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _sendOtp() async {
     if (_isSending) return;
     final loc = context.loc;
-    if (!AppConfig.isFull) {
-      await AppDialog.info(
-        context,
-        title: loc.forgotPasswordTitle,
-        message: loc.passwordRecoveryServerOnly,
-      );
-      return;
-    }
     if (!_formKey.currentState!.validate()) {
       setState(() => _autovalidateMode = AutovalidateMode.onUserInteraction);
       return;

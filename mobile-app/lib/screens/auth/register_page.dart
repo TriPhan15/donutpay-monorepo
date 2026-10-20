@@ -4,10 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
-import 'package:finance_ai_app/config/app_config.dart';
-import 'package:finance_ai_app/models/user_model.dart';
-import 'package:finance_ai_app/screens/profile/set_user_info.dart';
-import 'package:finance_ai_app/repositories/local_auth_repository.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/social_auth_service.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -88,42 +84,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      if (AppConfig.isFull) {
-        await RemoteApiHelper.instance.register(
-          email: email,
-          password: password,
-          fullName: fullName,
-          phone: phone,
-        );
-        if (!mounted) return;
-        await AppDialog.success(
-          context,
-          title: 'Đăng ký thành công',
-          message: 'Tài khoản đã được tạo. Vui lòng đăng nhập.',
-        );
-        if (!mounted) return;
-        Navigator.pop(context);
-        return;
-      }
-
-      final userId = await LocalAuthRepository.instance.register(
-        UserModel(
-          email: email,
-          password: password,
-          fullName: fullName,
-          phone: phone,
-        ),
+      await RemoteApiHelper.instance.register(
+        email: email,
+        password: password,
+        fullName: fullName,
+        phone: phone,
       );
-
       if (!mounted) return;
-
-      Navigator.pushReplacement(
+      await AppDialog.success(
         context,
-        MaterialPageRoute(
-          builder: (_) =>
-              SetUserInfoScreen(userId: userId, returnToLoginOnSave: true),
-        ),
+        title: 'Đăng ký thành công',
+        message: 'Tài khoản đã được tạo. Vui lòng đăng nhập.',
       );
+      if (!mounted) return;
+      Navigator.pop(context);
     } on DioException catch (e) {
       if (!mounted) return;
 
@@ -137,31 +111,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('unique') ||
-          msg.contains('1555') ||
-          msg.contains('2067')) {
-        await AppDialog.error(
-          context,
-          title: 'Email đã tồn tại',
-          message: 'Email này đã được đăng ký. Vui lòng dùng email khác.',
-        );
-      } else {
-        await AppDialog.error(
-          context,
-          title: 'Đăng ký thất bại',
-          message: '$e',
-        );
-      }
+      await AppDialog.error(context, title: 'Đăng ký thất bại', message: '$e');
     }
   }
 
   Future<void> _handleSocial(
     Future<Map<String, dynamic>> Function() signIn,
   ) async {
-    if (!AppConfig.isFull) {
-      return;
-    }
     try {
       final res = await signIn();
       final data = (res['data'] as Map?) ?? res;

@@ -7,7 +7,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
 import 'package:finance_ai_app/screens/notifications/notification_screen.dart';
@@ -105,7 +104,6 @@ void main() {
   setUp(() async {
     // SharedPreferences shares one Future, which must be created inside the test body (see budget_display_test.dart).
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     await SessionService.setTokens('access-token', 'refresh-token');
@@ -117,7 +115,6 @@ void main() {
   });
 
   tearDown(() {
-    AppConfig.mode = AppMode.full;
     // The language cubit of withAppSettings sets the default locale of intl.
     Intl.defaultLocale = null;
   });
@@ -634,20 +631,6 @@ void main() {
         });
 
         expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'without a server (demo mode) the list is empty and nothing is requested, not even on pull-to-refresh',
-      (tester) async {
-        AppConfig.mode = AppMode.demo;
-
-        await open(tester);
-        await tester.fling(find.text(_empty), const Offset(0, 400), 1000);
-        await tester.pumpAndSettle();
-
-        expect(find.text(_empty), findsOneWidget);
-        expect(backend.requests, isEmpty);
       },
     );
   });

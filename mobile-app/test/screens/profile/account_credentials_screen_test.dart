@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
 import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -26,7 +25,6 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     backend.reset();
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);

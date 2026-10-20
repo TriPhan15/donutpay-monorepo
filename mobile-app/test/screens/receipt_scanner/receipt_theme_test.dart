@@ -4,11 +4,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
-import 'package:finance_ai_app/screens/receipt_scanner/user_info_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
@@ -37,8 +35,6 @@ void main() {
   setUp(() async {
     // SharedPreferences shares one Future that must be created inside the test body (see budget_display_test.dart).
     SharedPreferences.setMockInitialValues({});
-    // Offline mode: the form does not upload the photo, so the scan is the only request.
-    AppConfig.mode = AppMode.demo;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     SharedPreferences.setMockInitialValues({});
@@ -58,6 +54,11 @@ void main() {
       }),
     );
     backend.on(
+      'POST',
+      '/api/upload',
+      (_) => jsonResponse(200, {'url': 'https://example.com/receipt.png'}),
+    );
+    backend.on(
       'GET',
       '/api/categories',
       (_) => okResponse([
@@ -65,17 +66,11 @@ void main() {
         {'id': 11, 'name': 'Di chuyển', 'type': 'EXPENSE'},
       ]),
     );
-    backend.on(
-      'GET',
-      '/api/users/me',
-      (_) => okResponse({'id': 1, 'email': 'an@example.com'}),
-    );
   });
 
   tearDown(() {
     // The language cubit of withAppSettings sets the default locale of intl.
     Intl.defaultLocale = null;
-    AppConfig.mode = AppMode.full;
   });
 
   Future<void> start(WidgetTester tester, Widget screen, ThemeMode mode) {
@@ -281,45 +276,6 @@ void main() {
           colors.onSurfaceVariant,
         );
       });
-
-      testWidgets(
-        'UserInfoScreen of the scan flow: rows and dividers follow the theme',
-        (tester) async {
-          AppConfig.mode = AppMode.full;
-          await start(tester, const UserInfoScreen(), mode);
-          await tester.pumpAndSettle();
-          final colors = Theme.of(
-            tester.element(find.byType(UserInfoScreen)),
-          ).colorScheme;
-
-          expect(
-            paintedColor(tester, find.text('Họ và tên')),
-            colors.onSurfaceVariant,
-          );
-          expect(paintedColor(tester, find.text('an')), colors.onSurface);
-          expect(
-            paintedColor(tester, find.byIcon(Icons.edit_rounded)),
-            colors.primary,
-          );
-          expect(find.byType(Divider), findsNWidgets(2));
-          for (var i = 0; i < 2; i++) {
-            final line =
-                tester
-                        .widget<Container>(
-                          find.descendant(
-                            of: find.byType(Divider).at(i),
-                            matching: find.byType(Container),
-                          ),
-                        )
-                        .decoration!
-                    as BoxDecoration;
-            expect(
-              (line.border! as Border).bottom.color,
-              colors.outlineVariant,
-            );
-          }
-        },
-      );
     });
   }
 

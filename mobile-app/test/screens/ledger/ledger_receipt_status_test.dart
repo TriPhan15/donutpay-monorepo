@@ -4,7 +4,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -64,7 +63,6 @@ void main() {
     // SharedPreferences shares one Future that must be created inside the test body, which runs in fake async, so the
     // store is reset after the session is written and the body starts from scratch (see budget_display_test.dart).
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     SharedPreferences.setMockInitialValues({});
@@ -198,22 +196,6 @@ void main() {
         expect(find.text('Trạng thái hóa đơn:'), findsNothing);
         expect(find.byType(ReceiptStatusBadge), findsNothing);
         expect(find.text(_editLabel), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'offline there is no edit button, and deleting is still offered as before',
-      (tester) async {
-        transactions = [_tx(1)];
-        await pump(tester, app);
-        // The user is in local mode by the time the details open; the data is already on screen.
-        addTearDown(() => AppConfig.mode = AppMode.full);
-        AppConfig.mode = AppMode.demo;
-
-        await tapText(tester, 'Giao dịch 1');
-
-        expect(find.text(_editLabel), findsNothing);
-        expect(find.text(_deleteLabel), findsOneWidget);
       },
     );
 

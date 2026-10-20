@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -58,13 +57,10 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     store = FakeLocalStore();
     AppRepository.instance.localStore = store;
     backend.reset();
   });
-
-  tearDown(() => AppConfig.mode = AppMode.full);
 
   /// The bodies of the requests that reached POST /api/transactions/checkout.
   List<Map<String, dynamic>> sentBodies() => [
@@ -222,26 +218,6 @@ void main() {
         );
       });
     });
-
-    test(
-      'without a server the transaction is only stored, as synced, and no request is made',
-      () async {
-        AppConfig.mode = AppMode.demo;
-
-        final status = await AppRepository.instance.createTransaction(
-          _userId,
-          _draft(),
-        );
-
-        expect(status, SyncStatus.synced);
-        expect(backend.requests, isEmpty);
-        expect(store.rows.single.syncStatus, SyncStatus.synced);
-        expect(
-          await AppRepository.instance.getUnsyncedTransactions(_userId),
-          isEmpty,
-        );
-      },
-    );
   });
 
   group('resendTransaction', () {

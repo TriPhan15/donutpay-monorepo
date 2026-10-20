@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
 
@@ -58,10 +57,6 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
   }
 
   Future<void> _openSync(String provider, String label) async {
-    if (!AppConfig.isFull) {
-      _snack('Đồng bộ ví cần chế độ FULL (backend).');
-      return;
-    }
     final ctrl = TextEditingController();
     final amount = await showDialog<double>(
       context: context,

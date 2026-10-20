@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
@@ -56,7 +55,6 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     backend.reset();
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
@@ -74,7 +72,6 @@ void main() {
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    addTearDown(() => AppConfig.mode = AppMode.full);
 
     // ProfilePage shows the theme and language choices, so it needs the cubits and localizations DonutPayApp provides.
     await tester.pumpWidget(withAppSettings(const ProfilePage()));
@@ -185,21 +182,6 @@ void main() {
         expect(find.byType(ProfilePage), findsOneWidget);
         expect(SessionService.currentToken, 'access-token');
         expect(SessionService.currentUserId, 1);
-      },
-    );
-  });
-
-  group('signing out in demo mode', () {
-    testWidgets(
-      'calls no server, only clears the session and shows the login screen',
-      (tester) async {
-        await pumpProfile(tester);
-        AppConfig.mode = AppMode.demo;
-
-        await confirmLogout(tester);
-
-        expect(backend.calls, isNot(contains('POST $_logoutPath')));
-        expectSignedOut(tester);
       },
     );
   });

@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/screens/auth/forgot_password_page.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/auth/reset_password_page.dart';
@@ -35,8 +34,6 @@ const String _emailRequired = 'Vui lòng nhập email.';
 const String _emailInvalid = 'Email không hợp lệ.';
 const String _sendFailed = 'Không gửi được mã OTP';
 const String _gotIt = 'Đã hiểu';
-const String _serverOnly =
-    'Khôi phục mật khẩu cần kết nối máy chủ và không khả dụng ở chế độ demo.';
 const String _networkError =
     'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';
 const String _serverError = 'Máy chủ đang gặp sự cố. Vui lòng thử lại sau.';
@@ -51,7 +48,6 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     // Nobody is signed in on the login screen.
     await SessionService.clearSession();
     // SharedPreferences shares one Future, which must be created inside the test body (see budget_display_test.dart).
@@ -60,7 +56,6 @@ void main() {
   });
 
   tearDown(() {
-    AppConfig.mode = AppMode.full;
     // The language cubit of withAppSettings sets the default locale of intl.
     Intl.defaultLocale = null;
   });
@@ -283,26 +278,6 @@ void main() {
       },
     );
   }
-
-  testWidgets(
-    'without a server (demo mode) nothing is sent: the user is told that recovery needs one',
-    (tester) async {
-      AppConfig.mode = AppMode.demo;
-      await open(tester);
-
-      await send(tester, _email);
-      await tester.pumpAndSettle();
-
-      expect(find.text(_serverOnly), findsOneWidget);
-      expect(backend.requests, isEmpty);
-
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(ForgotPasswordScreen), findsOneWidget);
-      expect(find.byType(ResetPasswordScreen), findsNothing);
-    },
-  );
 
   for (final (outcome, answer) in [
     ('arrives', () => okResponse(null)),

@@ -27,12 +27,4 @@ class ReceiptModel {
       parsedAmount: parsed,
     );
   }
-
-  factory ReceiptModel.mock() => const ReceiptModel(
-    sellerName: 'Siêu thị VinMart',
-    address: '123 Nguyễn Trãi, Q.1, TP.HCM',
-    timestamp: '2026-05-27 10:30',
-    totalCost: '245000',
-    parsedAmount: 245000,
-  );
 }

@@ -488,12 +488,6 @@ abstract class AppLocalizations {
   /// **'Sending...'**
   String get passwordRecoverySending;
 
-  /// Shown when the user tries to recover a password in the offline demo mode, where there is no server to send a code.
-  ///
-  /// In en, this message translates to:
-  /// **'Password recovery needs a connection to the server and isn\'t available in demo mode.'**
-  String get passwordRecoveryServerOnly;
-
   /// Error dialog text when a password recovery request got no answer from the server.
   ///
   /// In en, this message translates to:

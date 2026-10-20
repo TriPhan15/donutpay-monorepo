@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/app_notification.dart';
@@ -62,11 +61,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
-    if (AppConfig.isFull) {
-      _reload();
-    } else {
-      _loadingFirstPage = false;
-    }
+    _reload();
   }
 
   @override
@@ -77,7 +72,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   /// Loads the first page and replaces the list: on opening, on pull-to-refresh and on "try again".
   Future<void> _reload() async {
-    if (!AppConfig.isFull) return;
     final generation = ++_generation;
     try {
       final page = await RemoteApiHelper.instance.getNotifications(

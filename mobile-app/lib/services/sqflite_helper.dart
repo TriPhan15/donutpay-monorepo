@@ -5,9 +5,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
-import 'package:finance_ai_app/models/category_model.dart';
-import 'package:finance_ai_app/models/wallet_model.dart';
-import 'package:finance_ai_app/models/budget_model.dart';
 
 class SqfliteHelper {
   SqfliteHelper._();
@@ -184,38 +181,6 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
     );
   }
 
-  Future<int> insertUser(UserModel user) async {
-    final db = await database;
-    return db.insert(
-      usersTable,
-      user.toMap(),
-      conflictAlgorithm: ConflictAlgorithm.abort,
-    );
-  }
-
-  Future<void> upsertUserWithId(UserModel user) async {
-    final db = await database;
-    final existing = await db.query(
-      usersTable,
-      where: 'id = ?',
-      whereArgs: [user.id],
-      limit: 1,
-    );
-    final map = user.toMap()..['id'] = user.id;
-    if (existing.isNotEmpty) {
-      final old = UserModel.fromMap(existing.first);
-      if ((map['full_name'] as String).isEmpty) map['full_name'] = old.fullName;
-      if (map['phone'] == null) map['phone'] = old.phone;
-      if (map['birthdate'] == null) map['birthdate'] = old.birthdate;
-      if (map['address'] == null) map['address'] = old.address;
-    }
-    await db.insert(
-      usersTable,
-      map,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
   Future<int> updateUser(UserModel user) async {
     final id = user.id;
     if (id == null) {
@@ -243,33 +208,6 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
     return UserModel.fromMap(rows.first);
   }
 
-  Future<UserModel?> getUserByEmail(String email) async {
-    final db = await database;
-    final rows = await db.query(
-      usersTable,
-      where: 'email = ?',
-      whereArgs: [email],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return UserModel.fromMap(rows.first);
-  }
-
-  Future<UserModel?> getUserByEmailAndPassword({
-    required String email,
-    required String password,
-  }) async {
-    final db = await database;
-    final rows = await db.query(
-      usersTable,
-      where: 'email = ? AND password = ?',
-      whereArgs: [email, password],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return UserModel.fromMap(rows.first);
-  }
-
   Future<int> insertTransaction(
     TransactionModel transaction,
     int userId,
@@ -280,17 +218,6 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
       transaction.toDbMap(userId),
       conflictAlgorithm: ConflictAlgorithm.abort,
     );
-  }
-
-  Future<List<TransactionModel>> getTransactionsByUserId(int userId) async {
-    final db = await database;
-    final rows = await db.query(
-      transactionsTable,
-      where: 'user_id = ?',
-      whereArgs: [userId],
-      orderBy: 'date DESC',
-    );
-    return rows.map(TransactionModel.fromDbMap).toList();
   }
 
   /// The transactions of the user that the server has not confirmed (waiting to be sent, or failed), newest first.
@@ -327,100 +254,5 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
       where: 'user_id = ? AND ${TransactionModel.columnClientId} = ?',
       whereArgs: [userId, clientId],
     );
-  }
-
-  Future<int> insertCategory(CategoryModel category) async {
-    final db = await database;
-    return db.insert(categoriesTable, category.toMap());
-  }
-
-  Future<List<CategoryModel>> getCategoriesByUserId(int userId) async {
-    final db = await database;
-    final rows = await db.query(
-      categoriesTable,
-      where: 'user_id = ? OR user_id IS NULL',
-      whereArgs: [userId],
-    );
-    return rows.map(CategoryModel.fromMap).toList();
-  }
-
-  Future<int> deleteCategory(int id) async {
-    final db = await database;
-    return db.delete(categoriesTable, where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<int> insertWallet(WalletModel wallet) async {
-    final db = await database;
-    return db.insert(walletsTable, wallet.toMap());
-  }
-
-  Future<List<WalletModel>> getWalletsByUserId(int userId) async {
-    final db = await database;
-    final rows = await db.query(
-      walletsTable,
-      where: 'user_id = ?',
-      whereArgs: [userId],
-    );
-    return rows.map(WalletModel.fromMap).toList();
-  }
-
-  Future<int> updateWalletBalance(int walletId, double newBalance) async {
-    final db = await database;
-    return db.update(
-      walletsTable,
-      {'balance': newBalance},
-      where: 'id = ?',
-      whereArgs: [walletId],
-    );
-  }
-
-  Future<int> deleteWallet(int id) async {
-    final db = await database;
-    return db.delete(walletsTable, where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<int> insertBudget(BudgetModel budget) async {
-    final db = await database;
-    return db.insert(budgetsTable, budget.toMap());
-  }
-
-  Future<int> updateBudget(BudgetModel budget) async {
-    final db = await database;
-    return db.update(
-      budgetsTable,
-      budget.toMap(),
-      where: 'id = ?',
-      whereArgs: [budget.id],
-    );
-  }
-
-  Future<List<BudgetModel>> getBudgetsByUserId(int userId) async {
-    final db = await database;
-    final rows = await db.query(
-      budgetsTable,
-      where: 'user_id = ?',
-      whereArgs: [userId],
-      orderBy: 'year DESC, month DESC, id DESC',
-    );
-    return rows.map(BudgetModel.fromMap).toList();
-  }
-
-  Future<List<BudgetModel>> getBudgetsByUserIdAndMonth(
-    int userId,
-    int month,
-    int year,
-  ) async {
-    final db = await database;
-    final rows = await db.query(
-      budgetsTable,
-      where: 'user_id = ? AND month = ? AND year = ?',
-      whereArgs: [userId, month, year],
-    );
-    return rows.map(BudgetModel.fromMap).toList();
-  }
-
-  Future<int> deleteBudget(int id) async {
-    final db = await database;
-    return db.delete(budgetsTable, where: 'id = ?', whereArgs: [id]);
   }
 }

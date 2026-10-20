@@ -65,7 +65,6 @@
   "passwordShow": "Hiện mật khẩu",
   "passwordHide": "Ẩn mật khẩu",
   "passwordRecoverySending": "Đang gửi...",
-  "passwordRecoveryServerOnly": "Khôi phục mật khẩu cần kết nối máy chủ và không khả dụng ở chế độ demo.",
   "passwordRecoveryNetworkError": "Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.",
   "passwordRecoveryTimeout": "Máy chủ phản hồi quá lâu. Vui lòng thử lại.",
   "passwordRecoveryServerError": "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.",

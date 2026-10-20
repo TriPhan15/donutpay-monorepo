@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/cubits/language_cubit.dart';
 import 'package:finance_ai_app/cubits/theme_cubit.dart';
@@ -89,7 +88,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (!confirmed || !mounted) return;
 
     try {
-      if (AppConfig.isFull) await RemoteApiHelper.instance.logout();
+      await RemoteApiHelper.instance.logout();
       await SocialAuthService.instance.signOut();
     } catch (e) {
       // Both steps are best effort: whatever fails, the local sign-out below must still happen.

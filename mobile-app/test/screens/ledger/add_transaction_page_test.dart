@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -71,7 +70,6 @@ void main() {
   setUp(() async {
     // The session is written here, outside the fake async of the test body, and the store is reset again afterwards.
     SharedPreferences.setMockInitialValues({});
-    AppConfig.mode = AppMode.full;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     SharedPreferences.setMockInitialValues({});
@@ -276,24 +274,5 @@ void main() {
         expect(sentBodies(), isEmpty);
       },
     );
-  });
-
-  group('saving in local mode', () {
-    testWidgets('the transaction is stored as synced and no request is made', (
-      tester,
-    ) async {
-      addTearDown(() => AppConfig.mode = AppMode.full);
-      AppConfig.mode = AppMode.demo;
-      await openForm(tester);
-
-      await typeAmount(tester, '45000');
-      await tapText(tester, _saveLabel);
-      expect(find.text('Đã thêm giao dịch mới.'), findsOneWidget);
-      await tapText(tester, 'OK');
-
-      expect(sentBodies(), isEmpty);
-      expect(store.rows.single.syncStatus, SyncStatus.synced);
-      expect(result, isTrue);
-    });
   });
 }

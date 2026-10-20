@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
-import 'package:finance_ai_app/config/app_config.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/repositories/local_auth_repository.dart';
 import 'package:finance_ai_app/services/social_auth_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/screens/auth/forgot_password_page.dart';
@@ -55,62 +53,38 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoginLoading || _isSocialLoading) return;
     setState(() => _isLoginLoading = true);
     try {
-      if (AppConfig.isFull) {
-        final result = await RemoteApiHelper.instance.login(
-          normalizedEmail,
-          normalizedPassword,
-        );
-        final data = (result['data'] as Map?) ?? result;
+      final result = await RemoteApiHelper.instance.login(
+        normalizedEmail,
+        normalizedPassword,
+      );
+      final data = (result['data'] as Map?) ?? result;
 
-        final token = (data['token'] ?? result['token'])?.toString() ?? '';
-        final refreshToken =
-            (data['refreshToken'] ?? result['refreshToken'])?.toString() ?? '';
+      final token = (data['token'] ?? result['token'])?.toString() ?? '';
+      final refreshToken =
+          (data['refreshToken'] ?? result['refreshToken'])?.toString() ?? '';
 
-        final user = data['user'] as Map?;
-        final userId =
-            (user?['id'] ?? data['userId'] ?? result['userId'] ?? result['id'])
-                as int?;
+      final user = data['user'] as Map?;
+      final userId =
+          (user?['id'] ?? data['userId'] ?? result['userId'] ?? result['id'])
+              as int?;
 
-        if (token.isNotEmpty && refreshToken.isNotEmpty) {
-          await SessionService.setTokens(token, refreshToken);
-        }
-
-        if (userId != null) {
-          await SessionService.setCurrentUserId(userId);
-
-          AppRepository.instance
-              .getHomeSummary(userId)
-              .catchError((_) => <String, dynamic>{});
-
-          if (!context.mounted) return;
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const MainScaffold()),
-            (route) => false,
-          );
-          return;
-        }
+      if (token.isNotEmpty && refreshToken.isNotEmpty) {
+        await SessionService.setTokens(token, refreshToken);
       }
 
-      final user = await LocalAuthRepository.instance.login(
-        email: normalizedEmail,
-        password: normalizedPassword,
-      );
-
-      if (!context.mounted) return;
-
-      if (user?.id == null) {
+      if (userId == null) {
+        if (!context.mounted) return;
         await AppDialog.error(
           context,
           title: 'Đăng nhập thất bại',
-          message: 'Sai email hoặc mật khẩu.',
+          message: 'Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại.',
         );
         return;
       }
-
-      await SessionService.setCurrentUserId(user!.id!);
+      await SessionService.setCurrentUserId(userId);
 
       AppRepository.instance
-          .getHomeSummary(user.id!)
+          .getHomeSummary(userId)
           .catchError((_) => <String, dynamic>{});
 
       if (!context.mounted) return;
@@ -153,9 +127,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleSocial(
     Future<Map<String, dynamic>> Function() signIn,
   ) async {
-    if (!AppConfig.isFull) {
-      return;
-    }
     if (_isSocialLoading || _isLoginLoading) return;
     setState(() => _isSocialLoading = true);
     try {
