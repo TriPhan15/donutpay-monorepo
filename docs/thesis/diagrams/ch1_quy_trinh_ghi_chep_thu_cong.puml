@@ -1,0 +1,34 @@
+@startuml ch1_quy_trinh_ghi_chep_thu_cong
+' Hình 1.1: Quy trình ghi chép chi tiêu thủ công (mục 1.2.2)
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam monochrome true
+skinparam dpi 150
+skinparam ActivityBackgroundColor white
+skinparam SwimlaneTitleFontStyle bold
+
+|Người dùng|
+start
+:Mua hàng, thanh toán;
+:Nhận hóa đơn giấy\nhoặc hóa đơn điện tử;
+:Cất giữ hóa đơn;
+|Sổ tay / bảng tính / ứng dụng|
+:Mở sổ ghi chép;
+repeat
+  |Người dùng|
+  :Đọc một hóa đơn: tên cửa hàng,\nđịa chỉ, thời gian, tổng tiền;
+  :Chọn danh mục chi tiêu;
+  |Sổ tay / bảng tính / ứng dụng|
+  :Nhập tay một dòng thu chi;
+repeat while (Còn hóa đơn chưa ghi?) is (có) not (không)
+|Sổ tay / bảng tính / ứng dụng|
+:Cộng dồn chi tiêu theo danh mục;
+|Người dùng|
+:Đối chiếu với hạn mức đã định;
+if (Vượt hạn mức?) then (có)
+  :Tự điều chỉnh chi tiêu;
+else (không)
+endif
+stop
+@enduml

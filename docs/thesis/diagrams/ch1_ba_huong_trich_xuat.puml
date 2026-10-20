@@ -1,0 +1,47 @@
+@startuml ch1_ba_huong_trich_xuat
+' Hình 1.8: Ba hướng trích xuất thông tin hóa đơn (mục 1.5.4)
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam monochrome true
+skinparam rectangleBackgroundColor white
+skinparam packageStyle rectangle
+skinparam dpi 150
+!pragma layout smetana
+left to right direction
+
+package "Hướng c: OCR-free – DONUT" {
+  rectangle "Ảnh hóa đơn" as c0
+  rectangle "Bộ mã hóa ảnh\n(Swin Transformer)" as c1
+  rectangle "Bộ giải mã văn bản\n(BART)\n+ task token" as c2
+  rectangle "Chuỗi token\n→ JSON 4 trường" as c3
+  c0 --> c1
+  c1 --> c2
+  c2 --> c3
+}
+
+package "Hướng b: OCR kết hợp mô hình bố cục" {
+  rectangle "Ảnh hóa đơn" as b0
+  rectangle "OCR" as b1
+  rectangle "Token văn bản\n+ hộp bao" as b2
+  rectangle "Mô hình bố cục\n(LayoutLM)\ngán nhãn token" as b3
+  rectangle "4 trường\nthông tin" as b4
+  b0 --> b1
+  b1 --> b2
+  b2 --> b3
+  b0 ..> b3
+  b3 --> b4
+}
+
+package "Hướng a: OCR truyền thống kết hợp luật" {
+  rectangle "Ảnh hóa đơn" as a0
+  rectangle "Phát hiện và\nnhận dạng chữ (OCR)" as a1
+  rectangle "Chuỗi văn bản\n+ tọa độ" as a2
+  rectangle "Luật / biểu thức\nchính quy" as a3
+  rectangle "4 trường\nthông tin" as a4
+  a0 --> a1
+  a1 --> a2
+  a2 --> a3
+  a3 --> a4
+}
+@enduml
