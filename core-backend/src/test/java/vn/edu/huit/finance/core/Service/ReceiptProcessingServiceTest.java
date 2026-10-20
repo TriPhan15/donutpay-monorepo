@@ -14,6 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
 import vn.edu.huit.finance.core.Dto.ReceiptAttemptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptRetryRequestDto;
@@ -462,6 +463,20 @@ class ReceiptProcessingServiceTest {
         });
         assertEquals("Hóa đơn mới của giao dịch #100", entries.get(0).description());
         assertNoneContains(entries, FULL_SCAN, "Bách Hóa Xanh", "Nguyễn Trãi", "245");
+    }
+
+    @Test
+    void theRawAnswerGoesToTheMongoRawLogOnlyOnceTheCheckoutHasSavedTheTransaction() {
+        Transaction transaction = transactionOf(alice);
+        service.attachReceipt(transaction, FULL_SCAN, null);
+        // Not yet: the transaction is still being built, so it has no id to file the raw answer under.
+        verifyNoInteractions(eventPublisher);
+        transaction.getReceipt().setId(RECEIPT_ID);
+
+        service.recordAttachedReceipt(transaction.getReceipt(), AuditActor.of(alice));
+
+        verify(eventPublisher).publishEvent(new OcrProcessedEvent(TRANSACTION_ID, FULL_SCAN));
+        verifyNoMoreInteractions(eventPublisher);
     }
 
     @Test

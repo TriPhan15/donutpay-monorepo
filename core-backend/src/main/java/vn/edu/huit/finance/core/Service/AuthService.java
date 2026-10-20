@@ -39,13 +39,9 @@ import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Accounts and their credentials: registration, password change and reset, logout and token refresh. Every change of an
@@ -145,24 +141,10 @@ public class AuthService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    /** The pending OTP of one email. Immutable: a wrong attempt swaps it for a copy with one more failed attempt. */
-    private record OtpRecord(String code, LocalDateTime expiryTime, int attempts) {
+    // Shared by every instance of the API (Redis), so an OTP mailed by one instance can be checked by another.
+    @Autowired
+    private PasswordResetOtpStore otpStore;
 
-        OtpRecord(String code, LocalDateTime expiryTime) {
-            this(code, expiryTime, 0);
-        }
-
-        boolean isExpiredAt(LocalDateTime now) {
-            return now.isAfter(expiryTime);
-        }
-
-        OtpRecord withFailedAttempt() {
-            return new OtpRecord(code, expiryTime, attempts + 1);
-        }
-    }
-
-    // Concurrent, because the attempt limit is only worth something if parallel guesses cannot slip past it.
-    private final Map<String, OtpRecord> otpStorage = new ConcurrentHashMap<>();
     // Not injected: these defaults are what production uses; tests replace them to control time and the draw.
     private Clock clock = Clock.systemUTC();
     private SecureRandom secureRandom = new SecureRandom();
@@ -222,7 +204,7 @@ public class AuthService {
 
         String otp = String.format(OTP_FORMAT, secureRandom.nextInt(OTP_BOUND));
         // A new OTP replaces the pending one, so the old code stops working and the attempt counter starts over.
-        otpStorage.put(email, new OtpRecord(otp, LocalDateTime.now(clock).plus(OTP_VALIDITY)));
+        otpStore.save(email, otp, clock.instant(), OTP_VALIDITY);
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
@@ -260,31 +242,20 @@ public class AuthService {
      * to be requested.
      */
     private void consumeOtp(String email, String submittedCode) {
-        LocalDateTime now = LocalDateTime.now(clock);
-        // Message to reject with; the default also covers "nothing pending", and null means the code was accepted.
-        AtomicReference<String> rejection = new AtomicReference<>(MSG_OTP_EXPIRED);
+        PasswordResetOtpStore.OtpCheck check =
+                otpStore.check(email, submittedCode, clock.instant(), OTP_MAX_FAILED_ATTEMPTS);
+        // Message to reject with; null means the code was accepted.
+        String rejection = switch (check.outcome()) {
+            case ACCEPTED -> null;
+            case NOT_PENDING -> MSG_OTP_EXPIRED;
+            case ATTEMPTS_EXHAUSTED -> MSG_OTP_ATTEMPTS_EXHAUSTED;
+            case WRONG -> String.format(MSG_OTP_WRONG, OTP_MAX_FAILED_ATTEMPTS - check.failedAttempts());
+        };
 
-        otpStorage.computeIfPresent(email, (key, pending) -> {
-            if (pending.isExpiredAt(now)) {
-                return null;
-            }
-            if (pending.code().equals(submittedCode)) {
-                rejection.set(null);
-                return null;
-            }
-            OtpRecord failed = pending.withFailedAttempt();
-            if (failed.attempts() >= OTP_MAX_FAILED_ATTEMPTS) {
-                rejection.set(MSG_OTP_ATTEMPTS_EXHAUSTED);
-                return null;
-            }
-            rejection.set(String.format(MSG_OTP_WRONG, OTP_MAX_FAILED_ATTEMPTS - failed.attempts()));
-            return failed;
-        });
-
-        if (rejection.get() != null) {
-            log.warn("Password reset rejected: {}", rejection.get());
-            publishResetRefusal(email, null, String.format(AUDIT_DESC_RESET_REJECTED, rejection.get()));
-            throw new InvalidOtpException(rejection.get());
+        if (rejection != null) {
+            log.warn("Password reset rejected: {}", rejection);
+            publishResetRefusal(email, null, String.format(AUDIT_DESC_RESET_REJECTED, rejection));
+            throw new InvalidOtpException(rejection);
         }
     }
 

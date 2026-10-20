@@ -24,6 +24,7 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.AuditLogWriteException;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Exception.InvalidOtpException;
+import vn.edu.huit.finance.core.Exception.OtpStoreUnavailableException;
 import vn.edu.huit.finance.core.Exception.InvalidPasswordException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
@@ -319,6 +320,18 @@ class AuthControllerPasswordTest {
         mockMvc.perform(resetPasswordRequest(STRONG_PASSWORD))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value(message));
+    }
+
+    @Test
+    void resetPassword_mapsAnUnreachableOtpStore_to503WithItsFixedMessage_andNotTheCause() throws Exception {
+        String message = "Dịch vụ mã OTP tạm thời gián đoạn. Vui lòng thử lại sau ít phút.";
+        doThrow(new OtpStoreUnavailableException(message, new IllegalStateException("redis://10.0.0.5:6379 refused")))
+                .when(authService).verifyOtpAndResetPassword(any(), any(), any());
+
+        mockMvc.perform(resetPasswordRequest(STRONG_PASSWORD))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value(503))
                 .andExpect(jsonPath("$.message").value(message));
     }
 

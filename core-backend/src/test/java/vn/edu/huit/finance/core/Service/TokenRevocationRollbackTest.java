@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.properties.hibernate.generate_statistics=true"})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({AuthService.class, TokenBlacklistService.class, JwtUtil.class, CustomUserDetailsService.class,
-        TokenRevocationRollbackTest.EncoderConfig.class})
+        InMemoryPasswordResetOtpStore.class, TokenRevocationRollbackTest.EncoderConfig.class})
 class TokenRevocationRollbackTest {
 
     private static final String EMAIL = "alice@example.com";

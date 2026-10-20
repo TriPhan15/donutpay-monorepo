@@ -59,7 +59,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.hibernate.ddl-auto=create-drop"})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({AuthService.class, AuditLogService.class, SecurityAuditListener.class, TokenBlacklistService.class, JwtUtil.class,
-        CustomUserDetailsService.class, PasswordAuditTrailTest.EncoderConfig.class})
+        CustomUserDetailsService.class, InMemoryPasswordResetOtpStore.class, PasswordAuditTrailTest.EncoderConfig.class})
 class PasswordAuditTrailTest {
 
     private static final String EMAIL = "alice@example.com";

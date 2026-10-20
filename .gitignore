@@ -7,6 +7,7 @@
 *.env
 .env
 .env.*
+.env_deploy
 *.pem
 *.p12
 *.jks
@@ -125,4 +126,4 @@ CLAUDE.md
 JUNIOR_ENGINEER_CURRICULUM.md
 Do_An_BigData_NoSQL_Plan.md
 FEATURE_AUDIT.md
-ycda.txt.env_deploy
+ycda.txt

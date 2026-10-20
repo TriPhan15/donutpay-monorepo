@@ -65,6 +65,41 @@ services:
     networks:
       - finance-network
 
+  # 0c. AI RAW LOG: MongoDB keeps only an analysis copy of the AI's raw answers (ocr_logs) and the OCR feedback
+  # (ocr_feedbacks). PostgreSQL stays the source of truth for receipts (receipt_processing_attempts). core-api writes
+  # here asynchronously after the PostgreSQL commit and only logs a failure, so the app keeps working while MongoDB is
+  # down. The host port is bound to 127.0.0.1 only (admin work: docker compose exec mongodb mongosh).
+  mongodb:
+    image: mongo:6.0
+    container_name: finance-mongodb
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    ports:
+      - "127.0.0.1:27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      - MONGO_INITDB_DATABASE=finance_nosql
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - finance-network
+
   # 1. CORE BACKEND (Spring Boot Java)
   core-api:
     build:
@@ -77,6 +112,11 @@ services:
       - ${DEPLOY_ENV_FILE:-.env}
     environment:
       - DB_URL=jdbc:postgresql://db:5432/finance_db
+      # AI raw log (OcrMongoService). Short timeouts: a write waits at most 5 s for a MongoDB that is down, then is logged
+      # and dropped. Keep the password URL-safe (letters and digits), it is part of the URI. The Mongo health indicator
+      # is off so a MongoDB outage does not turn /actuator/health (and this container's healthcheck) DOWN.
+      - MONGO_URI=mongodb://${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}:${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}@mongodb:27017/finance_nosql?authSource=admin&serverSelectionTimeoutMS=5000&connectTimeoutMS=5000
+      - MANAGEMENT_HEALTH_MONGO_ENABLED=false
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - SPRING_MAIL_HOST=smtp.gmail.com
@@ -110,6 +150,10 @@ services:
         condition: service_healthy
       data-mining-api:
         condition: service_healthy
+      # Not a blocker: core-api starts (and keeps running) without MongoDB.
+      mongodb:
+        condition: service_started
+        required: false
     deploy:
       resources:
         limits:
@@ -156,3 +200,4 @@ networks:
 volumes:
   # All database data lives here and survives rebuilds and restarts. Never run "docker compose down -v": it deletes it.
   postgres_data:
+  mongodb_data:

@@ -11,6 +11,7 @@ import vn.edu.huit.finance.core.Dto.ReceiptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptRetryRequestDto;
 import vn.edu.huit.finance.core.Dto.ReceiptUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
 import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
@@ -146,12 +147,16 @@ public class ReceiptProcessingService {
 
     /**
      * Records a receipt {@link #attachReceipt} built, once the checkout has saved it (it has an id only then), in the
-     * checkout's transaction: RECEIPT_CREATED, and the outcome of its first reading.
+     * checkout's transaction: RECEIPT_CREATED, and the outcome of its first reading. Also hands the AI's raw answer to
+     * the MongoDB raw log ({@link OcrMongoService}), which writes it only after this transaction commits; it is published
+     * here and not in {@link #attachReceipt} because the transaction has its id only once it is saved.
      */
     public void recordAttachedReceipt(Receipt receipt, AuditActor actor) {
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_CREATED, actor, receipt.getId(),
                 String.format(AUDIT_CREATED, receipt.getTransaction().getId())));
         recordReadingOutcome(receipt, ReceiptProcessingAttempt.FIRST_ATTEMPT_NUMBER, actor);
+        eventPublisher.publishEvent(new OcrProcessedEvent(receipt.getTransaction().getId(),
+                receipt.getAttempts().get(0).getAiRawData()));
     }
 
     /** RECEIPT_PROCESSING_SUCCEEDED or _FAILED for the reading just recorded: the attempt, the reason, the new status. */

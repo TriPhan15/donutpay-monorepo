@@ -80,7 +80,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.hibernate.ddl-auto=create-drop"})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({AuthService.class, TokenBlacklistService.class, JwtUtil.class, JwtAuthFilter.class,
-        CrossSessionTokenRevocationTest.Config.class})
+        InMemoryPasswordResetOtpStore.class, CrossSessionTokenRevocationTest.Config.class})
 class CrossSessionTokenRevocationTest {
 
     private static final String EMAIL = "alice@example.com";

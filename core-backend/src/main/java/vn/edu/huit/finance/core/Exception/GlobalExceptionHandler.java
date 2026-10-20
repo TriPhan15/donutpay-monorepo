@@ -66,6 +66,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
+    // 503 with a fixed text: the OTP store (Redis) is down, so no OTP was issued or checked. The cause stays in the log.
+    @ExceptionHandler(OtpStoreUnavailableException.class)
+    public Object handleOtpStoreUnavailable(OtpStoreUnavailableException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
     // 401: no usable token where one is required. A revoked token never gets this far, JwtAuthFilter answers it first.
     @ExceptionHandler(InvalidTokenException.class)
     public Object handleInvalidToken(InvalidTokenException ex, HttpServletRequest request) {

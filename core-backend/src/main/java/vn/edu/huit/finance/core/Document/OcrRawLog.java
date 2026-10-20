@@ -1,0 +1,31 @@
+package vn.edu.huit.finance.core.Document;
+
+import lombok.Data;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.LocalDateTime;
+
+@Data
+@Document(collection = "ocr_logs")
+@CompoundIndex(name = "score_date_idx", def = "{'averageConfidenceScore': 1, 'createdAt': -1}")
+public class OcrRawLog {
+    
+    @Id
+    private String id;
+    
+    @Indexed(unique = true)
+    private Long transactionId;
+    
+    private org.bson.Document rawJsonData;
+    
+    @Indexed
+    private Double averageConfidenceScore;
+    
+    @CreatedDate
+    @Indexed
+    private LocalDateTime createdAt;
+}

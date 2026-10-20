@@ -100,6 +100,7 @@ class AuthServiceResetPasswordTest {
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
         ReflectionTestUtils.setField(service, "auditLogService", auditLogService);
         ReflectionTestUtils.setField(service, "eventPublisher", eventPublisher);
+        ReflectionTestUtils.setField(service, "otpStore", new InMemoryPasswordResetOtpStore());
         timeIs(ISSUED_AT);
 
         user = new User();
