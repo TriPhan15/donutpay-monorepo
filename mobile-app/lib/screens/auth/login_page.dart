@@ -22,11 +22,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  static const String _loginFailedTitle = 'Đăng nhập thất bại';
-  static const String _wrongCredentials = 'Sai email hoặc mật khẩu!';
-  static const String _socialLoginFailed =
-      'Không đăng nhập được bằng tài khoản mạng xã hội. Vui lòng thử lại.';
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
@@ -51,8 +46,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (normalizedEmail.isEmpty || normalizedPassword.isEmpty) {
       await AppDialog.error(
         context,
-        title: 'Thiếu thông tin',
-        message: 'Vui lòng nhập email và mật khẩu.',
+        title: context.loc.authMissingInfoTitle,
+        message: context.loc.loginMissingCredentials,
       );
       return;
     }
@@ -82,8 +77,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!context.mounted) return;
         await AppDialog.error(
           context,
-          title: _loginFailedTitle,
-          message: 'Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại.',
+          title: context.loc.loginFailedTitle,
+          message: context.loc.loginInvalidResponse,
         );
         return;
       }
@@ -103,11 +98,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!context.mounted) return;
       await AppDialog.error(
         context,
-        title: _loginFailedTitle,
+        title: context.loc.loginFailedTitle,
         message: UserFacingError.messageOf(
           e,
           context.loc,
-          unauthorizedMessage: _wrongCredentials,
+          unauthorizedMessage: context.loc.loginWrongCredentials,
         ),
       );
     } finally {
@@ -163,11 +158,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       await AppDialog.error(
         context,
-        title: _loginFailedTitle,
+        title: context.loc.loginFailedTitle,
         message: UserFacingError.messageOf(
           e,
           context.loc,
-          fallback: _socialLoginFailed,
+          fallback: context.loc.loginSocialFailed,
         ),
       );
     } finally {
@@ -179,6 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final loc = context.loc;
     // The Scaffold takes the page colour of the theme; labels and fields keep the text colours it gives.
     return Scaffold(
       body: SafeArea(
@@ -201,22 +197,22 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Quản lý tài chính thông minh',
+                loc.loginTagline,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
               ),
               const SizedBox(height: 36),
-              _label('Email'),
+              _label(loc.authEmailLabel),
               _input(
                 controller: _emailController,
-                hint: 'Nhập địa chỉ email',
+                hint: loc.authEmailHint,
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 18),
-              _label('Mật khẩu'),
+              _label(loc.authPasswordLabel),
               _input(
                 controller: _passwordController,
-                hint: 'Nhập mật khẩu',
+                hint: loc.authPasswordHint,
                 obscure: _obscure,
                 suffix: IconButton(
                   icon: Icon(
@@ -248,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Ghi nhớ đăng nhập',
+                    loc.loginRememberMe,
                     style: TextStyle(
                       color: colors.onSurfaceVariant,
                       fontSize: 13,
@@ -258,7 +254,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   GestureDetector(
                     onTap: _openForgotPassword,
                     child: Text(
-                      'Quên mật khẩu?',
+                      loc.loginForgotPassword,
                       style: TextStyle(
                         color: colors.primary,
                         fontSize: 13,
@@ -270,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               PrimaryButton(
-                text: _isLoginLoading ? 'Đang xử lý...' : 'Đăng nhập',
+                text: _isLoginLoading ? loc.authProcessing : loc.loginSubmit,
                 onPressed: (_isLoginLoading || _isSocialLoading)
                     ? null
                     : () {
@@ -290,14 +286,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: RichText(
                     text: TextSpan(
-                      text: 'Chưa có tài khoản? ',
+                      text: loc.loginNoAccount,
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 14,
                       ),
                       children: [
                         TextSpan(
-                          text: 'Đăng ký ngay',
+                          text: loc.loginSignUpNow,
                           style: TextStyle(
                             color: colors.primary,
                             fontWeight: FontWeight.bold,
@@ -309,7 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              _orDivider(colors, 'Hoặc đăng nhập với'),
+              _orDivider(colors, loc.loginOrContinueWith),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

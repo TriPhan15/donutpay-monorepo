@@ -454,4 +454,478 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoryOtherIncome => 'Other income';
+
+  @override
+  String get authMissingInfoTitle => 'Missing information';
+
+  @override
+  String get authEmailLabel => 'Email';
+
+  @override
+  String get authEmailHint => 'Enter your email address';
+
+  @override
+  String get authPasswordLabel => 'Password';
+
+  @override
+  String get authPasswordHint => 'Enter your password';
+
+  @override
+  String get authProcessing => 'Processing...';
+
+  @override
+  String get loginFailedTitle => 'Login failed';
+
+  @override
+  String get loginWrongCredentials => 'Wrong email or password.';
+
+  @override
+  String get loginSocialFailed =>
+      'Could not sign in with your social account. Please try again.';
+
+  @override
+  String get loginMissingCredentials => 'Please enter your email and password.';
+
+  @override
+  String get loginInvalidResponse =>
+      'The server sent an invalid response. Please try again.';
+
+  @override
+  String get loginTagline => 'Smart personal finance';
+
+  @override
+  String get loginRememberMe => 'Remember me';
+
+  @override
+  String get loginForgotPassword => 'Forgot password?';
+
+  @override
+  String get loginSubmit => 'Log in';
+
+  @override
+  String get loginNoAccount => 'No account yet? ';
+
+  @override
+  String get loginSignUpNow => 'Sign up now';
+
+  @override
+  String get loginOrContinueWith => 'Or log in with';
+
+  @override
+  String get registerTitle => 'Sign up';
+
+  @override
+  String get registerHeading => 'Create an account';
+
+  @override
+  String get registerDescription =>
+      'Fill in your details to start managing your finances.';
+
+  @override
+  String get registerFullNameLabel => 'Full name';
+
+  @override
+  String get registerFullNameHint => 'Enter your full name';
+
+  @override
+  String get registerPhoneLabel => 'Phone number';
+
+  @override
+  String get registerPhoneHint => 'Enter your phone number';
+
+  @override
+  String get registerSubmit => 'Create account';
+
+  @override
+  String get registerOrContinueWith => 'Or sign up with';
+
+  @override
+  String get registerTermsPrefix => 'By signing up, you agree to the ';
+
+  @override
+  String get registerTerms => 'Terms';
+
+  @override
+  String get registerTermsAnd => ' and ';
+
+  @override
+  String get registerConditions => 'Conditions of use';
+
+  @override
+  String get registerMissingFields =>
+      'Please fill in every field (including the phone number).';
+
+  @override
+  String get registerWeakPasswordTitle => 'Weak password';
+
+  @override
+  String get registerWeakPasswordMessage =>
+      'The password does not meet the requirements yet.';
+
+  @override
+  String get registerSuccessTitle => 'Sign-up successful';
+
+  @override
+  String get registerSuccessMessage =>
+      'Your account has been created. Please log in.';
+
+  @override
+  String get registerFailedTitle => 'Sign-up failed';
+
+  @override
+  String get registerSocialFailed =>
+      'Could not sign up with your social account. Please try again.';
+
+  @override
+  String get registerPasswordNeeds => 'Your password needs:';
+
+  @override
+  String registerRuleMinLength(int min) {
+    return 'At least $min characters';
+  }
+
+  @override
+  String get registerRuleUppercase => 'An uppercase letter (A-Z)';
+
+  @override
+  String get registerRuleLowercase => 'A lowercase letter (a-z)';
+
+  @override
+  String get registerRuleDigit => 'A digit (0-9)';
+
+  @override
+  String get registerRuleSpecial => 'A special character (!@#...)';
+
+  @override
+  String get commonSaveChanges => 'Save changes';
+
+  @override
+  String get credentialsTitle => 'Account';
+
+  @override
+  String get credentialsNoData => 'No account data yet.';
+
+  @override
+  String get credentialsTapToEdit => 'Tap the row you want to change.';
+
+  @override
+  String get credentialsUsername => 'Username';
+
+  @override
+  String get credentialsUsernameEmail => 'Username (email)';
+
+  @override
+  String get credentialsEditUsername => 'Edit username';
+
+  @override
+  String get credentialsUsernameRequired => 'Please enter a username.';
+
+  @override
+  String get credentialsUsernameChangeUnsupported =>
+      'The server does not support changing the username yet.';
+
+  @override
+  String get credentialsChangePassword => 'Change password';
+
+  @override
+  String get credentialsOldPassword => 'Current password';
+
+  @override
+  String get credentialsOldPasswordRequired =>
+      'Please enter your current password.';
+
+  @override
+  String get credentialsPasswordMismatch => 'The new passwords do not match.';
+
+  @override
+  String get credentialsChangePasswordFailed => 'Could not change the password';
+
+  @override
+  String get credentialsChangePasswordRejected =>
+      'The password was not changed. Please check your current password and try again.';
+
+  @override
+  String get credentialsChangePasswordSuccessTitle => 'Password changed';
+
+  @override
+  String get credentialsChangePasswordSuccessMessage =>
+      'Your new password now applies to your account.';
+
+  @override
+  String get accountInfoTitle => 'Account information';
+
+  @override
+  String get accountInfoSignInAgain => 'Please log in again.';
+
+  @override
+  String get userInfoTitle => 'Personal information';
+
+  @override
+  String get userInfoEdit => 'Edit';
+
+  @override
+  String get userInfoEmpty => 'No personal information yet.';
+
+  @override
+  String get userInfoNotSet => 'Not set';
+
+  @override
+  String get commonSuccess => 'Success';
+
+  @override
+  String get commonSaveFailed => 'Could not save';
+
+  @override
+  String get commonSaving => 'Saving...';
+
+  @override
+  String get commonRetry => 'Try again';
+
+  @override
+  String get setUserInfoTitle => 'Edit information';
+
+  @override
+  String get setUserInfoLoadFailed =>
+      'Could not load your personal information. Please try again.';
+
+  @override
+  String get setUserInfoNameRequired => 'Please enter your full name.';
+
+  @override
+  String get setUserInfoPhoneInvalid =>
+      'Invalid phone number (10 digits starting with 0).';
+
+  @override
+  String get setUserInfoSaved => 'Your personal information has been saved.';
+
+  @override
+  String get profileUtilities => 'Utilities';
+
+  @override
+  String get profileMoneySources => 'Money sources';
+
+  @override
+  String get profileLinkedServices => 'Linked services';
+
+  @override
+  String get profileBudget => 'Budgets';
+
+  @override
+  String get profileSecurityPrivacy => 'Security & privacy';
+
+  @override
+  String get profileSupport => 'Support';
+
+  @override
+  String get profileHelp => 'User guide';
+
+  @override
+  String get profileFeedback => 'Send feedback';
+
+  @override
+  String get profileAbout => 'About the app';
+
+  @override
+  String get profileLogout => 'Log out';
+
+  @override
+  String get profileLogoutConfirmTitle => 'Log out?';
+
+  @override
+  String get profileLogoutConfirmMessage => 'Are you sure you want to log out?';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String get notificationSettingsTitle => 'Notification settings';
+
+  @override
+  String get notificationSettingsPush => 'Push notifications';
+
+  @override
+  String get notificationSettingsBudgetAlert => 'Budget alerts';
+
+  @override
+  String get notificationSettingsSaved => 'Notification settings saved.';
+
+  @override
+  String get moneySourcesEmpty => 'No wallets yet.';
+
+  @override
+  String get activityLogTitle => 'Activity history';
+
+  @override
+  String get activityLogSubtitle => 'See your recent transactions';
+
+  @override
+  String activityLogTitleCount(int count) {
+    return 'Activity history ($count)';
+  }
+
+  @override
+  String get pinSetupTitle => 'Create / change PIN';
+
+  @override
+  String get pinSetupSubtitle => 'Protect the app with a 4-digit code';
+
+  @override
+  String get pinNewLabel => 'New PIN';
+
+  @override
+  String get pinConfirmLabel => 'Confirm PIN';
+
+  @override
+  String get pinLengthInvalid => 'The PIN must be exactly 4 digits.';
+
+  @override
+  String get pinMismatch => 'The PINs do not match.';
+
+  @override
+  String get pinSaved => 'PIN saved.';
+
+  @override
+  String get helpDashboardTitle => 'Dashboard';
+
+  @override
+  String get helpDashboardBody =>
+      'See your assets, the month\'s income and spending and the cash flow chart.';
+
+  @override
+  String get helpLedgerTitle => 'Ledger';
+
+  @override
+  String get helpLedgerBody =>
+      'Add, filter and view transactions by day, calendar or month.';
+
+  @override
+  String get helpScanTitle => 'Receipt scan';
+
+  @override
+  String get helpScanBody =>
+      'Tap the round button in the middle of the navigation bar to scan a receipt with AI.';
+
+  @override
+  String get helpAiTitle => 'AI analysis';
+
+  @override
+  String get helpAiBody =>
+      'See spending trends and financial habits analysed automatically.';
+
+  @override
+  String get helpTransferTitle => 'Transfers';
+
+  @override
+  String get helpTransferBody =>
+      'Send or receive money by phone number or QR code.';
+
+  @override
+  String get feedbackTitle => 'Rate the app';
+
+  @override
+  String get feedbackDescription =>
+      'Your feedback helps us keep improving the app!';
+
+  @override
+  String get feedbackHint => 'Share your thoughts or suggestions...';
+
+  @override
+  String get feedbackLater => 'Later';
+
+  @override
+  String get feedbackSubmit => 'Send now';
+
+  @override
+  String get feedbackThanks => 'Thank you for your feedback!';
+
+  @override
+  String get feedbackFailed =>
+      'Could not send your feedback, please try again later.';
+
+  @override
+  String get aboutDescription =>
+      'A smart personal finance app with AI spending analysis.';
+
+  @override
+  String get savingsTitle => 'Savings';
+
+  @override
+  String savingsLoadFailed(String reason) {
+    return 'Could not load your savings. $reason';
+  }
+
+  @override
+  String savingsDeleteFailed(String reason) {
+    return 'Could not delete the goal. $reason';
+  }
+
+  @override
+  String savingsDeleted(String title) {
+    return 'Goal deleted: $title';
+  }
+
+  @override
+  String get savingsAddTitle => 'Add a savings goal';
+
+  @override
+  String get savingsAdd => 'Add';
+
+  @override
+  String get savingsGoalName => 'Goal name';
+
+  @override
+  String get savingsTargetAmount => 'Target amount (₫)';
+
+  @override
+  String get savingsSavedAmount => 'Saved so far (₫)';
+
+  @override
+  String get savingsDeadlineField => 'Deadline (dd/mm/yyyy)';
+
+  @override
+  String savingsUpdateTitle(String title) {
+    return 'Update: $title';
+  }
+
+  @override
+  String get savingsCurrentAmount => 'Amount saved (₫)';
+
+  @override
+  String get savingsTotalSaved => 'Total saved';
+
+  @override
+  String savingsGoalCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count goals',
+      one: '1 goal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String savingsTarget(String amount) {
+    return 'Target: $amount';
+  }
+
+  @override
+  String get savingsAddGoalAction => 'Add\ngoal';
+
+  @override
+  String get savingsGoalList => 'Goals';
+
+  @override
+  String get savingsEmpty => 'No goals yet.';
+
+  @override
+  String get savingsEmptyHint => 'Tap \"+\" to create a savings goal.';
+
+  @override
+  String savingsDeadline(String date) {
+    return 'Due: $date';
+  }
+
+  @override
+  String get savingsUpdate => 'Update';
 }

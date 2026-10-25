@@ -98,14 +98,15 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông tin cá nhân'),
+        title: Text(loc.userInfoTitle),
         actions: [
           IconButton(
             icon: Icon(Icons.edit_rounded, color: colors.primary),
             onPressed: _edit,
-            tooltip: 'Chỉnh sửa',
+            tooltip: loc.userInfoEdit,
           ),
         ],
       ),
@@ -114,7 +115,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
           : (_user == null)
           ? Center(
               child: Text(
-                'Chưa có thông tin cá nhân.',
+                loc.userInfoEmpty,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
             )
@@ -125,17 +126,21 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
-                      _buildInfoRow(colors, 'Họ và tên', _user!.fullName),
+                      _buildInfoRow(
+                        colors,
+                        loc.registerFullNameLabel,
+                        _user!.fullName,
+                      ),
                       // The theme divider: the white 6% line of the old dark design did not show on the light card.
                       const Divider(height: 1),
                       // The server keeps no birth date: the email is shown instead.
-                      _buildInfoRow(colors, 'Email', _user!.email),
+                      _buildInfoRow(colors, loc.authEmailLabel, _user!.email),
                       const Divider(height: 1),
                       _buildInfoRow(
                         colors,
-                        'Số điện thoại',
+                        loc.registerPhoneLabel,
                         (_user!.phone ?? '').isEmpty
-                            ? 'Chưa cập nhật'
+                            ? loc.userInfoNotSet
                             : _maskPhone(_user!.phone!),
                       ),
                     ],

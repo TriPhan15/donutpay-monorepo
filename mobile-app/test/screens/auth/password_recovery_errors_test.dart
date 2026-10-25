@@ -190,6 +190,25 @@ void main() {
         isNot(vi.passwordRecoveryServerError),
       );
     });
+
+    test(
+      'in English a refusal gets the fixed text of its request: core-backend writes Vietnamese only',
+      () {
+        const wrongOtp = 'Mã OTP không chính xác. Bạn còn 2 lần thử.';
+        expect(
+          messageOf(_answer(400, {'message': wrongOtp}), loc: en),
+          en.resetPasswordRejected,
+        );
+        expect(
+          messageOf(
+            _answer(400, {'message': 'Email không tồn tại'}, _sendOtpRequest),
+            loc: en,
+            request: PasswordRecoveryRequest.sendOtp,
+          ),
+          en.forgotPasswordRejected,
+        );
+      },
+    );
   });
 
   test(

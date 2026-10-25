@@ -596,5 +596,622 @@
   "categoryOtherIncome": "Other income",
   "@categoryOtherIncome": {
     "description": "Default category stored by the backend as \"Thu khác\" (DefaultCategory)."
+  },
+  "authMissingInfoTitle": "Missing information",
+  "@authMissingInfoTitle": {
+    "description": "Title of the dialog shown when a required field of a form is empty."
+  },
+  "authEmailLabel": "Email",
+  "@authEmailLabel": {
+    "description": "Label of the email field on the login and register screens."
+  },
+  "authEmailHint": "Enter your email address",
+  "@authEmailHint": {
+    "description": "Hint of the email field on the login and register screens."
+  },
+  "authPasswordLabel": "Password",
+  "@authPasswordLabel": {
+    "description": "Label of the password field on the login and register screens."
+  },
+  "authPasswordHint": "Enter your password",
+  "@authPasswordHint": {
+    "description": "Hint of the password field on the login and register screens."
+  },
+  "authProcessing": "Processing...",
+  "@authProcessing": {
+    "description": "Button text while a login or save request is running."
+  },
+  "loginFailedTitle": "Login failed",
+  "@loginFailedTitle": {
+    "description": "Title of the dialog shown when login fails."
+  },
+  "loginWrongCredentials": "Wrong email or password.",
+  "@loginWrongCredentials": {
+    "description": "Shown when the server answers 401 to a login."
+  },
+  "loginSocialFailed": "Could not sign in with your social account. Please try again.",
+  "@loginSocialFailed": {
+    "description": "Shown when a Google or Facebook login fails for an unknown reason."
+  },
+  "loginMissingCredentials": "Please enter your email and password.",
+  "@loginMissingCredentials": {
+    "description": "Shown when the login form is submitted with an empty field."
+  },
+  "loginInvalidResponse": "The server sent an invalid response. Please try again.",
+  "@loginInvalidResponse": {
+    "description": "Shown when the login answer has no user id."
+  },
+  "loginTagline": "Smart personal finance",
+  "@loginTagline": {
+    "description": "Tagline under the app name on the login screen."
+  },
+  "loginRememberMe": "Remember me",
+  "@loginRememberMe": {
+    "description": "Checkbox label on the login screen."
+  },
+  "loginForgotPassword": "Forgot password?",
+  "@loginForgotPassword": {
+    "description": "Link from the login screen to the password recovery."
+  },
+  "loginSubmit": "Log in",
+  "@loginSubmit": {
+    "description": "Login button."
+  },
+  "loginNoAccount": "No account yet? ",
+  "@loginNoAccount": {
+    "description": "First part of the sign-up link on the login screen; keep the trailing space."
+  },
+  "loginSignUpNow": "Sign up now",
+  "@loginSignUpNow": {
+    "description": "Second, highlighted part of the sign-up link on the login screen."
+  },
+  "loginOrContinueWith": "Or log in with",
+  "@loginOrContinueWith": {
+    "description": "Divider text above the social login buttons."
+  },
+  "registerTitle": "Sign up",
+  "@registerTitle": {
+    "description": "App bar title of the register screen."
+  },
+  "registerHeading": "Create an account",
+  "@registerHeading": {
+    "description": "Heading of the register screen."
+  },
+  "registerDescription": "Fill in your details to start managing your finances.",
+  "@registerDescription": {
+    "description": "Text under the heading of the register screen."
+  },
+  "registerFullNameLabel": "Full name",
+  "@registerFullNameLabel": {
+    "description": "Label of the full name field on the register screen."
+  },
+  "registerFullNameHint": "Enter your full name",
+  "@registerFullNameHint": {
+    "description": "Hint of the full name field on the register screen."
+  },
+  "registerPhoneLabel": "Phone number",
+  "@registerPhoneLabel": {
+    "description": "Label of the phone field on the register screen."
+  },
+  "registerPhoneHint": "Enter your phone number",
+  "@registerPhoneHint": {
+    "description": "Hint of the phone field on the register screen."
+  },
+  "registerSubmit": "Create account",
+  "@registerSubmit": {
+    "description": "Register button."
+  },
+  "registerOrContinueWith": "Or sign up with",
+  "@registerOrContinueWith": {
+    "description": "Divider text above the social sign-up buttons."
+  },
+  "registerTermsPrefix": "By signing up, you agree to the ",
+  "@registerTermsPrefix": {
+    "description": "First part of the terms sentence; keep the trailing space."
+  },
+  "registerTerms": "Terms",
+  "@registerTerms": {
+    "description": "Highlighted part of the terms sentence."
+  },
+  "registerTermsAnd": " and ",
+  "@registerTermsAnd": {
+    "description": "Joins the two highlighted parts of the terms sentence; keep both spaces."
+  },
+  "registerConditions": "Conditions of use",
+  "@registerConditions": {
+    "description": "Last highlighted part of the terms sentence."
+  },
+  "registerMissingFields": "Please fill in every field (including the phone number).",
+  "@registerMissingFields": {
+    "description": "Shown when the register form is submitted with an empty field."
+  },
+  "registerWeakPasswordTitle": "Weak password",
+  "@registerWeakPasswordTitle": {
+    "description": "Title of the dialog shown when the password does not meet the rules."
+  },
+  "registerWeakPasswordMessage": "The password does not meet the requirements yet.",
+  "@registerWeakPasswordMessage": {
+    "description": "Shown when the password misses a rule of the checklist."
+  },
+  "registerSuccessTitle": "Sign-up successful",
+  "@registerSuccessTitle": {
+    "description": "Title of the dialog shown after a successful sign-up."
+  },
+  "registerSuccessMessage": "Your account has been created. Please log in.",
+  "@registerSuccessMessage": {
+    "description": "Message of the dialog shown after a successful sign-up."
+  },
+  "registerFailedTitle": "Sign-up failed",
+  "@registerFailedTitle": {
+    "description": "Title of the dialog shown when sign-up fails."
+  },
+  "registerSocialFailed": "Could not sign up with your social account. Please try again.",
+  "@registerSocialFailed": {
+    "description": "Shown when a Google or Facebook sign-up fails for an unknown reason."
+  },
+  "registerPasswordNeeds": "Your password needs:",
+  "@registerPasswordNeeds": {
+    "description": "Heading of the password checklist."
+  },
+  "registerRuleMinLength": "At least {min} characters",
+  "@registerRuleMinLength": {
+    "description": "Password checklist rule.",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "registerRuleUppercase": "An uppercase letter (A-Z)",
+  "@registerRuleUppercase": {
+    "description": "Password checklist rule."
+  },
+  "registerRuleLowercase": "A lowercase letter (a-z)",
+  "@registerRuleLowercase": {
+    "description": "Password checklist rule."
+  },
+  "registerRuleDigit": "A digit (0-9)",
+  "@registerRuleDigit": {
+    "description": "Password checklist rule."
+  },
+  "registerRuleSpecial": "A special character (!@#...)",
+  "@registerRuleSpecial": {
+    "description": "Password checklist rule."
+  },
+  "commonSaveChanges": "Save changes",
+  "@commonSaveChanges": {
+    "description": "Save button of the profile edit forms."
+  },
+  "credentialsTitle": "Account",
+  "@credentialsTitle": {
+    "description": "App bar title of the account credentials screen."
+  },
+  "credentialsNoData": "No account data yet.",
+  "@credentialsNoData": {
+    "description": "Shown when the account could not be loaded."
+  },
+  "credentialsTapToEdit": "Tap the row you want to change.",
+  "@credentialsTapToEdit": {
+    "description": "Hint above the editable rows of the account credentials screen."
+  },
+  "credentialsUsername": "Username",
+  "@credentialsUsername": {
+    "description": "Row label of the username (the email)."
+  },
+  "credentialsUsernameEmail": "Username (email)",
+  "@credentialsUsernameEmail": {
+    "description": "Label of the username field."
+  },
+  "credentialsEditUsername": "Edit username",
+  "@credentialsEditUsername": {
+    "description": "Heading of the username form."
+  },
+  "credentialsUsernameRequired": "Please enter a username.",
+  "@credentialsUsernameRequired": {
+    "description": "Shown when the username field is empty."
+  },
+  "credentialsUsernameChangeUnsupported": "The server does not support changing the username yet.",
+  "@credentialsUsernameChangeUnsupported": {
+    "description": "Shown when the user saves a new username."
+  },
+  "credentialsChangePassword": "Change password",
+  "@credentialsChangePassword": {
+    "description": "Heading of the change password form."
+  },
+  "credentialsOldPassword": "Current password",
+  "@credentialsOldPassword": {
+    "description": "Label of the current password field."
+  },
+  "credentialsOldPasswordRequired": "Please enter your current password.",
+  "@credentialsOldPasswordRequired": {
+    "description": "Shown when the current password field is empty."
+  },
+  "credentialsPasswordMismatch": "The new passwords do not match.",
+  "@credentialsPasswordMismatch": {
+    "description": "Shown when the confirmation differs from the new password."
+  },
+  "credentialsChangePasswordFailed": "Could not change the password",
+  "@credentialsChangePasswordFailed": {
+    "description": "Title of the dialog shown when the password change fails."
+  },
+  "credentialsChangePasswordRejected": "The password was not changed. Please check your current password and try again.",
+  "@credentialsChangePasswordRejected": {
+    "description": "Shown when the server refuses the password change (4xx) in a language the server does not write."
+  },
+  "credentialsChangePasswordSuccessTitle": "Password changed",
+  "@credentialsChangePasswordSuccessTitle": {
+    "description": "Title of the dialog shown after the password change."
+  },
+  "credentialsChangePasswordSuccessMessage": "Your new password now applies to your account.",
+  "@credentialsChangePasswordSuccessMessage": {
+    "description": "Message of the dialog shown after the password change."
+  },
+  "accountInfoTitle": "Account information",
+  "@accountInfoTitle": {
+    "description": "App bar title of the account information screen."
+  },
+  "accountInfoSignInAgain": "Please log in again.",
+  "@accountInfoSignInAgain": {
+    "description": "Shown when an account row is tapped without a session."
+  },
+  "userInfoTitle": "Personal information",
+  "@userInfoTitle": {
+    "description": "Title of the personal information screen and its row."
+  },
+  "userInfoEdit": "Edit",
+  "@userInfoEdit": {
+    "description": "Tooltip of the edit button of the personal information screen."
+  },
+  "userInfoEmpty": "No personal information yet.",
+  "@userInfoEmpty": {
+    "description": "Shown when the user could not be loaded."
+  },
+  "userInfoNotSet": "Not set",
+  "@userInfoNotSet": {
+    "description": "Shown instead of an empty phone number."
+  },
+  "commonSuccess": "Success",
+  "@commonSuccess": {
+    "description": "Title of a success dialog."
+  },
+  "commonSaveFailed": "Could not save",
+  "@commonSaveFailed": {
+    "description": "Title of the dialog shown when a save fails."
+  },
+  "commonSaving": "Saving...",
+  "@commonSaving": {
+    "description": "Save button text while the save is running."
+  },
+  "commonRetry": "Try again",
+  "@commonRetry": {
+    "description": "Retry button."
+  },
+  "setUserInfoTitle": "Edit information",
+  "@setUserInfoTitle": {
+    "description": "App bar title of the profile edit screen."
+  },
+  "setUserInfoLoadFailed": "Could not load your personal information. Please try again.",
+  "@setUserInfoLoadFailed": {
+    "description": "Shown when the profile edit screen cannot read the profile."
+  },
+  "setUserInfoNameRequired": "Please enter your full name.",
+  "@setUserInfoNameRequired": {
+    "description": "Shown when the full name is empty."
+  },
+  "setUserInfoPhoneInvalid": "Invalid phone number (10 digits starting with 0).",
+  "@setUserInfoPhoneInvalid": {
+    "description": "Shown when the phone number does not match the format."
+  },
+  "setUserInfoSaved": "Your personal information has been saved.",
+  "@setUserInfoSaved": {
+    "description": "Message of the dialog shown after the profile is saved."
+  },
+  "profileUtilities": "Utilities",
+  "@profileUtilities": {
+    "description": "Section title on the profile screen."
+  },
+  "profileMoneySources": "Money sources",
+  "@profileMoneySources": {
+    "description": "Profile row that opens the money sources sheet."
+  },
+  "profileLinkedServices": "Linked services",
+  "@profileLinkedServices": {
+    "description": "Profile row that opens the linked services screen."
+  },
+  "profileBudget": "Budgets",
+  "@profileBudget": {
+    "description": "Profile row that opens the budget screen."
+  },
+  "profileSecurityPrivacy": "Security & privacy",
+  "@profileSecurityPrivacy": {
+    "description": "Profile row that opens the security menu."
+  },
+  "profileSupport": "Support",
+  "@profileSupport": {
+    "description": "Section title on the profile screen."
+  },
+  "profileHelp": "User guide",
+  "@profileHelp": {
+    "description": "Profile row that opens the user guide."
+  },
+  "profileFeedback": "Send feedback",
+  "@profileFeedback": {
+    "description": "Profile row that opens the feedback form."
+  },
+  "profileAbout": "About the app",
+  "@profileAbout": {
+    "description": "Profile row that opens the about sheet."
+  },
+  "profileLogout": "Log out",
+  "@profileLogout": {
+    "description": "Logout row and the confirm button of the logout dialog."
+  },
+  "profileLogoutConfirmTitle": "Log out?",
+  "@profileLogoutConfirmTitle": {
+    "description": "Title of the logout confirmation."
+  },
+  "profileLogoutConfirmMessage": "Are you sure you want to log out?",
+  "@profileLogoutConfirmMessage": {
+    "description": "Message of the logout confirmation."
+  },
+  "commonSave": "Save",
+  "@commonSave": {
+    "description": "Short save button of sheets and dialogs."
+  },
+  "notificationSettingsTitle": "Notification settings",
+  "@notificationSettingsTitle": {
+    "description": "Title of the notification settings sheet."
+  },
+  "notificationSettingsPush": "Push notifications",
+  "@notificationSettingsPush": {
+    "description": "Switch of the notification settings sheet."
+  },
+  "notificationSettingsBudgetAlert": "Budget alerts",
+  "@notificationSettingsBudgetAlert": {
+    "description": "Switch of the notification settings sheet."
+  },
+  "notificationSettingsSaved": "Notification settings saved.",
+  "@notificationSettingsSaved": {
+    "description": "Snackbar after the notification settings are saved."
+  },
+  "moneySourcesEmpty": "No wallets yet.",
+  "@moneySourcesEmpty": {
+    "description": "Shown in the money sources sheet without wallets."
+  },
+  "activityLogTitle": "Activity history",
+  "@activityLogTitle": {
+    "description": "Security menu row that opens the activity history."
+  },
+  "activityLogSubtitle": "See your recent transactions",
+  "@activityLogSubtitle": {
+    "description": "Subtitle of the activity history row."
+  },
+  "activityLogTitleCount": "Activity history ({count})",
+  "@activityLogTitleCount": {
+    "description": "Title of the activity history sheet with the number of transactions.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pinSetupTitle": "Create / change PIN",
+  "@pinSetupTitle": {
+    "description": "Security menu row and title of the PIN dialog."
+  },
+  "pinSetupSubtitle": "Protect the app with a 4-digit code",
+  "@pinSetupSubtitle": {
+    "description": "Subtitle of the PIN row."
+  },
+  "pinNewLabel": "New PIN",
+  "@pinNewLabel": {
+    "description": "Label of the new PIN field."
+  },
+  "pinConfirmLabel": "Confirm PIN",
+  "@pinConfirmLabel": {
+    "description": "Label of the PIN confirmation field."
+  },
+  "pinLengthInvalid": "The PIN must be exactly 4 digits.",
+  "@pinLengthInvalid": {
+    "description": "Shown when the PIN is not 4 digits."
+  },
+  "pinMismatch": "The PINs do not match.",
+  "@pinMismatch": {
+    "description": "Shown when the PIN confirmation differs."
+  },
+  "pinSaved": "PIN saved.",
+  "@pinSaved": {
+    "description": "Snackbar after the PIN is saved."
+  },
+  "helpDashboardTitle": "Dashboard",
+  "@helpDashboardTitle": {
+    "description": "User guide topic."
+  },
+  "helpDashboardBody": "See your assets, the month's income and spending and the cash flow chart.",
+  "@helpDashboardBody": {
+    "description": "User guide text."
+  },
+  "helpLedgerTitle": "Ledger",
+  "@helpLedgerTitle": {
+    "description": "User guide topic."
+  },
+  "helpLedgerBody": "Add, filter and view transactions by day, calendar or month.",
+  "@helpLedgerBody": {
+    "description": "User guide text."
+  },
+  "helpScanTitle": "Receipt scan",
+  "@helpScanTitle": {
+    "description": "User guide topic."
+  },
+  "helpScanBody": "Tap the round button in the middle of the navigation bar to scan a receipt with AI.",
+  "@helpScanBody": {
+    "description": "User guide text."
+  },
+  "helpAiTitle": "AI analysis",
+  "@helpAiTitle": {
+    "description": "User guide topic."
+  },
+  "helpAiBody": "See spending trends and financial habits analysed automatically.",
+  "@helpAiBody": {
+    "description": "User guide text."
+  },
+  "helpTransferTitle": "Transfers",
+  "@helpTransferTitle": {
+    "description": "User guide topic."
+  },
+  "helpTransferBody": "Send or receive money by phone number or QR code.",
+  "@helpTransferBody": {
+    "description": "User guide text."
+  },
+  "feedbackTitle": "Rate the app",
+  "@feedbackTitle": {
+    "description": "Title of the feedback dialog (a star follows it)."
+  },
+  "feedbackDescription": "Your feedback helps us keep improving the app!",
+  "@feedbackDescription": {
+    "description": "Text of the feedback dialog."
+  },
+  "feedbackHint": "Share your thoughts or suggestions...",
+  "@feedbackHint": {
+    "description": "Hint of the feedback comment field."
+  },
+  "feedbackLater": "Later",
+  "@feedbackLater": {
+    "description": "Button that closes the feedback dialog."
+  },
+  "feedbackSubmit": "Send now",
+  "@feedbackSubmit": {
+    "description": "Button that sends the feedback."
+  },
+  "feedbackThanks": "Thank you for your feedback!",
+  "@feedbackThanks": {
+    "description": "Snackbar after the feedback is sent."
+  },
+  "feedbackFailed": "Could not send your feedback, please try again later.",
+  "@feedbackFailed": {
+    "description": "Snackbar when the feedback could not be sent."
+  },
+  "aboutDescription": "A smart personal finance app with AI spending analysis.",
+  "@aboutDescription": {
+    "description": "Text of the about dialog."
+  },
+  "savingsTitle": "Savings",
+  "@savingsTitle": {
+    "description": "Title of the savings screen and its profile row."
+  },
+  "savingsLoadFailed": "Could not load your savings. {reason}",
+  "@savingsLoadFailed": {
+    "description": "Snackbar when the savings cannot be loaded; reason is the error text.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsDeleteFailed": "Could not delete the goal. {reason}",
+  "@savingsDeleteFailed": {
+    "description": "Snackbar when a goal cannot be deleted; reason is the error text.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsDeleted": "Goal deleted: {title}",
+  "@savingsDeleted": {
+    "description": "Snackbar after a goal is deleted.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsAddTitle": "Add a savings goal",
+  "@savingsAddTitle": {
+    "description": "Title of the add goal dialog."
+  },
+  "savingsAdd": "Add",
+  "@savingsAdd": {
+    "description": "Submit button of the add goal dialog."
+  },
+  "savingsGoalName": "Goal name",
+  "@savingsGoalName": {
+    "description": "Field of the add goal dialog."
+  },
+  "savingsTargetAmount": "Target amount (₫)",
+  "@savingsTargetAmount": {
+    "description": "Field of the add goal dialog."
+  },
+  "savingsSavedAmount": "Saved so far (₫)",
+  "@savingsSavedAmount": {
+    "description": "Field of the add goal dialog."
+  },
+  "savingsDeadlineField": "Deadline (dd/mm/yyyy)",
+  "@savingsDeadlineField": {
+    "description": "Field of the add goal dialog."
+  },
+  "savingsUpdateTitle": "Update: {title}",
+  "@savingsUpdateTitle": {
+    "description": "Title of the update goal dialog.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsCurrentAmount": "Amount saved (₫)",
+  "@savingsCurrentAmount": {
+    "description": "Field of the update goal dialog."
+  },
+  "savingsTotalSaved": "Total saved",
+  "@savingsTotalSaved": {
+    "description": "Label of the savings summary card."
+  },
+  "savingsGoalCount": "{count, plural, =1{1 goal} other{{count} goals}}",
+  "@savingsGoalCount": {
+    "description": "Number of savings goals.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "savingsTarget": "Target: {amount}",
+  "@savingsTarget": {
+    "description": "Total target of the savings summary card.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsAddGoalAction": "Add\ngoal",
+  "@savingsAddGoalAction": {
+    "description": "Two-line label of the add goal shortcut."
+  },
+  "savingsGoalList": "Goals",
+  "@savingsGoalList": {
+    "description": "Heading of the goal list."
+  },
+  "savingsEmpty": "No goals yet.",
+  "@savingsEmpty": {
+    "description": "Shown when there is no goal."
+  },
+  "savingsEmptyHint": "Tap \"+\" to create a savings goal.",
+  "@savingsEmptyHint": {
+    "description": "Hint under the empty goal list."
+  },
+  "savingsDeadline": "Due: {date}",
+  "@savingsDeadline": {
+    "description": "Deadline of a goal.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsUpdate": "Update",
+  "@savingsUpdate": {
+    "description": "Button that opens the update goal dialog."
   }
 }

@@ -21,9 +21,6 @@ class SetUserInfoScreen extends StatefulWidget {
 
 class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
   static final RegExp _phonePattern = RegExp(r'^0[0-9]{9}$');
-  static const String _saveFailedTitle = 'Lưu thất bại';
-  static const String _loadFailedMessage =
-      'Không tải được thông tin cá nhân. Vui lòng thử lại.';
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -78,11 +75,11 @@ class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
     final phone = _phoneController.text.trim();
 
     if (name.isEmpty) {
-      _snack('Vui lòng nhập họ và tên.');
+      _snack(context.loc.setUserInfoNameRequired);
       return;
     }
     if (phone.isNotEmpty && !_phonePattern.hasMatch(phone)) {
-      _snack('Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).');
+      _snack(context.loc.setUserInfoPhoneInvalid);
       return;
     }
 
@@ -97,8 +94,8 @@ class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
       setState(() => _isSaving = false);
       await AppDialog.success(
         context,
-        title: 'Thành công',
-        message: 'Đã lưu thông tin cá nhân.',
+        title: context.loc.commonSuccess,
+        message: context.loc.setUserInfoSaved,
       );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -108,7 +105,7 @@ class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
       setState(() => _isSaving = false);
       await AppDialog.error(
         context,
-        title: _saveFailedTitle,
+        title: context.loc.commonSaveFailed,
         message: UserFacingError.messageOf(e, context.loc),
       );
     }
@@ -117,13 +114,17 @@ class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(title: const Text('Thiết lập thông tin')),
+      appBar: AppBar(title: Text(loc.setUserInfoTitle)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _loadFailed
-          ? _LoadFailedView(message: _loadFailedMessage, onRetry: _loadUser)
+          ? _LoadFailedView(
+              message: loc.setUserInfoLoadFailed,
+              onRetry: _loadUser,
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -133,18 +134,18 @@ class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
                   const SizedBox(height: 32),
                   CustomTextField(
                     controller: _nameController,
-                    label: 'Họ và tên',
+                    label: loc.registerFullNameLabel,
                     keyboardType: TextInputType.name,
                   ),
                   const SizedBox(height: 16),
                   CustomTextField(
                     controller: _phoneController,
-                    label: 'Số điện thoại',
+                    label: loc.registerPhoneLabel,
                     keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 40),
                   PrimaryButton(
-                    text: _isSaving ? 'Đang lưu...' : 'Lưu thay đổi',
+                    text: _isSaving ? loc.commonSaving : loc.commonSaveChanges,
                     onPressed: _isSaving
                         ? null
                         : () {
@@ -180,7 +181,10 @@ class _LoadFailedView extends StatelessWidget {
               style: TextStyle(color: colors.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
-            TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+            TextButton(
+              onPressed: onRetry,
+              child: Text(context.loc.commonRetry),
+            ),
           ],
         ),
       ),

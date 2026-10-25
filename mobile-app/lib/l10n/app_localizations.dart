@@ -907,6 +907,864 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other income'**
   String get categoryOtherIncome;
+
+  /// Title of the dialog shown when a required field of a form is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing information'**
+  String get authMissingInfoTitle;
+
+  /// Label of the email field on the login and register screens.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get authEmailLabel;
+
+  /// Hint of the email field on the login and register screens.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address'**
+  String get authEmailHint;
+
+  /// Label of the password field on the login and register screens.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPasswordLabel;
+
+  /// Hint of the password field on the login and register screens.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password'**
+  String get authPasswordHint;
+
+  /// Button text while a login or save request is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing...'**
+  String get authProcessing;
+
+  /// Title of the dialog shown when login fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed'**
+  String get loginFailedTitle;
+
+  /// Shown when the server answers 401 to a login.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong email or password.'**
+  String get loginWrongCredentials;
+
+  /// Shown when a Google or Facebook login fails for an unknown reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign in with your social account. Please try again.'**
+  String get loginSocialFailed;
+
+  /// Shown when the login form is submitted with an empty field.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your email and password.'**
+  String get loginMissingCredentials;
+
+  /// Shown when the login answer has no user id.
+  ///
+  /// In en, this message translates to:
+  /// **'The server sent an invalid response. Please try again.'**
+  String get loginInvalidResponse;
+
+  /// Tagline under the app name on the login screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart personal finance'**
+  String get loginTagline;
+
+  /// Checkbox label on the login screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember me'**
+  String get loginRememberMe;
+
+  /// Link from the login screen to the password recovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get loginForgotPassword;
+
+  /// Login button.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get loginSubmit;
+
+  /// First part of the sign-up link on the login screen; keep the trailing space.
+  ///
+  /// In en, this message translates to:
+  /// **'No account yet? '**
+  String get loginNoAccount;
+
+  /// Second, highlighted part of the sign-up link on the login screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up now'**
+  String get loginSignUpNow;
+
+  /// Divider text above the social login buttons.
+  ///
+  /// In en, this message translates to:
+  /// **'Or log in with'**
+  String get loginOrContinueWith;
+
+  /// App bar title of the register screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up'**
+  String get registerTitle;
+
+  /// Heading of the register screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an account'**
+  String get registerHeading;
+
+  /// Text under the heading of the register screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in your details to start managing your finances.'**
+  String get registerDescription;
+
+  /// Label of the full name field on the register screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get registerFullNameLabel;
+
+  /// Hint of the full name field on the register screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your full name'**
+  String get registerFullNameHint;
+
+  /// Label of the phone field on the register screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get registerPhoneLabel;
+
+  /// Hint of the phone field on the register screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your phone number'**
+  String get registerPhoneHint;
+
+  /// Register button.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get registerSubmit;
+
+  /// Divider text above the social sign-up buttons.
+  ///
+  /// In en, this message translates to:
+  /// **'Or sign up with'**
+  String get registerOrContinueWith;
+
+  /// First part of the terms sentence; keep the trailing space.
+  ///
+  /// In en, this message translates to:
+  /// **'By signing up, you agree to the '**
+  String get registerTermsPrefix;
+
+  /// Highlighted part of the terms sentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms'**
+  String get registerTerms;
+
+  /// Joins the two highlighted parts of the terms sentence; keep both spaces.
+  ///
+  /// In en, this message translates to:
+  /// **' and '**
+  String get registerTermsAnd;
+
+  /// Last highlighted part of the terms sentence.
+  ///
+  /// In en, this message translates to:
+  /// **'Conditions of use'**
+  String get registerConditions;
+
+  /// Shown when the register form is submitted with an empty field.
+  ///
+  /// In en, this message translates to:
+  /// **'Please fill in every field (including the phone number).'**
+  String get registerMissingFields;
+
+  /// Title of the dialog shown when the password does not meet the rules.
+  ///
+  /// In en, this message translates to:
+  /// **'Weak password'**
+  String get registerWeakPasswordTitle;
+
+  /// Shown when the password misses a rule of the checklist.
+  ///
+  /// In en, this message translates to:
+  /// **'The password does not meet the requirements yet.'**
+  String get registerWeakPasswordMessage;
+
+  /// Title of the dialog shown after a successful sign-up.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-up successful'**
+  String get registerSuccessTitle;
+
+  /// Message of the dialog shown after a successful sign-up.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been created. Please log in.'**
+  String get registerSuccessMessage;
+
+  /// Title of the dialog shown when sign-up fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-up failed'**
+  String get registerFailedTitle;
+
+  /// Shown when a Google or Facebook sign-up fails for an unknown reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign up with your social account. Please try again.'**
+  String get registerSocialFailed;
+
+  /// Heading of the password checklist.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password needs:'**
+  String get registerPasswordNeeds;
+
+  /// Password checklist rule.
+  ///
+  /// In en, this message translates to:
+  /// **'At least {min} characters'**
+  String registerRuleMinLength(int min);
+
+  /// Password checklist rule.
+  ///
+  /// In en, this message translates to:
+  /// **'An uppercase letter (A-Z)'**
+  String get registerRuleUppercase;
+
+  /// Password checklist rule.
+  ///
+  /// In en, this message translates to:
+  /// **'A lowercase letter (a-z)'**
+  String get registerRuleLowercase;
+
+  /// Password checklist rule.
+  ///
+  /// In en, this message translates to:
+  /// **'A digit (0-9)'**
+  String get registerRuleDigit;
+
+  /// Password checklist rule.
+  ///
+  /// In en, this message translates to:
+  /// **'A special character (!@#...)'**
+  String get registerRuleSpecial;
+
+  /// Save button of the profile edit forms.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get commonSaveChanges;
+
+  /// App bar title of the account credentials screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get credentialsTitle;
+
+  /// Shown when the account could not be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No account data yet.'**
+  String get credentialsNoData;
+
+  /// Hint above the editable rows of the account credentials screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the row you want to change.'**
+  String get credentialsTapToEdit;
+
+  /// Row label of the username (the email).
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get credentialsUsername;
+
+  /// Label of the username field.
+  ///
+  /// In en, this message translates to:
+  /// **'Username (email)'**
+  String get credentialsUsernameEmail;
+
+  /// Heading of the username form.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit username'**
+  String get credentialsEditUsername;
+
+  /// Shown when the username field is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a username.'**
+  String get credentialsUsernameRequired;
+
+  /// Shown when the user saves a new username.
+  ///
+  /// In en, this message translates to:
+  /// **'The server does not support changing the username yet.'**
+  String get credentialsUsernameChangeUnsupported;
+
+  /// Heading of the change password form.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get credentialsChangePassword;
+
+  /// Label of the current password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get credentialsOldPassword;
+
+  /// Shown when the current password field is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your current password.'**
+  String get credentialsOldPasswordRequired;
+
+  /// Shown when the confirmation differs from the new password.
+  ///
+  /// In en, this message translates to:
+  /// **'The new passwords do not match.'**
+  String get credentialsPasswordMismatch;
+
+  /// Title of the dialog shown when the password change fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change the password'**
+  String get credentialsChangePasswordFailed;
+
+  /// Shown when the server refuses the password change (4xx) in a language the server does not write.
+  ///
+  /// In en, this message translates to:
+  /// **'The password was not changed. Please check your current password and try again.'**
+  String get credentialsChangePasswordRejected;
+
+  /// Title of the dialog shown after the password change.
+  ///
+  /// In en, this message translates to:
+  /// **'Password changed'**
+  String get credentialsChangePasswordSuccessTitle;
+
+  /// Message of the dialog shown after the password change.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new password now applies to your account.'**
+  String get credentialsChangePasswordSuccessMessage;
+
+  /// App bar title of the account information screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Account information'**
+  String get accountInfoTitle;
+
+  /// Shown when an account row is tapped without a session.
+  ///
+  /// In en, this message translates to:
+  /// **'Please log in again.'**
+  String get accountInfoSignInAgain;
+
+  /// Title of the personal information screen and its row.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get userInfoTitle;
+
+  /// Tooltip of the edit button of the personal information screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get userInfoEdit;
+
+  /// Shown when the user could not be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No personal information yet.'**
+  String get userInfoEmpty;
+
+  /// Shown instead of an empty phone number.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get userInfoNotSet;
+
+  /// Title of a success dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Success'**
+  String get commonSuccess;
+
+  /// Title of the dialog shown when a save fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save'**
+  String get commonSaveFailed;
+
+  /// Save button text while the save is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get commonSaving;
+
+  /// Retry button.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get commonRetry;
+
+  /// App bar title of the profile edit screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit information'**
+  String get setUserInfoTitle;
+
+  /// Shown when the profile edit screen cannot read the profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your personal information. Please try again.'**
+  String get setUserInfoLoadFailed;
+
+  /// Shown when the full name is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your full name.'**
+  String get setUserInfoNameRequired;
+
+  /// Shown when the phone number does not match the format.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid phone number (10 digits starting with 0).'**
+  String get setUserInfoPhoneInvalid;
+
+  /// Message of the dialog shown after the profile is saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Your personal information has been saved.'**
+  String get setUserInfoSaved;
+
+  /// Section title on the profile screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Utilities'**
+  String get profileUtilities;
+
+  /// Profile row that opens the money sources sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Money sources'**
+  String get profileMoneySources;
+
+  /// Profile row that opens the linked services screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked services'**
+  String get profileLinkedServices;
+
+  /// Profile row that opens the budget screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Budgets'**
+  String get profileBudget;
+
+  /// Profile row that opens the security menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Security & privacy'**
+  String get profileSecurityPrivacy;
+
+  /// Section title on the profile screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get profileSupport;
+
+  /// Profile row that opens the user guide.
+  ///
+  /// In en, this message translates to:
+  /// **'User guide'**
+  String get profileHelp;
+
+  /// Profile row that opens the feedback form.
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get profileFeedback;
+
+  /// Profile row that opens the about sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'About the app'**
+  String get profileAbout;
+
+  /// Logout row and the confirm button of the logout dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get profileLogout;
+
+  /// Title of the logout confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out?'**
+  String get profileLogoutConfirmTitle;
+
+  /// Message of the logout confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to log out?'**
+  String get profileLogoutConfirmMessage;
+
+  /// Short save button of sheets and dialogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get commonSave;
+
+  /// Title of the notification settings sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification settings'**
+  String get notificationSettingsTitle;
+
+  /// Switch of the notification settings sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Push notifications'**
+  String get notificationSettingsPush;
+
+  /// Switch of the notification settings sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget alerts'**
+  String get notificationSettingsBudgetAlert;
+
+  /// Snackbar after the notification settings are saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification settings saved.'**
+  String get notificationSettingsSaved;
+
+  /// Shown in the money sources sheet without wallets.
+  ///
+  /// In en, this message translates to:
+  /// **'No wallets yet.'**
+  String get moneySourcesEmpty;
+
+  /// Security menu row that opens the activity history.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity history'**
+  String get activityLogTitle;
+
+  /// Subtitle of the activity history row.
+  ///
+  /// In en, this message translates to:
+  /// **'See your recent transactions'**
+  String get activityLogSubtitle;
+
+  /// Title of the activity history sheet with the number of transactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity history ({count})'**
+  String activityLogTitleCount(int count);
+
+  /// Security menu row and title of the PIN dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Create / change PIN'**
+  String get pinSetupTitle;
+
+  /// Subtitle of the PIN row.
+  ///
+  /// In en, this message translates to:
+  /// **'Protect the app with a 4-digit code'**
+  String get pinSetupSubtitle;
+
+  /// Label of the new PIN field.
+  ///
+  /// In en, this message translates to:
+  /// **'New PIN'**
+  String get pinNewLabel;
+
+  /// Label of the PIN confirmation field.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm PIN'**
+  String get pinConfirmLabel;
+
+  /// Shown when the PIN is not 4 digits.
+  ///
+  /// In en, this message translates to:
+  /// **'The PIN must be exactly 4 digits.'**
+  String get pinLengthInvalid;
+
+  /// Shown when the PIN confirmation differs.
+  ///
+  /// In en, this message translates to:
+  /// **'The PINs do not match.'**
+  String get pinMismatch;
+
+  /// Snackbar after the PIN is saved.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN saved.'**
+  String get pinSaved;
+
+  /// User guide topic.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get helpDashboardTitle;
+
+  /// User guide text.
+  ///
+  /// In en, this message translates to:
+  /// **'See your assets, the month\'s income and spending and the cash flow chart.'**
+  String get helpDashboardBody;
+
+  /// User guide topic.
+  ///
+  /// In en, this message translates to:
+  /// **'Ledger'**
+  String get helpLedgerTitle;
+
+  /// User guide text.
+  ///
+  /// In en, this message translates to:
+  /// **'Add, filter and view transactions by day, calendar or month.'**
+  String get helpLedgerBody;
+
+  /// User guide topic.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt scan'**
+  String get helpScanTitle;
+
+  /// User guide text.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the round button in the middle of the navigation bar to scan a receipt with AI.'**
+  String get helpScanBody;
+
+  /// User guide topic.
+  ///
+  /// In en, this message translates to:
+  /// **'AI analysis'**
+  String get helpAiTitle;
+
+  /// User guide text.
+  ///
+  /// In en, this message translates to:
+  /// **'See spending trends and financial habits analysed automatically.'**
+  String get helpAiBody;
+
+  /// User guide topic.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfers'**
+  String get helpTransferTitle;
+
+  /// User guide text.
+  ///
+  /// In en, this message translates to:
+  /// **'Send or receive money by phone number or QR code.'**
+  String get helpTransferBody;
+
+  /// Title of the feedback dialog (a star follows it).
+  ///
+  /// In en, this message translates to:
+  /// **'Rate the app'**
+  String get feedbackTitle;
+
+  /// Text of the feedback dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Your feedback helps us keep improving the app!'**
+  String get feedbackDescription;
+
+  /// Hint of the feedback comment field.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your thoughts or suggestions...'**
+  String get feedbackHint;
+
+  /// Button that closes the feedback dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get feedbackLater;
+
+  /// Button that sends the feedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Send now'**
+  String get feedbackSubmit;
+
+  /// Snackbar after the feedback is sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for your feedback!'**
+  String get feedbackThanks;
+
+  /// Snackbar when the feedback could not be sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send your feedback, please try again later.'**
+  String get feedbackFailed;
+
+  /// Text of the about dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'A smart personal finance app with AI spending analysis.'**
+  String get aboutDescription;
+
+  /// Title of the savings screen and its profile row.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings'**
+  String get savingsTitle;
+
+  /// Snackbar when the savings cannot be loaded; reason is the error text.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your savings. {reason}'**
+  String savingsLoadFailed(String reason);
+
+  /// Snackbar when a goal cannot be deleted; reason is the error text.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete the goal. {reason}'**
+  String savingsDeleteFailed(String reason);
+
+  /// Snackbar after a goal is deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal deleted: {title}'**
+  String savingsDeleted(String title);
+
+  /// Title of the add goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a savings goal'**
+  String get savingsAddTitle;
+
+  /// Submit button of the add goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get savingsAdd;
+
+  /// Field of the add goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal name'**
+  String get savingsGoalName;
+
+  /// Field of the add goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Target amount (₫)'**
+  String get savingsTargetAmount;
+
+  /// Field of the add goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved so far (₫)'**
+  String get savingsSavedAmount;
+
+  /// Field of the add goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline (dd/mm/yyyy)'**
+  String get savingsDeadlineField;
+
+  /// Title of the update goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Update: {title}'**
+  String savingsUpdateTitle(String title);
+
+  /// Field of the update goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount saved (₫)'**
+  String get savingsCurrentAmount;
+
+  /// Label of the savings summary card.
+  ///
+  /// In en, this message translates to:
+  /// **'Total saved'**
+  String get savingsTotalSaved;
+
+  /// Number of savings goals.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 goal} other{{count} goals}}'**
+  String savingsGoalCount(int count);
+
+  /// Total target of the savings summary card.
+  ///
+  /// In en, this message translates to:
+  /// **'Target: {amount}'**
+  String savingsTarget(String amount);
+
+  /// Two-line label of the add goal shortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Add\ngoal'**
+  String get savingsAddGoalAction;
+
+  /// Heading of the goal list.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals'**
+  String get savingsGoalList;
+
+  /// Shown when there is no goal.
+  ///
+  /// In en, this message translates to:
+  /// **'No goals yet.'**
+  String get savingsEmpty;
+
+  /// Hint under the empty goal list.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap \"+\" to create a savings goal.'**
+  String get savingsEmptyHint;
+
+  /// Deadline of a goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Due: {date}'**
+  String savingsDeadline(String date);
+
+  /// Button that opens the update goal dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get savingsUpdate;
 }
 
 class _AppLocalizationsDelegate

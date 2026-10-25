@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/di/injection_container.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/main.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 
@@ -30,6 +31,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(LoginScreen), findsOneWidget);
-    expect(find.text('Đăng nhập'), findsOneWidget);
+    // The language follows the device (no saved setting), so the label is read from the screen's localizations.
+    final loc = AppLocalizations.of(tester.element(find.byType(LoginScreen)))!;
+    expect(find.text(loc.loginSubmit), findsOneWidget);
   });
 }

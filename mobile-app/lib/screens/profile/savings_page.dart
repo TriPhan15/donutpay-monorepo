@@ -14,9 +14,6 @@ class SavingsPage extends StatefulWidget {
 }
 
 class _SavingsPageState extends State<SavingsPage> {
-  static const String _loadFailedPrefix = 'Không tải được sổ tiết kiệm.';
-  static const String _deleteFailedPrefix = 'Không xóa được mục tiêu.';
-
   List<Map<String, dynamic>> _goals = [];
   bool _isLoading = true;
 
@@ -47,7 +44,9 @@ class _SavingsPageState extends State<SavingsPage> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showSnack(
-        '$_loadFailedPrefix ${UserFacingError.messageOf(e, context.loc)}',
+        context.loc.savingsLoadFailed(
+          UserFacingError.messageOf(e, context.loc),
+        ),
       );
     }
   }
@@ -73,16 +72,17 @@ class _SavingsPageState extends State<SavingsPage> {
   }
 
   void _addGoal() {
+    final loc = context.loc;
     showDialog<void>(
       context: context,
       builder: (_) => _SavingFormDialog(
-        title: 'Thêm mục tiêu tiết kiệm',
-        submitLabel: 'Thêm',
-        fields: const [
-          _SavingField('Tên mục tiêu', TextInputType.text),
-          _SavingField('Số tiền mục tiêu (₫)', TextInputType.number),
-          _SavingField('Đã tiết kiệm (₫)', TextInputType.number),
-          _SavingField('Hạn chót (dd/mm/yyyy)', TextInputType.text),
+        title: loc.savingsAddTitle,
+        submitLabel: loc.savingsAdd,
+        fields: [
+          _SavingField(loc.savingsGoalName, TextInputType.text),
+          _SavingField(loc.savingsTargetAmount, TextInputType.number),
+          _SavingField(loc.savingsSavedAmount, TextInputType.number),
+          _SavingField(loc.savingsDeadlineField, TextInputType.text),
         ],
         onSubmit: (values) async {
           final title = values[0].trim();
@@ -103,14 +103,15 @@ class _SavingsPageState extends State<SavingsPage> {
 
   void _editAmount(int index) {
     final goal = _goals[index];
+    final loc = context.loc;
     showDialog<void>(
       context: context,
       builder: (_) => _SavingFormDialog(
-        title: 'Cập nhật: ${goal['title']}',
-        submitLabel: 'Lưu',
+        title: loc.savingsUpdateTitle('${goal['title']}'),
+        submitLabel: loc.commonSave,
         fields: [
           _SavingField(
-            'Số tiền đã tiết kiệm (₫)',
+            loc.savingsCurrentAmount,
             TextInputType.number,
             initialText: ((goal['current'] as num?) ?? 0).toInt().toString(),
           ),
@@ -138,13 +139,15 @@ class _SavingsPageState extends State<SavingsPage> {
       if (!mounted) return;
       setState(() => _goals.insert(index.clamp(0, _goals.length), removed));
       _showSnack(
-        '$_deleteFailedPrefix ${UserFacingError.messageOf(e, context.loc)}',
+        context.loc.savingsDeleteFailed(
+          UserFacingError.messageOf(e, context.loc),
+        ),
       );
       return;
     }
     SessionService.needRefreshAI.value = true;
     if (!mounted) return;
-    _showSnack('Đã xóa mục tiêu: ${removed['title']}');
+    _showSnack(context.loc.savingsDeleted('${removed['title']}'));
   }
 
   @override
@@ -156,9 +159,9 @@ class _SavingsPageState extends State<SavingsPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
-          'Sổ tiết kiệm',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        title: Text(
+          context.loc.savingsTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: [
           IconButton(
@@ -219,9 +222,12 @@ class _SavingsPageState extends State<SavingsPage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Tổng đã tiết kiệm',
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    Text(
+                      context.loc.savingsTotalSaved,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -244,7 +250,7 @@ class _SavingsPageState extends State<SavingsPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${_goals.length} mục tiêu',
+                    context.loc.savingsGoalCount(_goals.length),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -259,7 +265,7 @@ class _SavingsPageState extends State<SavingsPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Mục tiêu: ${_fmtCur.format(_totalTarget)}',
+                  context.loc.savingsTarget(_fmtCur.format(_totalTarget)),
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 Text(
@@ -289,7 +295,9 @@ class _SavingsPageState extends State<SavingsPage> {
   }
 
   Widget _buildActionGrid(ColorScheme colors) {
-    final actions = [(Icons.add_circle_rounded, 'Thêm\nmục tiêu', _addGoal)];
+    final actions = [
+      (Icons.add_circle_rounded, context.loc.savingsAddGoalAction, _addGoal),
+    ];
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -346,13 +354,16 @@ class _SavingsPageState extends State<SavingsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Danh sách mục tiêu',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                context.loc.savingsGoalList,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               if (_goals.isNotEmpty)
                 Text(
-                  '${_goals.length} mục tiêu',
+                  context.loc.savingsGoalCount(_goals.length),
                   style: TextStyle(
                     color: colors.onSurfaceVariant,
                     fontSize: 12,
@@ -378,12 +389,12 @@ class _SavingsPageState extends State<SavingsPage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Chưa có mục tiêu nào.',
+                    context.loc.savingsEmpty,
                     style: TextStyle(color: colors.onSurfaceVariant),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Nhấn "+" để tạo mục tiêu tiết kiệm.',
+                    context.loc.savingsEmptyHint,
                     style: TextStyle(
                       color: colors.onSurfaceVariant,
                       fontSize: 12,
@@ -460,7 +471,9 @@ class _SavingsPageState extends State<SavingsPage> {
                                     if ((g['deadline']?.toString() ?? '')
                                         .isNotEmpty)
                                       Text(
-                                        'Hạn: ${g['deadline']}',
+                                        context.loc.savingsDeadline(
+                                          '${g['deadline']}',
+                                        ),
                                         style: smallStyle,
                                       ),
                                   ],
@@ -518,7 +531,7 @@ class _SavingsPageState extends State<SavingsPage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  'Cập nhật',
+                                  context.loc.savingsUpdate,
                                   style: TextStyle(
                                     color: colors.primary,
                                     fontSize: 11,
@@ -762,7 +775,10 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: Text('Hủy', style: TextStyle(color: colors.onSurfaceVariant)),
+          child: Text(
+            context.loc.dialogCancel,
+            style: TextStyle(color: colors.onSurfaceVariant),
+          ),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(

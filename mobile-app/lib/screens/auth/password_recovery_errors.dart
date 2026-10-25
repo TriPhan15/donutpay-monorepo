@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 
 /// The two requests of the password recovery.
@@ -23,7 +24,8 @@ class PasswordRecoveryErrors {
   };
 
   /// The server's own message when it refused the request (4xx): that is where core-backend words its answer (unknown
-  /// email, wrong or expired OTP, weak password), and a 4xx without one gets the fixed text of [request]. Anything else
+  /// email, wrong or expired OTP, weak password), and a 4xx without one gets the fixed text of [request]. The server
+  /// writes Vietnamese only, so outside it (see [UserFacingError.readsServerMessages]) a 4xx gets that fixed text too. Anything else
   /// gets a fixed text too, so the exception, its stack trace and the request URL (the email travels in the query
   /// string of forgot-password) never reach the screen. The message of a 5xx is not shown either: core-backend fills it
   /// with the raw exception.
@@ -42,8 +44,10 @@ class PasswordRecoveryErrors {
     if (status >= HttpStatus.internalServerError) {
       return loc.passwordRecoveryServerError;
     }
-    return _serverMessageOf(error.response?.data) ??
-        _rejectedMessageOf(request, loc);
+    final serverMessage = UserFacingError.readsServerMessages(loc)
+        ? UserFacingError.serverMessageOf(error.response?.data)
+        : null;
+    return serverMessage ?? _rejectedMessageOf(request, loc);
   }
 
   /// Logs that [request] failed, with the status or the kind of error only: never the email, the OTP or the password,
@@ -53,13 +57,6 @@ class PasswordRecoveryErrors {
         ? '${error.response?.statusCode ?? error.type.name}'
         : '${error.runtimeType}';
     debugPrint('PasswordRecovery: ${request.name} failed ($reason).');
-  }
-
-  static String? _serverMessageOf(Object? body) {
-    final message = body is Map ? body['message'] : null;
-    if (message is! String) return null;
-    final trimmed = message.trim();
-    return trimmed.isEmpty ? null : trimmed;
   }
 
   static String _rejectedMessageOf(

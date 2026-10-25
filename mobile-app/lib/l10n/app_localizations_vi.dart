@@ -450,4 +450,469 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get categoryOtherIncome => 'Thu khác';
+
+  @override
+  String get authMissingInfoTitle => 'Thiếu thông tin';
+
+  @override
+  String get authEmailLabel => 'Email';
+
+  @override
+  String get authEmailHint => 'Nhập địa chỉ email';
+
+  @override
+  String get authPasswordLabel => 'Mật khẩu';
+
+  @override
+  String get authPasswordHint => 'Nhập mật khẩu';
+
+  @override
+  String get authProcessing => 'Đang xử lý...';
+
+  @override
+  String get loginFailedTitle => 'Đăng nhập thất bại';
+
+  @override
+  String get loginWrongCredentials => 'Sai email hoặc mật khẩu!';
+
+  @override
+  String get loginSocialFailed =>
+      'Không đăng nhập được bằng tài khoản mạng xã hội. Vui lòng thử lại.';
+
+  @override
+  String get loginMissingCredentials => 'Vui lòng nhập email và mật khẩu.';
+
+  @override
+  String get loginInvalidResponse =>
+      'Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại.';
+
+  @override
+  String get loginTagline => 'Quản lý tài chính thông minh';
+
+  @override
+  String get loginRememberMe => 'Ghi nhớ đăng nhập';
+
+  @override
+  String get loginForgotPassword => 'Quên mật khẩu?';
+
+  @override
+  String get loginSubmit => 'Đăng nhập';
+
+  @override
+  String get loginNoAccount => 'Chưa có tài khoản? ';
+
+  @override
+  String get loginSignUpNow => 'Đăng ký ngay';
+
+  @override
+  String get loginOrContinueWith => 'Hoặc đăng nhập với';
+
+  @override
+  String get registerTitle => 'Đăng ký';
+
+  @override
+  String get registerHeading => 'Tạo tài khoản';
+
+  @override
+  String get registerDescription =>
+      'Điền thông tin để bắt đầu quản lý tài chính.';
+
+  @override
+  String get registerFullNameLabel => 'Họ và tên';
+
+  @override
+  String get registerFullNameHint => 'Nhập họ và tên';
+
+  @override
+  String get registerPhoneLabel => 'Số điện thoại';
+
+  @override
+  String get registerPhoneHint => 'Nhập số điện thoại';
+
+  @override
+  String get registerSubmit => 'Tạo tài khoản';
+
+  @override
+  String get registerOrContinueWith => 'Hoặc đăng ký với';
+
+  @override
+  String get registerTermsPrefix => 'Bằng việc đăng ký, bạn đồng ý với ';
+
+  @override
+  String get registerTerms => 'Điều khoản';
+
+  @override
+  String get registerTermsAnd => ' và ';
+
+  @override
+  String get registerConditions => 'Điều kiện sử dụng';
+
+  @override
+  String get registerMissingFields =>
+      'Vui lòng nhập đủ thông tin (gồm số điện thoại).';
+
+  @override
+  String get registerWeakPasswordTitle => 'Mật khẩu yếu';
+
+  @override
+  String get registerWeakPasswordMessage => 'Mật khẩu chưa đạt yêu cầu.';
+
+  @override
+  String get registerSuccessTitle => 'Đăng ký thành công';
+
+  @override
+  String get registerSuccessMessage =>
+      'Tài khoản đã được tạo. Vui lòng đăng nhập.';
+
+  @override
+  String get registerFailedTitle => 'Đăng ký thất bại';
+
+  @override
+  String get registerSocialFailed =>
+      'Không đăng ký được bằng tài khoản mạng xã hội. Vui lòng thử lại.';
+
+  @override
+  String get registerPasswordNeeds => 'Mật khẩu cần:';
+
+  @override
+  String registerRuleMinLength(int min) {
+    return 'Ít nhất $min ký tự';
+  }
+
+  @override
+  String get registerRuleUppercase => 'Chữ viết hoa (A-Z)';
+
+  @override
+  String get registerRuleLowercase => 'Chữ viết thường (a-z)';
+
+  @override
+  String get registerRuleDigit => 'Chữ số (0-9)';
+
+  @override
+  String get registerRuleSpecial => 'Ký tự đặc biệt (!@#...)';
+
+  @override
+  String get commonSaveChanges => 'Lưu thay đổi';
+
+  @override
+  String get credentialsTitle => 'Tài khoản';
+
+  @override
+  String get credentialsNoData => 'Chưa có dữ liệu tài khoản.';
+
+  @override
+  String get credentialsTapToEdit => 'Chạm vào dòng cần sửa.';
+
+  @override
+  String get credentialsUsername => 'Tên đăng nhập';
+
+  @override
+  String get credentialsUsernameEmail => 'Tên đăng nhập (Email)';
+
+  @override
+  String get credentialsEditUsername => 'Chỉnh sửa tên đăng nhập';
+
+  @override
+  String get credentialsUsernameRequired => 'Vui lòng nhập tên đăng nhập.';
+
+  @override
+  String get credentialsUsernameChangeUnsupported =>
+      'Máy chủ chưa hỗ trợ đổi tên đăng nhập.';
+
+  @override
+  String get credentialsChangePassword => 'Đổi mật khẩu';
+
+  @override
+  String get credentialsOldPassword => 'Mật khẩu cũ';
+
+  @override
+  String get credentialsOldPasswordRequired => 'Vui lòng nhập mật khẩu cũ.';
+
+  @override
+  String get credentialsPasswordMismatch => 'Mật khẩu mới không khớp.';
+
+  @override
+  String get credentialsChangePasswordFailed => 'Đổi mật khẩu thất bại';
+
+  @override
+  String get credentialsChangePasswordRejected =>
+      'Không đổi được mật khẩu. Vui lòng kiểm tra mật khẩu cũ và thử lại.';
+
+  @override
+  String get credentialsChangePasswordSuccessTitle => 'Đổi mật khẩu thành công';
+
+  @override
+  String get credentialsChangePasswordSuccessMessage =>
+      'Mật khẩu mới đã được áp dụng cho tài khoản của bạn.';
+
+  @override
+  String get accountInfoTitle => 'Thông tin tài khoản';
+
+  @override
+  String get accountInfoSignInAgain => 'Vui lòng đăng nhập lại.';
+
+  @override
+  String get userInfoTitle => 'Thông tin cá nhân';
+
+  @override
+  String get userInfoEdit => 'Chỉnh sửa';
+
+  @override
+  String get userInfoEmpty => 'Chưa có thông tin cá nhân.';
+
+  @override
+  String get userInfoNotSet => 'Chưa cập nhật';
+
+  @override
+  String get commonSuccess => 'Thành công';
+
+  @override
+  String get commonSaveFailed => 'Lưu thất bại';
+
+  @override
+  String get commonSaving => 'Đang lưu...';
+
+  @override
+  String get commonRetry => 'Thử lại';
+
+  @override
+  String get setUserInfoTitle => 'Thiết lập thông tin';
+
+  @override
+  String get setUserInfoLoadFailed =>
+      'Không tải được thông tin cá nhân. Vui lòng thử lại.';
+
+  @override
+  String get setUserInfoNameRequired => 'Vui lòng nhập họ và tên.';
+
+  @override
+  String get setUserInfoPhoneInvalid =>
+      'Số điện thoại không hợp lệ (10 số, bắt đầu bằng 0).';
+
+  @override
+  String get setUserInfoSaved => 'Đã lưu thông tin cá nhân.';
+
+  @override
+  String get profileUtilities => 'Tiện ích';
+
+  @override
+  String get profileMoneySources => 'Nguồn tiền';
+
+  @override
+  String get profileLinkedServices => 'Dịch vụ liên kết';
+
+  @override
+  String get profileBudget => 'Ngân sách';
+
+  @override
+  String get profileSecurityPrivacy => 'Bảo mật & Quyền riêng tư';
+
+  @override
+  String get profileSupport => 'Hỗ trợ';
+
+  @override
+  String get profileHelp => 'Hướng dẫn sử dụng';
+
+  @override
+  String get profileFeedback => 'Gửi phản hồi';
+
+  @override
+  String get profileAbout => 'Về ứng dụng';
+
+  @override
+  String get profileLogout => 'Đăng xuất';
+
+  @override
+  String get profileLogoutConfirmTitle => 'Đăng xuất?';
+
+  @override
+  String get profileLogoutConfirmMessage => 'Bạn có chắc chắn muốn thoát?';
+
+  @override
+  String get commonSave => 'Lưu';
+
+  @override
+  String get notificationSettingsTitle => 'Cài đặt thông báo';
+
+  @override
+  String get notificationSettingsPush => 'Thông báo đẩy';
+
+  @override
+  String get notificationSettingsBudgetAlert => 'Cảnh báo ngân sách';
+
+  @override
+  String get notificationSettingsSaved => 'Đã lưu cài đặt thông báo.';
+
+  @override
+  String get moneySourcesEmpty => 'Chưa có ví nào.';
+
+  @override
+  String get activityLogTitle => 'Lịch sử hoạt động';
+
+  @override
+  String get activityLogSubtitle => 'Xem các giao dịch gần đây';
+
+  @override
+  String activityLogTitleCount(int count) {
+    return 'Lịch sử hoạt động ($count)';
+  }
+
+  @override
+  String get pinSetupTitle => 'Tạo / Đổi mã PIN';
+
+  @override
+  String get pinSetupSubtitle => 'Bảo vệ ứng dụng bằng mã 4 số';
+
+  @override
+  String get pinNewLabel => 'Mã PIN mới';
+
+  @override
+  String get pinConfirmLabel => 'Xác nhận mã PIN';
+
+  @override
+  String get pinLengthInvalid => 'Mã PIN phải đúng 4 số.';
+
+  @override
+  String get pinMismatch => 'Mã PIN không khớp.';
+
+  @override
+  String get pinSaved => 'Đã lưu mã PIN thành công!';
+
+  @override
+  String get helpDashboardTitle => 'Dashboard';
+
+  @override
+  String get helpDashboardBody =>
+      'Xem tổng quan tài sản, thu chi tháng và biểu đồ dòng tiền.';
+
+  @override
+  String get helpLedgerTitle => 'Sổ sách';
+
+  @override
+  String get helpLedgerBody =>
+      'Thêm, lọc và xem chi tiết giao dịch theo ngày, lịch hoặc tháng.';
+
+  @override
+  String get helpScanTitle => 'Quét hóa đơn';
+
+  @override
+  String get helpScanBody =>
+      'Nhấn nút tròn giữa thanh điều hướng để quét hóa đơn bằng AI.';
+
+  @override
+  String get helpAiTitle => 'Phân tích AI';
+
+  @override
+  String get helpAiBody =>
+      'Xem xu hướng chi tiêu và mẫu hành vi tài chính được phân tích tự động.';
+
+  @override
+  String get helpTransferTitle => 'Chuyển tiền';
+
+  @override
+  String get helpTransferBody =>
+      'Chuyển/nhận tiền qua số điện thoại hoặc mã QR.';
+
+  @override
+  String get feedbackTitle => 'Đánh giá ứng dụng';
+
+  @override
+  String get feedbackDescription =>
+      'Ý kiến của bạn sẽ giúp hệ thống ngày càng hoàn thiện hơn!';
+
+  @override
+  String get feedbackHint => 'Nhập cảm nhận hoặc góp ý...';
+
+  @override
+  String get feedbackLater => 'Để sau';
+
+  @override
+  String get feedbackSubmit => 'Gửi ngay';
+
+  @override
+  String get feedbackThanks => 'Cảm ơn bạn đã gửi đánh giá góp ý!';
+
+  @override
+  String get feedbackFailed => 'Gửi đánh giá thất bại, vui lòng thử lại sau.';
+
+  @override
+  String get aboutDescription =>
+      'Ứng dụng quản lý tài chính cá nhân thông minh với AI phân tích chi tiêu.';
+
+  @override
+  String get savingsTitle => 'Sổ tiết kiệm';
+
+  @override
+  String savingsLoadFailed(String reason) {
+    return 'Không tải được sổ tiết kiệm. $reason';
+  }
+
+  @override
+  String savingsDeleteFailed(String reason) {
+    return 'Không xóa được mục tiêu. $reason';
+  }
+
+  @override
+  String savingsDeleted(String title) {
+    return 'Đã xóa mục tiêu: $title';
+  }
+
+  @override
+  String get savingsAddTitle => 'Thêm mục tiêu tiết kiệm';
+
+  @override
+  String get savingsAdd => 'Thêm';
+
+  @override
+  String get savingsGoalName => 'Tên mục tiêu';
+
+  @override
+  String get savingsTargetAmount => 'Số tiền mục tiêu (₫)';
+
+  @override
+  String get savingsSavedAmount => 'Đã tiết kiệm (₫)';
+
+  @override
+  String get savingsDeadlineField => 'Hạn chót (dd/mm/yyyy)';
+
+  @override
+  String savingsUpdateTitle(String title) {
+    return 'Cập nhật: $title';
+  }
+
+  @override
+  String get savingsCurrentAmount => 'Số tiền đã tiết kiệm (₫)';
+
+  @override
+  String get savingsTotalSaved => 'Tổng đã tiết kiệm';
+
+  @override
+  String savingsGoalCount(int count) {
+    return '$count mục tiêu';
+  }
+
+  @override
+  String savingsTarget(String amount) {
+    return 'Mục tiêu: $amount';
+  }
+
+  @override
+  String get savingsAddGoalAction => 'Thêm\nmục tiêu';
+
+  @override
+  String get savingsGoalList => 'Danh sách mục tiêu';
+
+  @override
+  String get savingsEmpty => 'Chưa có mục tiêu nào.';
+
+  @override
+  String get savingsEmptyHint => 'Nhấn \"+\" để tạo mục tiêu tiết kiệm.';
+
+  @override
+  String savingsDeadline(String date) {
+    return 'Hạn: $date';
+  }
+
+  @override
+  String get savingsUpdate => 'Cập nhật';
 }

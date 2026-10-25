@@ -19,10 +19,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  static const String _registerFailedTitle = 'Đăng ký thất bại';
-  static const String _socialSignUpFailed =
-      'Không đăng ký được bằng tài khoản mạng xã hội. Vui lòng thử lại.';
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
@@ -71,8 +67,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone.isEmpty) {
       await AppDialog.error(
         context,
-        title: 'Thiếu thông tin',
-        message: 'Vui lòng nhập đủ thông tin (gồm số điện thoại).',
+        title: context.loc.authMissingInfoTitle,
+        message: context.loc.registerMissingFields,
       );
       return;
     }
@@ -81,8 +77,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_isPasswordValid() || policyError != null) {
       await AppDialog.error(
         context,
-        title: 'Mật khẩu yếu',
-        message: policyError ?? 'Mật khẩu chưa đạt yêu cầu.',
+        title: context.loc.registerWeakPasswordTitle,
+        message: policyError ?? context.loc.registerWeakPasswordMessage,
       );
       return;
     }
@@ -97,8 +93,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       await AppDialog.success(
         context,
-        title: 'Đăng ký thành công',
-        message: 'Tài khoản đã được tạo. Vui lòng đăng nhập.',
+        title: context.loc.registerSuccessTitle,
+        message: context.loc.registerSuccessMessage,
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -107,7 +103,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       await AppDialog.error(
         context,
-        title: _registerFailedTitle,
+        title: context.loc.registerFailedTitle,
         message: UserFacingError.messageOf(e, context.loc),
       );
     }
@@ -144,11 +140,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       await AppDialog.error(
         context,
-        title: _registerFailedTitle,
+        title: context.loc.registerFailedTitle,
         message: UserFacingError.messageOf(
           e,
           context.loc,
-          fallback: _socialSignUpFailed,
+          fallback: context.loc.registerSocialFailed,
         ),
       );
     }
@@ -169,9 +165,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final semantic = theme.semanticColors;
+    final loc = context.loc;
     // The Scaffold and its app bar take the page colour of the theme; labels and fields keep the text colours it gives.
     return Scaffold(
-      appBar: AppBar(title: const Text('Đăng ký')),
+      appBar: AppBar(title: Text(loc.registerTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
@@ -179,37 +176,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 8),
-              const Text(
-                'Tạo tài khoản',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              Text(
+                loc.registerHeading,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Điền thông tin để bắt đầu quản lý tài chính.',
+                loc.registerDescription,
                 style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
               ),
               const SizedBox(height: 28),
-              _label('Họ và tên'),
-              _input(controller: _fullNameController, hint: 'Nhập họ và tên'),
+              _label(loc.registerFullNameLabel),
+              _input(
+                controller: _fullNameController,
+                hint: loc.registerFullNameHint,
+              ),
               const SizedBox(height: 18),
-              _label('Email'),
+              _label(loc.authEmailLabel),
               _input(
                 controller: _emailController,
-                hint: 'Nhập địa chỉ email',
+                hint: loc.authEmailHint,
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 18),
-              _label('Số điện thoại'),
+              _label(loc.registerPhoneLabel),
               _input(
                 controller: _phoneController,
-                hint: 'Nhập số điện thoại',
+                hint: loc.registerPhoneHint,
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 18),
-              _label('Mật khẩu'),
+              _label(loc.authPasswordLabel),
               _input(
                 controller: _passwordController,
-                hint: 'Nhập mật khẩu',
+                hint: loc.authPasswordHint,
                 obscure: _obscure,
                 focusNode: _passwordFocus,
                 onChanged: _checkPassword,
@@ -232,9 +235,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     : const SizedBox(width: double.infinity),
               ),
               const SizedBox(height: 28),
-              PrimaryButton(text: 'Tạo tài khoản', onPressed: _handleRegister),
+              PrimaryButton(
+                text: loc.registerSubmit,
+                onPressed: _handleRegister,
+              ),
               const SizedBox(height: 24),
-              _orDivider(colors, 'Hoặc đăng ký với'),
+              _orDivider(colors, loc.registerOrContinueWith),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -263,22 +269,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Text.rich(
                   TextSpan(
-                    text: 'Bằng việc đăng ký, bạn đồng ý với ',
+                    text: loc.registerTermsPrefix,
                     style: TextStyle(
                       color: colors.onSurfaceVariant,
                       fontSize: 12,
                     ),
                     children: [
                       TextSpan(
-                        text: 'Điều khoản',
+                        text: loc.registerTerms,
                         style: TextStyle(
                           color: colors.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const TextSpan(text: ' và '),
+                      TextSpan(text: loc.registerTermsAnd),
                       TextSpan(
-                        text: 'Điều kiện sử dụng',
+                        text: loc.registerConditions,
                         style: TextStyle(
                           color: colors.primary,
                           fontWeight: FontWeight.w600,
@@ -299,6 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   /// The password rules on a theme card (surface colour, no shadow).
   Widget _buildChecklist(ColorScheme colors, SemanticColors semantic) {
+    final loc = context.loc;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 16),
@@ -307,29 +314,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Mật khẩu cần:',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          Text(
+            loc.registerPasswordNeeds,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           _conditionRow(
             colors,
             semantic,
-            'Ít nhất ${PasswordPolicy.minLength} ký tự',
+            loc.registerRuleMinLength(PasswordPolicy.minLength),
             _hasMinLength,
           ),
-          _conditionRow(colors, semantic, 'Chữ viết hoa (A-Z)', _hasUppercase),
           _conditionRow(
             colors,
             semantic,
-            'Chữ viết thường (a-z)',
+            loc.registerRuleUppercase,
+            _hasUppercase,
+          ),
+          _conditionRow(
+            colors,
+            semantic,
+            loc.registerRuleLowercase,
             _hasLowercase,
           ),
-          _conditionRow(colors, semantic, 'Chữ số (0-9)', _hasNumber),
+          _conditionRow(colors, semantic, loc.registerRuleDigit, _hasNumber),
           _conditionRow(
             colors,
             semantic,
-            'Ký tự đặc biệt (!@#...)',
+            loc.registerRuleSpecial,
             _hasSpecialChar,
           ),
         ],

@@ -107,9 +107,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _logout() async {
     final confirmed = await AppDialog.confirm(
       context,
-      title: 'Đăng xuất?',
-      message: 'Bạn có chắc chắn muốn thoát?',
-      confirmText: 'Đăng xuất',
+      title: context.loc.profileLogoutConfirmTitle,
+      message: context.loc.profileLogoutConfirmMessage,
+      confirmText: context.loc.profileLogout,
       danger: true,
     );
     if (!confirmed || !mounted) return;
@@ -119,7 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
       await SocialAuthService.instance.signOut();
     } catch (e) {
       // Both steps are best effort: whatever fails, the local sign-out below must still happen.
-      debugPrint('Đăng xuất: bước phía server/mạng xã hội thất bại: $e');
+      debugPrint('Logout: the server or social sign-out step failed: $e');
     }
     await SessionService.clearSession();
 
@@ -145,9 +145,9 @@ class _ProfilePageState extends State<ProfilePage> {
       return _buildSkeletonLoading(colors);
     }
 
-    final name = _user?.fullName ?? 'Người dùng';
-    final email = _user?.email ?? '';
     final loc = context.loc;
+    final name = _user?.fullName ?? loc.defaultUserName;
+    final email = _user?.email ?? '';
     final themeMode = context.select(
       (ThemeCubit cubit) => cubit.state.themeMode,
     );
@@ -171,12 +171,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     _buildSection(
                       colors,
-                      title: 'Tài khoản',
+                      title: loc.credentialsTitle,
                       icon: Icons.manage_accounts_rounded,
                       items: [
                         _SectionItem(
                           icon: Icons.person_rounded,
-                          label: 'Thông tin tài khoản',
+                          label: loc.accountInfoTitle,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -189,12 +189,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildSection(
                       colors,
-                      title: 'Tiện ích',
+                      title: loc.profileUtilities,
                       icon: Icons.widgets_rounded,
                       items: [
                         _SectionItem(
                           icon: Icons.account_balance_rounded,
-                          label: 'Nguồn tiền',
+                          label: loc.profileMoneySources,
                           onTap: () => ProfileBottomSheets.showBankSources(
                             context,
                             _wallets,
@@ -202,7 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _SectionItem(
                           icon: Icons.link_rounded,
-                          label: 'Dịch vụ liên kết',
+                          label: loc.profileLinkedServices,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -212,7 +212,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _SectionItem(
                           icon: Icons.savings_rounded,
-                          label: 'Sổ tiết kiệm',
+                          label: loc.savingsTitle,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -222,7 +222,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _SectionItem(
                           icon: Icons.pie_chart_rounded,
-                          label: 'Ngân sách',
+                          label: loc.profileBudget,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -235,7 +235,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildSection(
                       colors,
-                      title: 'Cài đặt',
+                      title: loc.settings,
                       icon: Icons.settings_rounded,
                       items: [
                         _SectionItem(
@@ -246,7 +246,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _SectionItem(
                           icon: Icons.notifications_rounded,
-                          label: 'Thông báo',
+                          label: loc.notificationsTitle,
                           onTap: () =>
                               ProfileBottomSheets.showNotificationSettings(
                                 context,
@@ -254,7 +254,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _SectionItem(
                           icon: Icons.lock_rounded,
-                          label: 'Bảo mật & Quyền riêng tư',
+                          label: loc.profileSecurityPrivacy,
                           onTap: () => ProfileBottomSheets.showSecurityMenu(
                             context,
                             _recentTransactions,
@@ -271,23 +271,23 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     _buildSection(
                       colors,
-                      title: 'Hỗ trợ',
+                      title: loc.profileSupport,
                       icon: Icons.help_rounded,
                       items: [
                         _SectionItem(
                           icon: Icons.help_outline_rounded,
-                          label: 'Hướng dẫn sử dụng',
+                          label: loc.profileHelp,
                           onTap: () => ProfileBottomSheets.showHelp(context),
                         ),
                         _SectionItem(
                           icon: Icons.feedback_rounded,
-                          label: 'Gửi phản hồi',
+                          label: loc.profileFeedback,
                           onTap: () =>
                               ProfileBottomSheets.showFeedback(context),
                         ),
                         _SectionItem(
                           icon: Icons.info_outline_rounded,
-                          label: 'Về ứng dụng',
+                          label: loc.profileAbout,
                           subtitle: 'v1.0.0',
                           onTap: () => ProfileBottomSheets.showAbout(context),
                         ),
@@ -302,7 +302,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       items: [
                         _SectionItem(
                           icon: Icons.logout_rounded,
-                          label: 'Đăng xuất',
+                          label: loc.profileLogout,
                           color: colors.error,
                           onTap: _logout,
                         ),
@@ -328,7 +328,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Expanded(
                 child: Text(
-                  'Cá nhân',
+                  context.loc.navProfile,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 18,

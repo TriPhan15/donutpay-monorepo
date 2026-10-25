@@ -40,16 +40,26 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  Future<void> openPasswordForm(WidgetTester tester) async {
+  Future<void> openPasswordForm(
+    WidgetTester tester, {
+    Locale locale = const Locale('vi'),
+  }) async {
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      const MaterialApp(home: AccountCredentialsScreen(userId: 1)),
+      MaterialApp(
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const AccountCredentialsScreen(userId: 1),
+      ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mật khẩu'));
+    await tester.tap(
+      find.text(lookupAppLocalizations(locale).authPasswordLabel),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -165,6 +175,40 @@ void main() {
         );
         expect(oldField.controller!.text, 'WrongPass1');
         expect(SessionService.currentUserId, 1);
+      },
+    );
+
+    testWidgets(
+      'in English a refusal shows the app text: the server message is Vietnamese only',
+      (tester) async {
+        final en = lookupAppLocalizations(const Locale('en'));
+        backend.on(
+          'PUT',
+          _changePasswordPath,
+          (_) => jsonResponse(400, {
+            'code': 400,
+            'message': 'Mật khẩu cũ không chính xác',
+          }),
+        );
+        await openPasswordForm(tester, locale: const Locale('en'));
+        await tester.enterText(
+          find.widgetWithText(TextField, en.credentialsOldPassword),
+          'WrongPass1',
+        );
+        await tester.enterText(
+          find.widgetWithText(TextField, en.resetPasswordNewPasswordLabel),
+          _newPassword,
+        );
+        await tester.enterText(
+          find.widgetWithText(TextField, en.resetPasswordConfirmPasswordLabel),
+          _newPassword,
+        );
+        await tester.tap(find.text(en.commonSaveChanges));
+        await tester.pumpAndSettle();
+
+        expect(find.text(en.credentialsChangePasswordFailed), findsOneWidget);
+        expect(find.text(en.credentialsChangePasswordRejected), findsOneWidget);
+        expect(find.text('Mật khẩu cũ không chính xác'), findsNothing);
       },
     );
 

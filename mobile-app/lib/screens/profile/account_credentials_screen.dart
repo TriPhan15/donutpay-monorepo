@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -27,13 +29,6 @@ class AccountCredentialsScreen extends StatefulWidget {
 class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
   /// Shown instead of the real password: the server never sends it.
   static const String _serverPasswordMask = '********';
-  static const String _changePasswordFailedTitle = 'Đổi mật khẩu thất bại';
-  static const String _sessionExpiredMessage =
-      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
-  static const String _noConnectionMessage =
-      'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';
-  static const String _genericFailureMessage =
-      'Đã xảy ra lỗi. Vui lòng thử lại.';
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -96,13 +91,13 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên đăng nhập.')),
+        SnackBar(content: Text(context.loc.credentialsUsernameRequired)),
       );
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Máy chủ chưa hỗ trợ đổi tên đăng nhập.')),
+      SnackBar(content: Text(context.loc.credentialsUsernameChangeUnsupported)),
     );
   }
 
@@ -115,27 +110,24 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
 
     if (currentPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập mật khẩu cũ.')),
+        SnackBar(content: Text(context.loc.credentialsOldPasswordRequired)),
       );
       return;
     }
     if (newPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập mật khẩu mới.')),
+        SnackBar(content: Text(context.loc.resetPasswordPasswordRequired)),
       );
       return;
     }
     if (confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng xác nhận mật khẩu mới.')),
+        SnackBar(content: Text(context.loc.resetPasswordConfirmRequired)),
       );
       return;
     }
     // The server never sends the password, so only the server can tell that the old one is wrong.
-    final policyError = PasswordPolicy.validate(
-      newPassword,
-      context.locOrDefault,
-    );
+    final policyError = PasswordPolicy.validate(newPassword, context.loc);
     if (policyError != null) {
       ScaffoldMessenger.of(
         context,
@@ -143,9 +135,9 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
       return;
     }
     if (newPassword != confirmPassword) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Mật khẩu mới không khớp.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.loc.credentialsPasswordMismatch)),
+      );
       return;
     }
 
@@ -165,8 +157,8 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
     if (SessionService.currentUserId == null) {
       await AppDialog.error(
         context,
-        title: _changePasswordFailedTitle,
-        message: _sessionExpiredMessage,
+        title: context.loc.credentialsChangePasswordFailed,
+        message: context.loc.errorSessionExpired,
       );
       return;
     }
@@ -177,12 +169,12 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
         newPassword: newPassword,
       );
     } catch (e) {
-      debugPrint('Đổi mật khẩu thất bại: $e');
+      UserFacingError.log('Change password', e);
       if (!mounted) return;
       await AppDialog.error(
         context,
-        title: _changePasswordFailedTitle,
-        message: _messageOf(e),
+        title: context.loc.credentialsChangePasswordFailed,
+        message: _messageOf(e, context.loc),
       );
       return;
     }
@@ -191,26 +183,22 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
     setState(() => _editingField = null);
     await AppDialog.success(
       context,
-      title: 'Đổi mật khẩu thành công',
-      message: 'Mật khẩu mới đã được áp dụng cho tài khoản của bạn.',
+      title: context.loc.credentialsChangePasswordSuccessTitle,
+      message: context.loc.credentialsChangePasswordSuccessMessage,
     );
   }
 
-  static String _messageOf(Object error) {
-    if (error is! DioException) return _genericFailureMessage;
-
-    final status = error.response?.statusCode;
+  /// 401 and 403 mean the token is gone, whatever the server wrote; anything else follows [UserFacingError.messageOf].
+  static String _messageOf(Object error, AppLocalizations loc) {
+    final status = error is DioException ? error.response?.statusCode : null;
     if (status == HttpStatus.unauthorized || status == HttpStatus.forbidden) {
-      return _sessionExpiredMessage;
+      return loc.errorSessionExpired;
     }
-    final data = error.response?.data;
-    final serverMessage = (data is Map ? data['message'] : null)
-        ?.toString()
-        .trim();
-    if (serverMessage != null && serverMessage.isNotEmpty) return serverMessage;
-    return error.response == null
-        ? _noConnectionMessage
-        : _genericFailureMessage;
+    return UserFacingError.messageOf(
+      error,
+      loc,
+      rejectedMessage: loc.credentialsChangePasswordRejected,
+    );
   }
 
   Widget _buildEditableInfoRow(
@@ -250,16 +238,17 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
   Widget build(BuildContext context) {
     final user = _user;
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
 
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(title: const Text('Tài khoản')),
+      appBar: AppBar(title: Text(loc.credentialsTitle)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : (user == null)
           ? Center(
               child: Text(
-                'Chưa có dữ liệu tài khoản.',
+                loc.credentialsNoData,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
             )
@@ -273,7 +262,7 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Chạm vào dòng cần sửa.',
+                  loc.credentialsTapToEdit,
                   style: TextStyle(
                     fontSize: 16,
                     color: colors.onSurfaceVariant,
@@ -287,7 +276,7 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
                     children: [
                       _buildEditableInfoRow(
                         colors,
-                        label: 'Tên đăng nhập',
+                        label: loc.credentialsUsername,
                         value: user.email,
                         onTap: () => _startEdit(_EditingField.email),
                       ),
@@ -295,7 +284,7 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
                       const Divider(height: 1),
                       _buildEditableInfoRow(
                         colors,
-                        label: 'Mật khẩu',
+                        label: loc.authPasswordLabel,
                         value: _serverPasswordMask,
                         onTap: () => _startEdit(_EditingField.password),
                       ),
@@ -304,9 +293,12 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
                 ),
                 if (_editingField == _EditingField.password) ...[
                   const SizedBox(height: 24),
-                  const Text(
-                    'Đổi mật khẩu',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  Text(
+                    loc.credentialsChangePassword,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -317,24 +309,30 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
                 ],
                 if (_editingField == _EditingField.email) ...[
                   const SizedBox(height: 24),
-                  const Text(
-                    'Chỉnh sửa tên đăng nhập',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  Text(
+                    loc.credentialsEditUsername,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   CustomTextField(
                     controller: _emailController,
-                    label: 'Tên đăng nhập (Email)',
+                    label: loc.credentialsUsernameEmail,
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 20),
-                  PrimaryButton(text: 'Lưu thay đổi', onPressed: _saveEmail),
+                  PrimaryButton(
+                    text: loc.commonSaveChanges,
+                    onPressed: _saveEmail,
+                  ),
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: _cancelEdit,
                     child: Text(
-                      'Hủy',
+                      loc.dialogCancel,
                       style: TextStyle(color: colors.onSurfaceVariant),
                     ),
                   ),
@@ -390,11 +388,12 @@ class _PasswordChangeFormState extends State<_PasswordChangeForm> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = context.loc;
     return Column(
       children: [
         CustomTextField(
           controller: _currentController,
-          label: 'Mật khẩu cũ',
+          label: loc.credentialsOldPassword,
           isPassword: true,
           obscureText: _obscureCurrent,
           obscuringCharacter: '*',
@@ -408,7 +407,7 @@ class _PasswordChangeFormState extends State<_PasswordChangeForm> {
         const SizedBox(height: 12),
         CustomTextField(
           controller: _newController,
-          label: 'Mật khẩu mới',
+          label: loc.resetPasswordNewPasswordLabel,
           isPassword: true,
           obscureText: _obscureNew,
           obscuringCharacter: '*',
@@ -420,7 +419,7 @@ class _PasswordChangeFormState extends State<_PasswordChangeForm> {
         const SizedBox(height: 12),
         CustomTextField(
           controller: _confirmController,
-          label: 'Xác nhận mật khẩu mới',
+          label: loc.resetPasswordConfirmPasswordLabel,
           isPassword: true,
           obscureText: _obscureConfirm,
           obscuringCharacter: '*',
@@ -433,14 +432,14 @@ class _PasswordChangeFormState extends State<_PasswordChangeForm> {
         ),
         const SizedBox(height: 20),
         PrimaryButton(
-          text: 'Lưu thay đổi',
+          text: loc.commonSaveChanges,
           onPressed: _isLoading ? () {} : _handleSave,
         ),
         const SizedBox(height: 8),
         TextButton(
           onPressed: widget.onCancel,
           child: Text(
-            'Hủy',
+            loc.dialogCancel,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
