@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
@@ -114,6 +115,9 @@ Future<void> _showPage(WidgetTester tester, PickDateRange? pickDateRange) {
   addTearDown(tester.view.reset);
   return tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('vi'),
       home: pickDateRange == null
           ? const AITabPage()
           : AITabPage(pickDateRange: pickDateRange),

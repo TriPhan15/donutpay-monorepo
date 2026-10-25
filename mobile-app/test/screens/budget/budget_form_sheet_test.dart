@@ -25,6 +25,9 @@ Future<void> _openSheet(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('vi'),
       home: Builder(
         builder: (context) => Scaffold(
           body: Center(

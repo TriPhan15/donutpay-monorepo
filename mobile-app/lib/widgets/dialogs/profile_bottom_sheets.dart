@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -68,11 +69,6 @@ class ProfileBottomSheets {
   }
 
   static void showBankSources(BuildContext context, List<WalletModel> wallets) {
-    final formatCurrency = NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: '₫',
-      decimalDigits: 0,
-    );
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -111,7 +107,11 @@ class ProfileBottomSheets {
                       ),
                       title: Text(w.name),
                       trailing: Text(
-                        formatCurrency.format(w.balance),
+                        CurrencyHelper.formatVND(
+                          w.balance,
+                          ctx.loc,
+                          showSign: w.balance < 0,
+                        ),
                         style: balanceStyle,
                       ),
                     ),
@@ -128,11 +128,6 @@ class ProfileBottomSheets {
     BuildContext context,
     List<TransactionModel> recentTransactions,
   ) {
-    final formatCurrency = NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: 'đ',
-      decimalDigits: 0,
-    );
     final formatDate = DateFormat('dd/MM/yyyy HH:mm');
     showModalBottomSheet(
       context: context,
@@ -184,7 +179,7 @@ class ProfileBottomSheets {
                           style: dateStyle,
                         ),
                         trailing: Text(
-                          '${tx.isExpense ? "-" : "+"} ${formatCurrency.format(tx.amount)}',
+                          '${tx.isExpense ? "-" : "+"} ${CurrencyHelper.formatVND(tx.amount, ctx.loc, showSign: false)}',
                           style: tx.isExpense ? expenseStyle : incomeStyle,
                         ),
                       );

@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
@@ -16,15 +16,6 @@ import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 /// alerts already shown from coming back, and the calls are queued so that two screens loading at the same moment
 /// (the home screen and the ledger live side by side in the tab bar) never open two dialogs.
 class BudgetAlertPresenter {
-  static const String _warningTitle = 'Sắp chạm hạn mức ngân sách';
-  static const String _exceededTitle = 'Đã vượt ngân sách';
-
-  static final NumberFormat _money = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  );
-
   /// The last call in the queue; null while nobody has asked yet.
   static Future<void>? _previous;
 
@@ -72,12 +63,21 @@ class BudgetAlertPresenter {
     final saved = tracker.markShown(userId, alerts);
 
     alerts.sort((a, b) => b.level.index.compareTo(a.level.index));
+    // The texts follow the language the app shows right now.
     final loc = context.locOrDefault;
     final message = alerts.map((alert) => _lineOf(alert, loc)).join('\n');
     if (alerts.first.level == BudgetAlertLevel.exceeded) {
-      await AppDialog.error(context, title: _exceededTitle, message: message);
+      await AppDialog.error(
+        context,
+        title: loc.budgetAlertExceededTitle,
+        message: message,
+      );
     } else {
-      await AppDialog.warning(context, title: _warningTitle, message: message);
+      await AppDialog.warning(
+        context,
+        title: loc.budgetAlertWarningTitle,
+        message: message,
+      );
     }
     await saved;
   }
@@ -88,14 +88,21 @@ class BudgetAlertPresenter {
     final name = budget.categoryLabel(loc);
     final period = BudgetPeriodType.label(loc, budget.periodType).toLowerCase();
     final amounts =
-        '${_money.format(progress.spent)} / ${_money.format(progress.limit)}';
+        '${_money(loc, progress.spent)} / ${_money(loc, progress.limit)}';
+    final percent = '${progress.percentLabel}';
     return switch (alert.level) {
-      BudgetAlertLevel.exceeded =>
-        '• $name (theo $period): đã vượt hạn mức — $amounts (${progress.percentLabel}%)',
-      _ =>
-        '• $name (theo $period): đã dùng ${progress.percentLabel}% hạn mức — $amounts',
+      BudgetAlertLevel.exceeded => loc.budgetAlertExceededLine(
+        name,
+        period,
+        amounts,
+        percent,
+      ),
+      _ => loc.budgetAlertWarningLine(name, period, amounts, percent),
     };
   }
+
+  static String _money(AppLocalizations loc, double amount) =>
+      CurrencyHelper.formatVND(amount, loc, showSign: false);
 
   /// Forgets the queue, so a dialog left open by one test cannot hold back the next.
   @visibleForTesting

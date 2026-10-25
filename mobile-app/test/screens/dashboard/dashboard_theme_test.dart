@@ -20,12 +20,7 @@ import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
 import '../../helpers/fake_settings_repository.dart';
 import '../../helpers/theme_colors.dart';
-
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: 'đ',
-  decimalDigits: 0,
-);
+import '../../helpers/vnd.dart';
 
 Map<String, Object?> _tx(
   int id,
@@ -157,7 +152,7 @@ void main() {
           expect(boxColor(tester, find.text('Cà phê')), colors.surface);
           expect(paintedColor(tester, find.text('Cà phê')), colors.onSurface);
           expect(
-            paintedColor(tester, find.text('- ${_money.format(45000)}')),
+            paintedColor(tester, find.text('- ${vnd(45000)}')),
             colors.onSurface,
           );
           expect(
@@ -176,7 +171,7 @@ void main() {
         final card = boxDecoration(tester, find.text('Số dư hiện tại'));
         expect(card.gradient, AppTheme.purpleCardGradient);
         expect(
-          paintedColor(tester, find.text(_money.format(5000000 - 45000))),
+          paintedColor(tester, find.text(vnd(5000000 - 45000))),
           Colors.white,
         );
         expect(

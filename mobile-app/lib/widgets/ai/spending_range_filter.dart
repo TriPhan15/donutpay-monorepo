@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 
 /// The time filter above the spending chart: which period the report covers, the days that period spans, and a button
 /// that runs the analysis again. It only reports what the user tapped; the screen keeps the state and calls the API.
 class SpendingRangeFilter extends StatelessWidget {
-  static const String weekLabel = 'Tuần này';
-  static const String monthLabel = 'Tháng này';
-  static const String customLabel = 'Tùy chọn';
-  static const String refreshLabel = 'Làm mới';
-
   static const double _optionSpacing = 8;
   static const double _refreshIconSize = 18;
 
@@ -33,20 +30,17 @@ class SpendingRangeFilter extends StatelessWidget {
 
   final VoidCallback onRefresh;
 
-  static String _labelOf(SpendingPeriod period) {
-    switch (period) {
-      case SpendingPeriod.week:
-        return weekLabel;
-      case SpendingPeriod.month:
-        return monthLabel;
-      case SpendingPeriod.custom:
-        return customLabel;
-    }
-  }
+  static String _labelOf(AppLocalizations loc, SpendingPeriod period) =>
+      switch (period) {
+        SpendingPeriod.week => loc.periodThisWeek,
+        SpendingPeriod.month => loc.periodThisMonth,
+        SpendingPeriod.custom => loc.periodCustom,
+      };
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final loc = context.locOrDefault;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -55,7 +49,7 @@ class SpendingRangeFilter extends StatelessWidget {
           runSpacing: _optionSpacing,
           children: [
             for (final period in SpendingPeriod.values)
-              _buildOption(colors, period),
+              _buildOption(colors, loc, period),
           ],
         ),
         const SizedBox(height: 4),
@@ -67,7 +61,7 @@ class SpendingRangeFilter extends StatelessWidget {
                 style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
               ),
             ),
-            _buildRefreshButton(),
+            _buildRefreshButton(loc),
           ],
         ),
       ],
@@ -75,10 +69,14 @@ class SpendingRangeFilter extends StatelessWidget {
   }
 
   /// Selected: a tonal chip framed in the primary colour. Not selected: a surface chip with a neutral border.
-  Widget _buildOption(ColorScheme colors, SpendingPeriod period) {
+  Widget _buildOption(
+    ColorScheme colors,
+    AppLocalizations loc,
+    SpendingPeriod period,
+  ) {
     final selected = range.period == period;
     return ChoiceChip(
-      label: Text(_labelOf(period)),
+      label: Text(_labelOf(loc, period)),
       selected: selected,
       onSelected: (_) => onPeriodSelected(period),
       showCheckmark: false,
@@ -97,7 +95,7 @@ class SpendingRangeFilter extends StatelessWidget {
   }
 
   /// A text button: the label, the icon and the spinner take the primary colour of the theme.
-  Widget _buildRefreshButton() {
+  Widget _buildRefreshButton(AppLocalizations loc) {
     return TextButton(
       onPressed: isRefreshing ? null : onRefresh,
       style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
@@ -112,9 +110,9 @@ class SpendingRangeFilter extends StatelessWidget {
                 )
               : const Icon(Icons.refresh_rounded, size: _refreshIconSize),
           const SizedBox(width: 6),
-          const Text(
-            refreshLabel,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          Text(
+            loc.commonRefresh,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ],
       ),

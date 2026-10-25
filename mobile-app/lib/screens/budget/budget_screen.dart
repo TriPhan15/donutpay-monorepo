@@ -7,6 +7,8 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/budget/budget_form_sheet.dart';
@@ -37,17 +39,15 @@ class _BudgetScreenState extends State<BudgetScreen> {
     });
   }
 
-  static String _messageOf(Object error) {
+  /// A missing or refused login (401 or 403) means the session is over; anything else as [UserFacingError] words it.
+  static String _messageOf(Object error, AppLocalizations loc) {
     if (error is DioException) {
       final status = error.response?.statusCode;
       if (status == _httpUnauthorized || status == _httpForbidden) {
-        return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        return loc.errorSessionExpired;
       }
-      final data = error.response?.data;
-      final serverMessage = (data is Map ? data['message'] : null)?.toString();
-      return serverMessage ?? 'Không thể kết nối máy chủ. Vui lòng thử lại.';
     }
-    return 'Đã xảy ra lỗi. Vui lòng thử lại.';
+    return UserFacingError.messageOf(error, loc);
   }
 
   Future<void> _load() async {
@@ -66,8 +66,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
       setState(() => _isLoading = false);
       await AppDialog.error(
         context,
-        title: 'Không tải được ngân sách',
-        message: _messageOf(e),
+        title: context.loc.budgetLoadFailedTitle,
+        message: _messageOf(e, context.loc),
       );
       return;
     }
@@ -81,8 +81,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Future<void> _showSessionExpired() {
     return AppDialog.error(
       context,
-      title: 'Phiên đăng nhập hết hạn',
-      message: 'Vui lòng đăng nhập lại.',
+      title: context.loc.commonSessionExpiredTitle,
+      message: context.loc.accountInfoSignInAgain,
     );
   }
 
@@ -111,24 +111,26 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<String?> _submit(int userId, BudgetModel budget) async {
+    // Read before the request: the sheet may be gone when it ends.
+    final loc = context.loc;
     try {
       await AppRepository.instance.saveBudget(userId, budget);
       return null;
     } catch (e) {
       debugPrint('Lỗi lưu ngân sách: $e');
-      return _messageOf(e);
+      return _messageOf(e, loc);
     }
   }
 
   Future<void> _delete(BudgetModel budget) async {
     final budgetId = budget.id;
     if (budgetId == null) return;
+    final loc = context.loc;
     final confirmed = await AppDialog.confirm(
       context,
-      title: 'Xóa ngân sách?',
-      message:
-          'Ngân sách "${budget.categoryLabel(context.locOrDefault)}" sẽ bị xóa.',
-      confirmText: 'Xóa',
+      title: loc.budgetDeleteTitle,
+      message: loc.budgetDeleteMessage(budget.categoryLabel(loc)),
+      confirmText: loc.commonDelete,
       danger: true,
     );
     if (!confirmed || !mounted) return;
@@ -140,14 +142,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
       if (!mounted) return;
       await AppDialog.error(
         context,
-        title: 'Không xóa được ngân sách',
-        message: _messageOf(e),
+        title: context.loc.budgetDeleteFailedTitle,
+        message: _messageOf(e, context.loc),
       );
       return;
     }
     if (!mounted) return;
     setState(() => _budgets = _budgets.where((b) => b.id != budgetId).toList());
-    await AppDialog.success(context, title: 'Đã xóa ngân sách');
+    await AppDialog.success(context, title: context.loc.budgetDeleted);
   }
 
   @override
@@ -159,9 +161,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text(
-          'Ngân sách',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        title: Text(
+          context.loc.budgetTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: [
           IconButton(
@@ -201,6 +203,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
@@ -217,17 +220,17 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Chưa có ngân sách nào.',
+            loc.budgetEmpty,
             style: TextStyle(color: colors.onSurfaceVariant),
           ),
           const SizedBox(height: 4),
           Text(
-            'Đặt hạn mức chi tiêu theo tuần hoặc tháng để kiểm soát tốt hơn.',
+            loc.budgetEmptyHint,
             textAlign: TextAlign.center,
             style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
           ),
           const SizedBox(height: 20),
-          PrimaryButton(text: 'Thiết lập ngân sách', onPressed: onCreate),
+          PrimaryButton(text: loc.budgetCreate, onPressed: onCreate),
         ],
       ),
     );
@@ -251,6 +254,7 @@ class _BudgetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final categoryName = budget.categoryName;
+    final loc = context.loc;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -281,12 +285,12 @@ class _BudgetCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      budget.categoryLabel(context.locOrDefault),
+                      budget.categoryLabel(loc),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${BudgetPeriodType.label(context.locOrDefault, budget.periodType)} · '
+                      '${BudgetPeriodType.label(loc, budget.periodType)} · '
                       '${_displayDate.format(budget.start)} – ${_displayDate.format(budget.end)}',
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
@@ -297,11 +301,7 @@ class _BudgetCard extends StatelessWidget {
                 ),
               ),
               Text(
-                CurrencyHelper.formatVND(
-                  budget.amount,
-                  context.locOrDefault,
-                  showSign: false,
-                ),
+                CurrencyHelper.formatVND(budget.amount, loc, showSign: false),
                 style: TextStyle(
                   color: colors.primary,
                   fontWeight: FontWeight.bold,

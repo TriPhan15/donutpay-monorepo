@@ -21,6 +21,7 @@ import 'package:finance_ai_app/widgets/budget/budget_progress_card.dart';
 import '../../helpers/captured_logs.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
+import '../../helpers/vnd.dart';
 
 const String _budgetsCall = 'GET /api/budgets';
 const String _warningTitle = 'Sắp chạm hạn mức ngân sách';
@@ -29,11 +30,6 @@ const String _loadFailedNote =
     'Không tải được ngân sách. Kéo xuống để thử lại.';
 const String _emptyPeriodNote = 'Chưa có ngân sách trong kỳ này.';
 
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: 'đ',
-  decimalDigits: 0,
-);
 final DateFormat _day = DateFormat('dd/MM/yyyy');
 
 String _ymd(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
@@ -212,10 +208,7 @@ void main() {
           containsAll([_budgetsCall, 'GET /api/transactions/mine']),
         );
         expect(find.byType(BudgetProgressCard), findsOneWidget);
-        expect(
-          find.text('${_money.format(400000)} / ${_money.format(1000000)}'),
-          findsOneWidget,
-        );
+        expect(find.text('${vnd(400000)} / ${vnd(1000000)}'), findsOneWidget);
         expect(find.text('40%'), findsOneWidget);
         expect(find.byType(Dialog), findsNothing);
       },

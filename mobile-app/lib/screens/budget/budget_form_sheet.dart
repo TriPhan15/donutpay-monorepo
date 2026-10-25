@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
@@ -81,11 +83,13 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
       debugPrint('Lỗi tải danh mục cho ngân sách: $e');
       if (!mounted) return;
       setState(() => _isLoadingCategories = false);
+      final loc = context.loc;
       await AppDialog.error(
         context,
-        title: 'Không tải được danh mục',
-        message:
-            'Bạn vẫn có thể chọn "${BudgetModel.allCategoriesLabel(context.locOrDefault)}" hoặc thử lại sau.',
+        title: loc.budgetCategoriesLoadFailedTitle,
+        message: loc.budgetCategoriesLoadFailedMessage(
+          BudgetModel.allCategoriesLabel(loc),
+        ),
       );
       return;
     }
@@ -133,8 +137,8 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
     if (amount == null) {
       await AppDialog.error(
         context,
-        title: 'Số tiền không hợp lệ',
-        message: 'Vui lòng nhập số tiền ngân sách lớn hơn 0.',
+        title: context.loc.commonInvalidAmountTitle,
+        message: context.loc.budgetAmountPositive,
       );
       return;
     }
@@ -147,15 +151,15 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
     if (error != null) {
       await AppDialog.error(
         context,
-        title: 'Không lưu được ngân sách',
+        title: context.loc.budgetSaveFailedTitle,
         message: error,
       );
       return;
     }
     await AppDialog.success(
       context,
-      title: 'Đã lưu ngân sách',
-      message: 'Hạn mức chi tiêu của bạn đã được cập nhật.',
+      title: context.loc.budgetSavedTitle,
+      message: context.loc.budgetSavedMessage,
     );
     if (!mounted) return;
     Navigator.pop(context, true);
@@ -163,6 +167,7 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = context.loc;
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -174,24 +179,24 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _isEditing ? 'Sửa ngân sách' : 'Thiết lập ngân sách',
+              _isEditing ? loc.budgetEditTitle : loc.budgetCreate,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             CustomTextField(
               controller: _amountController,
-              label: 'Số tiền ngân sách (₫)',
+              label: loc.budgetAmountLabel,
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
-            const _SectionLabel('Kỳ hạn'),
+            _SectionLabel(loc.budgetPeriodLabel),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
                 for (final type in BudgetPeriodType.values)
                   _OptionChip(
-                    label: BudgetPeriodType.label(context.locOrDefault, type),
+                    label: BudgetPeriodType.label(loc, type),
                     selected: _periodType == type,
                     onSelected: () => setState(() => _periodType = type),
                   ),
@@ -200,19 +205,19 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
             const SizedBox(height: 12),
             _PeriodPreview(
               label: _keepsDates && _isEditing
-                  ? 'Kỳ áp dụng'
+                  ? loc.budgetAppliedPeriod
                   : _periodType == BudgetPeriodType.week
-                  ? 'Tuần này'
-                  : 'Tháng này',
+                  ? loc.periodThisWeek
+                  : loc.periodThisMonth,
               range: _range,
             ),
             const SizedBox(height: 20),
-            const _SectionLabel('Danh mục'),
+            _SectionLabel(loc.transactionCategoryLabel),
             const SizedBox(height: 8),
-            _buildCategories(),
+            _buildCategories(loc),
             const SizedBox(height: 24),
             PrimaryButton(
-              text: _isSaving ? 'Đang lưu...' : 'Lưu ngân sách',
+              text: _isSaving ? loc.commonSaving : loc.budgetSave,
               onPressed: _isSaving ? null : _save,
             ),
           ],
@@ -221,7 +226,7 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
     );
   }
 
-  Widget _buildCategories() {
+  Widget _buildCategories(AppLocalizations loc) {
     if (_isLoadingCategories) {
       return const SizedBox(
         height: 40,
@@ -240,13 +245,13 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
       runSpacing: 8,
       children: [
         _OptionChip(
-          label: BudgetModel.allCategoriesLabel(context.locOrDefault),
+          label: BudgetModel.allCategoriesLabel(loc),
           selected: _category == null,
           onSelected: () => setState(() => _category = null),
         ),
         for (final category in _categories)
           _OptionChip(
-            label: category.name,
+            label: TransactionCategories.displayName(loc, category.name),
             selected: _category?.id == category.id,
             onSelected: () => setState(() => _category = category),
           ),

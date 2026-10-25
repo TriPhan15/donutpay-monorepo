@@ -1380,4 +1380,380 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get linkedLinked => 'Đã liên kết';
+
+  @override
+  String get commonDelete => 'Xóa';
+
+  @override
+  String get commonApply => 'Áp dụng';
+
+  @override
+  String get commonRefresh => 'Làm mới';
+
+  @override
+  String get periodThisWeek => 'Tuần này';
+
+  @override
+  String get periodThisMonth => 'Tháng này';
+
+  @override
+  String get periodCustom => 'Tùy chọn';
+
+  @override
+  String get budgetTitle => 'Ngân sách';
+
+  @override
+  String get budgetManage => 'Quản lý';
+
+  @override
+  String get budgetEmptyPeriod => 'Chưa có ngân sách trong kỳ này.';
+
+  @override
+  String get budgetLoadFailedPullToRetry =>
+      'Không tải được ngân sách. Kéo xuống để thử lại.';
+
+  @override
+  String budgetMoreCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+$count ngân sách khác',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String budgetOverBy(String amount) {
+    return 'Đã vượt hạn mức: $amount';
+  }
+
+  @override
+  String budgetNearLimitLeft(String amount) {
+    return 'Sắp chạm hạn mức · Còn lại: $amount';
+  }
+
+  @override
+  String budgetLeft(String amount) {
+    return 'Còn lại: $amount';
+  }
+
+  @override
+  String get budgetAlertWarningTitle => 'Sắp chạm hạn mức ngân sách';
+
+  @override
+  String get budgetAlertExceededTitle => 'Đã vượt ngân sách';
+
+  @override
+  String budgetAlertExceededLine(
+    String name,
+    String period,
+    String amounts,
+    String percent,
+  ) {
+    return '• $name (theo $period): đã vượt hạn mức — $amounts ($percent%)';
+  }
+
+  @override
+  String budgetAlertWarningLine(
+    String name,
+    String period,
+    String amounts,
+    String percent,
+  ) {
+    return '• $name (theo $period): đã dùng $percent% hạn mức — $amounts';
+  }
+
+  @override
+  String get budgetLoadFailedTitle => 'Không tải được ngân sách';
+
+  @override
+  String get budgetDeleteTitle => 'Xóa ngân sách?';
+
+  @override
+  String budgetDeleteMessage(String name) {
+    return 'Ngân sách \"$name\" sẽ bị xóa.';
+  }
+
+  @override
+  String get budgetDeleteFailedTitle => 'Không xóa được ngân sách';
+
+  @override
+  String get budgetDeleted => 'Đã xóa ngân sách';
+
+  @override
+  String get budgetEmpty => 'Chưa có ngân sách nào.';
+
+  @override
+  String get budgetEmptyHint =>
+      'Đặt hạn mức chi tiêu theo tuần hoặc tháng để kiểm soát tốt hơn.';
+
+  @override
+  String get budgetCreate => 'Thiết lập ngân sách';
+
+  @override
+  String get budgetEditTitle => 'Sửa ngân sách';
+
+  @override
+  String get budgetAmountLabel => 'Số tiền ngân sách (₫)';
+
+  @override
+  String get budgetAmountPositive =>
+      'Vui lòng nhập số tiền ngân sách lớn hơn 0.';
+
+  @override
+  String get budgetPeriodLabel => 'Kỳ hạn';
+
+  @override
+  String get budgetAppliedPeriod => 'Kỳ áp dụng';
+
+  @override
+  String get budgetSave => 'Lưu ngân sách';
+
+  @override
+  String get budgetSaveFailedTitle => 'Không lưu được ngân sách';
+
+  @override
+  String get budgetSavedTitle => 'Đã lưu ngân sách';
+
+  @override
+  String get budgetSavedMessage => 'Hạn mức chi tiêu của bạn đã được cập nhật.';
+
+  @override
+  String get budgetCategoriesLoadFailedTitle => 'Không tải được danh mục';
+
+  @override
+  String budgetCategoriesLoadFailedMessage(String allLabel) {
+    return 'Bạn vẫn có thể chọn \"$allLabel\" hoặc thử lại sau.';
+  }
+
+  @override
+  String get dashboardGreeting => 'Xin chào,';
+
+  @override
+  String get dashboardBalance => 'Số dư hiện tại';
+
+  @override
+  String get dashboardVsLastMonth => 'so với tháng trước';
+
+  @override
+  String get dashboardReports => 'Báo cáo';
+
+  @override
+  String get dashboardAllFeatures => 'Tất cả';
+
+  @override
+  String get dashboardNoTransactions => 'Chưa có giao dịch nào.';
+
+  @override
+  String get moneySourcesSubtitle => 'Các ví đã liên kết với tài khoản';
+
+  @override
+  String get allFeaturesTitle => 'Tất cả tính năng';
+
+  @override
+  String get featureSavingsDescription => 'Quản lý mục tiêu tiết kiệm';
+
+  @override
+  String get featureMoneySourcesDescription => 'Xem ví và số dư';
+
+  @override
+  String get featureLinkedServicesDescription => 'MoMo, ZaloPay, ngân hàng...';
+
+  @override
+  String get aiTitle => 'Phân tích AI';
+
+  @override
+  String get aiPickRangeTitle => 'Chọn khoảng thời gian';
+
+  @override
+  String get aiErrorNetwork =>
+      'Không kết nối được tới máy chủ phân tích. Vui lòng kiểm tra mạng và thử lại.';
+
+  @override
+  String get aiErrorServer =>
+      'Máy chủ phân tích đang gặp sự cố. Vui lòng thử lại sau.';
+
+  @override
+  String get aiErrorRejected =>
+      'Máy chủ phân tích chưa xử lý được yêu cầu. Vui lòng thử lại sau.';
+
+  @override
+  String get aiAnalyzeFailedTitle => 'Không phân tích được thói quen chi tiêu';
+
+  @override
+  String get aiNoData => 'Chưa có dữ liệu';
+
+  @override
+  String get aiNoDataHint =>
+      'Hãy nhập giao dịch thực tế để hệ thống WCM-SPADE khai phá quy luật.';
+
+  @override
+  String get aiTrendTitle => 'Xu hướng chi tiêu';
+
+  @override
+  String get aiTopCategoryTitle => 'Chi nhiều nhất';
+
+  @override
+  String get aiSavingTipTitle => 'Mẹo tiết kiệm';
+
+  @override
+  String get aiWeekCompareTitle => 'So sánh tuần';
+
+  @override
+  String get aiChartTitle => 'Biểu đồ thu chi tuần';
+
+  @override
+  String get aiNoWeekData => 'Chưa có dữ liệu tuần này.';
+
+  @override
+  String aiTopWeek(int week, String amount) {
+    return 'Tuần $week có chi tiêu cao nhất: $amount.';
+  }
+
+  @override
+  String get aiSafeToSpendTitle => 'Hôm nay tiêu được bao nhiêu?';
+
+  @override
+  String get aiSafeToSpendNoIncome =>
+      'Thêm khoản thu tháng này để tính số tiền an toàn.';
+
+  @override
+  String aiPerDay(String amount) {
+    return '$amount / ngày';
+  }
+
+  @override
+  String aiDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Còn lại chia đều $days ngày.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiOverSafe => 'Bạn đã chi vượt phần an toàn của tháng.';
+
+  @override
+  String aiSpentThisMonth(String amount) {
+    return 'Tháng này bạn đã chi $amount.';
+  }
+
+  @override
+  String aiTrendUp(String percent) {
+    return 'Chi tiêu tháng này tăng $percent% so với tháng trước.';
+  }
+
+  @override
+  String aiTrendDown(String percent) {
+    return 'Chi tiêu tháng này giảm $percent% so với tháng trước.';
+  }
+
+  @override
+  String get aiNoSpendingThisMonth => 'Chưa có chi tiêu tháng này.';
+
+  @override
+  String aiTopCategory(String category, String amount, String percent) {
+    return '$category chiếm $amount ($percent% tổng chi).';
+  }
+
+  @override
+  String aiSurplus(String amount) {
+    return 'Đang dư $amount. Hãy lập mục tiêu!';
+  }
+
+  @override
+  String get aiAddGoal => 'Thêm mục tiêu tiết kiệm để AI phân tích.';
+
+  @override
+  String get aiOnTrack =>
+      'Bạn đang trong lộ trình tiết kiệm. Xem gợi ý phân bổ tiền bên dưới để đạt mục tiêu nhanh hơn!';
+
+  @override
+  String get aiSpadeTitle => 'Mẫu Chi Tiêu Tuần Tự';
+
+  @override
+  String get aiSpadeSubtitle => 'Hành vi chi tiêu tuần tự thường gặp của bạn';
+
+  @override
+  String get aiSpadeLoadFailedTitle => 'Không tải được phân tích';
+
+  @override
+  String get aiSpadeLoadFailedMessage =>
+      'Kiểm tra kết nối rồi làm mới để thử lại.';
+
+  @override
+  String get aiSpadeNotEnoughTitle => 'Chưa đủ dữ liệu';
+
+  @override
+  String get aiSpadeNotEnoughMessage =>
+      'Thêm ít nhất 3 giao dịch để xem mẫu chi tiêu tuần tự.';
+
+  @override
+  String aiSpadeDetail(String count, String support) {
+    return 'Tần suất: $count lần  ·  Độ hỗ trợ (W-Sup): $support';
+  }
+
+  @override
+  String get aiAdviceTitle => 'Gợi ý phân bổ tiền';
+
+  @override
+  String get aiAdviceSubtitle =>
+      'Đề xuất cắt/giữ từng mục để đạt mục tiêu tiết kiệm';
+
+  @override
+  String aiAdvicePerMonth(String current, String suggested) {
+    return '$current → $suggested / tháng';
+  }
+
+  @override
+  String get aiGuardTitle => 'Cảnh báo thói quen tương lai';
+
+  @override
+  String get aiGuardSubtitle =>
+      'AI dự đoán các khoản chi sắp tới dựa trên lịch sử tuần tự của bạn.';
+
+  @override
+  String get aiGuardHeading => 'Dự báo hành vi · Khai phá chuỗi';
+
+  @override
+  String aiGuardRule(String from, String to) {
+    return 'Thuật toán WCM-SPADE phát hiện luật [$from → $to]: Sau khi chi tiền cho $from, bạn có xu hướng sẽ chi cho $to trong vài ngày tới. Hãy chú ý kiểm soát hầu bao để không lạm lẹm vào khoản tiết kiệm!';
+  }
+
+  @override
+  String get ai503020Title => 'Sức khỏe chi tiêu — quy tắc 50/30/20';
+
+  @override
+  String get ai503020Groups =>
+      'Thiết yếu: Ăn uống, Di chuyển, Siêu thị, Sinh hoạt · Mong muốn: Giải trí, Khác';
+
+  @override
+  String get ai503020Needs => 'Thiết yếu';
+
+  @override
+  String get ai503020Wants => 'Mong muốn';
+
+  @override
+  String get ai503020Savings => 'Tiết kiệm (phần dư)';
+
+  @override
+  String get ai503020OnTrack =>
+      'Cơ cấu chi tiêu tháng này đạt chuẩn 50/30/20. Giữ nhịp này!';
+
+  @override
+  String ai503020NeedsHigh(String percent) {
+    return 'Nhóm thiết yếu đang chiếm $percent% thu nhập (chuẩn ≤50%). Rà lại Sinh hoạt/Siêu thị xem có khoản nào dồn được.';
+  }
+
+  @override
+  String ai503020WantsHigh(String percent) {
+    return 'Nhóm mong muốn (Giải trí, Khác) chiếm $percent% thu nhập (chuẩn ≤30%) — đây là chỗ dễ cắt nhất.';
+  }
+
+  @override
+  String ai503020SavingsLow(String percent) {
+    return 'Bạn mới để dành được $percent% thu nhập (chuẩn ≥20%). Tăng dần mỗi tháng một chút.';
+  }
 }

@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 import 'package:finance_ai_app/widgets/budget/budget_progress_card.dart';
 
-/// The "Ngân sách" block shared by the home screen and the ledger: a title, then one [BudgetProgressCard] per budget,
+/// The budget block shared by the home screen and the ledger: a title, then one [BudgetProgressCard] per budget,
 /// or a short note when there is nothing to show or the budgets could not be loaded.
 class BudgetSection extends StatelessWidget {
   final List<BudgetProgress> progresses;
 
   /// The budgets could not be loaded; the rest of the screen is unaffected.
   final bool loadFailed;
-  final String emptyText;
+
+  /// What the block says when there is nothing to show; null for the default note.
+  final String? emptyText;
 
   /// Shows only the first [maxItems] budgets and says how many more there are.
   final int? maxItems;
   final double titleSize;
 
-  /// Adds a "Quản lý" link to the title row.
+  /// Adds a "manage" link to the title row.
   final VoidCallback? onManage;
 
   const BudgetSection({
     super.key,
     required this.progresses,
     this.loadFailed = false,
-    this.emptyText = 'Chưa có ngân sách trong kỳ này.',
+    this.emptyText,
     this.maxItems,
     this.titleSize = 16,
     this.onManage,
@@ -36,6 +39,7 @@ class BudgetSection extends StatelessWidget {
     final shown = limit == null ? progresses : progresses.take(limit).toList();
     final hidden = progresses.length - shown.length;
     final colors = Theme.of(context).colorScheme;
+    final loc = context.locOrDefault;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,21 +48,21 @@ class BudgetSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Ngân sách',
+              loc.budgetTitle,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: titleSize,
               ),
             ),
             if (onManage != null)
-              TextButton(onPressed: onManage, child: const Text('Quản lý')),
+              TextButton(onPressed: onManage, child: Text(loc.budgetManage)),
           ],
         ),
         const SizedBox(height: 12),
         if (loadFailed)
-          const _Note('Không tải được ngân sách. Kéo xuống để thử lại.')
+          _Note(loc.budgetLoadFailedPullToRetry)
         else if (progresses.isEmpty)
-          _Note(emptyText)
+          _Note(emptyText ?? loc.budgetEmptyPeriod)
         else ...[
           for (final progress in shown)
             BudgetProgressCard(
@@ -69,7 +73,7 @@ class BudgetSection extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
-                '+$hidden ngân sách khác',
+                loc.budgetMoreCount(hidden),
                 style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
               ),
             ),

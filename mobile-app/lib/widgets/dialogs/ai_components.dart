@@ -1,52 +1,84 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 
-/// Sections of the AI tab. Each builder takes the colour scheme that the calling screen read once in its build.
+/// Sections of the AI tab. Each builder takes the colour scheme that the calling screen read once in its build, and the
+/// texts of the language on screen.
 ///
 /// Amber marks the money-allocation advice, blue and orange the needs and wants of the 50/30/20 rule: identity
 /// colours that stay the same in both themes, like chart series, and are bright enough on the dark surface.
 class AiComponents {
-  static String _fmt(double amount) => NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  ).format(amount);
+  static const String _sequenceSeparator = ' → ';
+  static const String _itemSeparator = '+';
 
-  static String formatAiPattern(String rawPattern) {
-    Map<String, String> dict = {
-      'an uong': 'Ăn uống',
-      'di lai': 'Đi lại',
-      'hoa don': 'Hóa đơn',
-      'suc khoe': 'Sức khỏe',
-      'giao duc': 'Giáo dục',
-      'nha o': 'Nhà ở',
-      'dien nuoc': 'Điện nước',
-      'internet': 'Internet',
-      'xang': 'Xăng',
-      'y te': 'Y tế',
-      'du lich': 'Du lịch',
-      'giai tri': 'Giải trí',
-      'mua sam': 'Mua sắm',
-      'ca phe': 'Cà phê',
-      'an vat': 'Ăn vặt',
-      'lam dep': 'Làm đẹp',
-      'game': 'Game',
-      'shopping': 'Shopping',
-      'quan ao': 'Quần áo',
-      'do choi': 'Đồ chơi',
-      'khac': 'Khác',
-    };
-    String result = rawPattern;
-    dict.forEach((key, value) {
-      result = result.replaceAll(key, value);
-    });
-    return result;
+  /// Prefix the AI service puts in front of its advice summary; it is not meant for the user.
+  static const String _summaryPrefix = '(AI dùng Luật Khai Phá Chung) ';
+
+  /// Expense categories the 50/30/20 card counts as needs, by the name the transactions carry.
+  static const Set<String> _needCategories = {
+    TransactionCategories.food,
+    'Di chuyển',
+    'Siêu thị',
+    'Sinh hoạt',
+  };
+
+  /// Data: spelling-free category tokens the AI service may send, and the category name each stands for.
+  static const Map<String, String> _aiTokenNames = {
+    'an uong': TransactionCategories.food,
+    'di lai': 'Đi lại',
+    'hoa don': 'Hóa đơn',
+    'suc khoe': 'Sức khỏe',
+    'giao duc': 'Giáo dục',
+    'nha o': 'Nhà ở',
+    'dien nuoc': 'Điện nước',
+    'internet': 'Internet',
+    'xang': 'Xăng',
+    'y te': 'Y tế',
+    'du lich': 'Du lịch',
+    'giai tri': 'Giải trí',
+    'mua sam': 'Mua sắm',
+    'ca phe': 'Cà phê',
+    'an vat': 'Ăn vặt',
+    'lam dep': 'Làm đẹp',
+    'game': 'Game',
+    'shopping': 'Shopping',
+    'quan ao': 'Quần áo',
+    'do choi': 'Đồ chơi',
+    'khac': TransactionCategories.otherExpense,
+  };
+
+  static String _money(AppLocalizations loc, double amount) =>
+      CurrencyHelper.formatVND(amount, loc, showSign: amount < 0);
+
+  /// One category of a pattern as the user should read it: an AI token becomes its category name, and a default
+  /// category is shown in the language of [loc].
+  static String _categoryOf(AppLocalizations loc, String item) {
+    final trimmed = item.trim();
+    return TransactionCategories.displayName(
+      loc,
+      _aiTokenNames[trimmed] ?? trimmed,
+    );
   }
+
+  /// A pattern of the AI service ("a+b → c") with each category in the language of [loc].
+  static String formatAiPattern(AppLocalizations loc, String rawPattern) =>
+      rawPattern
+          .split(_sequenceSeparator)
+          .map(
+            (step) => step
+                .split(_itemSeparator)
+                .map((item) => _categoryOf(loc, item))
+                .join(_itemSeparator),
+          )
+          .join(_sequenceSeparator);
 
   /// [hasError] is true when the last analysis failed; it replaces the "not enough data" message, which would be wrong then.
   static Widget buildSpadeSection(
     ColorScheme colors,
+    AppLocalizations loc,
     List<Map<String, dynamic>> spadePatterns,
     bool isLoading, {
     bool hasError = false,
@@ -77,9 +109,9 @@ class AiComponents {
       children: [
         Row(
           children: [
-            const Text(
-              'Mẫu Chi Tiêu Tuần Tự',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              loc.aiSpadeTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 8),
             Container(
@@ -104,7 +136,7 @@ class AiComponents {
         ),
         const SizedBox(height: 8),
         Text(
-          'Hành vi chi tiêu tuần tự thường gặp của bạn',
+          loc.aiSpadeSubtitle,
           style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
         ),
         const SizedBox(height: 16),
@@ -114,15 +146,15 @@ class AiComponents {
           _buildSpadeMessageCard(
             colors,
             icon: Icons.cloud_off_rounded,
-            title: 'Không tải được phân tích',
-            message: 'Kiểm tra kết nối rồi làm mới để thử lại.',
+            title: loc.aiSpadeLoadFailedTitle,
+            message: loc.aiSpadeLoadFailedMessage,
           )
         else if (spadePatterns.isEmpty)
           _buildSpadeMessageCard(
             colors,
             icon: Icons.auto_graph_rounded,
-            title: 'Chưa đủ dữ liệu',
-            message: 'Thêm ít nhất 3 giao dịch để xem mẫu chi tiêu tuần tự.',
+            title: loc.aiSpadeNotEnoughTitle,
+            message: loc.aiSpadeNotEnoughMessage,
           )
         else
           ...List.generate(spadePatterns.length, (i) {
@@ -148,7 +180,10 @@ class AiComponents {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            formatAiPattern(p['pattern']?.toString() ?? ''),
+                            formatAiPattern(
+                              loc,
+                              p['pattern']?.toString() ?? '',
+                            ),
                             style: const TextStyle(
                               fontWeight: FontWeight.w500,
                               fontSize: 15,
@@ -156,7 +191,10 @@ class AiComponents {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Tần suất: ${p['count']} lần  ·  Độ hỗ trợ (W-Sup): ${p['wsupport']}',
+                            loc.aiSpadeDetail(
+                              '${p['count']}',
+                              '${p['wsupport']}',
+                            ),
                             style: detailStyle,
                           ),
                         ],
@@ -223,6 +261,7 @@ class AiComponents {
 
   static Widget buildBudgetAdviceSection(
     ColorScheme colors,
+    AppLocalizations loc,
     Map<String, dynamic>? budgetAdvice,
     bool isLoading,
   ) {
@@ -234,7 +273,7 @@ class AiComponents {
     final recs = (budgetAdvice['recommendations'] as List?) ?? [];
     String summary = budgetAdvice['summary']?.toString() ?? '';
 
-    summary = summary.replaceAll('(AI dùng Luật Khai Phá Chung) ', '');
+    summary = summary.replaceAll(_summaryPrefix, '');
 
     if (summary.isEmpty && recs.isEmpty) return const SizedBox.shrink();
 
@@ -252,9 +291,9 @@ class AiComponents {
       children: [
         Row(
           children: [
-            const Text(
-              'Gợi ý phân bổ tiền',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              loc.aiAdviceTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 8),
             Container(
@@ -277,7 +316,7 @@ class AiComponents {
         ),
         const SizedBox(height: 8),
         Text(
-          'Đề xuất cắt/giữ từng mục để đạt mục tiêu tiết kiệm',
+          loc.aiAdviceSubtitle,
           style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
         ),
         const SizedBox(height: 16),
@@ -343,7 +382,10 @@ class AiComponents {
                         ),
                       ),
                       Text(
-                        '${isCut ? '' : '+'}${_fmt(((m['delta'] as num?) ?? 0).toDouble())}',
+                        CurrencyHelper.formatVND(
+                          ((m['delta'] as num?) ?? 0).toDouble(),
+                          loc,
+                        ),
                         style: TextStyle(
                           color: accent,
                           fontWeight: FontWeight.bold,
@@ -354,7 +396,10 @@ class AiComponents {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${_fmt(((m['current'] as num?) ?? 0).toDouble())} → ${_fmt(((m['suggested'] as num?) ?? 0).toDouble())} / tháng',
+                    loc.aiAdvicePerMonth(
+                      _money(loc, ((m['current'] as num?) ?? 0).toDouble()),
+                      _money(loc, ((m['suggested'] as num?) ?? 0).toDouble()),
+                    ),
                     style: amountsStyle,
                   ),
                   if ((m['reason']?.toString() ?? '').isNotEmpty) ...[
@@ -372,6 +417,7 @@ class AiComponents {
 
   static Widget buildBudgetGuardSection(
     ColorScheme colors,
+    AppLocalizations loc,
     List<Map<String, dynamic>> spadePatterns,
     List<TransactionModel> transactions,
   ) {
@@ -414,10 +460,10 @@ class AiComponents {
         continue;
       }
 
-      String txt =
-          'Thuật toán WCM-SPADE phát hiện luật [$hitAnte → $cons]: '
-          'Sau khi chi tiền cho $hitAnte, bạn có xu hướng sẽ chi cho $cons trong vài ngày tới. '
-          'Hãy chú ý kiểm soát hầu bao để không lạm lẹm vào khoản tiết kiệm!';
+      final txt = loc.aiGuardRule(
+        _categoryOf(loc, hitAnte),
+        _categoryOf(loc, cons),
+      );
 
       spadeWarnings.add(
         Padding(
@@ -438,10 +484,7 @@ class AiComponents {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Dự báo hành vi · Khai phá chuỗi',
-                        style: headingStyle,
-                      ),
+                      Text(loc.aiGuardHeading, style: headingStyle),
                       const SizedBox(height: 6),
                       Text(
                         txt,
@@ -462,13 +505,13 @@ class AiComponents {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Cảnh báo thói quen tương lai',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          loc.aiGuardTitle,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          'AI dự đoán các khoản chi sắp tới dựa trên lịch sử tuần tự của bạn.',
+          loc.aiGuardSubtitle,
           style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
         ),
         const SizedBox(height: 16),
@@ -479,6 +522,7 @@ class AiComponents {
 
   static Widget build503020Card(
     ColorScheme colors,
+    AppLocalizations loc,
     List<TransactionModel> monthTxs,
     double monthIncome,
     double monthExpense,
@@ -486,16 +530,7 @@ class AiComponents {
     if (monthIncome <= 0) return const SizedBox.shrink();
 
     double needs = monthTxs
-        .where(
-          (t) =>
-              t.isExpense &&
-              {
-                'Ăn uống',
-                'Di chuyển',
-                'Siêu thị',
-                'Sinh hoạt',
-              }.contains(t.category),
-        )
+        .where((t) => t.isExpense && _needCategories.contains(t.category))
         .fold(0, (s, t) => s + t.amount);
     double wants = monthExpense - needs;
     final needsPct = needs / monthIncome * 100,
@@ -547,17 +582,13 @@ class AiComponents {
       );
     }
 
-    String advice =
-        'Cơ cấu chi tiêu tháng này đạt chuẩn 50/30/20. Giữ nhịp này!';
+    String advice = loc.ai503020OnTrack;
     if (needsPct > 50 && needsPct >= wantsPct) {
-      advice =
-          'Nhóm thiết yếu đang chiếm ${needsPct.toStringAsFixed(0)}% thu nhập (chuẩn ≤50%). Rà lại Sinh hoạt/Siêu thị xem có khoản nào dồn được.';
+      advice = loc.ai503020NeedsHigh(needsPct.toStringAsFixed(0));
     } else if (wantsPct > 30) {
-      advice =
-          'Nhóm mong muốn (Giải trí, Khác) chiếm ${wantsPct.toStringAsFixed(0)}% thu nhập (chuẩn ≤30%) — đây là chỗ dễ cắt nhất.';
+      advice = loc.ai503020WantsHigh(wantsPct.toStringAsFixed(0));
     } else if (savePct < 20) {
-      advice =
-          'Bạn mới để dành được ${savePct.toStringAsFixed(0)}% thu nhập (chuẩn ≥20%). Tăng dần mỗi tháng một chút.';
+      advice = loc.ai503020SavingsLow(savePct.toStringAsFixed(0));
     }
 
     return Container(
@@ -570,25 +601,19 @@ class AiComponents {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Sức khỏe chi tiêu — quy tắc 50/30/20',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          Text(
+            loc.ai503020Title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           const SizedBox(height: 4),
           Text(
-            'Thiết yếu: Ăn uống, Di chuyển, Siêu thị, Sinh hoạt · Mong muốn: Giải trí, Khác',
+            loc.ai503020Groups,
             style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11),
           ),
           const SizedBox(height: 12),
-          row('Thiết yếu', needsPct, 50, Colors.blueAccent),
-          row('Mong muốn', wantsPct, 30, Colors.orangeAccent),
-          row(
-            'Tiết kiệm (phần dư)',
-            savePct,
-            20,
-            colors.primary,
-            atLeast: true,
-          ),
+          row(loc.ai503020Needs, needsPct, 50, Colors.blueAccent),
+          row(loc.ai503020Wants, wantsPct, 30, Colors.orangeAccent),
+          row(loc.ai503020Savings, savePct, 20, colors.primary, atLeast: true),
           const SizedBox(height: 2),
           Text(
             advice,

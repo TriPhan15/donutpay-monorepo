@@ -3,7 +3,10 @@ import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
@@ -205,11 +208,9 @@ class DashboardPageState extends State<DashboardPage>
     if (mounted) unawaited(_refreshUnreadNotifications());
   }
 
-  String _formatCurrency(double amount) => NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  ).format(amount);
+  /// [amount] in the language on screen, with a minus in front only when it is below zero.
+  String _formatCurrency(double amount) =>
+      CurrencyHelper.formatVND(amount, context.loc, showSign: amount < 0);
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -481,14 +482,14 @@ class DashboardPageState extends State<DashboardPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Xin chào,',
+                    context.loc.dashboardGreeting,
                     style: TextStyle(
                       color: colors.onSurfaceVariant,
                       fontSize: 14,
                     ),
                   ),
                   Text(
-                    _user?.fullName ?? 'User',
+                    _user?.fullName ?? context.loc.defaultUserName,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -533,7 +534,7 @@ class DashboardPageState extends State<DashboardPage>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Số dư hiện tại',
+                context.loc.dashboardBalance,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.75),
                   fontSize: 14,
@@ -610,7 +611,7 @@ class DashboardPageState extends State<DashboardPage>
         ),
         const SizedBox(width: 8),
         Text(
-          'so với tháng trước',
+          context.loc.dashboardVsLastMonth,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.75),
             fontSize: 12,
@@ -635,47 +636,57 @@ class DashboardPageState extends State<DashboardPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tiện ích',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            context.loc.profileUtilities,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildUtilityIcon(colors, Icons.pie_chart_rounded, 'Báo cáo', () {
-                if (widget.onNavigateToAI != null) {
-                  widget.onNavigateToAI!();
-                }
-              }),
+              _buildUtilityIcon(
+                colors,
+                Icons.pie_chart_rounded,
+                context.loc.dashboardReports,
+                () {
+                  if (widget.onNavigateToAI != null) {
+                    widget.onNavigateToAI!();
+                  }
+                },
+              ),
               _buildUtilityIcon(
                 colors,
                 Icons.savings_rounded,
-                'Sổ tiết kiệm',
+                context.loc.savingsTitle,
                 () => _navigateTo(const SavingsPage()),
               ),
-              _buildUtilityIcon(colors, Icons.grid_view_rounded, 'Tất cả', () {
-                DashboardBottomSheets.showAllFeatures(
-                  context,
-                  onSavings: () {
-                    Navigator.pop(context);
-                    _navigateTo(const SavingsPage());
-                  },
-                  onBankSources: () {
-                    Navigator.pop(context);
-                    DashboardBottomSheets.showBankSources(context, _wallets);
-                  },
-                  onLinkedServices: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const LinkedServicesPage(),
-                      ),
-                    );
-                  },
-                );
-              }),
+              _buildUtilityIcon(
+                colors,
+                Icons.grid_view_rounded,
+                context.loc.dashboardAllFeatures,
+                () {
+                  DashboardBottomSheets.showAllFeatures(
+                    context,
+                    onSavings: () {
+                      Navigator.pop(context);
+                      _navigateTo(const SavingsPage());
+                    },
+                    onBankSources: () {
+                      Navigator.pop(context);
+                      DashboardBottomSheets.showBankSources(context, _wallets);
+                    },
+                    onLinkedServices: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LinkedServicesPage(),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ],
@@ -723,9 +734,9 @@ class DashboardPageState extends State<DashboardPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Giao dịch gần đây',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            context.loc.ledgerRecent,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           if (_recentTransactions.isEmpty)
@@ -737,7 +748,7 @@ class DashboardPageState extends State<DashboardPage>
               ),
               child: Center(
                 child: Text(
-                  'Chưa có giao dịch nào.',
+                  context.loc.dashboardNoTransactions,
                   style: TextStyle(color: colors.onSurfaceVariant),
                 ),
               ),
@@ -777,7 +788,8 @@ class DashboardPageState extends State<DashboardPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  tx.title,
+                  // A transaction without a note is titled with its category, shown in the app language.
+                  TransactionCategories.displayName(context.loc, tx.title),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -812,15 +824,15 @@ class DashboardPageState extends State<DashboardPage>
   }
 
   String _formatTime(DateTime date) {
+    final loc = context.loc;
     final now = DateTime.now();
-    if (DateUtils.isSameDay(date, now)) {
-      return 'Hôm nay, ${DateFormat('HH:mm').format(date)}';
-    }
+    final time = DateFormat('HH:mm').format(date);
+    if (DateUtils.isSameDay(date, now)) return loc.dateTodayAt(time);
     if (DateUtils.isSameDay(date, now.subtract(const Duration(days: 1)))) {
-      return 'Hôm qua, ${DateFormat('HH:mm').format(date)}';
+      return loc.dateYesterdayAt(time);
     }
     if (now.difference(date).inDays < 7) {
-      return DateFormat('EEEE, HH:mm', 'vi_VN').format(date);
+      return DateFormat('EEEE, HH:mm', loc.localeName).format(date);
     }
     return DateFormat('dd/MM/yyyy, HH:mm').format(date);
   }

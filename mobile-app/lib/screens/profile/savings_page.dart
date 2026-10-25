@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -17,11 +17,8 @@ class _SavingsPageState extends State<SavingsPage> {
   List<Map<String, dynamic>> _goals = [];
   bool _isLoading = true;
 
-  final _fmtCur = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: '₫',
-    decimalDigits: 0,
-  );
+  String _money(double amount) =>
+      CurrencyHelper.formatVND(amount, context.loc, showSign: false);
 
   @override
   void initState() {
@@ -231,7 +228,7 @@ class _SavingsPageState extends State<SavingsPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _fmtCur.format(_totalSaved),
+                      _money(_totalSaved),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 28,
@@ -265,7 +262,7 @@ class _SavingsPageState extends State<SavingsPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  context.loc.savingsTarget(_fmtCur.format(_totalTarget)),
+                  context.loc.savingsTarget(_money(_totalTarget)),
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 Text(
@@ -482,10 +479,7 @@ class _SavingsPageState extends State<SavingsPage> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    _fmtCur.format(current),
-                                    style: amountStyle,
-                                  ),
+                                  Text(_money(current), style: amountStyle),
                                   Text(
                                     pctText,
                                     style: TextStyle(
@@ -545,11 +539,8 @@ class _SavingsPageState extends State<SavingsPage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(_fmtCur.format(current), style: smallStyle),
-                              Text(
-                                '/ ${_fmtCur.format(target)}',
-                                style: smallStyle,
-                              ),
+                              Text(_money(current), style: smallStyle),
+                              Text('/ ${_money(target)}', style: smallStyle),
                             ],
                           ),
                         ],

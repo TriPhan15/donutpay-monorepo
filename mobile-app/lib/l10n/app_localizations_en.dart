@@ -1409,4 +1409,382 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get linkedLinked => 'Linked';
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String get commonApply => 'Apply';
+
+  @override
+  String get commonRefresh => 'Refresh';
+
+  @override
+  String get periodThisWeek => 'This week';
+
+  @override
+  String get periodThisMonth => 'This month';
+
+  @override
+  String get periodCustom => 'Custom';
+
+  @override
+  String get budgetTitle => 'Budgets';
+
+  @override
+  String get budgetManage => 'Manage';
+
+  @override
+  String get budgetEmptyPeriod => 'No budgets in this period.';
+
+  @override
+  String get budgetLoadFailedPullToRetry =>
+      'Couldn\'t load your budgets. Pull down to try again.';
+
+  @override
+  String budgetMoreCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+$count more budgets',
+      one: '+1 more budget',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String budgetOverBy(String amount) {
+    return 'Over the limit by $amount';
+  }
+
+  @override
+  String budgetNearLimitLeft(String amount) {
+    return 'Almost at the limit · Left: $amount';
+  }
+
+  @override
+  String budgetLeft(String amount) {
+    return 'Left: $amount';
+  }
+
+  @override
+  String get budgetAlertWarningTitle => 'Budget almost used up';
+
+  @override
+  String get budgetAlertExceededTitle => 'Budget exceeded';
+
+  @override
+  String budgetAlertExceededLine(
+    String name,
+    String period,
+    String amounts,
+    String percent,
+  ) {
+    return '• $name (per $period): over the limit — $amounts ($percent%)';
+  }
+
+  @override
+  String budgetAlertWarningLine(
+    String name,
+    String period,
+    String amounts,
+    String percent,
+  ) {
+    return '• $name (per $period): $percent% of the limit used — $amounts';
+  }
+
+  @override
+  String get budgetLoadFailedTitle => 'Couldn\'t load your budgets';
+
+  @override
+  String get budgetDeleteTitle => 'Delete budget?';
+
+  @override
+  String budgetDeleteMessage(String name) {
+    return 'The budget \"$name\" will be deleted.';
+  }
+
+  @override
+  String get budgetDeleteFailedTitle => 'Couldn\'t delete the budget';
+
+  @override
+  String get budgetDeleted => 'Budget deleted';
+
+  @override
+  String get budgetEmpty => 'No budgets yet.';
+
+  @override
+  String get budgetEmptyHint =>
+      'Set a weekly or monthly spending limit to stay in control.';
+
+  @override
+  String get budgetCreate => 'Set up a budget';
+
+  @override
+  String get budgetEditTitle => 'Edit budget';
+
+  @override
+  String get budgetAmountLabel => 'Budget amount (₫)';
+
+  @override
+  String get budgetAmountPositive =>
+      'Please enter a budget amount greater than 0.';
+
+  @override
+  String get budgetPeriodLabel => 'Period';
+
+  @override
+  String get budgetAppliedPeriod => 'Applied period';
+
+  @override
+  String get budgetSave => 'Save budget';
+
+  @override
+  String get budgetSaveFailedTitle => 'Couldn\'t save the budget';
+
+  @override
+  String get budgetSavedTitle => 'Budget saved';
+
+  @override
+  String get budgetSavedMessage => 'Your spending limit has been updated.';
+
+  @override
+  String get budgetCategoriesLoadFailedTitle => 'Couldn\'t load the categories';
+
+  @override
+  String budgetCategoriesLoadFailedMessage(String allLabel) {
+    return 'You can still choose \"$allLabel\" or try again later.';
+  }
+
+  @override
+  String get dashboardGreeting => 'Hello,';
+
+  @override
+  String get dashboardBalance => 'Current balance';
+
+  @override
+  String get dashboardVsLastMonth => 'vs. last month';
+
+  @override
+  String get dashboardReports => 'Reports';
+
+  @override
+  String get dashboardAllFeatures => 'All';
+
+  @override
+  String get dashboardNoTransactions => 'No transactions yet.';
+
+  @override
+  String get moneySourcesSubtitle => 'Wallets linked to your account';
+
+  @override
+  String get allFeaturesTitle => 'All features';
+
+  @override
+  String get featureSavingsDescription => 'Manage savings goals';
+
+  @override
+  String get featureMoneySourcesDescription => 'See wallets and balances';
+
+  @override
+  String get featureLinkedServicesDescription => 'MoMo, ZaloPay, banks...';
+
+  @override
+  String get aiTitle => 'AI analysis';
+
+  @override
+  String get aiPickRangeTitle => 'Choose a time range';
+
+  @override
+  String get aiErrorNetwork =>
+      'Can\'t reach the analysis server. Please check your connection and try again.';
+
+  @override
+  String get aiErrorServer =>
+      'The analysis server ran into a problem. Please try again later.';
+
+  @override
+  String get aiErrorRejected =>
+      'The analysis server couldn\'t process the request. Please try again later.';
+
+  @override
+  String get aiAnalyzeFailedTitle => 'Couldn\'t analyse your spending habits';
+
+  @override
+  String get aiNoData => 'No data yet';
+
+  @override
+  String get aiNoDataHint =>
+      'Add real transactions so WCM-SPADE can mine your spending patterns.';
+
+  @override
+  String get aiTrendTitle => 'Spending trend';
+
+  @override
+  String get aiTopCategoryTitle => 'Top spending';
+
+  @override
+  String get aiSavingTipTitle => 'Saving tip';
+
+  @override
+  String get aiWeekCompareTitle => 'Week comparison';
+
+  @override
+  String get aiChartTitle => 'Income & spending chart';
+
+  @override
+  String get aiNoWeekData => 'No data for the weeks of this month yet.';
+
+  @override
+  String aiTopWeek(int week, String amount) {
+    return 'Week $week has the highest spending: $amount.';
+  }
+
+  @override
+  String get aiSafeToSpendTitle => 'How much can I spend today?';
+
+  @override
+  String get aiSafeToSpendNoIncome =>
+      'Add this month\'s income to work out a safe amount.';
+
+  @override
+  String aiPerDay(String amount) {
+    return '$amount / day';
+  }
+
+  @override
+  String aiDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'What is left spread evenly over $days days.',
+      one: 'What is left covers the last day.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aiOverSafe => 'You\'ve spent past this month\'s safe share.';
+
+  @override
+  String aiSpentThisMonth(String amount) {
+    return 'You\'ve spent $amount this month.';
+  }
+
+  @override
+  String aiTrendUp(String percent) {
+    return 'Spending this month is up $percent% on last month.';
+  }
+
+  @override
+  String aiTrendDown(String percent) {
+    return 'Spending this month is down $percent% on last month.';
+  }
+
+  @override
+  String get aiNoSpendingThisMonth => 'No spending this month yet.';
+
+  @override
+  String aiTopCategory(String category, String amount, String percent) {
+    return '$category accounts for $amount ($percent% of spending).';
+  }
+
+  @override
+  String aiSurplus(String amount) {
+    return 'You\'re $amount ahead. Set a goal!';
+  }
+
+  @override
+  String get aiAddGoal => 'Add a savings goal for the AI to analyse.';
+
+  @override
+  String get aiOnTrack =>
+      'You\'re on your savings path. See the money allocation tips below to reach your goal faster!';
+
+  @override
+  String get aiSpadeTitle => 'Sequential spending patterns';
+
+  @override
+  String get aiSpadeSubtitle => 'Spending sequences you often follow';
+
+  @override
+  String get aiSpadeLoadFailedTitle => 'Couldn\'t load the analysis';
+
+  @override
+  String get aiSpadeLoadFailedMessage =>
+      'Check your connection, then refresh to try again.';
+
+  @override
+  String get aiSpadeNotEnoughTitle => 'Not enough data';
+
+  @override
+  String get aiSpadeNotEnoughMessage =>
+      'Add at least 3 transactions to see sequential spending patterns.';
+
+  @override
+  String aiSpadeDetail(String count, String support) {
+    return 'Frequency: $count times  ·  Support (W-Sup): $support';
+  }
+
+  @override
+  String get aiAdviceTitle => 'Money allocation tips';
+
+  @override
+  String get aiAdviceSubtitle =>
+      'Suggested cuts and keeps per item to reach your savings goal';
+
+  @override
+  String aiAdvicePerMonth(String current, String suggested) {
+    return '$current → $suggested / month';
+  }
+
+  @override
+  String get aiGuardTitle => 'Future habit alerts';
+
+  @override
+  String get aiGuardSubtitle =>
+      'The AI predicts upcoming spending from your spending sequence history.';
+
+  @override
+  String get aiGuardHeading => 'Behaviour forecast · Sequence mining';
+
+  @override
+  String aiGuardRule(String from, String to) {
+    return 'WCM-SPADE found the rule [$from → $to]: after spending on $from, you tend to spend on $to within a few days. Keep an eye on your wallet so it does not eat into your savings!';
+  }
+
+  @override
+  String get ai503020Title => 'Spending health — the 50/30/20 rule';
+
+  @override
+  String get ai503020Groups =>
+      'Needs: Food & drinks, Transport, Supermarket, Living costs · Wants: Entertainment, Other';
+
+  @override
+  String get ai503020Needs => 'Needs';
+
+  @override
+  String get ai503020Wants => 'Wants';
+
+  @override
+  String get ai503020Savings => 'Savings (what\'s left)';
+
+  @override
+  String get ai503020OnTrack =>
+      'This month\'s spending meets the 50/30/20 rule. Keep it up!';
+
+  @override
+  String ai503020NeedsHigh(String percent) {
+    return 'Needs take $percent% of your income (target ≤50%). Check Living costs/Supermarket for anything you can trim.';
+  }
+
+  @override
+  String ai503020WantsHigh(String percent) {
+    return 'Wants (Entertainment, Other) take $percent% of your income (target ≤30%) — the easiest place to cut.';
+  }
+
+  @override
+  String ai503020SavingsLow(String percent) {
+    return 'You\'ve saved only $percent% of your income (target ≥20%). Raise it a little each month.';
+  }
 }

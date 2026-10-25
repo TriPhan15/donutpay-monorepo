@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:dio/dio.dart';
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -28,15 +30,16 @@ Future<DateTimeRange?> _showDateRangePicker(
   BuildContext context,
   DateTimeRange initial,
 ) {
+  final loc = context.loc;
   return showDateRangePicker(
     context: context,
     firstDate: DateTime(_pickerFirstYear),
     lastDate: DateTime(_pickerLastYear),
     initialDateRange: initial,
-    helpText: 'Chọn khoảng thời gian',
-    cancelText: 'Hủy',
-    confirmText: 'Áp dụng',
-    saveText: 'Áp dụng',
+    helpText: loc.aiPickRangeTitle,
+    cancelText: loc.dialogCancel,
+    confirmText: loc.commonApply,
+    saveText: loc.commonApply,
   );
 }
 
@@ -218,16 +221,12 @@ class _AITabPageState extends State<AITabPage> {
     _loadSpadePatterns(reportErrors: true);
   }
 
-  static String _messageOf(Object error) {
-    if (error is! DioException) return 'Đã xảy ra lỗi. Vui lòng thử lại.';
+  static String _messageOf(Object error, AppLocalizations loc) {
+    if (error is! DioException) return loc.errorUnexpected;
     final status = error.response?.statusCode;
-    if (status == null) {
-      return 'Không kết nối được tới máy chủ phân tích. Vui lòng kiểm tra mạng và thử lại.';
-    }
-    if (status >= _httpServerError) {
-      return 'Máy chủ phân tích đang gặp sự cố. Vui lòng thử lại sau.';
-    }
-    return 'Máy chủ phân tích chưa xử lý được yêu cầu. Vui lòng thử lại sau.';
+    if (status == null) return loc.aiErrorNetwork;
+    if (status >= _httpServerError) return loc.aiErrorServer;
+    return loc.aiErrorRejected;
   }
 
   Future<List<Map<String, dynamic>>> _analyze(
@@ -285,8 +284,8 @@ class _AITabPageState extends State<AITabPage> {
     if (reportErrors) {
       await AppDialog.error(
         context,
-        title: 'Không phân tích được thói quen chi tiêu',
-        message: _messageOf(error),
+        title: context.loc.aiAnalyzeFailedTitle,
+        message: _messageOf(error, context.loc),
       );
     }
   }
@@ -296,9 +295,9 @@ class _AITabPageState extends State<AITabPage> {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Phân tích AI',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+        title: Text(
+          context.loc.aiTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
       ),
       // The spinners take the primary colour of the theme, the refresh one on its surface.
@@ -313,6 +312,7 @@ class _AITabPageState extends State<AITabPage> {
 
   /// The icon colours of the insight cards identify each card and stay the same in both themes, like chart series.
   Widget _buildContent(ColorScheme colors) {
+    final loc = context.loc;
     if (_transactions.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(20),
@@ -321,14 +321,14 @@ class _AITabPageState extends State<AITabPage> {
             colors,
             icon: Icons.ac_unit_rounded,
             iconColor: Colors.blueAccent,
-            title: 'Chưa có dữ liệu',
-            subtitle:
-                'Hãy nhập giao dịch thực tế để hệ thống WCM-SPADE khai phá quy luật.',
+            title: loc.aiNoData,
+            subtitle: loc.aiNoDataHint,
           ),
           const SizedBox(height: 24),
 
           AiComponents.buildBudgetAdviceSection(
             colors,
+            loc,
             _budgetAdvice,
             _adviceLoading,
           ),
@@ -347,37 +347,37 @@ class _AITabPageState extends State<AITabPage> {
           colors,
           icon: Icons.trending_up_rounded,
           iconColor: colors.primary,
-          title: 'Xu hướng chi tiêu',
-          subtitle: _getSpendingTrend(),
+          title: loc.aiTrendTitle,
+          subtitle: _getSpendingTrend(loc),
         ),
         const SizedBox(height: 16),
         _buildInsightCard(
           colors,
           icon: Icons.category_rounded,
           iconColor: Colors.orange,
-          title: 'Chi nhiều nhất',
-          subtitle: _getTopCategory(),
+          title: loc.aiTopCategoryTitle,
+          subtitle: _getTopCategory(loc),
         ),
         const SizedBox(height: 16),
         _buildInsightCard(
           colors,
           icon: Icons.savings_rounded,
           iconColor: Colors.amber,
-          title: 'Mẹo tiết kiệm',
-          subtitle: _getSavingTip(),
+          title: loc.aiSavingTipTitle,
+          subtitle: _getSavingTip(loc),
         ),
         const SizedBox(height: 16),
         _buildInsightCard(
           colors,
           icon: Icons.water_drop_rounded,
           iconColor: Colors.blue,
-          title: 'So sánh tuần',
-          subtitle: _getWeeklyComparison(),
+          title: loc.aiWeekCompareTitle,
+          subtitle: _getWeeklyComparison(loc),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Biểu đồ thu chi tuần',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          loc.aiChartTitle,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         SpendingRangeFilter(
@@ -391,6 +391,7 @@ class _AITabPageState extends State<AITabPage> {
         const SizedBox(height: 24),
         AiComponents.buildSpadeSection(
           colors,
+          loc,
           _spadePatterns,
           _spadeLoading,
           hasError: _spadeFailed,
@@ -399,6 +400,7 @@ class _AITabPageState extends State<AITabPage> {
 
         AiComponents.build503020Card(
           colors,
+          loc,
           _monthTxs,
           _monthIncome,
           _monthExpense,
@@ -406,6 +408,7 @@ class _AITabPageState extends State<AITabPage> {
         const SizedBox(height: 24),
         AiComponents.buildBudgetAdviceSection(
           colors,
+          loc,
           _budgetAdvice,
           _adviceLoading,
         ),
@@ -423,23 +426,22 @@ class _AITabPageState extends State<AITabPage> {
   ];
 
   /// The four weeks of the current month, whatever period the chart shows.
-  List<double> _getWeeklyExpenses() => _expensesPerBucket(
-    SpendingRange.month(DateTime.now()).buckets(context.locOrDefault),
-  );
+  List<double> _getWeeklyExpenses(AppLocalizations loc) =>
+      _expensesPerBucket(SpendingRange.month(DateTime.now()).buckets(loc));
 
-  String _getWeeklyComparison() {
-    final amounts = _getWeeklyExpenses();
-    if (amounts.every((a) => a == 0)) return 'Chưa có dữ liệu tuần này.';
+  String _getWeeklyComparison(AppLocalizations loc) {
+    final amounts = _getWeeklyExpenses(loc);
+    if (amounts.every((a) => a == 0)) return loc.aiNoWeekData;
 
     int maxIdx = 0;
     for (int i = 1; i < 4; i++) {
       if (amounts[i] > amounts[maxIdx]) maxIdx = i;
     }
-    return 'Tuần ${maxIdx + 1} có chi tiêu cao nhất: ${_fmt(amounts[maxIdx])}.';
+    return loc.aiTopWeek(maxIdx + 1, _fmt(loc, amounts[maxIdx]));
   }
 
   Widget _buildWeeklyChart(ColorScheme colors, SpendingRange range) {
-    final buckets = range.buckets(context.locOrDefault);
+    final buckets = range.buckets(context.loc);
     final weekExpenses = _expensesPerBucket(buckets);
     final maxY = (weekExpenses.reduce((a, b) => a > b ? a : b) * 1.2).clamp(
       100.0,
@@ -528,13 +530,14 @@ class _AITabPageState extends State<AITabPage> {
   }
 
   Widget _buildSafeToSpendCard(ColorScheme colors) {
+    final loc = context.loc;
     if (_monthIncome <= 0) {
       return _buildInsightCard(
         colors,
         icon: Icons.account_balance_wallet_rounded,
         iconColor: colors.primary,
-        title: 'Hôm nay tiêu được bao nhiêu?',
-        subtitle: 'Thêm khoản thu tháng này để tính số tiền an toàn.',
+        title: loc.aiSafeToSpendTitle,
+        subtitle: loc.aiSafeToSpendNoIncome,
       );
     }
 
@@ -575,15 +578,18 @@ class _AITabPageState extends State<AITabPage> {
                 size: 22,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Hôm nay tiêu được bao nhiêu?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Text(
+                loc.aiSafeToSpendTitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            '${_fmt(safePerDay)} / ngày',
+            loc.aiPerDay(_fmt(loc, safePerDay)),
             style: TextStyle(
               color: color,
               fontSize: 26,
@@ -592,9 +598,7 @@ class _AITabPageState extends State<AITabPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            ok
-                ? 'Còn lại chia đều $daysLeft ngày.'
-                : 'Bạn đã chi vượt phần an toàn của tháng.',
+            ok ? loc.aiDaysLeft(daysLeft) : loc.aiOverSafe,
             style: TextStyle(
               color: colors.onSurfaceVariant,
               fontSize: 13,
@@ -606,7 +610,7 @@ class _AITabPageState extends State<AITabPage> {
     );
   }
 
-  String _getSpendingTrend() {
+  String _getSpendingTrend(AppLocalizations loc) {
     final lm = DateTime(DateTime.now().year, DateTime.now().month - 1);
     final lastTotal = _transactions
         .where(
@@ -614,29 +618,34 @@ class _AITabPageState extends State<AITabPage> {
               t.isExpense && t.date.year == lm.year && t.date.month == lm.month,
         )
         .fold(0.0, (s, t) => s + t.amount);
-    if (lastTotal == 0) return 'Tháng này bạn đã chi ${_fmt(_monthExpense)}.';
+    if (lastTotal == 0) return loc.aiSpentThisMonth(_fmt(loc, _monthExpense));
 
     final diff = ((_monthExpense - lastTotal) / lastTotal * 100);
-    return 'Chi tiêu tháng này ${diff > 0 ? 'tăng' : 'giảm'} ${diff.abs().toStringAsFixed(1)}% so với tháng trước.';
+    final percent = diff.abs().toStringAsFixed(1);
+    return diff > 0 ? loc.aiTrendUp(percent) : loc.aiTrendDown(percent);
   }
 
-  String _getTopCategory() {
-    if (_monthExpense <= 0) return 'Chưa có chi tiêu tháng này.';
+  String _getTopCategory(AppLocalizations loc) {
+    if (_monthExpense <= 0) return loc.aiNoSpendingThisMonth;
     final Map<String, double> totals = {};
     for (var tx in _monthTxs.where((t) => t.isExpense)) {
       totals[tx.category] = (totals[tx.category] ?? 0) + tx.amount;
     }
     final top = totals.entries.reduce((a, b) => a.value > b.value ? a : b);
-    return '${top.key} chiếm ${_fmt(top.value)} (${(top.value / _monthExpense * 100).toStringAsFixed(0)}% tổng chi).';
+    return loc.aiTopCategory(
+      TransactionCategories.displayName(loc, top.key),
+      _fmt(loc, top.value),
+      (top.value / _monthExpense * 100).toStringAsFixed(0),
+    );
   }
 
-  String _getSavingTip() {
+  String _getSavingTip(AppLocalizations loc) {
     if (_savingsGoals.isEmpty) {
       return _monthIncome > _monthExpense
-          ? 'Đang dư ${_fmt(_monthIncome - _monthExpense)}. Hãy lập mục tiêu!'
-          : 'Thêm mục tiêu tiết kiệm để AI phân tích.';
+          ? loc.aiSurplus(_fmt(loc, _monthIncome - _monthExpense))
+          : loc.aiAddGoal;
     }
-    return 'Bạn đang trong lộ trình tiết kiệm. Xem gợi ý phân bổ tiền bên dưới để đạt mục tiêu nhanh hơn!';
+    return loc.aiOnTrack;
   }
 
   Widget _buildInsightCard(
@@ -690,9 +699,7 @@ class _AITabPageState extends State<AITabPage> {
     );
   }
 
-  String _fmt(double a) => NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  ).format(a);
+  /// [a] in the language on screen, with a minus in front only when it is below zero.
+  String _fmt(AppLocalizations loc, double a) =>
+      CurrencyHelper.formatVND(a, loc, showSign: a < 0);
 }

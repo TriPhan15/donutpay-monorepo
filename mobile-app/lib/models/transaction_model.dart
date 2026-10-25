@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 
@@ -15,6 +16,8 @@ class TransactionModel {
 
   /// Values of the body of POST /api/transactions/checkout that every transaction of the app sends the same way.
   static const String paymentMethodWallet = 'WALLET';
+
+  /// Data, not a UI text: the location core-backend stores for a transaction made in the app.
   static const String defaultLocation = 'Trong ứng dụng';
 
   static const Uuid _uuid = Uuid();
@@ -151,7 +154,7 @@ class TransactionModel {
       title: map['title'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       date: DateTime.parse(map['date']),
-      category: map['category'] ?? 'Khác',
+      category: map['category'] ?? TransactionCategories.otherExpense,
       isExpense: map['isExpense'] ?? true,
       iconName: map['icon_name'] ?? 'default',
     );
@@ -166,7 +169,8 @@ class TransactionModel {
       title: (json['title'] ?? json['category'] ?? '').toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       date: DateTime.tryParse(json['date']?.toString() ?? '') ?? DateTime.now(),
-      category: (json['category'] ?? 'Khác').toString(),
+      category: (json['category'] ?? TransactionCategories.otherExpense)
+          .toString(),
       isExpense: json['isExpense'] == true,
       iconName: (json['category'] ?? 'default').toString(),
       imageUrl: json['imageUrl']?.toString(),
@@ -200,7 +204,7 @@ class TransactionModel {
       title: map['title'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       date: DateTime.parse(map['date']),
-      category: map['category'] ?? 'Khác',
+      category: map['category'] ?? TransactionCategories.otherExpense,
       isExpense: map['is_expense'] == 1,
       iconName: map['icon_name'] ?? 'default',
       walletId: map['wallet_id'] as int?,

@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
 
 /// The sheets take their surface colour from the theme's bottomSheetTheme; their content reads the colour scheme once
 /// per sheet.
 class DashboardBottomSheets {
   static void showBankSources(BuildContext context, List<WalletModel> wallets) {
-    final fmtCur = NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: '₫',
-      decimalDigits: 0,
-    );
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -18,6 +14,7 @@ class DashboardBottomSheets {
       ),
       builder: (ctx) {
         final colors = Theme.of(ctx).colorScheme;
+        final loc = ctx.locOrDefault;
         final balanceStyle = TextStyle(
           color: colors.primary,
           fontWeight: FontWeight.bold,
@@ -29,13 +26,16 @@ class DashboardBottomSheets {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Nguồn tiền',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  loc.profileMoneySources,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Các ví đã liên kết với tài khoản',
+                  loc.moneySourcesSubtitle,
                   style: TextStyle(
                     color: colors.onSurfaceVariant,
                     fontSize: 13,
@@ -46,7 +46,7 @@ class DashboardBottomSheets {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      'Chưa có ví nào.',
+                      loc.moneySourcesEmpty,
                       style: TextStyle(color: colors.onSurfaceVariant),
                     ),
                   )
@@ -71,7 +71,11 @@ class DashboardBottomSheets {
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                       trailing: Text(
-                        fmtCur.format(w.balance),
+                        CurrencyHelper.formatVND(
+                          w.balance,
+                          loc,
+                          showSign: w.balance < 0,
+                        ),
                         style: balanceStyle,
                       ),
                     ),
@@ -91,23 +95,24 @@ class DashboardBottomSheets {
     required VoidCallback onBankSources,
     required VoidCallback onLinkedServices,
   }) {
+    final loc = context.locOrDefault;
     final features = [
       (
         Icons.savings_rounded,
-        'Sổ tiết kiệm',
-        'Quản lý mục tiêu tiết kiệm',
+        loc.savingsTitle,
+        loc.featureSavingsDescription,
         onSavings,
       ),
       (
         Icons.account_balance_wallet_rounded,
-        'Nguồn tiền',
-        'Xem ví và số dư',
+        loc.profileMoneySources,
+        loc.featureMoneySourcesDescription,
         onBankSources,
       ),
       (
         Icons.link_rounded,
-        'Dịch vụ liên kết',
-        'MoMo, ZaloPay, ngân hàng...',
+        loc.profileLinkedServices,
+        loc.featureLinkedServicesDescription,
         onLinkedServices,
       ),
     ];
@@ -131,9 +136,12 @@ class DashboardBottomSheets {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Tất cả tính năng',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  loc.allFeaturesTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 GridView.count(

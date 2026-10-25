@@ -5,12 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
 import '../../helpers/fake_backend.dart';
+
+/// The app in Vietnamese, the language these texts are written in.
+Widget _app(Widget home) => MaterialApp(
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('vi'),
+  home: home,
+);
 
 Map<String, Object?> _budget({
   int id = 7,
@@ -55,7 +64,7 @@ void main() {
   });
 
   Future<void> pumpScreen(WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: BudgetScreen()));
+    await tester.pumpWidget(_app(const BudgetScreen()));
     await tester.pumpAndSettle();
   }
 
@@ -91,8 +100,8 @@ void main() {
         expect(find.text('Tất cả danh mục'), findsOneWidget);
         expect(find.text('Tháng · 01/09/2026 – 30/09/2026'), findsOneWidget);
         expect(find.text('Tuần · 14/09/2026 – 20/09/2026'), findsOneWidget);
-        expect(find.text('2,000,000 đ'), findsOneWidget);
-        expect(find.text('500,000 đ'), findsOneWidget);
+        expect(find.text('2.000.000 đ'), findsOneWidget);
+        expect(find.text('500.000 đ'), findsOneWidget);
 
         expect(backend.calls, ['GET /api/budgets']);
         expect(backend.requests.single.queryParameters, isEmpty);
@@ -138,14 +147,14 @@ void main() {
     });
 
     testWidgets(
-      'a server error without a message gets a generic one, and the empty state follows',
+      'a server error gets the fixed server-error text, and the empty state follows',
       (tester) async {
         backend.on('GET', '/api/budgets', (_) => jsonResponse(500, {}));
 
         await pumpScreen(tester);
 
         expect(
-          find.text('Không thể kết nối máy chủ. Vui lòng thử lại.'),
+          find.text('Máy chủ đang gặp sự cố. Vui lòng thử lại sau.'),
           findsOneWidget,
         );
         await tapText(tester, 'Đã hiểu');
@@ -159,7 +168,7 @@ void main() {
         final pending = Completer<ResponseBody>();
         backend.on('GET', '/api/budgets', (_) => pending.future);
 
-        await tester.pumpWidget(const MaterialApp(home: BudgetScreen()));
+        await tester.pumpWidget(_app(const BudgetScreen()));
         await tester.pump();
         await tester.pumpWidget(const MaterialApp(home: SizedBox()));
         pending.complete(okResponse([_budget()]));
@@ -235,7 +244,7 @@ void main() {
           'GET /api/budgets',
           reason: 'the list is reloaded after saving',
         );
-        expect(find.text('3,000,000 đ'), findsOneWidget);
+        expect(find.text('3.000.000 đ'), findsOneWidget);
         expect(
           find.text('Lưu ngân sách'),
           findsNothing,
@@ -355,7 +364,7 @@ void main() {
           'endDate': '2026-09-30',
         });
         expect(backend.requests.where((r) => r.method == 'POST'), isEmpty);
-        expect(find.text('2,500,000 đ'), findsOneWidget);
+        expect(find.text('2.500.000 đ'), findsOneWidget);
       },
     );
   });

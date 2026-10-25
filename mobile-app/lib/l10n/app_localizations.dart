@@ -2599,6 +2599,610 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Linked'**
   String get linkedLinked;
+
+  /// Button that deletes an item.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get commonDelete;
+
+  /// Button that applies a choice (e.g. a date range).
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get commonApply;
+
+  /// Button that runs an analysis again.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get commonRefresh;
+
+  /// The current calendar week.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get periodThisWeek;
+
+  /// The current calendar month.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get periodThisMonth;
+
+  /// A range of days the user picks.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get periodCustom;
+
+  /// Title of the budget screen and of the budget block.
+  ///
+  /// In en, this message translates to:
+  /// **'Budgets'**
+  String get budgetTitle;
+
+  /// Link from the budget block to the budget screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get budgetManage;
+
+  /// The budget block has nothing to show.
+  ///
+  /// In en, this message translates to:
+  /// **'No budgets in this period.'**
+  String get budgetEmptyPeriod;
+
+  /// The budget block could not load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your budgets. Pull down to try again.'**
+  String get budgetLoadFailedPullToRetry;
+
+  /// How many budgets the block does not show.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{+1 more budget} other{+{count} more budgets}}'**
+  String budgetMoreCount(int count);
+
+  /// A budget past its limit; amount is formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'Over the limit by {amount}'**
+  String budgetOverBy(String amount);
+
+  /// A budget at 80% or more; amount is formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost at the limit · Left: {amount}'**
+  String budgetNearLimitLeft(String amount);
+
+  /// What is left of a budget; amount is formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'Left: {amount}'**
+  String budgetLeft(String amount);
+
+  /// Title of the 80% budget alert.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget almost used up'**
+  String get budgetAlertWarningTitle;
+
+  /// Title of the 100% budget alert.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget exceeded'**
+  String get budgetAlertExceededTitle;
+
+  /// One exceeded budget in the alert; period is the lowercase period name, amounts is "spent / limit".
+  ///
+  /// In en, this message translates to:
+  /// **'• {name} (per {period}): over the limit — {amounts} ({percent}%)'**
+  String budgetAlertExceededLine(
+    String name,
+    String period,
+    String amounts,
+    String percent,
+  );
+
+  /// One budget at 80% or more in the alert; period is the lowercase period name, amounts is "spent / limit".
+  ///
+  /// In en, this message translates to:
+  /// **'• {name} (per {period}): {percent}% of the limit used — {amounts}'**
+  String budgetAlertWarningLine(
+    String name,
+    String period,
+    String amounts,
+    String percent,
+  );
+
+  /// Error title when the budget list fails to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your budgets'**
+  String get budgetLoadFailedTitle;
+
+  /// Title of the delete confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete budget?'**
+  String get budgetDeleteTitle;
+
+  /// Delete confirmation; name is the category label.
+  ///
+  /// In en, this message translates to:
+  /// **'The budget \"{name}\" will be deleted.'**
+  String budgetDeleteMessage(String name);
+
+  /// Error title when a delete fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete the budget'**
+  String get budgetDeleteFailedTitle;
+
+  /// Shown after a delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget deleted'**
+  String get budgetDeleted;
+
+  /// The budget list is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No budgets yet.'**
+  String get budgetEmpty;
+
+  /// Hint under the empty budget list.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a weekly or monthly spending limit to stay in control.'**
+  String get budgetEmptyHint;
+
+  /// Button and form title for a new budget.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up a budget'**
+  String get budgetCreate;
+
+  /// Form title for an existing budget.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit budget'**
+  String get budgetEditTitle;
+
+  /// Label of the amount field.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget amount (₫)'**
+  String get budgetAmountLabel;
+
+  /// The amount is missing or not positive.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a budget amount greater than 0.'**
+  String get budgetAmountPositive;
+
+  /// Label of the week/month choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Period'**
+  String get budgetPeriodLabel;
+
+  /// The dates an edited budget keeps.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied period'**
+  String get budgetAppliedPeriod;
+
+  /// Submit button of the budget form.
+  ///
+  /// In en, this message translates to:
+  /// **'Save budget'**
+  String get budgetSave;
+
+  /// Error title when saving fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the budget'**
+  String get budgetSaveFailedTitle;
+
+  /// Shown after a save.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget saved'**
+  String get budgetSavedTitle;
+
+  /// Shown after a save.
+  ///
+  /// In en, this message translates to:
+  /// **'Your spending limit has been updated.'**
+  String get budgetSavedMessage;
+
+  /// The category list of the form failed to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the categories'**
+  String get budgetCategoriesLoadFailedTitle;
+
+  /// allLabel is the "all categories" option.
+  ///
+  /// In en, this message translates to:
+  /// **'You can still choose \"{allLabel}\" or try again later.'**
+  String budgetCategoriesLoadFailedMessage(String allLabel);
+
+  /// Greeting above the user name.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello,'**
+  String get dashboardGreeting;
+
+  /// Label of the balance card.
+  ///
+  /// In en, this message translates to:
+  /// **'Current balance'**
+  String get dashboardBalance;
+
+  /// After the percentage change of the month.
+  ///
+  /// In en, this message translates to:
+  /// **'vs. last month'**
+  String get dashboardVsLastMonth;
+
+  /// Shortcut to the AI tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get dashboardReports;
+
+  /// Shortcut that opens every feature.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get dashboardAllFeatures;
+
+  /// The recent transaction list is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions yet.'**
+  String get dashboardNoTransactions;
+
+  /// Under the money sources title.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallets linked to your account'**
+  String get moneySourcesSubtitle;
+
+  /// Title of the feature sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'All features'**
+  String get allFeaturesTitle;
+
+  /// Under the savings feature.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage savings goals'**
+  String get featureSavingsDescription;
+
+  /// Under the money sources feature.
+  ///
+  /// In en, this message translates to:
+  /// **'See wallets and balances'**
+  String get featureMoneySourcesDescription;
+
+  /// Under the linked services feature.
+  ///
+  /// In en, this message translates to:
+  /// **'MoMo, ZaloPay, banks...'**
+  String get featureLinkedServicesDescription;
+
+  /// Title of the AI tab.
+  ///
+  /// In en, this message translates to:
+  /// **'AI analysis'**
+  String get aiTitle;
+
+  /// Title of the date range picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a time range'**
+  String get aiPickRangeTitle;
+
+  /// The AI service did not answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the analysis server. Please check your connection and try again.'**
+  String get aiErrorNetwork;
+
+  /// The AI service answered 5xx.
+  ///
+  /// In en, this message translates to:
+  /// **'The analysis server ran into a problem. Please try again later.'**
+  String get aiErrorServer;
+
+  /// The AI service answered 4xx.
+  ///
+  /// In en, this message translates to:
+  /// **'The analysis server couldn\'t process the request. Please try again later.'**
+  String get aiErrorRejected;
+
+  /// Error title of a failed analysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t analyse your spending habits'**
+  String get aiAnalyzeFailedTitle;
+
+  /// The user has no transactions.
+  ///
+  /// In en, this message translates to:
+  /// **'No data yet'**
+  String get aiNoData;
+
+  /// Hint when there are no transactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Add real transactions so WCM-SPADE can mine your spending patterns.'**
+  String get aiNoDataHint;
+
+  /// Insight card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending trend'**
+  String get aiTrendTitle;
+
+  /// Insight card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Top spending'**
+  String get aiTopCategoryTitle;
+
+  /// Insight card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving tip'**
+  String get aiSavingTipTitle;
+
+  /// Insight card title.
+  ///
+  /// In en, this message translates to:
+  /// **'Week comparison'**
+  String get aiWeekCompareTitle;
+
+  /// Title of the spending chart.
+  ///
+  /// In en, this message translates to:
+  /// **'Income & spending chart'**
+  String get aiChartTitle;
+
+  /// No spending in any week of the month.
+  ///
+  /// In en, this message translates to:
+  /// **'No data for the weeks of this month yet.'**
+  String get aiNoWeekData;
+
+  /// week is 1-4; amount is formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week} has the highest spending: {amount}.'**
+  String aiTopWeek(int week, String amount);
+
+  /// Title of the safe-to-spend card.
+  ///
+  /// In en, this message translates to:
+  /// **'How much can I spend today?'**
+  String get aiSafeToSpendTitle;
+
+  /// No income this month.
+  ///
+  /// In en, this message translates to:
+  /// **'Add this month\'s income to work out a safe amount.'**
+  String get aiSafeToSpendNoIncome;
+
+  /// Money per day; amount is formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} / day'**
+  String aiPerDay(String amount);
+
+  /// Days left in the month.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{What is left covers the last day.} other{What is left spread evenly over {days} days.}}'**
+  String aiDaysLeft(int days);
+
+  /// The safe amount is below zero.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve spent past this month\'s safe share.'**
+  String get aiOverSafe;
+
+  /// No spending last month to compare with.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve spent {amount} this month.'**
+  String aiSpentThisMonth(String amount);
+
+  /// percent has one decimal.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending this month is up {percent}% on last month.'**
+  String aiTrendUp(String percent);
+
+  /// percent has one decimal.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending this month is down {percent}% on last month.'**
+  String aiTrendDown(String percent);
+
+  /// Top category card without spending.
+  ///
+  /// In en, this message translates to:
+  /// **'No spending this month yet.'**
+  String get aiNoSpendingThisMonth;
+
+  /// category is the category label; amount is formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'{category} accounts for {amount} ({percent}% of spending).'**
+  String aiTopCategory(String category, String amount, String percent);
+
+  /// Income above spending, no goal yet.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re {amount} ahead. Set a goal!'**
+  String aiSurplus(String amount);
+
+  /// No savings goal yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a savings goal for the AI to analyse.'**
+  String get aiAddGoal;
+
+  /// The user has savings goals.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on your savings path. See the money allocation tips below to reach your goal faster!'**
+  String get aiOnTrack;
+
+  /// Title of the WCM-SPADE section.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequential spending patterns'**
+  String get aiSpadeTitle;
+
+  /// Under the WCM-SPADE title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending sequences you often follow'**
+  String get aiSpadeSubtitle;
+
+  /// The last analysis failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the analysis'**
+  String get aiSpadeLoadFailedTitle;
+
+  /// The last analysis failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection, then refresh to try again.'**
+  String get aiSpadeLoadFailedMessage;
+
+  /// No pattern found.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough data'**
+  String get aiSpadeNotEnoughTitle;
+
+  /// No pattern found.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least 3 transactions to see sequential spending patterns.'**
+  String get aiSpadeNotEnoughMessage;
+
+  /// count and support come from the AI service.
+  ///
+  /// In en, this message translates to:
+  /// **'Frequency: {count} times  ·  Support (W-Sup): {support}'**
+  String aiSpadeDetail(String count, String support);
+
+  /// Title of the budget advice section.
+  ///
+  /// In en, this message translates to:
+  /// **'Money allocation tips'**
+  String get aiAdviceTitle;
+
+  /// Under the advice title.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested cuts and keeps per item to reach your savings goal'**
+  String get aiAdviceSubtitle;
+
+  /// Current and suggested monthly amounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} → {suggested} / month'**
+  String aiAdvicePerMonth(String current, String suggested);
+
+  /// Title of the habit alert section.
+  ///
+  /// In en, this message translates to:
+  /// **'Future habit alerts'**
+  String get aiGuardTitle;
+
+  /// Under the habit alert title.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI predicts upcoming spending from your spending sequence history.'**
+  String get aiGuardSubtitle;
+
+  /// Heading of one habit alert.
+  ///
+  /// In en, this message translates to:
+  /// **'Behaviour forecast · Sequence mining'**
+  String get aiGuardHeading;
+
+  /// from and to are category labels.
+  ///
+  /// In en, this message translates to:
+  /// **'WCM-SPADE found the rule [{from} → {to}]: after spending on {from}, you tend to spend on {to} within a few days. Keep an eye on your wallet so it does not eat into your savings!'**
+  String aiGuardRule(String from, String to);
+
+  /// Title of the 50/30/20 card.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending health — the 50/30/20 rule'**
+  String get ai503020Title;
+
+  /// Which categories count as needs and wants.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs: Food & drinks, Transport, Supermarket, Living costs · Wants: Entertainment, Other'**
+  String get ai503020Groups;
+
+  /// Needs share row.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs'**
+  String get ai503020Needs;
+
+  /// Wants share row.
+  ///
+  /// In en, this message translates to:
+  /// **'Wants'**
+  String get ai503020Wants;
+
+  /// Savings share row.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings (what\'s left)'**
+  String get ai503020Savings;
+
+  /// Advice when every share is on target.
+  ///
+  /// In en, this message translates to:
+  /// **'This month\'s spending meets the 50/30/20 rule. Keep it up!'**
+  String get ai503020OnTrack;
+
+  /// percent is a whole number.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs take {percent}% of your income (target ≤50%). Check Living costs/Supermarket for anything you can trim.'**
+  String ai503020NeedsHigh(String percent);
+
+  /// percent is a whole number.
+  ///
+  /// In en, this message translates to:
+  /// **'Wants (Entertainment, Other) take {percent}% of your income (target ≤30%) — the easiest place to cut.'**
+  String ai503020WantsHigh(String percent);
+
+  /// percent is a whole number.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve saved only {percent}% of your income (target ≥20%). Raise it a little each month.'**
+  String ai503020SavingsLow(String percent);
 }
 
 class _AppLocalizationsDelegate

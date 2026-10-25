@@ -3,17 +3,14 @@ import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 
 /// One budget with what has been spent of it: a progress bar that turns orange from 80% and red from 100%, and
 /// text that says how much is left or by how much the limit was passed.
 class BudgetProgressCard extends StatelessWidget {
-  static final NumberFormat _money = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  );
   static final DateFormat _day = DateFormat('dd/MM/yyyy');
 
   final BudgetProgress progress;
@@ -27,13 +24,17 @@ class BudgetProgressCard extends StatelessWidget {
         BudgetAlertLevel.none => colors.primary,
       };
 
-  String get _status {
-    final left = _money.format(progress.remaining);
+  static String _money(AppLocalizations loc, double amount) =>
+      CurrencyHelper.formatVND(amount, loc, showSign: false);
+
+  String _statusOf(AppLocalizations loc) {
+    final left = _money(loc, progress.remaining);
     return switch (progress.level) {
-      BudgetAlertLevel.exceeded =>
-        'Đã vượt hạn mức: ${_money.format(-progress.remaining)}',
-      BudgetAlertLevel.warning => 'Sắp chạm hạn mức · Còn lại: $left',
-      BudgetAlertLevel.none => 'Còn lại: $left',
+      BudgetAlertLevel.exceeded => loc.budgetOverBy(
+        _money(loc, -progress.remaining),
+      ),
+      BudgetAlertLevel.warning => loc.budgetNearLimitLeft(left),
+      BudgetAlertLevel.none => loc.budgetLeft(left),
     };
   }
 
@@ -45,6 +46,7 @@ class BudgetProgressCard extends StatelessWidget {
     final accent = _accentOf(colors, semantic);
     final detailStyle = TextStyle(color: colors.onSurfaceVariant, fontSize: 12);
     final budget = progress.budget;
+    final loc = context.locOrDefault;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -57,21 +59,21 @@ class BudgetProgressCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  budget.categoryLabel(context.locOrDefault),
+                  budget.categoryLabel(loc),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                '${_money.format(progress.spent)} / ${_money.format(progress.limit)}',
+                '${_money(loc, progress.spent)} / ${_money(loc, progress.limit)}',
                 style: detailStyle,
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            '${BudgetPeriodType.label(context.locOrDefault, budget.periodType)} · ${_day.format(budget.start)} – ${_day.format(budget.end)}',
+            '${BudgetPeriodType.label(loc, budget.periodType)} · ${_day.format(budget.start)} – ${_day.format(budget.end)}',
             style: detailStyle.copyWith(fontSize: 11),
           ),
           const SizedBox(height: 8),
@@ -90,7 +92,7 @@ class BudgetProgressCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  _status,
+                  _statusOf(loc),
                   style: TextStyle(
                     color: progress.level == BudgetAlertLevel.none
                         ? semantic.successColor

@@ -15,17 +15,12 @@ import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
+import '../../helpers/vnd.dart';
 
 const String _mine = '/api/transactions/mine';
 const String _checkout = '/api/transactions/checkout';
 const String _balanceLabel = 'Số dư hiện tại';
 const String _warningTitle = 'Sắp chạm hạn mức ngân sách';
-
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: 'đ',
-  decimalDigits: 0,
-);
 
 String _ymd(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
@@ -132,7 +127,7 @@ void main() {
 
       expect(find.text(_balanceLabel), findsOneWidget);
       expect(find.text('Tổng tài sản hiện tại'), findsNothing);
-      expect(find.text(_money.format(-200000)), findsOneWidget);
+      expect(find.text(vnd(-200000)), findsOneWidget);
     },
   );
 
@@ -141,7 +136,7 @@ void main() {
     (tester) async {
       transactions = [_tx(100000, id: 1, isExpense: false)];
       await pump(tester, _tabs());
-      expect(find.text(_money.format(100000)), findsWidgets);
+      expect(find.text(vnd(100000)), findsWidgets);
       expect(find.text('Giao dịch 2', skipOffstage: false), findsNothing);
 
       await writeElsewhere(tester, [
@@ -149,7 +144,7 @@ void main() {
         _tx(40000, id: 2),
       ]);
 
-      expect(find.text(_money.format(60000)), findsOneWidget);
+      expect(find.text(vnd(60000)), findsOneWidget);
       expect(
         find.text('Giao dịch 2', skipOffstage: false),
         findsWidgets,
@@ -164,10 +159,7 @@ void main() {
       budgets = [_monthlyBudget(1000000)];
       transactions = [_tx(400000, id: 1)];
       await pump(tester, _tabs());
-      expect(
-        find.text('${_money.format(400000)} / ${_money.format(1000000)}'),
-        findsOneWidget,
-      );
+      expect(find.text('${vnd(400000)} / ${vnd(1000000)}'), findsOneWidget);
       expect(find.text(_warningTitle), findsNothing);
 
       await writeElsewhere(tester, [_tx(400000, id: 1), _tx(450000, id: 2)]);
@@ -175,10 +167,7 @@ void main() {
       expect(find.text(_warningTitle), findsOneWidget);
       await tester.tap(find.text('Đã hiểu'));
       await tester.pumpAndSettle();
-      expect(
-        find.text('${_money.format(850000)} / ${_money.format(1000000)}'),
-        findsOneWidget,
-      );
+      expect(find.text('${vnd(850000)} / ${vnd(1000000)}'), findsOneWidget);
     },
   );
 

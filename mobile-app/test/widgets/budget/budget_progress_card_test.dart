@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 import 'package:finance_ai_app/widgets/budget/budget_progress_card.dart';
 import 'package:finance_ai_app/widgets/budget/budget_section.dart';
-
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: 'đ',
-  decimalDigits: 0,
-);
+import '../../helpers/vnd.dart';
 
 BudgetProgress _progress(
   double spent, {
@@ -69,11 +63,8 @@ void main() {
 
         expect(find.text('Ăn uống'), findsOneWidget);
         expect(find.text('Tháng · 01/09/2026 – 30/09/2026'), findsOneWidget);
-        expect(
-          find.text('${_money.format(500000)} / ${_money.format(1000000)}'),
-          findsOneWidget,
-        );
-        expect(find.text('Còn lại: ${_money.format(500000)}'), findsOneWidget);
+        expect(find.text('${vnd(500000)} / ${vnd(1000000)}'), findsOneWidget);
+        expect(find.text('Còn lại: ${vnd(500000)}'), findsOneWidget);
         expect(find.text('50%'), findsOneWidget);
         expect(_bar(tester).value, 0.5);
         expect(_barColor(tester), AppTheme.primary);
@@ -86,7 +77,7 @@ void main() {
         await _pump(tester, BudgetProgressCard(progress: _progress(850000)));
 
         expect(
-          find.text('Sắp chạm hạn mức · Còn lại: ${_money.format(150000)}'),
+          find.text('Sắp chạm hạn mức · Còn lại: ${vnd(150000)}'),
           findsOneWidget,
         );
         expect(find.text('85%'), findsOneWidget);
@@ -108,10 +99,7 @@ void main() {
       (tester) async {
         await _pump(tester, BudgetProgressCard(progress: _progress(1150000)));
 
-        expect(
-          find.text('Đã vượt hạn mức: ${_money.format(150000)}'),
-          findsOneWidget,
-        );
+        expect(find.text('Đã vượt hạn mức: ${vnd(150000)}'), findsOneWidget);
         expect(find.text('115%'), findsOneWidget);
         expect(_bar(tester).value, 1.0);
         expect(_barColor(tester), AppTheme.dangerColor);
@@ -168,19 +156,19 @@ void main() {
         for (final (spent, status, bar, statusColor) in [
           (
             500000.0,
-            'Còn lại: ${_money.format(500000)}',
+            'Còn lại: ${vnd(500000)}',
             colors.primary,
             semantic.successColor,
           ),
           (
             850000.0,
-            'Sắp chạm hạn mức · Còn lại: ${_money.format(150000)}',
+            'Sắp chạm hạn mức · Còn lại: ${vnd(150000)}',
             semantic.warningColor,
             semantic.warningColor,
           ),
           (
             1150000.0,
-            'Đã vượt hạn mức: ${_money.format(150000)}',
+            'Đã vượt hạn mức: ${vnd(150000)}',
             colors.error,
             colors.error,
           ),

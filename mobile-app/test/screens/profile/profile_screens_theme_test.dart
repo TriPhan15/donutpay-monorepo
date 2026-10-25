@@ -19,12 +19,7 @@ import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
 import '../../helpers/fake_settings_repository.dart';
 import '../../helpers/theme_colors.dart';
-
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: '₫',
-  decimalDigits: 0,
-);
+import '../../helpers/vnd.dart';
 
 /// The button (elevated, text, filled...) that shows [label].
 Finder _button(String label) => find
@@ -248,7 +243,7 @@ void main() {
           );
           final saved = find.descendant(
             of: find.byType(Dismissible),
-            matching: find.text(_money.format(2500000)),
+            matching: find.text(vnd(2500000)),
           );
           expect(paintedColor(tester, saved.first), colors.primary);
           expect(paintedColor(tester, saved.last), colors.onSurfaceVariant);
