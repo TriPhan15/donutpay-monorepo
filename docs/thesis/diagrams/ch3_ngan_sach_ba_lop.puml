@@ -1,0 +1,33 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam defaultFontSize 14
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+left to right direction
+actor "Người dùng" as ND
+boundary "BudgetScreen\nBudgetFormSheet" as B1
+boundary "DashboardPage\n(BudgetSection, NotificationBell)" as B3
+control "AppRepository" as C0
+boundary "RemoteApiHelper" as B2
+control "BudgetController" as C1
+control "BudgetService" as C2
+control "BudgetAlertService" as C3
+control "NotificationService" as C4
+entity "Budget" as E1
+entity "Transaction" as E2
+entity "Notification" as E3
+ND -- B1
+ND -- B3
+B1 -- C0
+C0 -- B2
+B3 -- B2
+B2 -- C1
+C1 -- C2
+C2 -- E1
+C3 -- E1
+C3 -- E2
+C3 -- C4
+C4 -- E3
+@enduml

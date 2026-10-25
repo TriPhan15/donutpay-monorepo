@@ -1,0 +1,38 @@
+@startuml ch3_quet_hoa_don_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Người dùng" as ND
+boundary ":ReviewForm\nPage" as UI
+boundary ":RemoteApi\nHelper" as API
+control ":AI Service" as AI
+control ":App\nRepository" as REPO
+control ":Transaction\nService" as TS
+control ":ReceiptProcessing\nService" as RP
+control ":OcrService" as OCR
+ND -> UI ++ : Chụp hoặc chọn ảnh\nhóa đơn
+UI -> API ++ : scanReceipt(imagePath)
+API -> AI ++ : POST /donut/scan\n(multipart)
+AI -> AI : DONUT sinh chuỗi,\ntoken2json
+return JSON seller_name,\naddress, timestamp,\ntotal_cost
+return Map kết quả
+UI --> ND : Hiển thị biểu mẫu\nđối soát
+ND -> UI : Sửa trường sai, bấm\nXác nhận & Lưu
+UI -> API ++ : uploadImage(imagePath)
+return imageUrl (POST\n/api/upload)
+UI -> REPO ++ : createTransaction(draft\ncó rawReceiptData,\nimageUrl)
+REPO -> TS ++ : POST\n/api/transactions/checkout
+TS -> RP ++ : attachReceipt(tx,\nrawReceiptData,\nimageUrl)
+RP -> OCR ++ : extract(rawReceiptData)
+return ExtractedReceiptDto
+RP -> RP : addFirstAttempt(),\nđặt trạng thái
+return
+TS -> RP : recordAttachedReceipt(receipt,\nactor)
+return giao dịch đã lưu
+return SyncStatus.synced
+UI --> ND -- : "Đã lưu giao dịch từ\nhóa đơn"
+@enduml

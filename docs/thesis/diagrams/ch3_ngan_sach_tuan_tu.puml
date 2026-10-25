@@ -1,0 +1,37 @@
+@startuml ch3_ngan_sach_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Người dùng" as ND
+boundary ":Budget\nScreen" as UI
+control ":App\nRepository" as REPO
+boundary ":RemoteApi\nHelper" as API
+control ":BudgetService" as BS
+entity ":Budget\nRepository" as BR
+control ":Transaction\nService" as TS
+control ":BudgetAlert\nService" as BA
+control ":Notification\nService" as NS
+ND -> UI ++ : Nhập hạn mức, kỳ,\ndanh mục trên\nBudgetFormSheet, bấm Lưu
+UI -> REPO ++ : saveBudget(userId,\nbudget)
+REPO -> API ++ : createBudget(budget)
+API -> BS ++ : POST /api/budgets →\ncreateBudget(dto)
+BS -> BR : existsDuplicate(userId,\ncategoryKey,\nperiodType,\nstartDate)
+BS -> BR : saveAndFlush(budget)
+return BudgetResponseDto
+return BudgetModel
+return BudgetModel
+UI --> ND -- : "Đã lưu ngân sách"
+ND -> API ++ : Ghi một khoản chi\n(POST\n/api/transactions/checkout)
+API -> TS ++ : createMyTransaction(dto)
+TS -> BA ++ : notifyAfterCreate(transaction)
+BA -> BR : findCoveringDate(userId,\nngày, [0,\ncategoryId])
+BA -> BA : spentWithin(),\nnewlyReached(trước,\nsau, hạn mức)
+BA -> NS : create(user,\nBUDGET_WARNING |\nBUDGET_EXCEEDED,\n...)
+return
+return giao dịch đã lưu
+return
+@enduml

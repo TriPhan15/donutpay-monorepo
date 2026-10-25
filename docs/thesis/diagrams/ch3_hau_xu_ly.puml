@@ -1,0 +1,29 @@
+@startuml
+' Quy trình hậu xử lý kết quả DONUT hiện tại và vị trí mô-đun receipt_postprocess.py dự kiến
+!include _style.iuml
+skinparam defaultFontSize 14
+start
+partition "AI Service (ai_service.py)" {
+  :Sinh chuỗi token bằng model.generate()\nvới decoder_input_ids = <s_seller>;
+  :Bỏ </s> và <pad>;
+  :clean_vietnamese_text()\n(chỉ cần cho tokenizer V3);
+  :processor.token2json(chuỗi);
+  if (Chuyển được sang JSON?) then (có)
+    :extract_final_cost(total_cost)\n→ total_cost_number;
+  else (không)
+    :Trả về {"raw_text": chuỗi};
+  endif
+  #lightgray:receipt_postprocess.py (dự kiến, T5):\nchuẩn hóa 4 trường, cờ valid;
+}
+partition "Ứng dụng di động (ReviewFormPage)" {
+  :Điền sẵn biểu mẫu đối soát;
+  :Người dùng sửa và xác nhận;
+}
+partition "Core Backend (OcrService.extract)" {
+  :cleanText(): gộp khoảng trắng,\nbỏ ký tự điều khiển, tối đa 255 ký tự;
+  :parseTimestamp(): ngày, giờ;\nnăm trong [2000, 2100];
+  :readTotal(): total_cost_number,\nnếu không có thì parseMoney(total_cost);
+  :Áp dụng giá trị dự phòng\ntrong attachReceipt();
+}
+stop
+@enduml

@@ -243,6 +243,34 @@
 - Kiểm chứng (T7.3a, 25/10/2026): trang trả về HTTP 200.
 - Dùng cho: 3.2.2 (máy chủ triển khai).
 
+[54] I. Jacobson, M. Christerson, P. Jonsson, G. Övergaard, Object-Oriented Software Engineering: A Use Case Driven Approach, Addison-Wesley (ACM Press), 1992. ISBN 0-201-54435-0.
+- Kiểm chứng (T7.3b, 25/10/2026): tìm kiếm web, trang InformIT (ISBN 9780201544350, 1992, 552 trang) và Pearson; đồng tác giả theo Wikiquote, nhiều thư mục chỉ ghi Jacobson.
+- Dùng cho: 3.8 (phân loại lớp Boundary – Control – Entity).
+
+[55] Thymeleaf Documentation, https://www.thymeleaf.org/documentation.html, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3b, 25/10/2026): trang trả về HTTP 200.
+- Dùng cho: 3.6.2 (Web Admin).
+
+[56] Bootstrap 5.3 Documentation, https://getbootstrap.com/docs/5.3/getting-started/introduction/, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3b, 25/10/2026): trang trả về HTTP 200; layout/_layout.html nạp bootstrap@5.3.0.
+- Dùng cho: 3.6.2 (Web Admin).
+
+[57] Material Design 3, https://m3.material.io/, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3b, 25/10/2026): trang trả về HTTP 200; app_theme.dart đặt useMaterial3: true.
+- Dùng cho: 3.6.1 (giao diện di động).
+
+[58] Chart.js Documentation, https://www.chartjs.org/docs/latest/, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3b, 25/10/2026): trang trả về HTTP 200; layout/_layout.html nạp cdn.jsdelivr.net/npm/chart.js.
+- Dùng cho: 3.6.2 (biểu đồ Web Admin).
+
+[59] Google ML Kit – Document scanner, https://developers.google.com/ml-kit/vision/doc-scanner, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3b, 25/10/2026): trang trả về HTTP 200; pubspec có google_mlkit_document_scanner.
+- Dùng cho: 3.6.1 (quét hóa đơn).
+
+[60] Pydantic Documentation, https://docs.pydantic.dev/latest/, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3b, 25/10/2026): trang trả về HTTP 200.
+- Dùng cho: 3.9.3 (mô hình kết quả của receipt_postprocess.py).
+
 ---
 
 ## Đã loại

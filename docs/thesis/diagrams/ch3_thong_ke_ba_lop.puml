@@ -1,0 +1,32 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam defaultFontSize 14
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+left to right direction
+actor "Người dùng" as ND
+boundary "DashboardPage" as B1
+boundary "AITabPage" as B3
+control "AppRepository" as C0
+boundary "RemoteApiHelper" as B2
+control "TransactionService" as C1
+control "SavingGoalService" as C2
+control "AI Service\n/spade/analyze, /spade/recommend" as C3
+control "WCMSpade" as C4
+entity "Transaction" as E1
+entity "SavingGoal" as E2
+ND -- B1
+ND -- B3
+B1 -- C0
+B3 -- C0
+B3 -- B2
+C0 -- B2
+B2 -- C1
+B2 -- C2
+B2 -- C3
+C3 -- C4
+C1 -- E1
+C2 -- E2
+@enduml

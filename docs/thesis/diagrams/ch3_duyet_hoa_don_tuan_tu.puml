@@ -1,0 +1,31 @@
+@startuml ch3_duyet_hoa_don_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Quản trị viên" as QT
+boundary ":Trang\n/admin/receipts" as UI
+control ":Admin\nController" as AC
+control ":Transaction\nService" as TS
+entity ":Receipt\nRepository" as RR
+entity ":Receipt" as RC
+control ":BudgetAlert\nService" as BA
+control ":AuditLog\nService" as AL
+QT -> UI ++ : Chọn hóa đơn, gửi\nyêu cầu duyệt
+UI -> AC ++ : POST\n/admin/receipts/approve/{id}
+AC -> TS ++ : approveReceipt(id)
+TS -> RR : findDetailedById(id)
+TS -> TS : lockWallet(owner),\nrefresh(transaction)
+TS -> TS : approvableTotal(receipt)
+TS -> TS : moveWallet(owner,\nchênh lệch)
+TS -> RC : moveTo(APPROVED)
+TS -> RR : save(receipt)
+TS -> BA : notifyAfterUpdate(tx,\nbefore)
+TS -> AL : record(RECEIPT_APPROVED)
+return
+return redirect:/admin/receipts
+UI --> QT -- : Danh sách hóa đơn đã\ncập nhật
+@enduml

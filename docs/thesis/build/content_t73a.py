@@ -182,8 +182,8 @@ RB_LIEN_TT = [
     ["LT6", "revoked_tokens", "revoked_at ≤ expires_at; bản ghi có expires_at đã qua bị xóa mỗi ngày lúc 03:30", "T(+)", "TokenBlacklistService"],
 ]
 RB_LIEN_BO = [
-    ["LB1", "users, transactions", "Khi thêm, sửa, xóa giao dịch, wallet_balance của chủ giao dịch được cộng hoặc trừ đúng phần chênh lệch, trong cùng một giao dịch CSDL, sau khi khóa dòng users (PESSIMISTIC_WRITE)", "transactions: T, X, S(amount, is_expense); users: S(wallet_balance)", "TransactionService"],
-    ["LB2", "users, transactions", "Thêm hoặc sửa một khoản chi không được làm wallet_balance nhỏ hơn 0", "transactions: T, S", "TransactionService (InsufficientBalanceException)"],
+    ["LB1", "users, transactions", "Khi thêm, sửa, xóa giao dịch, wallet_balance của chủ giao dịch được cộng hoặc trừ đúng phần chênh lệch, trong cùng một giao dịch CSDL, sau khi khóa dòng users (PESSIMISTIC_WRITE); khi tạo giao dịch, chỉ khóa nếu yêu cầu có clientId", "transactions: T, X, S(amount, is_expense); users: S(wallet_balance)", "TransactionService"],
+    ["LB2", "users, transactions", "Thêm hoặc sửa một khoản chi không được làm wallet_balance nhỏ hơn 0", "transactions: T, S", "TransactionService (RuntimeException khi tạo; InsufficientBalanceException khi sửa, duyệt)"],
     ["LB3", "transactions, categories", "Mỗi giao dịch thuộc đúng một danh mục tồn tại", "transactions: T, S(category_id); categories: X", "FK NOT NULL"],
     ["LB4", "transactions, receipts", "Một hóa đơn thuộc tối đa một giao dịch; hóa đơn được lưu và xóa cùng giao dịch", "transactions: T, X", "FK UNIQUE receipt_id, cascade ALL"],
     ["LB5", "receipts, receipt_processing_attempts", "Lượt đọc mới có attempt_number bằng số lượt hiện có cộng 1; lượt đọc không bị sửa; xóa hóa đơn thì xóa các lượt đọc", "attempts: T; receipts: X", "@Immutable, ON DELETE CASCADE"],
@@ -206,7 +206,7 @@ RB_DUY_NHAT = [
 PUB, JWT, ADM = "Công khai", "JWT", "JWT + ROLE_ADMIN"
 API = [
     ["Xác thực", "POST /api/auth/register", "Đăng ký tài khoản", PUB],
-    ["", "POST /api/auth/login", "Đăng nhập bằng email/tên đăng nhập và mật khẩu", PUB],
+    ["", "POST /api/auth/login", "Đăng nhập bằng email và mật khẩu", PUB],
     ["", "POST /api/auth/social-login", "Đăng nhập bằng Google hoặc Facebook", PUB],
     ["", "POST /api/auth/forgot-password", "Gửi mã OTP đặt lại mật khẩu qua email", PUB],
     ["", "POST /api/auth/reset-password", "Đặt lại mật khẩu bằng mã OTP", PUB],
@@ -282,7 +282,7 @@ SECTIONS = {
               "lưu khi người dùng đối soát xong và gửi giao dịch về Core Backend. SQLite trên máy chỉ còn vai trò hàng đợi "
               "(outbox) cho những giao dịch tạo khi mất mạng. Web Admin không phải một ứng dụng riêng mà là các trang Thymeleaf "
               "do Core Backend sinh ra dưới đường dẫn /admin, dùng phiên đăng nhập thay vì JWT."),
-        ("p", "Mọi yêu cầu từ bên ngoài đi qua reverse proxy Caddy [52]. Caddy chuyển /ai/donut/*, /ai/spade/* và /ai/health "
+        ("p", "Mọi yêu cầu từ bên ngoài đi qua reverse proxy (máy chủ ủy quyền ngược) Caddy [52]. Caddy chuyển /ai/donut/*, /ai/spade/* và /ai/health "
               "tới AI Service (bỏ tiền tố /ai), chặn các đường dẫn /actuator/* trừ /actuator/health, và chuyển phần còn lại tới "
               "Core Backend. Nhờ đó, đường dẫn /admin/segment của AI Service không đi ra ngoài được; chỉ Core Backend gọi nó qua "
               "mạng nội bộ khi quản trị viên chạy phân khúc khách hàng. Bảng 3.1 tóm tắt vai trò của từng thành phần."),
@@ -292,7 +292,7 @@ SECTIONS = {
              ["Web Admin", "Thymeleaf (trong Core Backend)", "Quản lý người dùng, danh mục, gói dịch vụ, duyệt hóa đơn, xem nhật ký và thống kê"],
              ["Reverse proxy", "Caddy 2.8", "Cấp chứng chỉ và kết thúc HTTPS; định tuyến theo đường dẫn; nén gzip"],
              ["Core Backend", "Spring Boot 3.2.5, Java 21, Spring Security, Spring Data JPA, Hibernate Envers", "Toàn bộ nghiệp vụ tài chính, xác thực, phân quyền, nhật ký kiểm toán, thống kê"],
-             ["AI Service", "FastAPI, PyTorch, Transformers", "Trích xuất 4 trường hóa đơn bằng DONUT; phân tích chuỗi chi tiêu (WCM-SPADE); phân khúc RFM"],
+             ["AI Service", "FastAPI [34], PyTorch, Transformers", "Trích xuất 4 trường hóa đơn bằng DONUT; phân tích chuỗi chi tiêu (WCM-SPADE [48]); phân khúc RFM [49]"],
              ["PostgreSQL 15", "Hệ quản trị CSDL quan hệ", "Nguồn dữ liệu gốc của mọi nghiệp vụ, kể cả vòng đời hóa đơn"],
              ["Redis 8", "Kho khóa – giá trị trong bộ nhớ", "Cache số liệu thống kê; lưu mã OTP đặt lại mật khẩu"],
              ["MongoDB 6", "CSDL document", "Lưu câu trả lời thô của AI theo giao dịch để tra cứu và phân tích"],
@@ -524,7 +524,7 @@ SECTIONS = {
               "đường dẫn /admin cho Web Admin (trang Thymeleaf và yêu cầu AJAX), được trình bày cùng thiết kế giao diện ở mục 3.6."),
         ("table", "Danh sách API RESTful của Core Backend", "3", [1300, 3504, 2500, 1200],
          ["Nhóm", "Phương thức và đường dẫn", "Chức năng", "Quyền"], API, NGUON),
-        ("p", "Ở môi trường phát triển (profile dev), tài liệu OpenAPI và giao diện Swagger UI được sinh tự động từ các "
+        ("p", "Ở môi trường phát triển (profile dev), tài liệu OpenAPI [39] và giao diện Swagger UI được sinh tự động từ các "
               "controller; ở môi trường thật, hai đường dẫn này bị tắt."),
     ],
     # ============================================================ 3.5.2
@@ -536,10 +536,10 @@ SECTIONS = {
               "Trong chuỗi này, /api/auth/** (trừ change-password và logout), /api/payment/webhook và /api/categories là công "
               "khai, /api/admin/** cần ROLE_ADMIN, còn lại chỉ cần đăng nhập. Mật khẩu được băm bằng BCrypt; đăng nhập sai 5 "
               "lần liên tiếp bị khóa 15 phút."),
-        ("p", "Hệ thống phát hai loại token, cùng ký bằng HMAC-SHA256 (HS256) với khóa JWT_SECRET. Access token sống 15 phút "
+        ("p", "Hệ thống phát hai loại token, cùng ký bằng HMAC-SHA256 (HS256) [28] với khóa JWT_SECRET. Access token sống 15 phút "
               "và là loại duy nhất mở được API; refresh token sống 30 ngày và chỉ dùng tại /api/auth/refresh. Loại token được "
               "ghi ở trường typ của phần đầu JOSE (ACCESS hoặc REFRESH), nên mỗi bên từ chối loại còn lại và từ chối token "
-              "không có typ. Ngoài subject (tên người dùng), token mang claim credentialsVersion bằng giá trị cột "
+              "không có typ. Ngoài subject (email của người dùng), token mang claim credentialsVersion bằng giá trị cột "
               "users.credentials_version lúc phát hành. Bảng 3.24 trình bày các bước JwtAuthFilter kiểm tra một access token."),
         ("table", "Các bước kiểm tra access token trong JwtAuthFilter", "3", [700, 4304, 3500],
          ["Bước", "Kiểm tra", "Kết quả khi không đạt"], [

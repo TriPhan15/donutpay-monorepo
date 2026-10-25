@@ -1,0 +1,33 @@
+@startuml ch3_dang_nhap_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Người dùng" as ND
+boundary ":LoginScreen" as UI
+boundary ":RemoteApi\nHelper" as API
+control ":AuthController" as AC
+control ":LoginAttempt\nService" as LA
+control ":Authentication\nManager" as AM
+control ":JwtUtil" as JW
+entity ":User\nRepository" as UR
+ND -> UI ++ : Nhập email, mật\nkhẩu, bấm Đăng nhập
+UI -> API ++ : login(email,\npassword)
+API -> AC ++ : POST /api/auth/login
+AC -> LA : assertLoginAllowed(email,\nip)
+AC -> UR : findByEmail(email)
+AC -> AM ++ : authenticate(email,\npassword)
+AM -> UR : so khớp mật khẩu\nBCrypt
+return Authentication
+AC -> LA : recordSuccess(email,\nip)
+AC -> JW ++ : generateToken(),\ngenerateRefreshToken()
+return access token,\nrefresh token
+AC -> UR : save(user) –\nlastLoginTime
+return 200 {token,\nrefreshToken, user}
+return Map dữ liệu đăng\nnhập
+UI -> UI : SessionService.setTokens(),\nsetCurrentUserId()
+UI --> ND -- : Chuyển tới\nMainScaffold
+@enduml

@@ -1,0 +1,27 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam defaultFontSize 14
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+left to right direction
+actor "Người dùng" as ND
+boundary "LoginScreen" as B1
+boundary "RemoteApiHelper" as B2
+control "AuthController" as C1
+control "LoginAttemptService" as C2
+control "AuthenticationManager" as C3
+control "JwtUtil" as C4
+entity "User" as E1
+entity "SessionService\n(SharedPreferences)" as E2
+ND -- B1
+B1 -- B2
+B2 -- C1
+C1 -- C2
+C1 -- C3
+C1 -- C4
+C3 -- E1
+C1 -- E1
+B1 -- E2
+@enduml

@@ -1,0 +1,85 @@
+@startuml
+' Sơ đồ lớp mức thiết kế – tầng điều khiển, dịch vụ và truy cập dữ liệu của Core Backend
+!pragma layout smetana
+!include _style.iuml
+skinparam ClassBackgroundColor white
+skinparam ClassAttributeIconSize 0
+skinparam defaultFontSize 13
+hide circle
+hide empty members
+
+class TransactionController <<RestController>> {
+  + createTransaction(dto) : ResponseEntity
+  + updateTransaction(id, dto) : ResponseEntity
+  + deleteTransaction(id) : ResponseEntity
+}
+class BudgetController <<RestController>> {
+  + createBudget(dto) : ResponseEntity
+  + updateBudget(id, dto) : ResponseEntity
+}
+class AdminController <<Controller>> {
+  + approveReceipt(id) : String
+  + rejectReceipt(id) : String
+}
+class TransactionService <<Service>> {
+  + createMyTransaction(dto) : Map
+  + updateTransaction(id, dto) : TransactionResponseDto
+  + deleteTransaction(id)
+  + approveReceipt(receiptId)
+  - lockWallet(user) : User
+  - moveWallet(owner, change)
+}
+class ReceiptProcessingService <<Service>> {
+  + attachReceipt(tx, rawData, imageUrl)
+  + recordAttachedReceipt(receipt, actor)
+  + rejectReceipt(receiptId)
+}
+class OcrService <<Service>> {
+  + extract(rawData) : ExtractedReceiptDto
+}
+class BudgetService <<Service>> {
+  + createBudget(dto) : BudgetResponseDto
+  + updateBudget(id, dto) : BudgetResponseDto
+}
+class BudgetAlertService <<Service>> {
+  + notifyAfterCreate(tx)
+  + notifyAfterUpdate(tx, before)
+}
+class NotificationService <<Service>> {
+  + create(user, type, message, txId, budgetId, receiptId)
+  + countMyUnread() : long
+}
+class CurrentUserProvider <<Component>> {
+  + getCurrentUser() : User
+}
+class AuditLogService <<Service>> {
+  + record(entry)
+}
+interface TransactionRepository <<JpaRepository>> {
+  + findByUserIdAndClientId(userId, clientId)
+  + sumExpensesBetween(userId, from, to)
+}
+interface ReceiptRepository <<JpaRepository>> {
+  + findDetailedById(id)
+}
+interface BudgetRepository <<JpaRepository>> {
+  + existsDuplicate(userId, key, period, start)
+  + findCoveringDate(userId, date, keys)
+}
+
+TransactionController --> TransactionService
+BudgetController --> BudgetService
+AdminController --> TransactionService
+AdminController --> ReceiptProcessingService
+TransactionService --> ReceiptProcessingService
+TransactionService --> BudgetAlertService
+TransactionService --> CurrentUserProvider
+TransactionService --> TransactionRepository
+TransactionService --> AuditLogService
+ReceiptProcessingService --> OcrService
+ReceiptProcessingService --> ReceiptRepository
+BudgetService --> BudgetRepository
+BudgetService --> CurrentUserProvider
+BudgetAlertService --> BudgetRepository
+BudgetAlertService --> NotificationService
+@enduml

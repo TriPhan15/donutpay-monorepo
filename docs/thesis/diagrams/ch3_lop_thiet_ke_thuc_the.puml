@@ -1,0 +1,109 @@
+@startuml
+' Sơ đồ lớp mức thiết kế – các lớp thực thể (Entity) và kiểu liệt kê của Core Backend
+!pragma layout smetana
+!include _style.iuml
+skinparam ClassBackgroundColor white
+skinparam ClassAttributeIconSize 0
+skinparam defaultFontSize 13
+hide circle
+
+class User {
+  - id : Long
+  - username : String
+  - email : String
+  - password : String
+  - role : String
+  - active : boolean
+  - walletBalance : BigDecimal
+  - credentialsVersion : Integer
+  - aiLabel : String
+  + hasCredentialsVersion(v : Integer) : boolean
+}
+class Transaction {
+  - id : Long
+  - amount : BigDecimal
+  - isExpense : boolean
+  - transactionDate : LocalDateTime
+  - categoryName : String
+  - note : String
+  - location : String
+  - clientId : String
+}
+class Receipt {
+  - id : Long
+  - vendorName : String
+  - extractedTotal : BigDecimal
+  - extractedDate : LocalDate
+  - imageUrl : String
+  - status : String
+  - errorCode : String
+  - version : Long
+  + addFirstAttempt(a : ReceiptProcessingAttempt)
+  + canMoveTo(t : ReceiptStatus) : boolean
+  + moveTo(t : ReceiptStatus)
+  + failWith(r : ReceiptErrorCode)
+}
+class ReceiptProcessingAttempt {
+  - id : Long
+  - attemptNumber : Integer
+  - status : String
+  - aiRawData : String
+  - errorCode : String
+  - clientId : String
+  + {static} completed(...) : ReceiptProcessingAttempt
+  + {static} failed(...) : ReceiptProcessingAttempt
+}
+class Category {
+  - id : Long
+  - name : String
+  - type : String
+}
+class Budget {
+  - id : Long
+  - categoryKey : long
+  - amount : BigDecimal
+  - periodType : BudgetPeriodType
+  - startDate : LocalDate
+  - endDate : LocalDate
+  + {static} categoryKeyOf(id : Long) : long
+}
+class Notification {
+  - id : Long
+  - type : NotificationType
+  - message : String
+  - isRead : boolean
+  - transactionId : Long
+  - budgetId : Long
+}
+enum ReceiptStatus {
+  PENDING
+  COMPLETED_RAW
+  EDITED
+  FAILED
+  WAITING_FOR_REVIEW
+  APPROVED
+  CANCELED
+  + canTransitionTo(t) : boolean
+}
+enum NotificationType {
+  BUDGET_WARNING(80)
+  BUDGET_EXCEEDED(100)
+  TRANSACTION_ALERT
+  RECEIPT_PROCESSED
+}
+enum BudgetPeriodType {
+  WEEK
+  MONTH
+}
+
+User "1" -- "0..*" Transaction
+Category "1" -- "0..*" Transaction
+Transaction "1" *-- "0..1" Receipt
+Receipt "1" *-- "1..*" ReceiptProcessingAttempt
+User "1" -- "0..*" Budget
+Category "0..1" -- "0..*" Budget
+User "1" -- "0..*" Notification
+Receipt ..> ReceiptStatus
+Notification ..> NotificationType
+Budget ..> BudgetPeriodType
+@enduml

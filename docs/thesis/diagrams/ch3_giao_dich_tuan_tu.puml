@@ -1,0 +1,31 @@
+@startuml ch3_giao_dich_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Người dùng" as ND
+boundary ":AddTransaction\nPage" as UI
+control ":App\nRepository" as REPO
+entity ":SqfliteHelper" as DB
+boundary ":RemoteApi\nHelper" as API
+control ":Transaction\nService" as TS
+entity ":Transaction\nRepository" as TR
+ND -> UI ++ : Nhập số tiền, danh\nmục, ngày, bấm Lưu
+UI -> REPO ++ : createTransaction(userId,\ndraft)
+REPO -> DB : insertTransaction(draft,\npending)
+REPO -> API ++ : addTransaction(toCheckoutJson())
+API -> TS ++ : POST /api/transactions/\ncheckout →\ncreateMyTransaction()
+TS -> TS : lockWallet(user) –\nPESSIMISTIC_WRITE
+TS -> TR : findByUserIdAndClientId(userId,\nclientId)
+TS -> TS : kiểm tra số dư, cập\nnhật walletBalance
+TS -> TR : save(transaction)
+TS -> TS : budgetAlertService.notifyAfterCreate()
+return giao dịch và số dư\nví
+return
+REPO -> DB : updateTransactionSyncStatus(synced)
+return SyncStatus.synced
+UI --> ND -- : Hộp thoại "Đã thêm\ngiao dịch mới"
+@enduml

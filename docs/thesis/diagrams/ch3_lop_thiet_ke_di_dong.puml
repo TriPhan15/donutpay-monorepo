@@ -1,0 +1,64 @@
+@startuml
+' Sơ đồ lớp mức thiết kế – tầng truy cập dữ liệu của ứng dụng di động
+!pragma layout smetana
+!include _style.iuml
+skinparam ClassBackgroundColor white
+skinparam ClassAttributeIconSize 0
+skinparam defaultFontSize 13
+hide circle
+hide empty members
+
+class AddTransactionPage <<Screen>>
+class ReviewFormPage <<Screen>>
+class LedgerPage <<Screen>>
+class AppRepository {
+  + getTransactions(userId) : Future<List<TransactionModel>>
+  + createTransaction(userId, draft) : Future<SyncStatus>
+  + resendTransaction(userId, tx) : Future<SyncStatus>
+  + resendUnsyncedTransactions(userId) : Future<void>
+  + saveBudget(userId, budget) : Future<BudgetModel>
+  - _send(userId, tx) : Future<SyncStatus>
+}
+class RemoteApiHelper <<singleton>> {
+  - _dio : Dio
+  - _mlDio : Dio
+  + login(email, password) : Future<Map>
+  + addTransaction(data) : Future<void>
+  + scanReceipt(imagePath) : Future<Map>
+  + uploadImage(imagePath) : Future<String?>
+  + createBudget(budget) : Future<BudgetModel>
+}
+class SqfliteHelper <<singleton>> {
+  + insertTransaction(tx, userId)
+  + updateTransactionSyncStatus(userId, clientId, status)
+  + deleteTransactionByClientId(userId, clientId)
+}
+class SessionService <<static>> {
+  + currentUserId : int?
+  + currentToken : String?
+  + setTokens(token, refreshToken)
+}
+class TransactionModel {
+  + amount : double
+  + isExpense : bool
+  + clientId : String?
+  + syncStatus : SyncStatus
+  + rawReceiptData : String?
+  + toCheckoutJson() : Map
+}
+enum SyncStatus {
+  pending
+  synced
+  error
+}
+
+AddTransactionPage --> AppRepository
+ReviewFormPage --> AppRepository
+ReviewFormPage --> RemoteApiHelper
+LedgerPage --> AppRepository
+AppRepository --> RemoteApiHelper
+AppRepository --> SqfliteHelper
+AppRepository ..> TransactionModel
+RemoteApiHelper ..> SessionService
+TransactionModel --> SyncStatus
+@enduml

@@ -1,0 +1,30 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam defaultFontSize 14
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+left to right direction
+actor "Người dùng" as ND
+boundary "AddTransactionPage" as B1
+control "AppRepository" as C0
+entity "SqfliteHelper\n(bảng transactions cục bộ)" as E0
+boundary "RemoteApiHelper" as B2
+control "TransactionController" as C1
+control "TransactionService" as C2
+control "BudgetAlertService" as C3
+entity "User" as E1
+entity "Transaction" as E2
+entity "Category" as E3
+ND -- B1
+B1 -- C0
+C0 -- E0
+C0 -- B2
+B2 -- C1
+C1 -- C2
+C2 -- C3
+C2 -- E1
+C2 -- E2
+C2 -- E3
+@enduml
