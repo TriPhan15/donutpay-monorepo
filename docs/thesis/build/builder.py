@@ -7,6 +7,9 @@ Block: ("p", text) | ("b1", text) | ("b2", text) | ("h4", text) | ("y", text)
        ("table", caption, chapter, widths, header, rows, source)
        ("fig", caption, chapter, png_or_None, width_cm, source, placeholder_note)
 Inline: **đậm**, *nghiêng*.
+Tùy chọn (từ T7.2b): COUNTER_START {("Hình"|"Bảng", chương): số đã dùng} để đánh số tiếp;
+REPLACE {tiêu đề Heading3: (counter_start, [block, ...])} viết lại toàn bộ thân một mục đã có nội dung;
+PARA_REPLACE [(đầu đoạn cũ, block)] thay một đoạn đã có.
 """
 import html
 import importlib.util
@@ -196,6 +199,10 @@ def main(root, content_path):
     # Duyệt đoạn theo thứ tự, nhớ tiêu đề gần nhất; thay đoạn giữ chỗ của phiên này.
     tag = content.SESSION_TAG
     used = set()
+    doc.counters.update(getattr(content, "COUNTER_START", {}))
+    replace = getattr(content, "REPLACE", {})
+    para_replace = list(getattr(content, "PARA_REPLACE", []))
+    replaced, para_done, skipping = set(), set(), False
     out, pos, last_heading = [], 0, None
     for m in re.finditer(r"<w:p[ >].*?</w:p>|<w:tbl>.*?</w:tbl>", xml, flags=re.S):
         p = m.group(0)
@@ -206,6 +213,24 @@ def main(root, content_path):
         txt = text_of(p)
         if style in ("Heading1", "Heading2", "Heading3", "Heading4", "TieuDeKhongSo", "TieuDeMuc"):
             last_heading = txt
+        if style in ("Heading1", "Heading2", "Heading3"):
+            skipping = False
+        if skipping:
+            continue
+        if style == "Heading3" and txt in replace:
+            start, blocks = replace[txt]
+            saved = dict(doc.counters)
+            doc.counters.update(start)
+            out.append(p + "".join(doc.render(b) for b in blocks))
+            doc.counters = saved
+            replaced.add(txt)
+            skipping = True
+            continue
+        hit = next((i for i, (prefix, _) in enumerate(para_replace) if p.startswith("<w:p") and txt.startswith(prefix)), None)
+        if hit is not None:
+            out.append(doc.render(para_replace[hit][1]))
+            para_done.add(hit)
+            continue
         if p.startswith("<w:p") and txt.startswith(f"[{tag}]"):
             key = last_heading
             if key not in content.SECTIONS:
@@ -219,6 +244,8 @@ def main(root, content_path):
     missing = set(content.SECTIONS) - used
     if missing:
         raise SystemExit(f"Mục có nội dung nhưng không tìm thấy dòng giữ chỗ: {missing}")
+    if set(replace) - replaced or len(para_done) != len(para_replace):
+        raise SystemExit(f"Không tìm thấy mục/đoạn cần thay: {set(replace) - replaced}, đoạn {len(para_done)}/{len(para_replace)}")
 
     for abbr in getattr(content, "ABBREVIATIONS", []):
         xml = add_abbreviation(xml, *abbr)

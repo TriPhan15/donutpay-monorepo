@@ -1,0 +1,27 @@
+@startuml ch2_uc_he_thong_quan_tri
+' Hình 2.21: Sơ đồ use case hệ thống, phân hệ quản trị (mục 2.3.2)
+!include _style.iuml
+!pragma layout smetana
+left to right direction
+actor "Quản trị viên" as QT
+actor "AI Service\n<<hệ thống>>" as AI
+rectangle "LedgerMind – phân hệ quản trị (Web Admin)" {
+  usecase "UC02 Đăng nhập" as UC02
+  usecase "UC03 Đăng xuất" as UC03
+  usecase "UC17 Quản lý người dùng" as UC17
+  usecase "UC18 Quản lý danh mục\nmặc định" as UC18
+  usecase "UC19 Duyệt hóa đơn AI" as UC19
+  usecase "UC20 Xem nhật ký\nhoạt động" as UC20
+  usecase "UC21 Xem thống kê\nhệ thống" as UC21
+  usecase "UC22 Quản lý gói dịch vụ" as UC22
+}
+QT -- UC02
+QT -- UC03
+QT -- UC17
+QT -- UC18
+QT -- UC19
+QT -- UC20
+QT -- UC21
+QT -- UC22
+UC21 -- AI
+@enduml

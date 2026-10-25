@@ -1,0 +1,45 @@
+@startuml ch2_uc_he_thong_nguoi_dung
+' Hình 2.20: Sơ đồ use case hệ thống, phân hệ người dùng (mục 2.3.2)
+!include _style.iuml
+!pragma layout smetana
+left to right direction
+actor "Người dùng" as ND
+actor "AI Service\n<<hệ thống>>" as AI
+rectangle "LedgerMind – phân hệ người dùng (ứng dụng di động)" {
+  usecase "UC01 Đăng ký" as UC01
+  usecase "UC02 Đăng nhập\n(email, Google, Facebook)" as UC02
+  usecase "UC05 Quên và\nđặt lại mật khẩu" as UC05
+  usecase "UC03 Đăng xuất" as UC03
+  usecase "UC04 Đổi mật khẩu" as UC04
+  usecase "UC06 Quản lý giao dịch" as UC06
+  usecase "UC07 Đồng bộ giao dịch\nngoại tuyến" as UC07
+  usecase "UC11 Nhận cảnh báo\nngân sách" as UC11
+  usecase "UC08 Quét hóa đơn" as UC08
+  usecase "UC09 Đối soát và\nlưu hóa đơn" as UC09
+  usecase "UC10 Quản lý ngân sách" as UC10
+  usecase "UC12 Xem thống kê" as UC12
+  usecase "UC13 Xem báo cáo\nthói quen chi tiêu" as UC13
+  usecase "UC14 Quản lý mục tiêu\ntiết kiệm" as UC14
+  usecase "UC15 Xem thông báo" as UC15
+  usecase "UC16 Cài đặt ngôn ngữ\nvà giao diện" as UC16
+}
+ND -- UC01
+ND -- UC02
+ND -- UC03
+ND -- UC04
+ND -- UC06
+ND -- UC08
+ND -- UC10
+ND -- UC12
+ND -- UC13
+ND -- UC14
+ND -- UC15
+ND -- UC16
+UC08 -- AI
+UC13 -- AI
+UC05 .> UC02 : <<extend>>
+UC07 .> UC06 : <<extend>>
+UC11 .> UC06 : <<extend>>
+UC08 .> UC09 : <<include>>
+UC09 .> UC06 : <<include>>
+@enduml

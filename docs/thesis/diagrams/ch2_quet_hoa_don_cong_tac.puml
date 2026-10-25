@@ -5,15 +5,17 @@
 actor "Người dùng" as ND
 rectangle ":Ứng dụng di động" as APP
 rectangle ":AI Service" as AI
+rectangle ":SQLite trên thiết bị" as SQ
 rectangle ":Core Backend" as BE
 rectangle ":Kho ảnh đám mây" as CL
 rectangle ":Giao dịch" as GD
 rectangle ":Hóa đơn" as HD
-ND -- APP : "1: Chụp hoặc chọn ảnh ↓\n↑ 9: Biểu mẫu đối soát\n10: Xác nhận lưu ↓\n↑ 15: Thông báo thành công"
+ND -- APP : "1: Chụp hoặc chọn ảnh ↓\n↑ 5: Biểu mẫu đối soát\n6: Sửa, xác nhận lưu ↓\n↑ 17: Thông báo thành công"
 APP -- AI : "2: Gửi ảnh hóa đơn ↓\n↑ 4: Bốn trường thông tin"
 AI -- AI : "3: Trích xuất bằng DONUT"
-APP -- BE : "5: Tải ảnh gốc ↓\n↑ 8: Đường dẫn ảnh\n11: Gửi giao dịch kèm dữ liệu AI ↓\n↑ 14: Giao dịch đã lưu"
-BE -- CL : "6: Lưu ảnh ↓\n↑ 7: Đường dẫn ảnh"
-BE -- GD : "12: Tạo giao dịch, cập nhật ví ↓"
-BE -- HD : "13: Lưu hóa đơn theo kết quả AI ↓"
+APP -- SQ : "11: Lưu bản ghi chờ đồng bộ ↓\n16: Đánh dấu đã đồng bộ ↓"
+APP -- BE : "7: Tải ảnh gốc ↓\n↑ 10: Đường dẫn ảnh\n12: Gửi giao dịch kèm clientId ↓\n↑ 15: Giao dịch đã lưu"
+BE -- CL : "8: Lưu ảnh ↓\n↑ 9: Đường dẫn ảnh"
+BE -- GD : "13: Khóa ví, tạo giao dịch ↓"
+BE -- HD : "14: Lưu hóa đơn theo kết quả AI ↓"
 @enduml

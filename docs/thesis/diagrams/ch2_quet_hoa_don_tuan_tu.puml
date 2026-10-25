@@ -1,10 +1,11 @@
 @startuml ch2_quet_hoa_don_tuan_tu
-' Hình 2.6: Sơ đồ tuần tự quy trình quét hóa đơn và đối soát (mục 2.2.3), dòng cơ bản
+' Hình 2.6: Sơ đồ tuần tự quy trình quét hóa đơn và đối soát (mục 2.2.3), dòng cơ bản, theo commit 4d7a9ee
 !include _style.iuml
 hide footbox
 autonumber
 actor "Người dùng" as ND
 participant "Ứng dụng\ndi động" as APP
+database "SQLite\ntrên thiết bị" as SQ
 participant "AI Service" as AI
 participant "Core Backend" as BE
 participant "Kho ảnh\nđám mây" as CL
@@ -14,15 +15,17 @@ ND -> APP ++ : Chụp hoặc chọn ảnh hóa đơn
 APP -> AI ++ : Gửi ảnh hóa đơn
 AI -> AI : Trích xuất bốn trường bằng DONUT
 return Người bán, địa chỉ, thời gian, tổng tiền
+APP --> ND : Biểu mẫu đối soát điền sẵn
+ND -> APP : Đối chiếu, sửa thông tin, xác nhận lưu
 APP -> BE ++ : Tải ảnh gốc lên
 BE -> CL ++ : Lưu ảnh
 return Đường dẫn ảnh
 return Đường dẫn ảnh
-APP --> ND : Hiển thị biểu mẫu đối soát
-ND -> APP : Đối chiếu, sửa thông tin, xác nhận lưu
-APP -> BE ++ : Gửi giao dịch kèm dữ liệu AI và ảnh
-BE -> GD : Tạo giao dịch, cập nhật ví
+APP -> SQ : Lưu bản ghi chờ đồng bộ kèm clientId
+APP -> BE ++ : Gửi giao dịch kèm clientId, dữ liệu AI, ảnh
+BE -> GD : Khóa ví, tạo giao dịch, cập nhật số dư
 BE -> HD : Lưu hóa đơn theo kết quả AI
 BE --> APP -- : Giao dịch đã lưu
+APP -> SQ : Đánh dấu đã đồng bộ
 APP --> ND -- : Thông báo lưu thành công
 @enduml
