@@ -1348,12 +1348,13 @@ class LedgerPageState extends State<LedgerPage> {
     final clientId = tx.clientId;
     if (clientId == null || !_resendingClientIds.add(clientId)) return;
 
+    final loc = context.locOrDefault;
     SyncStatus? outcome;
     String? failure;
     try {
       outcome = await AppRepository.instance.resendTransaction(userId, tx);
     } on TransactionRefusedException catch (e) {
-      failure = e.message;
+      failure = e.messageFor(loc);
     } catch (e) {
       debugPrint('Lỗi gửi lại giao dịch: $e');
       failure = 'Không gửi lại được giao dịch. Vui lòng thử lại.';
@@ -1507,9 +1508,7 @@ class LedgerPageState extends State<LedgerPage> {
       _transactions,
     )) {
       sheet.appendRow([
-        TextCellValue(
-          progress.budget.categoryName ?? BudgetModel.allCategoriesLabel,
-        ),
+        TextCellValue(progress.budget.categoryLabel(context.loc)),
         DoubleCellValue(progress.limit),
         DoubleCellValue(progress.spent),
         DoubleCellValue(progress.remaining),

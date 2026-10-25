@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 
 extension BuildContextExtension on BuildContext {
   AppLocalizations get loc {
@@ -16,6 +17,12 @@ extension BuildContextExtension on BuildContext {
     }
     return localizations;
   }
+
+  /// Like [loc], but without AppLocalizations above this context (a bare MaterialApp, as many widget tests pump) the
+  /// texts of [AppLanguage.fallback] instead of an error. The app itself always provides AppLocalizations.
+  AppLocalizations get locOrDefault =>
+      Localizations.of<AppLocalizations>(this, AppLocalizations) ??
+      AppLanguage.fallback.localizations;
 
   /// The fintech colours of the current theme; see [ThemeDataSemanticColors.semanticColors].
   SemanticColors get colors => Theme.of(this).semanticColors;

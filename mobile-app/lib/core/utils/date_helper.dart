@@ -1,5 +1,8 @@
+import 'package:finance_ai_app/l10n/app_localizations.dart';
+
 class DateHelper {
-  static String formatTransactionDate(DateTime date) {
+  /// "Today, HH:mm" or "Yesterday, HH:mm" in the language of [loc]; an older day as dd/MM/yyyy.
+  static String formatTransactionDate(AppLocalizations loc, DateTime date) {
     final now = DateTime.now();
 
     final isSameDay =
@@ -15,11 +18,11 @@ class DateHelper {
         '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
     if (isSameDay) {
-      return 'Hôm nay, $timeString';
+      return loc.dateTodayAt(timeString);
     }
 
     if (isYesterday) {
-      return 'Hôm qua, $timeString';
+      return loc.dateYesterdayAt(timeString);
     }
 
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';

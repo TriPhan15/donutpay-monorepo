@@ -274,6 +274,7 @@ void main() {
         const MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('vi'),
           home: Scaffold(body: DashboardPage()),
         ),
       );

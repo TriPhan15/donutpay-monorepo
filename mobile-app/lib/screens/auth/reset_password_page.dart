@@ -102,7 +102,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   String? _validateNewPassword(String? value) {
     final password = value ?? '';
     if (password.isEmpty) return context.loc.resetPasswordPasswordRequired;
-    if (PasswordPolicy.validate(password) != null) {
+    if (PasswordPolicy.validate(password, context.loc) != null) {
       return _passwordRules(context.loc);
     }
     return null;

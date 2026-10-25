@@ -77,7 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final policyError = PasswordPolicy.validate(password);
+    final policyError = PasswordPolicy.validate(password, context.loc);
     if (!_isPasswordValid() || policyError != null) {
       await AppDialog.error(
         context,
@@ -108,7 +108,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await AppDialog.error(
         context,
         title: _registerFailedTitle,
-        message: UserFacingError.messageOf(e),
+        message: UserFacingError.messageOf(e, context.loc),
       );
     }
   }
@@ -145,7 +145,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await AppDialog.error(
         context,
         title: _registerFailedTitle,
-        message: UserFacingError.messageOf(e, fallback: _socialSignUpFailed),
+        message: UserFacingError.messageOf(
+          e,
+          context.loc,
+          fallback: _socialSignUpFailed,
+        ),
       );
     }
   }

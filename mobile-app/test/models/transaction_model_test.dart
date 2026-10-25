@@ -1,5 +1,7 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -15,6 +17,8 @@ TransactionModel _draft({String title = 'Cà phê'}) => TransactionModel.draft(
   date: DateTime(2026, 9, 20, 8, 30),
   isExpense: true,
 );
+
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 void main() {
   group('ReceiptStatus.fromServer', () {
@@ -64,9 +68,9 @@ void main() {
     );
 
     test('the badge texts are the ones of the task', () {
-      expect(ReceiptStatus.processing.label, 'Đang xử lý');
-      expect(ReceiptStatus.success.label, 'Hoàn tất');
-      expect(ReceiptStatus.failed.label, 'Lỗi · cần xác nhận lại');
+      expect(ReceiptStatus.processing.label(_vi), 'Đang xử lý');
+      expect(ReceiptStatus.success.label(_vi), 'Hoàn tất');
+      expect(ReceiptStatus.failed.label(_vi), 'Lỗi · cần xác nhận lại');
     });
   });
 
@@ -421,9 +425,9 @@ void main() {
         for (final status in SyncStatus.values) {
           expect(SyncStatus.fromDb(status.dbValue), status);
         }
-        expect(SyncStatus.pending.label, 'Chờ gửi');
-        expect(SyncStatus.error.label, 'Gửi lỗi');
-        expect(SyncStatus.synced.label, 'Đã đồng bộ');
+        expect(SyncStatus.pending.label(_vi), 'Chờ gửi');
+        expect(SyncStatus.error.label(_vi), 'Gửi lỗi');
+        expect(SyncStatus.synced.label(_vi), 'Đã đồng bộ');
       },
     );
   });

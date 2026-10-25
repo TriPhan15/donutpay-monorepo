@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/screens/budget/budget_form_sheet.dart';
 
@@ -73,6 +74,9 @@ String _range(String periodType, [DateTime? day]) {
   return '${show(range.start)} – ${show(range.end)}';
 }
 
+/// The sheet is pumped without the app's localizations, so it shows the default language.
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
+
 void main() {
   testWidgets(
     'offers both periods and every category, with the month and every category preselected',
@@ -82,7 +86,10 @@ void main() {
       expect(find.text('Thiết lập ngân sách'), findsOneWidget);
       expect(_chip(tester, 'Tháng').selected, isTrue);
       expect(_chip(tester, 'Tuần').selected, isFalse);
-      expect(_chip(tester, BudgetModel.allCategoriesLabel).selected, isTrue);
+      expect(
+        _chip(tester, BudgetModel.allCategoriesLabel(_vi)).selected,
+        isTrue,
+      );
       expect(find.widgetWithText(ChoiceChip, 'Ăn uống'), findsOneWidget);
       expect(find.widgetWithText(ChoiceChip, 'Di chuyển'), findsOneWidget);
       expect(
@@ -250,7 +257,10 @@ void main() {
       expect(find.text('Không tải được danh mục'), findsOneWidget);
       await tester.tap(find.text('Đã hiểu'));
       await tester.pumpAndSettle();
-      expect(_chip(tester, BudgetModel.allCategoriesLabel).selected, isTrue);
+      expect(
+        _chip(tester, BudgetModel.allCategoriesLabel(_vi)).selected,
+        isTrue,
+      );
     },
   );
 

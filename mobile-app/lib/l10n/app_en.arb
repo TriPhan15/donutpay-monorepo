@@ -309,5 +309,292 @@
   "passwordRecoveryUnexpectedError": "Something went wrong. Please try again.",
   "@passwordRecoveryUnexpectedError": {
     "description": "Error dialog text when a password recovery request failed for a reason the app does not know."
+  },
+  "navHome": "Home",
+  "@navHome": {
+    "description": "Label of the Home tab in the bottom bar."
+  },
+  "navLedger": "Statistics",
+  "@navLedger": {
+    "description": "Label of the Ledger tab in the bottom bar."
+  },
+  "navAi": "AI",
+  "@navAi": {
+    "description": "Label of the AI tab in the bottom bar."
+  },
+  "navProfile": "Profile",
+  "@navProfile": {
+    "description": "Label of the Profile tab in the bottom bar."
+  },
+  "scanSheetTitle": "Scan a receipt with AI",
+  "@scanSheetTitle": {
+    "description": "Title of the sheet opened by the scan button."
+  },
+  "scanWithAi": "AI scan",
+  "@scanWithAi": {
+    "description": "Scan sheet option that opens the document scanner."
+  },
+  "scanFromGallery": "From gallery",
+  "@scanFromGallery": {
+    "description": "Scan sheet option that picks a receipt photo from the gallery."
+  },
+  "scanScannerFailedTitle": "Couldn't open the scanner",
+  "@scanScannerFailedTitle": {
+    "description": "Error dialog title when the document scanner fails to open."
+  },
+  "scanScannerFailedMessage": "Please try again or pick a photo from the gallery.",
+  "@scanScannerFailedMessage": {
+    "description": "Error dialog text when the document scanner fails to open."
+  },
+  "scanGalleryFailedTitle": "Couldn't open the photo gallery",
+  "@scanGalleryFailedTitle": {
+    "description": "Error dialog title when the photo gallery fails to open."
+  },
+  "scanGalleryFailedMessage": "Please check the app's photo access and try again.",
+  "@scanGalleryFailedMessage": {
+    "description": "Error dialog text when the photo gallery fails to open."
+  },
+  "dialogOk": "OK",
+  "@dialogOk": {
+    "description": "Default button of a success or info dialog."
+  },
+  "dialogConfirm": "Confirm",
+  "@dialogConfirm": {
+    "description": "Default confirm button of a confirmation dialog."
+  },
+  "dialogCancel": "Cancel",
+  "@dialogCancel": {
+    "description": "Default cancel button of a confirmation dialog."
+  },
+  "errorNetwork": "Can't reach the server. Please check your connection and try again.",
+  "@errorNetwork": {
+    "description": "A request got no answer from the server."
+  },
+  "errorTimeout": "The server is taking too long to respond. Please try again.",
+  "@errorTimeout": {
+    "description": "A request timed out."
+  },
+  "errorServer": "The server ran into a problem. Please try again later.",
+  "@errorServer": {
+    "description": "The server failed (5xx)."
+  },
+  "errorSessionExpired": "Your session has expired. Please sign in again.",
+  "@errorSessionExpired": {
+    "description": "The server answered 401 without a message."
+  },
+  "errorUnexpected": "Something went wrong. Please try again.",
+  "@errorUnexpected": {
+    "description": "A request failed for a reason the app does not know."
+  },
+  "transactionRefused": "The server refused this transaction. Please check the details.",
+  "@transactionRefused": {
+    "description": "The server refused a transaction (4xx) without a message the app can show."
+  },
+  "defaultUserName": "User",
+  "@defaultUserName": {
+    "description": "Name shown for an account that has neither a username nor an email."
+  },
+  "mainWalletName": "Main wallet",
+  "@mainWalletName": {
+    "description": "Name of the single wallet of the user."
+  },
+  "syncStatusPending": "Waiting to send",
+  "@syncStatusPending": {
+    "description": "Badge of a transaction saved on the device but not confirmed by the server yet."
+  },
+  "syncStatusSynced": "Synced",
+  "@syncStatusSynced": {
+    "description": "Badge of a transaction the server has."
+  },
+  "syncStatusError": "Send failed",
+  "@syncStatusError": {
+    "description": "Badge of a transaction whose last send failed."
+  },
+  "receiptStatusProcessing": "Processing",
+  "@receiptStatusProcessing": {
+    "description": "Badge of a receipt that is being read or reviewed."
+  },
+  "receiptStatusSuccess": "Completed",
+  "@receiptStatusSuccess": {
+    "description": "Badge of a receipt that was read and confirmed."
+  },
+  "receiptStatusFailed": "Failed · confirm again",
+  "@receiptStatusFailed": {
+    "description": "Badge of a receipt that could not be read or was rejected."
+  },
+  "budgetPeriodWeek": "Week",
+  "@budgetPeriodWeek": {
+    "description": "Weekly budget period."
+  },
+  "budgetPeriodMonth": "Month",
+  "@budgetPeriodMonth": {
+    "description": "Monthly budget period."
+  },
+  "budgetAllCategories": "All categories",
+  "@budgetAllCategories": {
+    "description": "What a budget without a category is called."
+  },
+  "dateTodayAt": "Today, {time}",
+  "@dateTodayAt": {
+    "description": "Date of a transaction made today, with its time (HH:mm).",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dateYesterdayAt": "Yesterday, {time}",
+  "@dateYesterdayAt": {
+    "description": "Date of a transaction made yesterday, with its time (HH:mm).",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "passwordEmpty": "Password can't be empty.",
+  "@passwordEmpty": {
+    "description": "Validation error: the password is empty."
+  },
+  "passwordLength": "Password must be {min} to {max} characters long.",
+  "@passwordLength": {
+    "description": "Validation error: the password is too short or too long.",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "passwordLetterAndDigit": "Password must contain at least one letter and one digit.",
+  "@passwordLetterAndDigit": {
+    "description": "Validation error: the password lacks a letter or a digit."
+  },
+  "currencyVnd": "{amount} đ",
+  "@currencyVnd": {
+    "description": "An amount in Vietnamese dong; the unit stays VND in every language.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "weekdayShortMon": "Mon",
+  "@weekdayShortMon": {
+    "description": "Short name of Monday, under a chart bar."
+  },
+  "weekdayShortTue": "Tue",
+  "@weekdayShortTue": {
+    "description": "Short name of Tuesday, under a chart bar."
+  },
+  "weekdayShortWed": "Wed",
+  "@weekdayShortWed": {
+    "description": "Short name of Wednesday, under a chart bar."
+  },
+  "weekdayShortThu": "Thu",
+  "@weekdayShortThu": {
+    "description": "Short name of Thursday, under a chart bar."
+  },
+  "weekdayShortFri": "Fri",
+  "@weekdayShortFri": {
+    "description": "Short name of Friday, under a chart bar."
+  },
+  "weekdayShortSat": "Sat",
+  "@weekdayShortSat": {
+    "description": "Short name of Saturday, under a chart bar."
+  },
+  "weekdayShortSun": "Sun",
+  "@weekdayShortSun": {
+    "description": "Short name of Sunday, under a chart bar."
+  },
+  "categoryAll": "All",
+  "@categoryAll": {
+    "description": "Category filter that shows every category."
+  },
+  "categoryFood": "Food & drinks",
+  "@categoryFood": {
+    "description": "Default category stored by the backend as \"Ăn uống\" (DefaultCategory)."
+  },
+  "categoryGroceries": "Groceries & markets",
+  "@categoryGroceries": {
+    "description": "Default category stored by the backend as \"Siêu thị & Chợ\" (DefaultCategory)."
+  },
+  "categoryTransport": "Transport",
+  "@categoryTransport": {
+    "description": "Default category stored by the backend as \"Di chuyển\" (DefaultCategory)."
+  },
+  "categoryHousing": "Housing",
+  "@categoryHousing": {
+    "description": "Default category stored by the backend as \"Nhà ở\" (DefaultCategory)."
+  },
+  "categoryUtilities": "Electricity & water",
+  "@categoryUtilities": {
+    "description": "Default category stored by the backend as \"Điện nước\" (DefaultCategory)."
+  },
+  "categoryTelecom": "Internet & phone",
+  "@categoryTelecom": {
+    "description": "Default category stored by the backend as \"Internet & Điện thoại\" (DefaultCategory)."
+  },
+  "categoryShopping": "Shopping",
+  "@categoryShopping": {
+    "description": "Default category stored by the backend as \"Mua sắm\" (DefaultCategory)."
+  },
+  "categoryHealth": "Health",
+  "@categoryHealth": {
+    "description": "Default category stored by the backend as \"Sức khỏe\" (DefaultCategory)."
+  },
+  "categoryEducation": "Education",
+  "@categoryEducation": {
+    "description": "Default category stored by the backend as \"Giáo dục\" (DefaultCategory)."
+  },
+  "categoryEntertainment": "Entertainment",
+  "@categoryEntertainment": {
+    "description": "Default category stored by the backend as \"Giải trí\" (DefaultCategory)."
+  },
+  "categoryTravel": "Travel",
+  "@categoryTravel": {
+    "description": "Default category stored by the backend as \"Du lịch\" (DefaultCategory)."
+  },
+  "categoryFamily": "Family & children",
+  "@categoryFamily": {
+    "description": "Default category stored by the backend as \"Gia đình & Con cái\" (DefaultCategory)."
+  },
+  "categorySocial": "Weddings & funerals",
+  "@categorySocial": {
+    "description": "Default category stored by the backend as \"Hiếu hỉ\" (DefaultCategory)."
+  },
+  "categoryInsurance": "Insurance",
+  "@categoryInsurance": {
+    "description": "Default category stored by the backend as \"Bảo hiểm\" (DefaultCategory)."
+  },
+  "categoryOtherExpense": "Other",
+  "@categoryOtherExpense": {
+    "description": "Default category stored by the backend as \"Khác\" (DefaultCategory)."
+  },
+  "categorySalary": "Salary",
+  "@categorySalary": {
+    "description": "Default category stored by the backend as \"Lương\" (DefaultCategory)."
+  },
+  "categoryBonus": "Bonus",
+  "@categoryBonus": {
+    "description": "Default category stored by the backend as \"Thưởng\" (DefaultCategory)."
+  },
+  "categoryBusiness": "Business",
+  "@categoryBusiness": {
+    "description": "Default category stored by the backend as \"Kinh doanh\" (DefaultCategory)."
+  },
+  "categoryInvestment": "Investment",
+  "@categoryInvestment": {
+    "description": "Default category stored by the backend as \"Đầu tư\" (DefaultCategory)."
+  },
+  "categoryGift": "Gifts received",
+  "@categoryGift": {
+    "description": "Default category stored by the backend as \"Được tặng\" (DefaultCategory)."
+  },
+  "categoryOtherIncome": "Other income",
+  "@categoryOtherIncome": {
+    "description": "Default category stored by the backend as \"Thu khác\" (DefaultCategory)."
   }
 }

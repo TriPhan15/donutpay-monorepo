@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -12,11 +15,17 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/sqflite_helper.dart';
 
 /// The server understood a transaction and refused it (a category that does not exist, a balance that is too low ...),
-/// so sending it again cannot help until the data changes. [message] is the reason, ready to show to the user.
+/// so sending it again cannot help until the data changes. [message] is the reason core-backend gave, if any, in its
+/// own language; screens show [messageFor].
 class TransactionRefusedException implements Exception {
   const TransactionRefusedException(this.message);
 
-  final String message;
+  final String? message;
+
+  /// The reason, ready to show in the language of [loc]: the server's own when the user can read it, else a fixed text.
+  String messageFor(AppLocalizations loc) =>
+      (UserFacingError.readsServerMessages(loc) ? message : null) ??
+      loc.transactionRefused;
 
   @override
   String toString() => 'TransactionRefusedException: $message';
@@ -36,9 +45,6 @@ class AppRepository {
     HttpStatus.requestTimeout,
     HttpStatus.tooManyRequests,
   };
-
-  static const String _defaultRefusalMessage =
-      'Máy chủ từ chối giao dịch này. Vui lòng kiểm tra lại thông tin.';
 
   /// Where the transactions that the server has not confirmed are kept; only tests replace it.
   SqfliteHelper _localStore = SqfliteHelper.instance;
@@ -81,16 +87,17 @@ class AppRepository {
     return _localStore.getUnsyncedTransactions(userId);
   }
 
-  static const String _defaultDisplayName = 'Người dùng';
-
   /// The name /api/users/me carries (username, set from the profile form), unless it is only the email the account
-  /// was registered with: then the part of the email before the @, as before.
+  /// was registered with: then the part of the email before the @, as before. Without either, the default name in the
+  /// language the app shows.
   @visibleForTesting
   static String displayNameOf(Map<String, dynamic> me) {
     final email = (me['email'] ?? '').toString().trim();
     final username = (me['username'] ?? '').toString().trim();
     if (username.isNotEmpty && username != email) return username;
-    return email.isNotEmpty ? email.split('@').first : _defaultDisplayName;
+    return email.isNotEmpty
+        ? email.split('@').first
+        : AppLanguage.current.localizations.defaultUserName;
   }
 
   Future<UserModel?> getCurrentUser(int userId) async {
@@ -111,8 +118,15 @@ class AppRepository {
       0.0,
       (s, t) => s + (t.isExpense ? -t.amount : t.amount),
     );
-    return [WalletModel(name: 'Ví chính', balance: bal, userId: userId)];
+    return [_mainWallet(bal, userId)];
   }
+
+  /// The single wallet of the user, named in the language the app shows.
+  static WalletModel _mainWallet(double balance, int userId) => WalletModel(
+    name: AppLanguage.current.localizations.mainWalletName,
+    balance: balance,
+    userId: userId,
+  );
 
   Future<Map<String, dynamic>> getHomeSummary(int userId) async {
     final results = await Future.wait([
@@ -127,9 +141,7 @@ class AppRepository {
       0.0,
       (s, t) => s + (t.isExpense ? -t.amount : t.amount),
     );
-    final wallets = [
-      WalletModel(name: 'Ví chính', balance: bal, userId: userId),
-    ];
+    final wallets = [_mainWallet(bal, userId)];
 
     return {'user': user, 'transactions': txs, 'wallets': wallets};
   }
@@ -268,13 +280,8 @@ class AppRepository {
         !_retryableClientErrors.contains(status);
   }
 
-  static String _refusalMessage(DioException e) {
-    final data = e.response?.data;
-    final message = (data is Map ? data['message'] : null)?.toString().trim();
-    return (message == null || message.isEmpty)
-        ? _defaultRefusalMessage
-        : message;
-  }
+  static String? _refusalMessage(DioException e) =>
+      UserFacingError.serverMessageOf(e.response?.data);
 
   /// All the budgets of the user from the server, newest first. Callers pick the ones of a period themselves, see
   /// BudgetModel.coversDay and BudgetModel.overlaps.

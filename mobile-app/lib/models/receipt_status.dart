@@ -1,21 +1,25 @@
+import 'package:finance_ai_app/l10n/app_localizations.dart';
+
 /// How far the processing of the receipt attached to a transaction has come, reduced to the three states the app shows.
 ///
 /// core-backend keeps the name of its own ReceiptStatus in Receipt.status (PENDING, SUCCESS, FAILED,
 /// WAITING_FOR_REVIEW, CANCELED, in any letter case); the app reads it from the `receiptStatus` field of a transaction.
 enum ReceiptStatus {
   /// Being read, or waiting for an administrator to check the amount the user corrected.
-  processing('Đang xử lý'),
+  processing,
 
   /// Read and confirmed.
-  success('Hoàn tất'),
+  success,
 
   /// Could not be read or was rejected: the user has to confirm the amount again.
-  failed('Lỗi · cần xác nhận lại');
-
-  const ReceiptStatus(this.label);
+  failed;
 
   /// The text of the badge.
-  final String label;
+  String label(AppLocalizations loc) => switch (this) {
+    ReceiptStatus.processing => loc.receiptStatusProcessing,
+    ReceiptStatus.success => loc.receiptStatusSuccess,
+    ReceiptStatus.failed => loc.receiptStatusFailed,
+  };
 
   static const String _serverSuccess = 'SUCCESS';
   static const String _serverFailed = 'FAILED';

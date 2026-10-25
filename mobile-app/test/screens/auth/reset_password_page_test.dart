@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/utils/password_policy.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/auth/reset_password_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -69,6 +70,8 @@ class _Opener extends StatelessWidget {
     );
   }
 }
+
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 void main() {
   final backend = FakeBackend();
@@ -244,7 +247,7 @@ void main() {
       expect(errorOf(tester, 1), _passwordRequired);
 
       for (final weak in ['abcdefgh', '12345678', 'Ab1', 'A1' * 37]) {
-        expect(PasswordPolicy.validate(weak), isNotNull, reason: weak);
+        expect(PasswordPolicy.validate(weak, _vi), isNotNull, reason: weak);
         await fill(tester, password: weak);
         await tapAndSend(tester, resetButton());
         expect(errorOf(tester, 1), _passwordRules, reason: weak);

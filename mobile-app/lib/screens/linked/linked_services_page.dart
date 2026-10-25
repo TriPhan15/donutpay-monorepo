@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
@@ -131,7 +132,9 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
     } catch (e) {
       UserFacingError.log('Create sync order', e);
       if (mounted) {
-        _snack('$_createOrderFailedPrefix ${UserFacingError.messageOf(e)}');
+        _snack(
+          '$_createOrderFailedPrefix ${UserFacingError.messageOf(e, context.loc)}',
+        );
         setState(() => _syncing = false);
       }
     }

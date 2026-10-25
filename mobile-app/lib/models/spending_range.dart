@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import 'package:finance_ai_app/l10n/app_localizations.dart';
+
 /// How the period of the spending report is chosen.
 enum SpendingPeriod { week, month, custom }
 
@@ -31,15 +33,6 @@ class SpendingRange {
   static const int maxFittedBuckets = 7;
 
   static const String _weekBucketPrefix = 'W';
-  static const List<String> _weekdayLabels = [
-    'T2',
-    'T3',
-    'T4',
-    'T5',
-    'T6',
-    'T7',
-    'CN',
-  ];
   static final DateFormat _dayMonth = DateFormat('dd/MM');
   static final DateFormat _fullDate = DateFormat('dd/MM/yyyy');
 
@@ -118,9 +111,10 @@ class SpendingRange {
     return !day.isBefore(start) && !day.isAfter(end);
   }
 
-  /// The bars of the chart, in order, with no gap between them; together they cover exactly the days of the range.
-  List<SpendingBucket> get buckets =>
-      period == SpendingPeriod.month ? _weeklyBuckets() : _fittedBuckets();
+  /// The bars of the chart, in order, with no gap between them; together they cover exactly the days of the range. A
+  /// bar of one day is labelled with its weekday in the language of [loc].
+  List<SpendingBucket> buckets(AppLocalizations loc) =>
+      period == SpendingPeriod.month ? _weeklyBuckets() : _fittedBuckets(loc);
 
   /// Four weeks counted from the first day; the last one takes whatever days are left.
   List<SpendingBucket> _weeklyBuckets() {
@@ -137,7 +131,7 @@ class SpendingRange {
 
   /// As few days per bar as it takes to stay within [maxFittedBuckets]. A bar of one day is named after its weekday, a
   /// longer one after its first day.
-  List<SpendingBucket> _fittedBuckets() {
+  List<SpendingBucket> _fittedBuckets(AppLocalizations loc) {
     final endExclusive = _shift(end, 1);
     final daysPerBucket = (days / maxFittedBuckets).ceil();
     final count = (days / daysPerBucket).ceil();
@@ -146,13 +140,25 @@ class SpendingRange {
       final to = _shift(from, daysPerBucket);
       return SpendingBucket(
         label: daysPerBucket == 1
-            ? _weekdayLabels[from.weekday - DateTime.monday]
+            ? _weekdayLabel(loc, from.weekday)
             : _dayMonth.format(from),
         start: from,
         end: to.isAfter(endExclusive) ? endExclusive : to,
       );
     });
   }
+
+  /// The short name of [weekday] (DateTime.monday ... DateTime.sunday).
+  static String _weekdayLabel(AppLocalizations loc, int weekday) =>
+      switch (weekday) {
+        DateTime.monday => loc.weekdayShortMon,
+        DateTime.tuesday => loc.weekdayShortTue,
+        DateTime.wednesday => loc.weekdayShortWed,
+        DateTime.thursday => loc.weekdayShortThu,
+        DateTime.friday => loc.weekdayShortFri,
+        DateTime.saturday => loc.weekdayShortSat,
+        _ => loc.weekdayShortSun,
+      };
 
   static DateTime _shift(DateTime day, int days) =>
       DateTime(day.year, day.month, day.day + days);

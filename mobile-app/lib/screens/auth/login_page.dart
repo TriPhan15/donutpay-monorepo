@@ -1,3 +1,4 @@
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:flutter/material.dart';
 
@@ -105,6 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
         title: _loginFailedTitle,
         message: UserFacingError.messageOf(
           e,
+          context.loc,
           unauthorizedMessage: _wrongCredentials,
         ),
       );
@@ -162,7 +164,11 @@ class _LoginScreenState extends State<LoginScreen> {
       await AppDialog.error(
         context,
         title: _loginFailedTitle,
-        message: UserFacingError.messageOf(e, fallback: _socialLoginFailed),
+        message: UserFacingError.messageOf(
+          e,
+          context.loc,
+          fallback: _socialLoginFailed,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSocialLoading = false);

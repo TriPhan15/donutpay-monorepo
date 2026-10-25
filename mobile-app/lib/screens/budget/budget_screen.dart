@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
@@ -126,7 +127,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       context,
       title: 'Xóa ngân sách?',
       message:
-          'Ngân sách "${budget.categoryName ?? BudgetModel.allCategoriesLabel}" sẽ bị xóa.',
+          'Ngân sách "${budget.categoryLabel(context.locOrDefault)}" sẽ bị xóa.',
       confirmText: 'Xóa',
       danger: true,
     );
@@ -280,12 +281,12 @@ class _BudgetCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      categoryName ?? BudgetModel.allCategoriesLabel,
+                      budget.categoryLabel(context.locOrDefault),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${BudgetPeriodType.label(budget.periodType)} · '
+                      '${BudgetPeriodType.label(context.locOrDefault, budget.periodType)} · '
                       '${_displayDate.format(budget.start)} – ${_displayDate.format(budget.end)}',
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
@@ -296,7 +297,11 @@ class _BudgetCard extends StatelessWidget {
                 ),
               ),
               Text(
-                CurrencyHelper.formatVND(budget.amount, showSign: false),
+                CurrencyHelper.formatVND(
+                  budget.amount,
+                  context.locOrDefault,
+                  showSign: false,
+                ),
                 style: TextStyle(
                   color: colors.primary,
                   fontWeight: FontWeight.bold,

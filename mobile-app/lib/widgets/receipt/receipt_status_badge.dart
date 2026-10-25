@@ -38,7 +38,7 @@ class ReceiptStatusBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Flexible(
             child: Text(
-              status.label,
+              status.label(context.locOrDefault),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

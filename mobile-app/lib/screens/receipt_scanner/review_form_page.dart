@@ -264,6 +264,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       rawReceiptData: rawScan == null ? null : jsonEncode(rawScan),
     );
 
+    final loc = context.locOrDefault;
     SyncStatus? status;
     String? failure;
     try {
@@ -272,7 +273,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
         transaction,
       );
     } on TransactionRefusedException catch (e) {
-      failure = e.message;
+      failure = e.messageFor(loc);
     } catch (e) {
       debugPrint('Lỗi lưu giao dịch từ hóa đơn: $e');
       failure = _saveFailedMessage;

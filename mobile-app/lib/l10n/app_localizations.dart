@@ -511,6 +511,402 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Please try again.'**
   String get passwordRecoveryUnexpectedError;
+
+  /// Label of the Home tab in the bottom bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get navHome;
+
+  /// Label of the Ledger tab in the bottom bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get navLedger;
+
+  /// Label of the AI tab in the bottom bar.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get navAi;
+
+  /// Label of the Profile tab in the bottom bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get navProfile;
+
+  /// Title of the sheet opened by the scan button.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan a receipt with AI'**
+  String get scanSheetTitle;
+
+  /// Scan sheet option that opens the document scanner.
+  ///
+  /// In en, this message translates to:
+  /// **'AI scan'**
+  String get scanWithAi;
+
+  /// Scan sheet option that picks a receipt photo from the gallery.
+  ///
+  /// In en, this message translates to:
+  /// **'From gallery'**
+  String get scanFromGallery;
+
+  /// Error dialog title when the document scanner fails to open.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the scanner'**
+  String get scanScannerFailedTitle;
+
+  /// Error dialog text when the document scanner fails to open.
+  ///
+  /// In en, this message translates to:
+  /// **'Please try again or pick a photo from the gallery.'**
+  String get scanScannerFailedMessage;
+
+  /// Error dialog title when the photo gallery fails to open.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the photo gallery'**
+  String get scanGalleryFailedTitle;
+
+  /// Error dialog text when the photo gallery fails to open.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check the app\'s photo access and try again.'**
+  String get scanGalleryFailedMessage;
+
+  /// Default button of a success or info dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get dialogOk;
+
+  /// Default confirm button of a confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get dialogConfirm;
+
+  /// Default cancel button of a confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get dialogCancel;
+
+  /// A request got no answer from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the server. Please check your connection and try again.'**
+  String get errorNetwork;
+
+  /// A request timed out.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is taking too long to respond. Please try again.'**
+  String get errorTimeout;
+
+  /// The server failed (5xx).
+  ///
+  /// In en, this message translates to:
+  /// **'The server ran into a problem. Please try again later.'**
+  String get errorServer;
+
+  /// The server answered 401 without a message.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again.'**
+  String get errorSessionExpired;
+
+  /// A request failed for a reason the app does not know.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get errorUnexpected;
+
+  /// The server refused a transaction (4xx) without a message the app can show.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused this transaction. Please check the details.'**
+  String get transactionRefused;
+
+  /// Name shown for an account that has neither a username nor an email.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get defaultUserName;
+
+  /// Name of the single wallet of the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Main wallet'**
+  String get mainWalletName;
+
+  /// Badge of a transaction saved on the device but not confirmed by the server yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to send'**
+  String get syncStatusPending;
+
+  /// Badge of a transaction the server has.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced'**
+  String get syncStatusSynced;
+
+  /// Badge of a transaction whose last send failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Send failed'**
+  String get syncStatusError;
+
+  /// Badge of a receipt that is being read or reviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
+  String get receiptStatusProcessing;
+
+  /// Badge of a receipt that was read and confirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get receiptStatusSuccess;
+
+  /// Badge of a receipt that could not be read or was rejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed · confirm again'**
+  String get receiptStatusFailed;
+
+  /// Weekly budget period.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get budgetPeriodWeek;
+
+  /// Monthly budget period.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get budgetPeriodMonth;
+
+  /// What a budget without a category is called.
+  ///
+  /// In en, this message translates to:
+  /// **'All categories'**
+  String get budgetAllCategories;
+
+  /// Date of a transaction made today, with its time (HH:mm).
+  ///
+  /// In en, this message translates to:
+  /// **'Today, {time}'**
+  String dateTodayAt(String time);
+
+  /// Date of a transaction made yesterday, with its time (HH:mm).
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday, {time}'**
+  String dateYesterdayAt(String time);
+
+  /// Validation error: the password is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Password can\'t be empty.'**
+  String get passwordEmpty;
+
+  /// Validation error: the password is too short or too long.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be {min} to {max} characters long.'**
+  String passwordLength(int min, int max);
+
+  /// Validation error: the password lacks a letter or a digit.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must contain at least one letter and one digit.'**
+  String get passwordLetterAndDigit;
+
+  /// An amount in Vietnamese dong; the unit stays VND in every language.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} đ'**
+  String currencyVnd(String amount);
+
+  /// Short name of Monday, under a chart bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon'**
+  String get weekdayShortMon;
+
+  /// Short name of Tuesday, under a chart bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Tue'**
+  String get weekdayShortTue;
+
+  /// Short name of Wednesday, under a chart bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Wed'**
+  String get weekdayShortWed;
+
+  /// Short name of Thursday, under a chart bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Thu'**
+  String get weekdayShortThu;
+
+  /// Short name of Friday, under a chart bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Fri'**
+  String get weekdayShortFri;
+
+  /// Short name of Saturday, under a chart bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Sat'**
+  String get weekdayShortSat;
+
+  /// Short name of Sunday, under a chart bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Sun'**
+  String get weekdayShortSun;
+
+  /// Category filter that shows every category.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get categoryAll;
+
+  /// Default category stored by the backend as "Ăn uống" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Food & drinks'**
+  String get categoryFood;
+
+  /// Default category stored by the backend as "Siêu thị & Chợ" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Groceries & markets'**
+  String get categoryGroceries;
+
+  /// Default category stored by the backend as "Di chuyển" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Transport'**
+  String get categoryTransport;
+
+  /// Default category stored by the backend as "Nhà ở" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Housing'**
+  String get categoryHousing;
+
+  /// Default category stored by the backend as "Điện nước" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Electricity & water'**
+  String get categoryUtilities;
+
+  /// Default category stored by the backend as "Internet & Điện thoại" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Internet & phone'**
+  String get categoryTelecom;
+
+  /// Default category stored by the backend as "Mua sắm" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping'**
+  String get categoryShopping;
+
+  /// Default category stored by the backend as "Sức khỏe" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Health'**
+  String get categoryHealth;
+
+  /// Default category stored by the backend as "Giáo dục" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Education'**
+  String get categoryEducation;
+
+  /// Default category stored by the backend as "Giải trí" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Entertainment'**
+  String get categoryEntertainment;
+
+  /// Default category stored by the backend as "Du lịch" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Travel'**
+  String get categoryTravel;
+
+  /// Default category stored by the backend as "Gia đình & Con cái" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Family & children'**
+  String get categoryFamily;
+
+  /// Default category stored by the backend as "Hiếu hỉ" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Weddings & funerals'**
+  String get categorySocial;
+
+  /// Default category stored by the backend as "Bảo hiểm" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Insurance'**
+  String get categoryInsurance;
+
+  /// Default category stored by the backend as "Khác" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get categoryOtherExpense;
+
+  /// Default category stored by the backend as "Lương" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Salary'**
+  String get categorySalary;
+
+  /// Default category stored by the backend as "Thưởng" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Bonus'**
+  String get categoryBonus;
+
+  /// Default category stored by the backend as "Kinh doanh" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Business'**
+  String get categoryBusiness;
+
+  /// Default category stored by the backend as "Đầu tư" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Investment'**
+  String get categoryInvestment;
+
+  /// Default category stored by the backend as "Được tặng" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Gifts received'**
+  String get categoryGift;
+
+  /// Default category stored by the backend as "Thu khác" (DefaultCategory).
+  ///
+  /// In en, this message translates to:
+  /// **'Other income'**
+  String get categoryOtherIncome;
 }
 
 class _AppLocalizationsDelegate

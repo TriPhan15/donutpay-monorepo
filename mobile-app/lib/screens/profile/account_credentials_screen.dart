@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -131,7 +132,10 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
       return;
     }
     // The server never sends the password, so only the server can tell that the old one is wrong.
-    final policyError = PasswordPolicy.validate(newPassword);
+    final policyError = PasswordPolicy.validate(
+      newPassword,
+      context.locOrDefault,
+    );
     if (policyError != null) {
       ScaffoldMessenger.of(
         context,

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
@@ -70,7 +72,8 @@ class BudgetAlertPresenter {
     final saved = tracker.markShown(userId, alerts);
 
     alerts.sort((a, b) => b.level.index.compareTo(a.level.index));
-    final message = alerts.map(_lineOf).join('\n');
+    final loc = context.locOrDefault;
+    final message = alerts.map((alert) => _lineOf(alert, loc)).join('\n');
     if (alerts.first.level == BudgetAlertLevel.exceeded) {
       await AppDialog.error(context, title: _exceededTitle, message: message);
     } else {
@@ -79,11 +82,11 @@ class BudgetAlertPresenter {
     await saved;
   }
 
-  static String _lineOf(BudgetAlert alert) {
+  static String _lineOf(BudgetAlert alert, AppLocalizations loc) {
     final progress = alert.progress;
     final budget = progress.budget;
-    final name = budget.categoryName ?? BudgetModel.allCategoriesLabel;
-    final period = BudgetPeriodType.label(budget.periodType).toLowerCase();
+    final name = budget.categoryLabel(loc);
+    final period = BudgetPeriodType.label(loc, budget.periodType).toLowerCase();
     final amounts =
         '${_money.format(progress.spent)} / ${_money.format(progress.limit)}';
     return switch (alert.level) {

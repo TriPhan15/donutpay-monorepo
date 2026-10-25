@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
@@ -80,6 +82,7 @@ class _MainScaffoldState extends State<MainScaffold>
       ),
       builder: (context) {
         final colors = Theme.of(context).colorScheme;
+        final loc = context.loc;
         return Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -94,9 +97,12 @@ class _MainScaffoldState extends State<MainScaffold>
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Quét hóa đơn bằng AI',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                loc.scanSheetTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 24),
               Row(
@@ -105,13 +111,13 @@ class _MainScaffoldState extends State<MainScaffold>
                   _buildScanOptionBtn(
                     colors,
                     Icons.document_scanner_rounded,
-                    'Quét AI',
+                    loc.scanWithAi,
                     () => _startAutoScanner(context),
                   ),
                   _buildScanOptionBtn(
                     colors,
                     Icons.photo_library_rounded,
-                    'Từ thư viện',
+                    loc.scanFromGallery,
                     () => _pickImageAndScan(context, ImageSource.gallery),
                   ),
                 ],
@@ -154,8 +160,8 @@ class _MainScaffoldState extends State<MainScaffold>
       }
       debugPrint('Lỗi quét tài liệu ML Kit: $e');
       await _showScanError(
-        'Không mở được trình quét',
-        'Vui lòng thử lại hoặc chọn ảnh từ thư viện.',
+        (loc) => loc.scanScannerFailedTitle,
+        (loc) => loc.scanScannerFailedMessage,
       );
     } finally {
       documentScanner.close();
@@ -179,8 +185,8 @@ class _MainScaffoldState extends State<MainScaffold>
     } catch (e) {
       debugPrint('Lỗi chọn ảnh hóa đơn: $e');
       await _showScanError(
-        'Không mở được thư viện ảnh',
-        'Vui lòng kiểm tra quyền truy cập ảnh của ứng dụng và thử lại.',
+        (loc) => loc.scanGalleryFailedTitle,
+        (loc) => loc.scanGalleryFailedMessage,
       );
       return;
     }
@@ -199,9 +205,14 @@ class _MainScaffoldState extends State<MainScaffold>
   }
 
   /// The options sheet stays open behind the dialog, so the user can pick the other way at once.
-  Future<void> _showScanError(String title, String message) async {
+  /// The texts are picked only once the screen is known to be still there, in the language it shows.
+  Future<void> _showScanError(
+    String Function(AppLocalizations loc) title,
+    String Function(AppLocalizations loc) message,
+  ) async {
     if (!mounted) return;
-    await AppDialog.error(context, title: title, message: message);
+    final loc = context.loc;
+    await AppDialog.error(context, title: title(loc), message: message(loc));
   }
 
   Widget _buildScanOptionBtn(
@@ -233,6 +244,7 @@ class _MainScaffoldState extends State<MainScaffold>
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     return Scaffold(
       body: IndexedStack(index: _currentIndex, children: _pages),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -264,11 +276,11 @@ class _MainScaffoldState extends State<MainScaffold>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(colors, Icons.home_rounded, 'Trang chủ', 0),
-              _buildNavItem(colors, Icons.bar_chart_rounded, 'Thống kê', 1),
+              _buildNavItem(colors, Icons.home_rounded, loc.navHome, 0),
+              _buildNavItem(colors, Icons.bar_chart_rounded, loc.navLedger, 1),
               const SizedBox(width: 48),
-              _buildNavItem(colors, Icons.auto_awesome_rounded, 'AI', 2),
-              _buildNavItem(colors, Icons.person_rounded, 'Cá nhân', 3),
+              _buildNavItem(colors, Icons.auto_awesome_rounded, loc.navAi, 2),
+              _buildNavItem(colors, Icons.person_rounded, loc.navProfile, 3),
             ],
           ),
         ),

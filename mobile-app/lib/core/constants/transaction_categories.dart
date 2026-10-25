@@ -1,8 +1,42 @@
 import 'package:flutter/material.dart';
+
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 
 class TransactionCategories {
   static const String all = 'Tất cả';
+
+  /// The default categories, by the Vietnamese name core-backend stores (its DefaultCategory enum, whose stable key is
+  /// in each comment), and their text in the language the app shows. Renaming one there means renaming it here too.
+  static final Map<String, String Function(AppLocalizations)> _labelByName = {
+    all: (loc) => loc.categoryAll,
+    'Ăn uống': (loc) => loc.categoryFood, // food
+    'Siêu thị & Chợ': (loc) => loc.categoryGroceries, // groceries
+    'Di chuyển': (loc) => loc.categoryTransport, // transport
+    'Nhà ở': (loc) => loc.categoryHousing, // housing
+    'Điện nước': (loc) => loc.categoryUtilities, // utilities
+    'Internet & Điện thoại': (loc) => loc.categoryTelecom, // telecom
+    'Mua sắm': (loc) => loc.categoryShopping, // shopping
+    'Sức khỏe': (loc) => loc.categoryHealth, // health
+    'Giáo dục': (loc) => loc.categoryEducation, // education
+    'Giải trí': (loc) => loc.categoryEntertainment, // entertainment
+    'Du lịch': (loc) => loc.categoryTravel, // travel
+    'Gia đình & Con cái': (loc) => loc.categoryFamily, // family
+    'Hiếu hỉ': (loc) => loc.categorySocial, // social
+    'Bảo hiểm': (loc) => loc.categoryInsurance, // insurance
+    'Khác': (loc) => loc.categoryOtherExpense, // other_expense
+    'Lương': (loc) => loc.categorySalary, // salary
+    'Thưởng': (loc) => loc.categoryBonus, // bonus
+    'Kinh doanh': (loc) => loc.categoryBusiness, // business
+    'Đầu tư': (loc) => loc.categoryInvestment, // investment
+    'Được tặng': (loc) => loc.categoryGift, // gift
+    'Thu khác': (loc) => loc.categoryOtherIncome, // other_income
+  };
+
+  /// [name] as the user should read it: a default category (or [all]) in the language of [loc]; a category the user
+  /// created keeps the name they gave it. Only for display: the server still gets and filters by [name].
+  static String displayName(AppLocalizations loc, String name) =>
+      _labelByName[name.trim()]?.call(loc) ?? name;
 
   static List<String> expenseSelectable = [];
   static List<String> incomeSelectable = [];

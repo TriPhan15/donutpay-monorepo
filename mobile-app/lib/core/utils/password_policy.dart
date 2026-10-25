@@ -1,3 +1,5 @@
+import 'package:finance_ai_app/l10n/app_localizations.dart';
+
 /// Password rules of the app. They mirror the backend's @StrongPassword
 /// (core-backend/.../Security/StrongPassword.java): change both together.
 class PasswordPolicy {
@@ -15,16 +17,16 @@ class PasswordPolicy {
 
   static bool hasDigit(String password) => _digit.hasMatch(password);
 
-  /// The first rule [password] breaks, worded for the user, or null when it meets the policy.
-  static String? validate(String password) {
+  /// The first rule [password] breaks, worded for the user in the language of [loc], or null when it meets the policy.
+  static String? validate(String password, AppLocalizations loc) {
     if (password.trim().isEmpty) {
-      return 'Mật khẩu không được để trống.';
+      return loc.passwordEmpty;
     }
     if (password.length < minLength || password.length > maxLength) {
-      return 'Mật khẩu phải từ $minLength đến $maxLength ký tự.';
+      return loc.passwordLength(minLength, maxLength);
     }
     if (!hasLetter(password) || !hasDigit(password)) {
-      return 'Mật khẩu phải chứa ít nhất một chữ cái và một chữ số.';
+      return loc.passwordLetterAndDigit;
     }
     return null;
   }

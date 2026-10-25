@@ -5,79 +5,81 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 /// What a dialog tells the user; its accent colour is read from the theme when the dialog is built.
 enum _Tone { success, error, warning, info }
 
+/// Unset button texts default to the app's own (OK, Got it, Confirm, Cancel) in the language the app shows.
 class AppDialog {
   static Future<void> success(
     BuildContext context, {
     required String title,
     String? message,
-    String buttonText = 'OK',
+    String? buttonText,
   }) => _show(
     context,
     icon: Icons.check_circle_rounded,
     tone: _Tone.success,
     title: title,
     message: message,
-    confirmText: buttonText,
+    confirmText: buttonText ?? context.locOrDefault.dialogOk,
   ).then((_) {});
 
   static Future<void> error(
     BuildContext context, {
     required String title,
     String? message,
-    String buttonText = 'Đã hiểu',
+    String? buttonText,
   }) => _show(
     context,
     icon: Icons.error_rounded,
     tone: _Tone.error,
     title: title,
     message: message,
-    confirmText: buttonText,
+    confirmText: buttonText ?? context.locOrDefault.dialogGotIt,
   ).then((_) {});
 
   static Future<void> warning(
     BuildContext context, {
     required String title,
     String? message,
-    String buttonText = 'Đã hiểu',
+    String? buttonText,
   }) => _show(
     context,
     icon: Icons.warning_amber_rounded,
     tone: _Tone.warning,
     title: title,
     message: message,
-    confirmText: buttonText,
+    confirmText: buttonText ?? context.locOrDefault.dialogGotIt,
   ).then((_) {});
 
   static Future<void> info(
     BuildContext context, {
     required String title,
     String? message,
-    String buttonText = 'OK',
+    String? buttonText,
   }) => _show(
     context,
     icon: Icons.info_rounded,
     tone: _Tone.info,
     title: title,
     message: message,
-    confirmText: buttonText,
+    confirmText: buttonText ?? context.locOrDefault.dialogOk,
   ).then((_) {});
 
   static Future<bool> confirm(
     BuildContext context, {
     required String title,
     String? message,
-    String confirmText = 'Đồng ý',
-    String cancelText = 'Hủy',
+    String? confirmText,
+    String? cancelText,
     bool danger = false,
   }) async {
+    final loc = context.locOrDefault;
     final r = await _show(
       context,
       icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
       tone: danger ? _Tone.error : _Tone.info,
       title: title,
       message: message,
-      confirmText: confirmText,
-      cancelText: cancelText,
+      confirmText: confirmText ?? loc.dialogConfirm,
+      cancelText: cancelText ?? loc.dialogCancel,
     );
     return r == true;
   }

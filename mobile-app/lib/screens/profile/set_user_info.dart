@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -108,7 +109,7 @@ class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
       await AppDialog.error(
         context,
         title: _saveFailedTitle,
-        message: UserFacingError.messageOf(e),
+        message: UserFacingError.messageOf(e, context.loc),
       );
     }
   }

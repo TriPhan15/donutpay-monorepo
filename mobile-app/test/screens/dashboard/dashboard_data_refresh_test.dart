@@ -59,6 +59,7 @@ Map<String, Object?> _monthlyBudget(num amount) {
 Widget _tabs() => MaterialApp(
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
+  locale: const Locale('vi'),
   home: const Scaffold(
     body: IndexedStack(index: 0, children: [DashboardPage(), LedgerPage()]),
   ),
@@ -125,10 +126,7 @@ void main() {
   testWidgets(
     'the balance is called "Số dư hiện tại" and is income minus expense, below zero too',
     (tester) async {
-      transactions = [
-        _tx(100000, id: 1, isExpense: false),
-        _tx(300000, id: 2),
-      ];
+      transactions = [_tx(100000, id: 1, isExpense: false), _tx(300000, id: 2)];
 
       await pump(tester, _tabs());
 

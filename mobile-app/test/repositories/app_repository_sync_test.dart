@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -40,6 +42,8 @@ Never _noNetwork(RequestOptions options) => throw DioException(
   type: DioExceptionType.connectionError,
   error: 'no network',
 );
+
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 void main() {
   // The interceptor of RemoteApiHelper answers a 401 by asking navigatorKey for the navigator, to go back to the login
@@ -209,15 +213,29 @@ void main() {
         await expectLater(
           AppRepository.instance.createTransaction(_userId, _draft()),
           throwsA(
-            isA<TransactionRefusedException>().having(
-              (e) => e.message,
-              'message',
-              isNotEmpty,
-            ),
+            isA<TransactionRefusedException>()
+                .having((e) => e.message, 'message', isNull)
+                .having(
+                  (e) => e.messageFor(_vi),
+                  'messageFor(vi)',
+                  _vi.transactionRefused,
+                ),
           ),
         );
       });
     });
+  });
+
+  group('TransactionRefusedException.messageFor', () {
+    test(
+      'shows the server\'s Vietnamese reason only to a Vietnamese reader',
+      () {
+        final en = lookupAppLocalizations(const Locale('en'));
+        const refusal = TransactionRefusedException('Số dư ví không đủ');
+        expect(refusal.messageFor(_vi), 'Số dư ví không đủ');
+        expect(refusal.messageFor(en), en.transactionRefused);
+      },
+    );
   });
 
   group('resendTransaction', () {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/screens/profile/set_user_info.dart';
@@ -45,9 +46,9 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
       UserFacingError.log('User info load', e);
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(UserFacingError.messageOf(e))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(UserFacingError.messageOf(e, context.loc))),
+      );
     }
   }
 

@@ -1,3 +1,6 @@
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
+
 /// Values of the backend's BudgetPeriodType (core-backend/.../Entity/BudgetPeriodType.java) and the date ranges the
 /// app derives from them. The backend accepts a range of at most 7 days for WEEK and 31 days for MONTH.
 class BudgetPeriodType {
@@ -5,8 +8,8 @@ class BudgetPeriodType {
   static const String month = 'MONTH';
   static const List<String> values = [week, month];
 
-  static String label(String periodType) =>
-      periodType == week ? 'Tuần' : 'Tháng';
+  static String label(AppLocalizations loc, String periodType) =>
+      periodType == week ? loc.budgetPeriodWeek : loc.budgetPeriodMonth;
 
   /// The calendar week (Monday to Sunday) or month that contains [day].
   static ({DateTime start, DateTime end}) rangeContaining(
@@ -38,7 +41,8 @@ typedef BudgetCategory = ({int id, String name});
 /// The local SQLite copy (offline mode) only knows months, see [fromMap] and [toMap].
 class BudgetModel {
   /// What a budget without a category is called on screen.
-  static const String allCategoriesLabel = 'Tất cả danh mục';
+  static String allCategoriesLabel(AppLocalizations loc) =>
+      loc.budgetAllCategories;
 
   /// The local `budgets` table has NOT NULL category columns, so "every category" is stored under this id there.
   static const int allCategoriesLocalId = 0;
@@ -55,6 +59,15 @@ class BudgetModel {
 
   /// Only used by the local SQLite copy; the backend takes the owner from the login token.
   final int? userId;
+
+  /// The category on screen: a default category in the language of [loc], a name the user made as it is, or
+  /// [allCategoriesLabel] when the budget covers every category.
+  String categoryLabel(AppLocalizations loc) {
+    final name = categoryName;
+    return name == null
+        ? allCategoriesLabel(loc)
+        : TransactionCategories.displayName(loc, name);
+  }
 
   const BudgetModel({
     this.id,

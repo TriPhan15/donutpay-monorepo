@@ -57,7 +57,7 @@ class BudgetProgressCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  budget.categoryName ?? BudgetModel.allCategoriesLabel,
+                  budget.categoryLabel(context.locOrDefault),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
@@ -71,7 +71,7 @@ class BudgetProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${BudgetPeriodType.label(budget.periodType)} · ${_day.format(budget.start)} – ${_day.format(budget.end)}',
+            '${BudgetPeriodType.label(context.locOrDefault, budget.periodType)} · ${_day.format(budget.start)} – ${_day.format(budget.end)}',
             style: detailStyle.copyWith(fontSize: 11),
           ),
           const SizedBox(height: 8),

@@ -1,5 +1,13 @@
+import 'package:finance_ai_app/l10n/app_localizations.dart';
+
 class CurrencyHelper {
-  static String formatVND(double amount, {bool showSign = true}) {
+  /// [amount] in VND, the unit of the app in every language, with thousands separated by commas and, unless
+  /// [showSign] is false, a + or - in front. The unit is placed the way [loc] words it.
+  static String formatVND(
+    double amount,
+    AppLocalizations loc, {
+    bool showSign = true,
+  }) {
     final isNegative = amount < 0;
     final abs = amount.abs();
 
@@ -10,17 +18,9 @@ class CurrencyHelper {
           (m) => '${m[1]},',
         );
 
-    if (formatted == '0') return '0 đ';
+    if (formatted == '0' || !showSign) return loc.currencyVnd(formatted);
 
-    if (!showSign) {
-      return '$formatted đ';
-    }
-
-    if (isNegative) {
-      return '-$formatted đ';
-    }
-
-    return '+$formatted đ';
+    return loc.currencyVnd(isNegative ? '-$formatted' : '+$formatted');
   }
 
   /// The whole amount typed into an amount field: everything that is not a digit is ignored (spaces, dots, commas,

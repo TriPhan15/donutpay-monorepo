@@ -240,4 +240,218 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get passwordRecoveryUnexpectedError =>
       'Something went wrong. Please try again.';
+
+  @override
+  String get navHome => 'Home';
+
+  @override
+  String get navLedger => 'Statistics';
+
+  @override
+  String get navAi => 'AI';
+
+  @override
+  String get navProfile => 'Profile';
+
+  @override
+  String get scanSheetTitle => 'Scan a receipt with AI';
+
+  @override
+  String get scanWithAi => 'AI scan';
+
+  @override
+  String get scanFromGallery => 'From gallery';
+
+  @override
+  String get scanScannerFailedTitle => 'Couldn\'t open the scanner';
+
+  @override
+  String get scanScannerFailedMessage =>
+      'Please try again or pick a photo from the gallery.';
+
+  @override
+  String get scanGalleryFailedTitle => 'Couldn\'t open the photo gallery';
+
+  @override
+  String get scanGalleryFailedMessage =>
+      'Please check the app\'s photo access and try again.';
+
+  @override
+  String get dialogOk => 'OK';
+
+  @override
+  String get dialogConfirm => 'Confirm';
+
+  @override
+  String get dialogCancel => 'Cancel';
+
+  @override
+  String get errorNetwork =>
+      'Can\'t reach the server. Please check your connection and try again.';
+
+  @override
+  String get errorTimeout =>
+      'The server is taking too long to respond. Please try again.';
+
+  @override
+  String get errorServer =>
+      'The server ran into a problem. Please try again later.';
+
+  @override
+  String get errorSessionExpired =>
+      'Your session has expired. Please sign in again.';
+
+  @override
+  String get errorUnexpected => 'Something went wrong. Please try again.';
+
+  @override
+  String get transactionRefused =>
+      'The server refused this transaction. Please check the details.';
+
+  @override
+  String get defaultUserName => 'User';
+
+  @override
+  String get mainWalletName => 'Main wallet';
+
+  @override
+  String get syncStatusPending => 'Waiting to send';
+
+  @override
+  String get syncStatusSynced => 'Synced';
+
+  @override
+  String get syncStatusError => 'Send failed';
+
+  @override
+  String get receiptStatusProcessing => 'Processing';
+
+  @override
+  String get receiptStatusSuccess => 'Completed';
+
+  @override
+  String get receiptStatusFailed => 'Failed · confirm again';
+
+  @override
+  String get budgetPeriodWeek => 'Week';
+
+  @override
+  String get budgetPeriodMonth => 'Month';
+
+  @override
+  String get budgetAllCategories => 'All categories';
+
+  @override
+  String dateTodayAt(String time) {
+    return 'Today, $time';
+  }
+
+  @override
+  String dateYesterdayAt(String time) {
+    return 'Yesterday, $time';
+  }
+
+  @override
+  String get passwordEmpty => 'Password can\'t be empty.';
+
+  @override
+  String passwordLength(int min, int max) {
+    return 'Password must be $min to $max characters long.';
+  }
+
+  @override
+  String get passwordLetterAndDigit =>
+      'Password must contain at least one letter and one digit.';
+
+  @override
+  String currencyVnd(String amount) {
+    return '$amount đ';
+  }
+
+  @override
+  String get weekdayShortMon => 'Mon';
+
+  @override
+  String get weekdayShortTue => 'Tue';
+
+  @override
+  String get weekdayShortWed => 'Wed';
+
+  @override
+  String get weekdayShortThu => 'Thu';
+
+  @override
+  String get weekdayShortFri => 'Fri';
+
+  @override
+  String get weekdayShortSat => 'Sat';
+
+  @override
+  String get weekdayShortSun => 'Sun';
+
+  @override
+  String get categoryAll => 'All';
+
+  @override
+  String get categoryFood => 'Food & drinks';
+
+  @override
+  String get categoryGroceries => 'Groceries & markets';
+
+  @override
+  String get categoryTransport => 'Transport';
+
+  @override
+  String get categoryHousing => 'Housing';
+
+  @override
+  String get categoryUtilities => 'Electricity & water';
+
+  @override
+  String get categoryTelecom => 'Internet & phone';
+
+  @override
+  String get categoryShopping => 'Shopping';
+
+  @override
+  String get categoryHealth => 'Health';
+
+  @override
+  String get categoryEducation => 'Education';
+
+  @override
+  String get categoryEntertainment => 'Entertainment';
+
+  @override
+  String get categoryTravel => 'Travel';
+
+  @override
+  String get categoryFamily => 'Family & children';
+
+  @override
+  String get categorySocial => 'Weddings & funerals';
+
+  @override
+  String get categoryInsurance => 'Insurance';
+
+  @override
+  String get categoryOtherExpense => 'Other';
+
+  @override
+  String get categorySalary => 'Salary';
+
+  @override
+  String get categoryBonus => 'Bonus';
+
+  @override
+  String get categoryBusiness => 'Business';
+
+  @override
+  String get categoryInvestment => 'Investment';
+
+  @override
+  String get categoryGift => 'Gifts received';
+
+  @override
+  String get categoryOtherIncome => 'Other income';
 }

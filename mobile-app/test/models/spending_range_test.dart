@@ -1,9 +1,13 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 
 /// A Wednesday: its week runs from Monday 21 to Sunday 27 September 2026 and its month from the 1st to the 30th.
 final DateTime _wednesday = DateTime(2026, 9, 23, 14, 30);
+
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 void main() {
   group('SpendingRange.week', () {
@@ -222,7 +226,7 @@ void main() {
     test(
       'are the four weeks of the chart, the last one taking the rest of the month',
       () {
-        final buckets = SpendingRange.month(DateTime(2026, 9, 10)).buckets;
+        final buckets = SpendingRange.month(DateTime(2026, 9, 10)).buckets(_vi);
 
         expect(buckets.map((b) => b.label), ['W1', 'W2', 'W3', 'W4']);
         expect(buckets.map((b) => b.start), [
@@ -238,7 +242,7 @@ void main() {
     test(
       'put every day in the bar the chart always used: 1-7, 8-14, 15-21 and 22 onwards',
       () {
-        final buckets = SpendingRange.month(DateTime(2026, 9, 10)).buckets;
+        final buckets = SpendingRange.month(DateTime(2026, 9, 10)).buckets(_vi);
 
         for (var day = 1; day <= 30; day++) {
           final expected = day <= 7 ? 0 : (day <= 14 ? 1 : (day <= 21 ? 2 : 3));
@@ -257,8 +261,8 @@ void main() {
     );
 
     test('are still four for the shortest and the longest month', () {
-      final february = SpendingRange.month(DateTime(2027, 2, 1)).buckets;
-      final december = SpendingRange.month(DateTime(2026, 12, 1)).buckets;
+      final february = SpendingRange.month(DateTime(2027, 2, 1)).buckets(_vi);
+      final december = SpendingRange.month(DateTime(2026, 12, 1)).buckets(_vi);
 
       expect(february.length, 4);
       expect(february.last.start, DateTime(2027, 2, 22));
@@ -271,7 +275,7 @@ void main() {
 
   group('buckets of a week', () {
     test('are its seven days, each named after its weekday', () {
-      final buckets = SpendingRange.week(_wednesday).buckets;
+      final buckets = SpendingRange.week(_wednesday).buckets(_vi);
 
       expect(buckets.map((b) => b.label), [
         'T2',
@@ -296,7 +300,7 @@ void main() {
         final buckets = SpendingRange.custom(
           DateTime(2026, 9, 23),
           DateTime(2026, 9, 25),
-        ).buckets;
+        ).buckets(_vi);
 
         expect(buckets.map((b) => b.label), ['T4', 'T5', 'T6']);
       },
@@ -308,7 +312,7 @@ void main() {
         final buckets = SpendingRange.custom(
           DateTime(2026, 9, 1),
           DateTime(2026, 9, 10),
-        ).buckets;
+        ).buckets(_vi);
 
         expect(buckets.map((b) => b.label), [
           '01/09',
@@ -327,7 +331,7 @@ void main() {
         final buckets = SpendingRange.custom(
           DateTime(2026, 9, 1),
           DateTime(2026, 9, 9),
-        ).buckets;
+        ).buckets(_vi);
 
         expect(buckets.map((b) => b.label), [
           '01/09',
@@ -345,7 +349,7 @@ void main() {
       final buckets = SpendingRange.custom(
         DateTime(2026, 1, 1),
         DateTime(2026, 12, 31),
-      ).buckets;
+      ).buckets(_vi);
 
       expect(buckets.length, 7);
     });
@@ -358,7 +362,7 @@ void main() {
             DateTime(2026, 1, 1),
             DateTime(2026, 1, days),
           );
-          final buckets = range.buckets;
+          final buckets = range.buckets(_vi);
           final reason = '$days days';
 
           expect(range.days, days, reason: reason);

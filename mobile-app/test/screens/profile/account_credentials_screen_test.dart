@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/utils/password_policy.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -15,6 +16,8 @@ import '../../helpers/fake_backend.dart';
 const String _changePasswordPath = '/api/auth/change-password';
 const String _oldPassword = 'OldPass123';
 const String _newPassword = 'NewPass456';
+
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 void main() {
   final backend = FakeBackend();
@@ -253,7 +256,7 @@ void main() {
             oldPassword: _oldPassword,
             newPassword: 'short',
             confirmPassword: 'short',
-            message: PasswordPolicy.validate('short')!,
+            message: PasswordPolicy.validate('short', _vi)!,
           ),
           'a confirmation that does not match': (
             oldPassword: _oldPassword,

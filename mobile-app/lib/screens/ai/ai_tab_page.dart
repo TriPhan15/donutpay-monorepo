@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:dio/dio.dart';
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -422,8 +423,9 @@ class _AITabPageState extends State<AITabPage> {
   ];
 
   /// The four weeks of the current month, whatever period the chart shows.
-  List<double> _getWeeklyExpenses() =>
-      _expensesPerBucket(SpendingRange.month(DateTime.now()).buckets);
+  List<double> _getWeeklyExpenses() => _expensesPerBucket(
+    SpendingRange.month(DateTime.now()).buckets(context.locOrDefault),
+  );
 
   String _getWeeklyComparison() {
     final amounts = _getWeeklyExpenses();
@@ -437,7 +439,7 @@ class _AITabPageState extends State<AITabPage> {
   }
 
   Widget _buildWeeklyChart(ColorScheme colors, SpendingRange range) {
-    final buckets = range.buckets;
+    final buckets = range.buckets(context.locOrDefault);
     final weekExpenses = _expensesPerBucket(buckets);
     final maxY = (weekExpenses.reduce((a, b) => a > b ? a : b) * 1.2).clamp(
       100.0,

@@ -11,6 +11,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -34,6 +35,8 @@ const List<Map<String, Object?>> _serverCategories = [
   {'id': 10, 'name': 'Ăn uống', 'type': 'EXPENSE'},
   {'id': 11, 'name': 'Di chuyển', 'type': 'EXPENSE'},
 ];
+
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 void main() {
   final backend = FakeBackend();
@@ -136,7 +139,7 @@ void main() {
         expect(
           paintedColor(
             tester,
-            find.text(CurrencyHelper.formatVND(2000000, showSign: false)),
+            find.text(CurrencyHelper.formatVND(2000000, _vi, showSign: false)),
           ),
           colors.primary,
         );
@@ -259,7 +262,7 @@ void main() {
       expect(
         paintedColor(
           tester,
-          find.text(CurrencyHelper.formatVND(2000000, showSign: false)),
+          find.text(CurrencyHelper.formatVND(2000000, _vi, showSign: false)),
         ),
         AppTheme.mintAccent,
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
@@ -84,7 +85,7 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
         context,
         title: 'Không tải được danh mục',
         message:
-            'Bạn vẫn có thể chọn "${BudgetModel.allCategoriesLabel}" hoặc thử lại sau.',
+            'Bạn vẫn có thể chọn "${BudgetModel.allCategoriesLabel(context.locOrDefault)}" hoặc thử lại sau.',
       );
       return;
     }
@@ -190,7 +191,7 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
               children: [
                 for (final type in BudgetPeriodType.values)
                   _OptionChip(
-                    label: BudgetPeriodType.label(type),
+                    label: BudgetPeriodType.label(context.locOrDefault, type),
                     selected: _periodType == type,
                     onSelected: () => setState(() => _periodType = type),
                   ),
@@ -239,7 +240,7 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
       runSpacing: 8,
       children: [
         _OptionChip(
-          label: BudgetModel.allCategoriesLabel,
+          label: BudgetModel.allCategoriesLabel(context.locOrDefault),
           selected: _category == null,
           onSelected: () => setState(() => _category = null),
         ),

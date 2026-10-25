@@ -74,9 +74,9 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted || request != _loadRequest) return;
       // A reload the user did not ask for: a SnackBar, not a dialog, and the data shown so far stays.
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(UserFacingError.messageOf(e))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(UserFacingError.messageOf(e, context.loc))),
+      );
       return;
     }
     if (!mounted || request != _loadRequest) return;

@@ -98,6 +98,7 @@ class _Tabs {
     // The bell of the home screen reads its tooltip from the app's localizations.
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
+    locale: const Locale('vi'),
     home: Scaffold(
       body: ValueListenableBuilder<int>(
         valueListenable: index,
@@ -189,6 +190,7 @@ void main() {
         // The bell of the home screen reads its tooltip from the app's localizations.
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('vi'),
         home: Scaffold(body: DashboardPage(key: dashboard)),
       );
     });
@@ -479,7 +481,8 @@ void main() {
         expect(find.byType(BudgetScreen), findsOneWidget);
         final whileOpen = budgetRequests();
 
-        await tester.pageBack();
+        // pageBack() looks for the English "Back" tooltip; the app is in Vietnamese here.
+        await tester.tap(find.byType(BackButton));
         await tester.pumpAndSettle();
 
         expect(find.byType(BudgetScreen), findsNothing);

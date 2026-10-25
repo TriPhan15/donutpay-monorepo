@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -45,7 +46,9 @@ class _SavingsPageState extends State<SavingsPage> {
       UserFacingError.log('Savings load', e);
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _showSnack('$_loadFailedPrefix ${UserFacingError.messageOf(e)}');
+      _showSnack(
+        '$_loadFailedPrefix ${UserFacingError.messageOf(e, context.loc)}',
+      );
     }
   }
 
@@ -134,7 +137,9 @@ class _SavingsPageState extends State<SavingsPage> {
       UserFacingError.log('Savings delete', e);
       if (!mounted) return;
       setState(() => _goals.insert(index.clamp(0, _goals.length), removed));
-      _showSnack('$_deleteFailedPrefix ${UserFacingError.messageOf(e)}');
+      _showSnack(
+        '$_deleteFailedPrefix ${UserFacingError.messageOf(e, context.loc)}',
+      );
       return;
     }
     SessionService.needRefreshAI.value = true;
@@ -706,7 +711,7 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
       if (!mounted) return;
       setState(() {
         _isSaving = false;
-        _error = UserFacingError.messageOf(e);
+        _error = UserFacingError.messageOf(e, context.loc);
       });
     }
   }

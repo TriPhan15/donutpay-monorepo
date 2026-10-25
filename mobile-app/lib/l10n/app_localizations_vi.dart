@@ -238,4 +238,216 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get passwordRecoveryUnexpectedError =>
       'Đã xảy ra lỗi. Vui lòng thử lại.';
+
+  @override
+  String get navHome => 'Trang chủ';
+
+  @override
+  String get navLedger => 'Thống kê';
+
+  @override
+  String get navAi => 'AI';
+
+  @override
+  String get navProfile => 'Cá nhân';
+
+  @override
+  String get scanSheetTitle => 'Quét hóa đơn bằng AI';
+
+  @override
+  String get scanWithAi => 'Quét AI';
+
+  @override
+  String get scanFromGallery => 'Từ thư viện';
+
+  @override
+  String get scanScannerFailedTitle => 'Không mở được trình quét';
+
+  @override
+  String get scanScannerFailedMessage =>
+      'Vui lòng thử lại hoặc chọn ảnh từ thư viện.';
+
+  @override
+  String get scanGalleryFailedTitle => 'Không mở được thư viện ảnh';
+
+  @override
+  String get scanGalleryFailedMessage =>
+      'Vui lòng kiểm tra quyền truy cập ảnh của ứng dụng và thử lại.';
+
+  @override
+  String get dialogOk => 'OK';
+
+  @override
+  String get dialogConfirm => 'Đồng ý';
+
+  @override
+  String get dialogCancel => 'Hủy';
+
+  @override
+  String get errorNetwork =>
+      'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';
+
+  @override
+  String get errorTimeout => 'Máy chủ phản hồi quá lâu. Vui lòng thử lại.';
+
+  @override
+  String get errorServer => 'Máy chủ đang gặp sự cố. Vui lòng thử lại sau.';
+
+  @override
+  String get errorSessionExpired =>
+      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+
+  @override
+  String get errorUnexpected => 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+
+  @override
+  String get transactionRefused =>
+      'Máy chủ từ chối giao dịch này. Vui lòng kiểm tra lại thông tin.';
+
+  @override
+  String get defaultUserName => 'Người dùng';
+
+  @override
+  String get mainWalletName => 'Ví chính';
+
+  @override
+  String get syncStatusPending => 'Chờ gửi';
+
+  @override
+  String get syncStatusSynced => 'Đã đồng bộ';
+
+  @override
+  String get syncStatusError => 'Gửi lỗi';
+
+  @override
+  String get receiptStatusProcessing => 'Đang xử lý';
+
+  @override
+  String get receiptStatusSuccess => 'Hoàn tất';
+
+  @override
+  String get receiptStatusFailed => 'Lỗi · cần xác nhận lại';
+
+  @override
+  String get budgetPeriodWeek => 'Tuần';
+
+  @override
+  String get budgetPeriodMonth => 'Tháng';
+
+  @override
+  String get budgetAllCategories => 'Tất cả danh mục';
+
+  @override
+  String dateTodayAt(String time) {
+    return 'Hôm nay, $time';
+  }
+
+  @override
+  String dateYesterdayAt(String time) {
+    return 'Hôm qua, $time';
+  }
+
+  @override
+  String get passwordEmpty => 'Mật khẩu không được để trống.';
+
+  @override
+  String passwordLength(int min, int max) {
+    return 'Mật khẩu phải từ $min đến $max ký tự.';
+  }
+
+  @override
+  String get passwordLetterAndDigit =>
+      'Mật khẩu phải chứa ít nhất một chữ cái và một chữ số.';
+
+  @override
+  String currencyVnd(String amount) {
+    return '$amount đ';
+  }
+
+  @override
+  String get weekdayShortMon => 'T2';
+
+  @override
+  String get weekdayShortTue => 'T3';
+
+  @override
+  String get weekdayShortWed => 'T4';
+
+  @override
+  String get weekdayShortThu => 'T5';
+
+  @override
+  String get weekdayShortFri => 'T6';
+
+  @override
+  String get weekdayShortSat => 'T7';
+
+  @override
+  String get weekdayShortSun => 'CN';
+
+  @override
+  String get categoryAll => 'Tất cả';
+
+  @override
+  String get categoryFood => 'Ăn uống';
+
+  @override
+  String get categoryGroceries => 'Siêu thị & Chợ';
+
+  @override
+  String get categoryTransport => 'Di chuyển';
+
+  @override
+  String get categoryHousing => 'Nhà ở';
+
+  @override
+  String get categoryUtilities => 'Điện nước';
+
+  @override
+  String get categoryTelecom => 'Internet & Điện thoại';
+
+  @override
+  String get categoryShopping => 'Mua sắm';
+
+  @override
+  String get categoryHealth => 'Sức khỏe';
+
+  @override
+  String get categoryEducation => 'Giáo dục';
+
+  @override
+  String get categoryEntertainment => 'Giải trí';
+
+  @override
+  String get categoryTravel => 'Du lịch';
+
+  @override
+  String get categoryFamily => 'Gia đình & Con cái';
+
+  @override
+  String get categorySocial => 'Hiếu hỉ';
+
+  @override
+  String get categoryInsurance => 'Bảo hiểm';
+
+  @override
+  String get categoryOtherExpense => 'Khác';
+
+  @override
+  String get categorySalary => 'Lương';
+
+  @override
+  String get categoryBonus => 'Thưởng';
+
+  @override
+  String get categoryBusiness => 'Kinh doanh';
+
+  @override
+  String get categoryInvestment => 'Đầu tư';
+
+  @override
+  String get categoryGift => 'Được tặng';
+
+  @override
+  String get categoryOtherIncome => 'Thu khác';
 }
