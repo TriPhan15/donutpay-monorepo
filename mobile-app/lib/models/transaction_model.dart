@@ -9,6 +9,10 @@ class TransactionModel {
   static const String columnClientId = 'client_id';
   static const String columnSyncStatus = 'sync_status';
 
+  /// Columns of the receipt attached to a transaction that waits to be sent (version 7), so a resend still carries it.
+  static const String columnImageUrl = 'image_url';
+  static const String columnRawReceiptData = 'raw_receipt_data';
+
   /// Values of the body of POST /api/transactions/checkout that every transaction of the app sends the same way.
   static const String paymentMethodWallet = 'WALLET';
   static const String defaultLocation = 'Trong ứng dụng';
@@ -26,6 +30,10 @@ class TransactionModel {
   final String iconName;
   final int? walletId;
   final String? imageUrl;
+
+  /// What ai-service answered for the scanned receipt, as one JSON text (rawReceiptData of the checkout). Only set on a
+  /// transaction created from a scan on this device; the server does not send it back.
+  final String? rawReceiptData;
 
   /// The state of the receipt attached to the transaction. Null without a receipt, and always null offline: the local
   /// SQLite rows do not store it.
@@ -50,19 +58,23 @@ class TransactionModel {
     this.iconName = 'default',
     this.walletId,
     this.imageUrl,
+    this.rawReceiptData,
     this.receiptStatus,
     this.clientId,
     this.syncStatus = SyncStatus.synced,
   });
 
   /// A new transaction of the user, not stored anywhere yet: it gets its [clientId] here, once, so every send of it
-  /// (the first one and any resend) carries the same one.
+  /// (the first one and any resend) carries the same one. [imageUrl] and [rawReceiptData] are the receipt it was scanned
+  /// from, if any.
   factory TransactionModel.draft({
     required String title,
     required String category,
     required double amount,
     required DateTime date,
     required bool isExpense,
+    String? imageUrl,
+    String? rawReceiptData,
   }) {
     return TransactionModel(
       title: title,
@@ -71,6 +83,8 @@ class TransactionModel {
       date: date,
       isExpense: isExpense,
       iconName: category,
+      imageUrl: imageUrl,
+      rawReceiptData: rawReceiptData,
       clientId: _uuid.v4(),
     );
   }
@@ -95,6 +109,7 @@ class TransactionModel {
       iconName: iconName,
       walletId: walletId,
       imageUrl: imageUrl,
+      rawReceiptData: rawReceiptData,
       receiptStatus: receiptStatus,
       clientId: clientId,
       syncStatus: status,
@@ -114,6 +129,8 @@ class TransactionModel {
       'categoryName': category,
       'isExpense': isExpense,
       if (clientId != null) 'clientId': clientId,
+      if (rawReceiptData != null) 'rawReceiptData': rawReceiptData,
+      if (imageUrl != null) 'imageUrl': imageUrl,
     };
   }
 
@@ -170,6 +187,8 @@ class TransactionModel {
       'wallet_id': walletId,
       columnClientId: clientId,
       columnSyncStatus: syncStatus.dbValue,
+      columnImageUrl: imageUrl,
+      columnRawReceiptData: rawReceiptData,
     };
   }
 
@@ -185,6 +204,8 @@ class TransactionModel {
       isExpense: map['is_expense'] == 1,
       iconName: map['icon_name'] ?? 'default',
       walletId: map['wallet_id'] as int?,
+      imageUrl: map[columnImageUrl] as String?,
+      rawReceiptData: map[columnRawReceiptData] as String?,
       clientId: map[columnClientId] as String?,
       syncStatus: syncStatus,
     );

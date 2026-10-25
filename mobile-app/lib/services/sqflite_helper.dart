@@ -12,7 +12,7 @@ class SqfliteHelper {
   static final SqfliteHelper instance = SqfliteHelper._();
 
   static const String _dbName = 'finance_ai_app.db';
-  static const int _dbVersion = 6;
+  static const int _dbVersion = 7;
 
   static const String usersTable = 'users';
   static const String transactionsTable = 'transactions';
@@ -25,6 +25,12 @@ class SqfliteHelper {
       '${TransactionModel.columnClientId} TEXT';
   static final String _syncStatusColumnDef =
       "${TransactionModel.columnSyncStatus} TEXT NOT NULL DEFAULT '${SyncStatus.synced.dbValue}'";
+
+  /// Column definitions of the receipt of a transaction that waits to be sent (version 7). Null without a receipt.
+  static const String _imageUrlColumnDef =
+      '${TransactionModel.columnImageUrl} TEXT';
+  static const String _rawReceiptDataColumnDef =
+      '${TransactionModel.columnRawReceiptData} TEXT';
 
   Database? _database;
 
@@ -73,7 +79,9 @@ CREATE TABLE $transactionsTable (
   icon_name TEXT NOT NULL DEFAULT 'default',
   wallet_id INTEGER,
   $_clientIdColumnDef,
-  $_syncStatusColumnDef
+  $_syncStatusColumnDef,
+  $_imageUrlColumnDef,
+  $_rawReceiptDataColumnDef
 )
 ''');
 
@@ -174,6 +182,23 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
           if (!hasColumn(TransactionModel.columnSyncStatus)) {
             await db.execute(
               'ALTER TABLE $transactionsTable ADD COLUMN $_syncStatusColumnDef',
+            );
+          }
+        }
+
+        if (oldVersion < 7) {
+          final columns = await db.rawQuery(
+            'PRAGMA table_info($transactionsTable)',
+          );
+          bool hasColumn(String name) => columns.any((c) => c['name'] == name);
+          if (!hasColumn(TransactionModel.columnImageUrl)) {
+            await db.execute(
+              'ALTER TABLE $transactionsTable ADD COLUMN $_imageUrlColumnDef',
+            );
+          }
+          if (!hasColumn(TransactionModel.columnRawReceiptData)) {
+            await db.execute(
+              'ALTER TABLE $transactionsTable ADD COLUMN $_rawReceiptDataColumnDef',
             );
           }
         }

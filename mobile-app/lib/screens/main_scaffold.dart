@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 
@@ -11,6 +12,10 @@ import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+
+/// What the ML Kit document scanner throws when the user closes it without scanning: not an error to show.
+const String _scannerCancelledMessage = 'Operation cancelled';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -144,7 +149,14 @@ class _MainScaffoldState extends State<MainScaffold>
         }
       }
     } catch (e) {
+      if (e is PlatformException && e.message == _scannerCancelledMessage) {
+        return;
+      }
       debugPrint('Lỗi quét tài liệu ML Kit: $e');
+      await _showScanError(
+        'Không mở được trình quét',
+        'Vui lòng thử lại hoặc chọn ảnh từ thư viện.',
+      );
     } finally {
       documentScanner.close();
     }
@@ -156,25 +168,40 @@ class _MainScaffoldState extends State<MainScaffold>
   ) async {
     final ImagePicker picker = ImagePicker();
 
-    final XFile? image = await picker.pickImage(
-      source: source,
-      imageQuality: 50,
-      maxWidth: 1280,
-      maxHeight: 1280,
-    );
+    final XFile? image;
+    try {
+      image = await picker.pickImage(
+        source: source,
+        imageQuality: 50,
+        maxWidth: 1280,
+        maxHeight: 1280,
+      );
+    } catch (e) {
+      debugPrint('Lỗi chọn ảnh hóa đơn: $e');
+      await _showScanError(
+        'Không mở được thư viện ảnh',
+        'Vui lòng kiểm tra quyền truy cập ảnh của ứng dụng và thử lại.',
+      );
+      return;
+    }
 
-    if (image != null && context.mounted) {
+    final imagePath = image?.path;
+    if (imagePath != null && context.mounted) {
       Navigator.pop(context);
       final saved = await Navigator.push<bool>(
         context,
-        MaterialPageRoute(
-          builder: (_) => ReviewFormPage(imagePath: image.path),
-        ),
+        MaterialPageRoute(builder: (_) => ReviewFormPage(imagePath: imagePath)),
       );
       if (saved == true && mounted) {
         setState(() => _currentIndex = 1);
       }
     }
+  }
+
+  /// The options sheet stays open behind the dialog, so the user can pick the other way at once.
+  Future<void> _showScanError(String title, String message) async {
+    if (!mounted) return;
+    await AppDialog.error(context, title: title, message: message);
   }
 
   Widget _buildScanOptionBtn(

@@ -175,6 +175,7 @@ void main() {
             'icon_name',
             'wallet_id',
             'client_id', 'sync_status', // the sync state (Task A8)
+            'image_url', 'raw_receipt_data', // the receipt of the outbox (T3b)
           ]),
         );
         expect(
@@ -236,18 +237,15 @@ void main() {
       },
     );
 
-    test(
-      'a transaction the server got from elsewhere has no client id',
-      () {
-        final tx = TransactionModel.fromJson({
-          'id': 1,
-          'amount': 1,
-          'category': 'Khác',
-        });
+    test('a transaction the server got from elsewhere has no client id', () {
+      final tx = TransactionModel.fromJson({
+        'id': 1,
+        'amount': 1,
+        'category': 'Khác',
+      });
 
-        expect(tx.clientId, isNull);
-      },
-    );
+      expect(tx.clientId, isNull);
+    });
 
     test(
       'the body of the checkout carries what the add form always sent, plus the client id',
@@ -336,6 +334,41 @@ void main() {
         reason: 'a resend sends exactly what the first send did',
       );
     });
+
+    test(
+      'the receipt of a scanned draft survives a trip through SQLite and goes with every send',
+      () {
+        final draft = TransactionModel.draft(
+          title: 'Highlands',
+          category: 'Ăn uống',
+          amount: 45000,
+          date: DateTime(2026, 9, 20, 8, 30),
+          isExpense: true,
+          imageUrl: 'https://example.com/receipt.png',
+          rawReceiptData: '{"seller":{}}',
+        ).withSyncStatus(SyncStatus.error);
+
+        final read = TransactionModel.fromDbMap({
+          ...draft.toDbMap(7),
+          'id': 42,
+        });
+
+        expect(read.imageUrl, 'https://example.com/receipt.png');
+        expect(read.rawReceiptData, '{"seller":{}}');
+        expect(read.toCheckoutJson(), draft.toCheckoutJson());
+        expect(
+          read.toCheckoutJson()['imageUrl'],
+          'https://example.com/receipt.png',
+        );
+        expect(read.toCheckoutJson()['rawReceiptData'], '{"seller":{}}');
+        expect(
+          _draft().toCheckoutJson().keys,
+          isNot(contains('rawReceiptData')),
+          reason: 'a transaction typed in by hand has no receipt',
+        );
+        expect(_draft().toCheckoutJson().keys, isNot(contains('imageUrl')));
+      },
+    );
 
     test(
       'a row that is not synced has no server id, so its row number cannot pass for one',
