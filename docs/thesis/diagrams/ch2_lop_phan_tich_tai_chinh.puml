@@ -1,0 +1,79 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam ClassBackgroundColor white
+skinparam ClassAttributeIconSize 0
+skinparam linetype ortho
+hide circle
+hide methods
+
+class User {
+  username
+  email
+  phone
+  password
+  role
+  active
+  walletBalance
+  aiLabel
+  lastLoginTime
+}
+class Transaction {
+  amount
+  isExpense
+  transactionDate
+  categoryName
+  note
+  location
+  paymentMethod
+  clientId
+  rawReceiptData
+}
+class Receipt {
+  vendorName
+  extractedTotal
+  extractedDate
+  imageUrl
+  status
+  errorCode
+}
+class ReceiptProcessingAttempt {
+  attemptNumber
+  status
+  aiRawData
+  errorCode
+  createdAt
+  completedAt
+}
+class Notification {
+  type
+  message
+  isRead
+}
+class SavingGoal {
+  title
+  targetAmount
+  currentAmount
+  deadline
+}
+class Budget {
+  amount
+  periodType
+  startDate
+  endDate
+}
+class Category {
+  name
+  type
+}
+
+User "1" -- "0..*" Transaction : ghi >
+Category "1" -- "0..*" Transaction : phân loại >
+Transaction "1" *-right- "0..1" Receipt : đính kèm >
+Receipt "1" *-right- "0..*" ReceiptProcessingAttempt : lượt đọc >
+User "1" -- "0..*" Notification : nhận >
+User "1" -- "0..*" SavingGoal : đặt >
+User "1" -- "0..*" Budget : lập >
+Category "0..1" -- "0..*" Budget : giới hạn >
+Notification -[hidden]right- Budget
+@enduml

@@ -1,0 +1,35 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam rectangle {
+  BackgroundColor white
+}
+skinparam defaultTextAlignment center
+
+rectangle "Ảnh hóa đơn chụp bằng điện thoại" as img
+rectangle "DonutProcessor\nđổi kích thước về 1280 × 960, xoay theo trục dài, chuẩn hóa" as pre
+rectangle "Bộ mã hóa Swin Transformer" as enc {
+  rectangle "Chia patch 4 × 4 + embedding tuyến tính (C = 128)" as pe
+  rectangle "Tầng 1: 2 khối Swin, lưới 320 × 240, 128 kênh" as s1
+  rectangle "Tầng 2: gộp patch + 2 khối, 160 × 120, 256 kênh" as s2
+  rectangle "Tầng 3: gộp patch + 14 khối, 80 × 60, 512 kênh" as s3
+  rectangle "Tầng 4: gộp patch + 2 khối, 40 × 30, 1024 kênh" as s4
+}
+rectangle "1.200 vector đặc trưng ảnh (chiều 1024)" as z
+rectangle "Prompt: <s_seller>\n+ các token đã sinh ở bước trước" as prompt
+rectangle "Bộ giải mã BART (mBART, 4 lớp, d = 1024, 16 đầu chú ý)\nself-attention có che + cross-attention lên vector ảnh" as dec
+rectangle "Chuỗi token:\n<s_seller_name>…</s_seller_name><s_address>…</s_address>\n<s_timestamp>…</s_timestamp><s_total_cost>…</s_total_cost></s_seller>" as seq
+rectangle "token2json → JSON bốn trường" as json
+
+img -down-> pre
+pre -down-> pe
+pe -down-> s1
+s1 -down-> s2
+s2 -down-> s3
+s3 -down-> s4
+s4 -down-> z
+z -right-> dec
+prompt -down-> dec
+dec -down-> seq : sinh tự hồi quy\n(lặp đến </s>)
+seq -down-> json
+@enduml

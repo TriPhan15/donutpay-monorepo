@@ -1,0 +1,73 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam ClassBackgroundColor white
+skinparam ClassAttributeIconSize 0
+hide circle
+hide methods
+
+class User {
+  email
+  role
+  walletBalance
+}
+class PaymentOrder {
+  orderCode
+  amount
+  type
+  status
+  provider
+  gatewayTxnId
+}
+class AppReview {
+  rating
+  comment
+  status
+  createdAt
+}
+class ActionLog {
+  action
+  targetType
+  targetId
+  result
+  description
+  ipAddress
+  timestamp
+}
+class SubscriptionPlan {
+  planName
+  price
+  durationDays
+  maxAiScans
+  isWcmSpadeEnabled
+  active
+}
+class RevokedToken {
+  tokenHash
+  expiresAt
+  revokedAt
+}
+class Transaction
+class Receipt
+class OcrRawLog <<document>> {
+  rawJsonData
+  averageConfidenceScore
+  createdAt
+}
+class OcrFeedback <<document>> {
+  fieldError
+  expectedValue
+  aiValue
+  isResolved
+  reportedAt
+}
+
+User "1" -- "0..*" PaymentOrder : đặt lệnh >
+User "0..1" -- "0..*" AppReview : viết >
+User "0..1" -- "0..*" ActionLog : thực hiện >
+Transaction "1" -- "0..*" OcrRawLog : ghi log AI >
+Receipt "1" -- "0..*" OcrFeedback : được phản hồi >
+User "1" -- "0..*" OcrFeedback : gửi >
+ActionLog -[hidden]right- SubscriptionPlan
+SubscriptionPlan -[hidden]right- RevokedToken
+@enduml
