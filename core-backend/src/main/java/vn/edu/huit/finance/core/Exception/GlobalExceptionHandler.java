@@ -72,6 +72,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
     }
 
+    // 503 with a fixed text: the AI service is down or answered nothing usable. The cause stays in the log.
+    @ExceptionHandler(AiServiceUnavailableException.class)
+    public Object handleAiServiceUnavailable(AiServiceUnavailableException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
     // 401: no usable token where one is required. A revoked token never gets this far, JwtAuthFilter answers it first.
     @ExceptionHandler(InvalidTokenException.class)
     public Object handleInvalidToken(InvalidTokenException ex, HttpServletRequest request) {

@@ -81,6 +81,18 @@ class AppRepository {
     return _localStore.getUnsyncedTransactions(userId);
   }
 
+  static const String _defaultDisplayName = 'Người dùng';
+
+  /// The name /api/users/me carries (username, set from the profile form), unless it is only the email the account
+  /// was registered with: then the part of the email before the @, as before.
+  @visibleForTesting
+  static String displayNameOf(Map<String, dynamic> me) {
+    final email = (me['email'] ?? '').toString().trim();
+    final username = (me['username'] ?? '').toString().trim();
+    if (username.isNotEmpty && username != email) return username;
+    return email.isNotEmpty ? email.split('@').first : _defaultDisplayName;
+  }
+
   Future<UserModel?> getCurrentUser(int userId) async {
     final me = await RemoteApiHelper.instance.fetchMe();
     final email = (me['email'] ?? '').toString();
@@ -88,7 +100,7 @@ class AppRepository {
       id: (me['id'] as num?)?.toInt(),
       email: email,
       password: '',
-      fullName: email.isNotEmpty ? email.split('@').first : 'Người dùng',
+      fullName: displayNameOf(me),
       phone: me['phone']?.toString(),
     );
   }

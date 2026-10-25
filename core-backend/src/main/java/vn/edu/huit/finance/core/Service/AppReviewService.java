@@ -4,22 +4,27 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Dto.ReviewRequestDto;
 import vn.edu.huit.finance.core.Entity.AppReview;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.AppReviewRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
 import java.util.NoSuchElementException;
 
 /**
- * Moderation of the reviews users leave about the app, for administrators only (the caller checks that). Each decision
- * and its audit row, naming the administrator, commit together.
+ * Reviews users leave about the app. A user submits one as the caller of the request (resolved from the JWT, never from
+ * the body); moderation is for administrators only (the caller checks that), and each decision and its audit row,
+ * naming the administrator, commit together.
  */
 @Slf4j
 @Service
 public class AppReviewService {
 
+    public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_APPROVED = "APPROVED";
     private static final String MSG_REVIEW_NOT_FOUND = "Không tìm thấy đánh giá";
     private static final String AUDIT_APPROVED = "Duyệt hiển thị đánh giá của: %s";
@@ -30,6 +35,25 @@ public class AppReviewService {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private CurrentUserProvider currentUserProvider;
+
+    /** Saves a review by the caller, waiting for moderation. Throws UserNotFoundException (404) without a known caller. */
+    @Transactional
+    public void submitMyReview(ReviewRequestDto request) {
+        User user = currentUserProvider.getCurrentUser();
+
+        AppReview review = new AppReview();
+        review.setUser(user);
+        review.setUserEmail(user.getEmail());
+        review.setRating(request.getRating());
+        review.setComment(request.getComment());
+        review.setStatus(STATUS_PENDING);
+        appReviewRepository.save(review);
+
+        log.info("Review submitted, userId={}, rating={}", user.getId(), request.getRating());
+    }
 
     @Transactional
     public void approveReview(Long reviewId) {

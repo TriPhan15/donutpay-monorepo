@@ -6,9 +6,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import vn.edu.huit.finance.core.Dto.ReviewRequestDto;
 import vn.edu.huit.finance.core.Entity.AppReview;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.AppReviewRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
@@ -18,12 +22,13 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-/** Moderation of app reviews: each decision with its row, by the administrator who called. */
+/** App reviews: submitted as the caller of the request; moderation decisions each with its row, by the administrator. */
 @ExtendWith(MockitoExtension.class)
 class AppReviewServiceTest {
 
     @Mock private AppReviewRepository repository;
     @Mock private AuditLogService auditLogService;
+    @Mock private CurrentUserProvider currentUserProvider;
     @InjectMocks private AppReviewService service;
 
     private AppReview review() {
@@ -73,5 +78,41 @@ class AppReviewServiceTest {
         assertThrows(NoSuchElementException.class, () -> service.approveReview(5L));
 
         verifyNoInteractions(auditLogService);
+    }
+
+    private ReviewRequestDto reviewRequest() {
+        ReviewRequestDto request = new ReviewRequestDto();
+        request.setRating(5);
+        request.setComment("Ứng dụng dễ dùng");
+        return request;
+    }
+
+    @Test
+    void aSubmittedReviewBelongsToTheCallerFromTheJwt_andWaitsForModeration() {
+        User caller = new User();
+        caller.setId(11L);
+        caller.setEmail("bob@example.com");
+        when(currentUserProvider.getCurrentUser()).thenReturn(caller);
+
+        service.submitMyReview(reviewRequest());
+
+        ArgumentCaptor<AppReview> saved = ArgumentCaptor.forClass(AppReview.class);
+        verify(repository).save(saved.capture());
+        AppReview review = saved.getValue();
+        assertSame(caller, review.getUser());
+        assertEquals("bob@example.com", review.getUserEmail());
+        assertEquals(5, review.getRating());
+        assertEquals("Ứng dụng dễ dùng", review.getComment());
+        assertEquals(AppReviewService.STATUS_PENDING, review.getStatus());
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void withoutAKnownCallerNothingIsSaved() {
+        when(currentUserProvider.getCurrentUser()).thenThrow(new UserNotFoundException("Không tìm thấy người dùng đang đăng nhập"));
+
+        assertThrows(UserNotFoundException.class, () -> service.submitMyReview(reviewRequest()));
+
+        verify(repository, never()).save(any());
     }
 }

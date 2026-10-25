@@ -1,45 +1,32 @@
 package vn.edu.huit.finance.core.Controller;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.ReviewRequestDto;
-import vn.edu.huit.finance.core.Entity.AppReview;
-import vn.edu.huit.finance.core.Entity.User;
-import vn.edu.huit.finance.core.Repository.AppReviewRepository;
-import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Service.AppReviewService;
 
-import java.util.Map;
-
+/** Reviews of the app sent from the mobile app; the author is the caller of the request (JWT). */
 @RestController
 @RequestMapping("/api/reviews")
+@RequiredArgsConstructor
 public class AppReviewMobileController {
 
-    @Autowired
-    private AppReviewRepository appReviewRepository;
+    private static final String MSG_REVIEW_SUBMITTED = "Gửi đánh giá góp ý thành công!";
 
-    @Autowired
-    private UserRepository userRepository;
+    private final AppReviewService appReviewService;
 
     @PostMapping
-    public ResponseEntity<?> submitReview(@Valid @RequestBody ReviewRequestDto req) {
-        try {
-            User user = userRepository.findById(req.getUserId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
-
-            AppReview review = new AppReview();
-            review.setUser(user);
-            review.setUserEmail(user.getEmail());
-            review.setRating(req.getRating());
-            review.setComment(req.getComment());
-            review.setStatus("PENDING");
-
-            appReviewRepository.save(review);
-
-            return ResponseEntity.ok(Map.of("code", 200, "message", "Gửi đánh giá góp ý thành công!"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("code", 400, "message", e.getMessage()));
-        }
+    public ResponseEntity<ApiResponse<Void>> submitReview(@Valid @RequestBody ReviewRequestDto request) {
+        appReviewService.submitMyReview(request);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message(MSG_REVIEW_SUBMITTED)
+                .build());
     }
 }

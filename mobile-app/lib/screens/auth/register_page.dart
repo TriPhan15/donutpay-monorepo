@@ -1,9 +1,9 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/social_auth_service.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -19,6 +19,10 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  static const String _registerFailedTitle = 'Đăng ký thất bại';
+  static const String _socialSignUpFailed =
+      'Không đăng ký được bằng tài khoản mạng xã hội. Vui lòng thử lại.';
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
@@ -98,20 +102,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-    } on DioException catch (e) {
+    } catch (e) {
+      UserFacingError.log('Register', e);
       if (!mounted) return;
-
-      final data = e.response?.data;
-      final serverMsg = (data is Map ? data['message'] : null)?.toString();
       await AppDialog.error(
         context,
-        title: 'Đăng ký thất bại',
-        message: serverMsg ?? 'Không thể kết nối máy chủ. Vui lòng thử lại.',
+        title: _registerFailedTitle,
+        message: UserFacingError.messageOf(e),
       );
-    } catch (e) {
-      if (!mounted) return;
-
-      await AppDialog.error(context, title: 'Đăng ký thất bại', message: '$e');
     }
   }
 
@@ -139,9 +137,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (_) => const MainScaffold()),
         (route) => false,
       );
+    } on SocialSignInCancelled {
+      // The user closed the sign-in sheet: nothing to report.
     } catch (e) {
+      UserFacingError.log('Social sign-up', e);
       if (!mounted) return;
-      await AppDialog.error(context, title: 'Đăng ký thất bại', message: '$e');
+      await AppDialog.error(
+        context,
+        title: _registerFailedTitle,
+        message: UserFacingError.messageOf(e, fallback: _socialSignUpFailed),
+      );
     }
   }
 

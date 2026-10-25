@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/screens/profile/set_user_info.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -33,12 +34,21 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
       return;
     }
 
-    final user = await AppRepository.instance.getCurrentUser(userId);
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _user = user;
-    });
+    try {
+      final user = await AppRepository.instance.getCurrentUser(userId);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _user = user;
+      });
+    } catch (e) {
+      UserFacingError.log('User info load', e);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(UserFacingError.messageOf(e))));
+    }
   }
 
   Future<void> _edit() async {
@@ -48,10 +58,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
 
     final updated = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) =>
-            SetUserInfoScreen(userId: userId, returnToLoginOnSave: false),
-      ),
+      MaterialPageRoute(builder: (_) => SetUserInfoScreen(userId: userId)),
     );
 
     if (updated == true) {
@@ -120,13 +127,8 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                       _buildInfoRow(colors, 'Họ và tên', _user!.fullName),
                       // The theme divider: the white 6% line of the old dark design did not show on the light card.
                       const Divider(height: 1),
-                      _buildInfoRow(
-                        colors,
-                        'Năm sinh',
-                        (_user!.birthdate ?? '').isEmpty
-                            ? 'Chưa cập nhật'
-                            : _user!.birthdate!,
-                      ),
+                      // The server keeps no birth date: the email is shown instead.
+                      _buildInfoRow(colors, 'Email', _user!.email),
                       const Divider(height: 1),
                       _buildInfoRow(
                         colors,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:finance_ai_app/config/app_config.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/repositories/settings_repository.dart';
@@ -290,18 +291,13 @@ class RemoteApiHelper {
     return (token: token, refreshToken: refreshToken);
   }
 
+  /// Throws the [DioException] as it is: the screen tells a lost connection, a 5xx and a 401 apart (UserFacingError).
   Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
-      final res = await _dio.post(
-        _loginPath,
-        data: {'email': email, 'password': password},
-      );
-      return Map<String, dynamic>.from(res.data);
-    } on DioException catch (e) {
-      final errorMsg =
-          e.response?.data?['message'] ?? 'Sai email hoặc mật khẩu!';
-      throw errorMsg;
-    }
+    final res = await _dio.post(
+      _loginPath,
+      data: {'email': email, 'password': password},
+    );
+    return Map<String, dynamic>.from(res.data);
   }
 
   Future<Map<String, dynamic>> socialLogin({
@@ -311,33 +307,22 @@ class RemoteApiHelper {
     String? name,
     String? avatar,
   }) async {
-    try {
-      final res = await _dio.post(
-        _socialLoginPath,
-        data: {
-          'provider': provider,
-          'token': token,
-          'email': ?email,
-          'name': ?name,
-          'avatar': ?avatar,
-        },
-      );
+    final res = await _dio.post(
+      _socialLoginPath,
+      data: {
+        'provider': provider,
+        'token': token,
+        'email': ?email,
+        'name': ?name,
+        'avatar': ?avatar,
+      },
+    );
 
-      var responseData = res.data;
-      if (responseData is String) {
-        responseData = jsonDecode(responseData);
-      }
-      return Map<String, dynamic>.from(responseData);
-    } on DioException catch (e) {
-      final statusCode = e.response?.statusCode;
-      final realUrl = e.requestOptions.uri.toString();
-      final realError = "LỖI THẬT: Code $statusCode khi gọi $realUrl";
-
-      debugPrint(" $realError");
-      throw realError;
-    } catch (e) {
-      throw 'Lỗi hệ thống Dart: $e';
+    var responseData = res.data;
+    if (responseData is String) {
+      responseData = jsonDecode(responseData);
     }
+    return Map<String, dynamic>.from(responseData);
   }
 
   Future<Map<String, dynamic>> register({
@@ -346,23 +331,17 @@ class RemoteApiHelper {
     required String fullName,
     String? phone,
   }) async {
-    try {
-      final res = await _dio.post(
-        _registerPath,
-        data: {
-          'username': email,
-          'email': email,
-          'password': password,
-          'fullName': fullName,
-          'phone': ?phone,
-        },
-      );
-      return Map<String, dynamic>.from(res.data);
-    } on DioException catch (e) {
-      final errorMsg =
-          e.response?.data?['message'] ?? 'Đăng ký thất bại, vui lòng thử lại!';
-      throw errorMsg;
-    }
+    final res = await _dio.post(
+      _registerPath,
+      data: {
+        'username': email,
+        'email': email,
+        'password': password,
+        'fullName': fullName,
+        'phone': ?phone,
+      },
+    );
+    return Map<String, dynamic>.from(res.data);
   }
 
   Future<Map<String, dynamic>> createPayment({
@@ -528,16 +507,18 @@ class RemoteApiHelper {
     return Map<String, dynamic>.from(res.data);
   }
 
-  Future<void> updateUserProfile({
-    required String fullName,
+  /// PUT /api/users/{id} with the fields of core-backend's UserUpdateDto that a user may change; the server refuses an
+  /// id that is not the caller's (JWT). Returns the updated user (UserResponseDto).
+  Future<Map<String, dynamic>> updateUserProfile({
+    required int userId,
+    required String username,
     String? phone,
-    String? birthdate,
   }) async {
-    final userId = SessionService.currentUserId;
-    await _dio.put(
+    final res = await _dio.put(
       '/api/users/$userId',
-      data: {'fullName': fullName, 'phone': ?phone, 'birthdate': ?birthdate},
+      data: {'username': username, 'phone': ?phone},
     );
+    return Map<String, dynamic>.from(res.data['data'] ?? {});
   }
 
   Future<void> forgotPassword({required String email}) async {
@@ -695,18 +676,16 @@ class RemoteApiHelper {
     dataChangedNotifier.value++;
   }
 
+  /// The author is the caller of the request (JWT): the body carries no user id.
   Future<bool> submitAppReview(int rating, String comment) async {
     try {
-      final userId = SessionService.currentUserId;
-      if (userId == null) return false;
-
       final res = await _dio.post(
         '/api/reviews',
-        data: {'userId': userId, 'rating': rating, 'comment': comment},
+        data: {'rating': rating, 'comment': comment},
       );
       return res.data['code'] == 200;
     } catch (e) {
-      debugPrint(" LỖI GỬI ĐÁNH GIÁ: $e");
+      UserFacingError.log('submitAppReview', e);
       return false;
     }
   }
@@ -723,13 +702,10 @@ class RemoteApiHelper {
     }
   }
 
+  /// Throws when the savings cannot be read, so a screen can tell "none" from "could not load".
   Future<List<Map<String, dynamic>>> fetchSavings() async {
-    try {
-      final res = await _dio.get('/api/savings');
-      return List<Map<String, dynamic>>.from(res.data['data'] ?? []);
-    } catch (e) {
-      return [];
-    }
+    final res = await _dio.get('/api/savings');
+    return List<Map<String, dynamic>>.from(res.data['data'] ?? []);
   }
 
   Future<void> addSaving(Map<String, dynamic> data) async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
 
@@ -14,6 +15,11 @@ class LinkedServicesPage extends StatefulWidget {
 }
 
 class _LinkedServicesPageState extends State<LinkedServicesPage> {
+  /// 60 checks, 2 s apart: about two minutes for the user to pay in the wallet app.
+  static const int _maxPollTries = 60;
+  static const String _createOrderFailedPrefix = 'Tạo đơn đồng bộ thất bại.';
+  static const String _pollTimedOutMessage =
+      'Chưa nhận được kết quả thanh toán. Vui lòng kiểm tra lại trong Lịch sử đồng bộ.';
   static const _wallets = [
     ('VNPAY', 'VNPAY'),
     ('ZALOPAY', 'ZaloPay'),
@@ -123,8 +129,9 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
       }
       _pollSync(orderCode, amount);
     } catch (e) {
+      UserFacingError.log('Create sync order', e);
       if (mounted) {
-        _snack('Tạo đơn đồng bộ lỗi: $e');
+        _snack('$_createOrderFailedPrefix ${UserFacingError.messageOf(e)}');
         setState(() => _syncing = false);
       }
     }
@@ -150,10 +157,15 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
             _snack('Đồng bộ: $status');
           }
         }
-      } catch (_) {}
-      if (tries >= 60) {
+      } catch (e) {
+        // One failed check is not the end: the next tick asks again.
+        UserFacingError.log('Payment status', e);
+      }
+      if (tries >= _maxPollTries && t.isActive) {
         t.cancel();
-        if (mounted) setState(() => _syncing = false);
+        if (!mounted) return;
+        setState(() => _syncing = false);
+        _snack(_pollTimedOutMessage);
       }
     });
   }

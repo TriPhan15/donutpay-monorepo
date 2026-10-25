@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
@@ -12,6 +13,9 @@ class SavingsPage extends StatefulWidget {
 }
 
 class _SavingsPageState extends State<SavingsPage> {
+  static const String _loadFailedPrefix = 'Không tải được sổ tiết kiệm.';
+  static const String _deleteFailedPrefix = 'Không xóa được mục tiêu.';
+
   List<Map<String, dynamic>> _goals = [];
   bool _isLoading = true;
 
@@ -38,12 +42,17 @@ class _SavingsPageState extends State<SavingsPage> {
         _isLoading = false;
       });
     } catch (e) {
+      UserFacingError.log('Savings load', e);
       if (!mounted) return;
-      setState(() {
-        _goals = [];
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
+      _showSnack('$_loadFailedPrefix ${UserFacingError.messageOf(e)}');
     }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   double get _totalSaved =>
@@ -51,194 +60,86 @@ class _SavingsPageState extends State<SavingsPage> {
   double get _totalTarget =>
       _goals.fold(0.0, (s, g) => s + ((g['target'] as num?) ?? 0).toDouble());
 
+  static double _amountOf(String text) =>
+      double.tryParse(text.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+
+  /// After a write on the server: the AI tab and this list read the savings again.
+  void _afterWrite() {
+    SessionService.needRefreshAI.value = true;
+    _load();
+  }
+
   void _addGoal() {
-    final titleCtrl = TextEditingController();
-    final targetCtrl = TextEditingController();
-    final currentCtrl = TextEditingController();
-    final deadlineCtrl = TextEditingController();
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) {
-        final colors = Theme.of(ctx).colorScheme;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Thêm mục tiêu tiết kiệm',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _field(colors, titleCtrl, 'Tên mục tiêu', TextInputType.text),
-                const SizedBox(height: 10),
-                _field(
-                  colors,
-                  targetCtrl,
-                  'Số tiền mục tiêu (₫)',
-                  TextInputType.number,
-                ),
-                const SizedBox(height: 10),
-                _field(
-                  colors,
-                  currentCtrl,
-                  'Đã tiết kiệm (₫)',
-                  TextInputType.number,
-                ),
-                const SizedBox(height: 10),
-                _field(
-                  colors,
-                  deadlineCtrl,
-                  'Hạn chót (dd/mm/yyyy)',
-                  TextInputType.text,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                'Hủy',
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () async {
-                final title = titleCtrl.text.trim();
-                final target =
-                    double.tryParse(
-                      targetCtrl.text.replaceAll(RegExp(r'[^\d]'), ''),
-                    ) ??
-                    0;
-                if (title.isEmpty || target <= 0) return;
-
-                final current =
-                    double.tryParse(
-                      currentCtrl.text.replaceAll(RegExp(r'[^\d]'), ''),
-                    ) ??
-                    0;
-
-                await RemoteApiHelper.instance.addSaving({
-                  'title': title,
-                  'target': target,
-                  'current': current,
-                  'deadline': deadlineCtrl.text.trim(),
-                });
-                SessionService.needRefreshAI.value = true;
-                _load();
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-              },
-              child: const Text('Thêm'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _SavingFormDialog(
+        title: 'Thêm mục tiêu tiết kiệm',
+        submitLabel: 'Thêm',
+        fields: const [
+          _SavingField('Tên mục tiêu', TextInputType.text),
+          _SavingField('Số tiền mục tiêu (₫)', TextInputType.number),
+          _SavingField('Đã tiết kiệm (₫)', TextInputType.number),
+          _SavingField('Hạn chót (dd/mm/yyyy)', TextInputType.text),
+        ],
+        onSubmit: (values) async {
+          final title = values[0].trim();
+          final target = _amountOf(values[1]);
+          if (title.isEmpty || target <= 0) return false;
+          await RemoteApiHelper.instance.addSaving({
+            'title': title,
+            'target': target,
+            'current': _amountOf(values[2]),
+            'deadline': values[3].trim(),
+          });
+          _afterWrite();
+          return true;
+        },
+      ),
     );
   }
 
   void _editAmount(int index) {
     final goal = _goals[index];
-    final ctrl = TextEditingController(
-      text: ((goal['current'] as num?) ?? 0).toInt().toString(),
-    );
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) {
-        final colors = Theme.of(ctx).colorScheme;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            'Cập nhật: ${goal['title']}',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: _field(
-            colors,
-            ctrl,
+      builder: (_) => _SavingFormDialog(
+        title: 'Cập nhật: ${goal['title']}',
+        submitLabel: 'Lưu',
+        fields: [
+          _SavingField(
             'Số tiền đã tiết kiệm (₫)',
             TextInputType.number,
+            initialText: ((goal['current'] as num?) ?? 0).toInt().toString(),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                'Hủy',
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () async {
-                final val =
-                    double.tryParse(
-                      ctrl.text.replaceAll(RegExp(r'[^\d]'), ''),
-                    ) ??
-                    0;
-                await RemoteApiHelper.instance.updateSavingCurrent(
-                  goal['id'].toString(),
-                  val,
-                );
-                SessionService.needRefreshAI.value = true;
-                _load();
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-              },
-              child: const Text('Lưu'),
-            ),
-          ],
-        );
-      },
+        ],
+        onSubmit: (values) async {
+          await RemoteApiHelper.instance.updateSavingCurrent(
+            goal['id'].toString(),
+            _amountOf(values[0]),
+          );
+          _afterWrite();
+          return true;
+        },
+      ),
     );
   }
 
+  /// Removes the goal at once; when the server refuses or cannot be reached, it comes back where it was.
   Future<void> _deleteGoal(int index) async {
     final removed = _goals[index];
     setState(() => _goals.removeAt(index));
-    await RemoteApiHelper.instance.deleteSaving(removed['id'].toString());
-    SessionService.needRefreshAI.value = true;
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã xóa mục tiêu: ${removed['title']}')),
-      );
+    try {
+      await RemoteApiHelper.instance.deleteSaving(removed['id'].toString());
+    } catch (e) {
+      UserFacingError.log('Savings delete', e);
+      if (!mounted) return;
+      setState(() => _goals.insert(index.clamp(0, _goals.length), removed));
+      _showSnack('$_deleteFailedPrefix ${UserFacingError.messageOf(e)}');
+      return;
     }
-  }
-
-  /// The text and the fill come from the theme; the label keeps the secondary text colour also when focused.
-  TextField _field(
-    ColorScheme colors,
-    TextEditingController ctrl,
-    String label,
-    TextInputType type,
-  ) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: type,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
-        filled: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
+    SessionService.needRefreshAI.value = true;
+    if (!mounted) return;
+    _showSnack('Đã xóa mục tiêu: ${removed['title']}');
   }
 
   @override
@@ -734,6 +635,140 @@ class _SavingsPageState extends State<SavingsPage> {
             ? BorderRadius.circular(borderRadius)
             : null,
       ),
+    );
+  }
+}
+
+/// One text field of a [_SavingFormDialog].
+class _SavingField {
+  final String label;
+  final TextInputType keyboardType;
+  final String initialText;
+
+  const _SavingField(this.label, this.keyboardType, {this.initialText = ''});
+}
+
+/// The add and update dialogs of the savings. It owns its controllers (disposed with it, after the route is gone) and
+/// stays open when the request fails, so nothing typed is lost; the error shown is a fixed text, the raw one is logged.
+class _SavingFormDialog extends StatefulWidget {
+  final String title;
+  final String submitLabel;
+  final List<_SavingField> fields;
+
+  /// Returns false when the values are not acceptable (the dialog stays open), throws when the request fails.
+  final Future<bool> Function(List<String> values) onSubmit;
+
+  const _SavingFormDialog({
+    required this.title,
+    required this.submitLabel,
+    required this.fields,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_SavingFormDialog> createState() => _SavingFormDialogState();
+}
+
+class _SavingFormDialogState extends State<_SavingFormDialog> {
+  late final List<TextEditingController> _controllers = [
+    for (final field in widget.fields)
+      TextEditingController(text: field.initialText),
+  ];
+  bool _isSaving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isSaving) return;
+    setState(() {
+      _isSaving = true;
+      _error = null;
+    });
+    try {
+      final accepted = await widget.onSubmit(
+        _controllers.map((c) => c.text).toList(),
+      );
+      if (!mounted) return;
+      if (accepted) {
+        Navigator.pop(context);
+        return;
+      }
+      setState(() => _isSaving = false);
+    } catch (e) {
+      UserFacingError.log('Savings save', e);
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _error = UserFacingError.messageOf(e);
+      });
+    }
+  }
+
+  /// The text and the fill come from the theme; the label keeps the secondary text colour also when focused.
+  TextField _field(ColorScheme colors, int index) {
+    final field = widget.fields[index];
+    return TextField(
+      controller: _controllers[index],
+      keyboardType: field.keyboardType,
+      decoration: InputDecoration(
+        labelText: field.label,
+        labelStyle: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+        filled: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final error = _error;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        widget.title,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < widget.fields.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              _field(colors, i),
+            ],
+            if (error != null) ...[
+              const SizedBox(height: 10),
+              Text(error, style: TextStyle(color: colors.error, fontSize: 13)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: Text('Hủy', style: TextStyle(color: colors.onSurfaceVariant)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          onPressed: _isSaving ? null : _submit,
+          child: Text(widget.submitLabel),
+        ),
+      ],
     );
   }
 }

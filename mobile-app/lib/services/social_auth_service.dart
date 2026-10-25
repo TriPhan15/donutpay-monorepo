@@ -5,6 +5,11 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:finance_ai_app/config/app_config.dart';
 import 'remote_api_helper.dart';
 
+/// The user closed the Google or Facebook sign-in without choosing an account: nothing to report.
+class SocialSignInCancelled implements Exception {
+  const SocialSignInCancelled();
+}
+
 class SocialAuthService {
   static final SocialAuthService instance = SocialAuthService._();
   SocialAuthService._();
@@ -23,9 +28,7 @@ class SocialAuthService {
     GoogleSignInAccount? account = _google.currentUser;
     account ??= await _google.signInSilently();
     account ??= await _google.signIn();
-    if (account == null) {
-      throw Exception('Đã hủy đăng nhập Google');
-    }
+    if (account == null) throw const SocialSignInCancelled();
     final auth = await account.authentication;
     final idToken = auth.idToken;
 
@@ -48,6 +51,9 @@ class SocialAuthService {
       permissions: const ['email', 'public_profile'],
     );
 
+    if (result.status == LoginStatus.cancelled) {
+      throw const SocialSignInCancelled();
+    }
     if (result.status != LoginStatus.success || result.accessToken == null) {
       throw Exception(
         'Đăng nhập Facebook thất bại: ${result.message ?? result.status}',

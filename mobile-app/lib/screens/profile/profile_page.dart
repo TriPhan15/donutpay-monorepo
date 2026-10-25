@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/cubits/language_cubit.dart';
 import 'package:finance_ai_app/cubits/theme_cubit.dart';
 import 'package:finance_ai_app/models/user_model.dart';
@@ -61,9 +62,23 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => _isLoading = false);
       return;
     }
-    final user = await AppRepository.instance.getCurrentUser(userId);
-    final wallets = await AppRepository.instance.getWallets(userId);
-    final txs = await AppRepository.instance.getTransactions(userId);
+    final UserModel? user;
+    final List<WalletModel> wallets;
+    final List<TransactionModel> txs;
+    try {
+      user = await AppRepository.instance.getCurrentUser(userId);
+      wallets = await AppRepository.instance.getWallets(userId);
+      txs = await AppRepository.instance.getTransactions(userId);
+    } catch (e) {
+      UserFacingError.log('Profile load', e);
+      if (!mounted || request != _loadRequest) return;
+      // A reload the user did not ask for: a SnackBar, not a dialog, and the data shown so far stays.
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(UserFacingError.messageOf(e))));
+      return;
+    }
     if (!mounted || request != _loadRequest) return;
     final sorted = [...txs]..sort((a, b) => b.date.compareTo(a.date));
     setState(() {

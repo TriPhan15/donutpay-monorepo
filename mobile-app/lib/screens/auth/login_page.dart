@@ -1,8 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -21,6 +21,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const String _loginFailedTitle = 'Đăng nhập thất bại';
+  static const String _wrongCredentials = 'Sai email hoặc mật khẩu!';
+  static const String _socialLoginFailed =
+      'Không đăng nhập được bằng tài khoản mạng xã hội. Vui lòng thử lại.';
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
@@ -76,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!context.mounted) return;
         await AppDialog.error(
           context,
-          title: 'Đăng nhập thất bại',
+          title: _loginFailedTitle,
           message: 'Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại.',
         );
         return;
@@ -92,23 +97,16 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const MainScaffold()),
         (route) => false,
       );
-    } on DioException catch (e) {
-      if (!context.mounted) return;
-      final data = e.response?.data;
-      final serverMsg = (data is Map ? data['message'] : null)?.toString();
-      await AppDialog.error(
-        context,
-        title: 'Đăng nhập thất bại',
-        message: e.response?.statusCode == 401
-            ? (serverMsg ?? 'Sai email hoặc mật khẩu!')
-            : (serverMsg ?? 'Không thể kết nối máy chủ. Vui lòng thử lại.'),
-      );
     } catch (e) {
+      UserFacingError.log('Login', e);
       if (!context.mounted) return;
       await AppDialog.error(
         context,
-        title: 'Đăng nhập thất bại',
-        message: '$e',
+        title: _loginFailedTitle,
+        message: UserFacingError.messageOf(
+          e,
+          unauthorizedMessage: _wrongCredentials,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoginLoading = false);
@@ -156,16 +154,16 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const MainScaffold()),
         (route) => false,
       );
+    } on SocialSignInCancelled {
+      // The user closed the sign-in sheet: nothing to report.
     } catch (e) {
+      UserFacingError.log('Social login', e);
       if (!mounted) return;
-      if (!e.toString().contains('Đã hủy') &&
-          !e.toString().contains('canceled')) {
-        await AppDialog.error(
-          context,
-          title: 'Đăng nhập thất bại',
-          message: '$e',
-        );
-      }
+      await AppDialog.error(
+        context,
+        title: _loginFailedTitle,
+        message: UserFacingError.messageOf(e, fallback: _socialLoginFailed),
+      );
     } finally {
       if (mounted) setState(() => _isSocialLoading = false);
     }

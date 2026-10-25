@@ -571,9 +571,10 @@ void main() {
           (_) => jsonResponse(401, {'message': 'Sai email hoặc mật khẩu!'}),
         );
 
+        // The DioException itself: the login screen tells a 401 from a lost connection or a 5xx.
         await expectLater(
           RemoteApiHelper.instance.login('a@b.c', 'wrong'),
-          throwsA('Sai email hoặc mật khẩu!'),
+          throwsA(isDioError(401)),
         );
 
         expect(backend.calls, ['POST /api/auth/login']);
