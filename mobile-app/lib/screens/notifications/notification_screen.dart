@@ -25,7 +25,11 @@ extension NotificationTypeLabels on AppLocalizations {
 /// fails), then opens its screen when the app has one ([NotificationDestination]).
 /// Notifications live on the server only: without a backend (demo mode) the screen is empty and requests nothing.
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({super.key});
+  const NotificationScreen({super.key, this.onOpenTransaction});
+
+  /// Shows a transaction (by its server id) in the Ledger; the screen closes itself first. Without it, a transaction
+  /// notification opens nothing.
+  final ValueChanged<int>? onOpenTransaction;
 
   /// How many notifications one request asks for; the server accepts 1 to 50.
   static const int pageSize = 20;
@@ -179,11 +183,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void _open(AppNotification notification) {
     if (!notification.isRead) unawaited(_markAsRead(notification));
     final destination = NotificationDestination.of(notification);
-    if (destination == null) {
+    if (destination != null) {
+      Navigator.push(context, MaterialPageRoute(builder: destination));
+      return;
+    }
+    final transactionId = NotificationDestination.transactionIdOf(notification);
+    final openTransaction = widget.onOpenTransaction;
+    if (transactionId == null || openTransaction == null) {
       _showSnackBar(context.loc.notificationsDetailUnavailable);
       return;
     }
-    Navigator.push(context, MaterialPageRoute(builder: destination));
+    Navigator.pop(context);
+    openTransaction(transactionId);
   }
 
   /// Optimistic: [notification] shows as read at once and goes back to unread if the server does not confirm.

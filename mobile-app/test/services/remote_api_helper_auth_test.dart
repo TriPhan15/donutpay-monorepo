@@ -694,4 +694,65 @@ void main() {
       },
     );
   });
+
+  group('AI service requests', () {
+    test('carry the current access token as bearer', () async {
+      backend.on(
+        'POST',
+        '/spade/analyze',
+        (_) => jsonResponse(200, {'patterns': []}),
+      );
+
+      await RemoteApiHelper.instance.analyzePatterns([]);
+
+      expect(bearersOf('POST /spade/analyze'), ['Bearer access-token']);
+    });
+
+    test(
+      'a 401 renews the session once and repeats the request on the AI service with the new token',
+      () async {
+        backend.on(
+          'POST',
+          '/spade/analyze',
+          (options) => options.headers['Authorization'] == 'Bearer access-token'
+              ? _unauthorized()
+              : jsonResponse(200, {
+                  'patterns': [
+                    {'name': 'p'},
+                  ],
+                }),
+        );
+        backend.on(
+          'POST',
+          '/api/auth/refresh',
+          (_) => _tokenPair('new-access', 'new-refresh'),
+        );
+
+        final patterns = await RemoteApiHelper.instance.analyzePatterns([]);
+
+        expect(patterns, hasLength(1));
+        expect(refreshCalls(), 1);
+        expect(bearersOf('POST /spade/analyze'), [
+          'Bearer access-token',
+          'Bearer new-access',
+        ]);
+        expect(SessionService.currentToken, 'new-access');
+      },
+    );
+
+    test(
+      'a refused renewal ends the session and the request fails with its 401',
+      () async {
+        backend.on('POST', '/spade/analyze', (_) => _unauthorized());
+        backend.on('POST', '/api/auth/refresh', (_) => _unauthorized());
+
+        await expectLater(
+          RemoteApiHelper.instance.analyzePatterns([]),
+          throwsA(isDioError(401)),
+        );
+        expect(refreshCalls(), 1);
+        expect(SessionService.currentToken, isNull);
+      },
+    );
+  });
 }

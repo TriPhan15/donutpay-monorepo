@@ -595,6 +595,81 @@ void main() {
     }
   });
 
+  group('opening a transaction', () {
+    for (final type in ['TRANSACTION_ALERT', 'RECEIPT_PROCESSED']) {
+      testWidgets(
+        '$type with a transaction id closes the screen and hands the id on',
+        (tester) async {
+          final opened = <int>[];
+          notifications = [_notification(7, type: type, transactionId: 500)];
+          backend.on(
+            'PATCH',
+            '$_list/7/read',
+            (_) => okResponse(_notification(7, type: type, isRead: true)),
+          );
+          await tester.pumpWidget(
+            withAppSettings(
+              Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          NotificationScreen(onOpenTransaction: opened.add),
+                    ),
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          );
+          await tester.tap(find.text('open'));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text(_message(7)));
+          await tester.pumpAndSettle();
+
+          expect(opened, [500]);
+          expect(find.byType(NotificationScreen), findsNothing);
+          expect(find.text(_noDetail), findsNothing);
+          expect(backend.calls, contains('PATCH $_list/7/read'));
+        },
+      );
+    }
+
+    testWidgets(
+      'a receipt notification without a transaction id still opens nothing',
+      (tester) async {
+        final opened = <int>[];
+        notifications = [
+          _notification(
+            7,
+            type: 'RECEIPT_PROCESSED',
+            transactionId: null,
+            receiptId: 3,
+          ),
+        ];
+        backend.on(
+          'PATCH',
+          '$_list/7/read',
+          (_) => okResponse(
+            _notification(7, type: 'RECEIPT_PROCESSED', isRead: true),
+          ),
+        );
+        await tester.pumpWidget(
+          withAppSettings(NotificationScreen(onOpenTransaction: opened.add)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text(_message(7)));
+        await tester.pumpAndSettle();
+
+        expect(opened, isEmpty);
+        expect(find.text(_noDetail), findsOneWidget);
+      },
+    );
+  });
+
   group('lifecycle', () {
     testWidgets(
       'leaving while the first page is on its way touches nothing and asks for nothing more',

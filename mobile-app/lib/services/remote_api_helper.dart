@@ -61,6 +61,7 @@ class RemoteApiHelper {
   SettingsRepository? _settings;
   // The renewal in flight: a 401 that arrives meanwhile waits for it instead of starting another refresh.
   Future<String?>? _renewal;
+
   /// Moves on after every write of the user's data (transactions, budgets, savings), on the server or in the outbox of
   /// this device. The tabs of MainScaffold stay alive in an IndexedStack, so they reload on it instead of in initState only.
   final ValueNotifier<int> dataChangedNotifier = ValueNotifier(0);
@@ -93,18 +94,7 @@ class RemoteApiHelper {
       _refreshDio.httpClientAdapter = httpClientAdapter;
     }
 
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          final token = SessionService.currentToken;
-          if (token != null) {
-            options.headers[_authorizationHeader] = _bearer(token);
-          }
-          handler.next(options);
-        },
-        onError: _renewSessionOn401,
-      ),
-    );
+    _dio.interceptors.add(_sessionInterceptor(_dio));
 
     _mlDio = Dio(
       BaseOptions(
@@ -114,6 +104,9 @@ class RemoteApiHelper {
       ),
     );
     if (httpClientAdapter != null) _mlDio.httpClientAdapter = httpClientAdapter;
+    // The proxy in front of the AI service checks the same access token (forward_auth to core-api), so its requests get
+    // the same header and the same renewal on 401.
+    _mlDio.interceptors.add(_sessionInterceptor(_mlDio));
     _attachLanguageInterceptor(settingsRepository);
   }
 
@@ -139,12 +132,26 @@ class RemoteApiHelper {
 
   static String _bearer(String token) => 'Bearer $token';
 
+  /// Puts the current access token on every request of [client] and renews the session on a 401; the request is repeated
+  /// on [client] itself, so an AI-service request goes back to the AI service.
+  Interceptor _sessionInterceptor(Dio client) => InterceptorsWrapper(
+    onRequest: (options, handler) {
+      final token = SessionService.currentToken;
+      if (token != null) {
+        options.headers[_authorizationHeader] = _bearer(token);
+      }
+      handler.next(options);
+    },
+    onError: (e, handler) => _renewSessionOn401(e, handler, client),
+  );
+
   /// A 401 on a request that carried a session: the session is renewed once, however many requests failed together,
   /// and the request is repeated once with the newest token. When the session cannot be renewed the request fails with
   /// its own 401.
   Future<void> _renewSessionOn401(
     DioException e,
     ErrorInterceptorHandler handler,
+    Dio client,
   ) async {
     if (!_mayRenew(e)) {
       handler.next(e);
@@ -164,7 +171,9 @@ class RemoteApiHelper {
       return;
     }
     try {
-      handler.resolve(await _dio.fetch<dynamic>(_repeatable(e.requestOptions)));
+      handler.resolve(
+        await client.fetch<dynamic>(_repeatable(e.requestOptions)),
+      );
     } on DioException catch (repeatError) {
       // The repeat failed on its own (400, 500...): that is its answer, not a failed renewal, so the session stays.
       handler.next(repeatError);

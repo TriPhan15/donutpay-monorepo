@@ -70,6 +70,10 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chưa thể mở chi tiết của thông báo này.';
 
   @override
+  String get notificationsTransactionNotFound =>
+      'Không tìm thấy giao dịch của thông báo này, có thể nó đã bị xóa.';
+
+  @override
   String get notificationsUnread => 'Chưa đọc';
 
   @override

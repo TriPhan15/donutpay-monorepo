@@ -5,11 +5,10 @@ import 'package:finance_ai_app/screens/budget/budget_screen.dart';
 
 /// Where tapping a notification leads.
 ///
-/// BLOCKER: the app has no transaction detail screen (the Ledger shows a transaction in a bottom sheet of its own, built
-/// from the list it already holds) and no screen that reviews a stored receipt (ReviewFormPage only reviews a new scan
-/// from a local photo), and core-backend has no GET /api/transactions/{id} or GET /api/receipts/{id} to load one by id.
-/// Until those exist, [NotificationType.transactionAlert] and [NotificationType.receiptProcessed] open nothing and the
-/// user stays on the notification screen; no placeholder route is made up for them.
+/// Budget notifications push [BudgetScreen]. A transaction or receipt notification has no page of its own: the app shows
+/// a transaction in the Ledger's detail sheet (with its receipt status), so [transactionIdOf] names the transaction and
+/// the caller opens it there. A receipt notification without a transaction id opens nothing (there is no screen that
+/// reviews a stored receipt).
 abstract final class NotificationDestination {
   /// The page to push for [notification], or null when the app has none for it.
   static WidgetBuilder? of(AppNotification notification) =>
@@ -18,6 +17,16 @@ abstract final class NotificationDestination {
         NotificationType.budgetExceeded => (_) => const BudgetScreen(),
         NotificationType.transactionAlert ||
         NotificationType.receiptProcessed ||
+        NotificationType.unknown => null,
+      };
+
+  /// The transaction to show in the Ledger for [notification], or null when it does not lead to one.
+  static int? transactionIdOf(AppNotification notification) =>
+      switch (notification.type) {
+        NotificationType.transactionAlert ||
+        NotificationType.receiptProcessed => notification.transactionId,
+        NotificationType.budgetWarning ||
+        NotificationType.budgetExceeded ||
         NotificationType.unknown => null,
       };
 }

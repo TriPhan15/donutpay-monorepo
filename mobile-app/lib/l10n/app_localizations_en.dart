@@ -71,6 +71,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This notification can\'t be opened yet.';
 
   @override
+  String get notificationsTransactionNotFound =>
+      'The transaction of this notification wasn\'t found; it may have been deleted.';
+
+  @override
   String get notificationsUnread => 'Unread';
 
   @override

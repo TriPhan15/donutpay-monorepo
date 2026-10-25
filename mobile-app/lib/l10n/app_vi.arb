@@ -19,6 +19,7 @@
   "notificationsMarkReadFailed": "Không đánh dấu được thông báo là đã đọc. Vui lòng thử lại.",
   "notificationsMarkAllReadFailed": "Không đánh dấu được các thông báo là đã đọc. Vui lòng thử lại.",
   "notificationsDetailUnavailable": "Chưa thể mở chi tiết của thông báo này.",
+  "notificationsTransactionNotFound": "Không tìm thấy giao dịch của thông báo này, có thể nó đã bị xóa.",
   "notificationsUnread": "Chưa đọc",
   "notificationTypeBudgetWarning": "Sắp chạm hạn mức ngân sách",
   "notificationTypeBudgetExceeded": "Đã vượt ngân sách",

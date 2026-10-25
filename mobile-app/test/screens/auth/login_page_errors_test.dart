@@ -36,12 +36,19 @@ void main() {
     Intl.defaultLocale = null;
   });
 
-  Future<void> signIn(WidgetTester tester) async {
+  Future<void> signIn(
+    WidgetTester tester, {
+    bool untickRememberMe = false,
+  }) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(withAppSettings(const LoginScreen()));
     await tester.pumpAndSettle();
+    if (untickRememberMe) {
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+    }
 
     await tester.enterText(find.byType(TextField).at(0), 'an@example.com');
     await tester.enterText(find.byType(TextField).at(1), 'Secret123');
@@ -100,4 +107,40 @@ void main() {
       },
     );
   }
+
+  group('remember me', () {
+    // The answer carries the tokens but no user id: the tokens are stored, then the screen stops on an error dialog, so
+    // the test never leaves the login screen.
+    void answerTokensWithoutUser() => backend.on(
+      'POST',
+      _loginPath,
+      (_) => okResponse({'token': 'access-1', 'refreshToken': 'refresh-1'}),
+    );
+
+    testWidgets('is ticked by default and the session survives a cold start', (
+      tester,
+    ) async {
+      answerTokensWithoutUser();
+      await signIn(tester);
+
+      expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+      expect(SessionService.currentToken, 'access-1');
+      await SessionService.init();
+      expect(SessionService.currentToken, 'access-1');
+    });
+
+    testWidgets('unticked, the session ends at the next cold start', (
+      tester,
+    ) async {
+      answerTokensWithoutUser();
+      await withCapturedLogs((_) async {
+        await signIn(tester, untickRememberMe: true);
+
+        expect(SessionService.currentToken, 'access-1');
+        await SessionService.init();
+      });
+      expect(SessionService.currentToken, isNull);
+      expect(SessionService.currentRefreshToken, isNull);
+    });
+  });
 }

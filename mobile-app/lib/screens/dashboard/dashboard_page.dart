@@ -27,7 +27,10 @@ import 'package:finance_ai_app/widgets/dialogs/dashboard_bottom_sheets.dart';
 
 class DashboardPage extends StatefulWidget {
   final VoidCallback? onNavigateToAI;
-  const DashboardPage({super.key, this.onNavigateToAI});
+
+  /// Shows a transaction (by its server id) on the Ledger tab: where a transaction notification leads.
+  final ValueChanged<int>? onOpenTransaction;
+  const DashboardPage({super.key, this.onNavigateToAI, this.onOpenTransaction});
   @override
   State<DashboardPage> createState() => DashboardPageState();
 }
@@ -202,7 +205,10 @@ class DashboardPageState extends State<DashboardPage>
   Future<void> _openNotifications() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const NotificationScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            NotificationScreen(onOpenTransaction: widget.onOpenTransaction),
+      ),
     );
     // Whatever was read or marked there shows on the bell as soon as the user is back.
     if (mounted) unawaited(_refreshUnreadNotifications());

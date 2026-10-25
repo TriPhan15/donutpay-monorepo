@@ -17,14 +17,6 @@ class AiComponents {
   /// Prefix the AI service puts in front of its advice summary; it is not meant for the user.
   static const String _summaryPrefix = '(AI dùng Luật Khai Phá Chung) ';
 
-  /// Expense categories the 50/30/20 card counts as needs, by the name the transactions carry.
-  static const Set<String> _needCategories = {
-    TransactionCategories.food,
-    'Di chuyển',
-    'Siêu thị',
-    'Sinh hoạt',
-  };
-
   /// Data: spelling-free category tokens the AI service may send, and the category name each stands for.
   static const Map<String, String> _aiTokenNames = {
     'an uong': TransactionCategories.food,
@@ -520,6 +512,16 @@ class AiComponents {
     );
   }
 
+  /// The expenses of [txs] that the 50/30/20 card counts as needs: those in an essential default category, matched by
+  /// the name core-backend stores (TransactionCategories.essentialExpenses).
+  static double needsTotal(List<TransactionModel> txs) => txs
+      .where(
+        (t) =>
+            t.isExpense &&
+            TransactionCategories.essentialExpenses.contains(t.category.trim()),
+      )
+      .fold(0, (s, t) => s + t.amount);
+
   static Widget build503020Card(
     ColorScheme colors,
     AppLocalizations loc,
@@ -529,9 +531,7 @@ class AiComponents {
   ) {
     if (monthIncome <= 0) return const SizedBox.shrink();
 
-    double needs = monthTxs
-        .where((t) => t.isExpense && _needCategories.contains(t.category))
-        .fold(0, (s, t) => s + t.amount);
+    final needs = needsTotal(monthTxs);
     double wants = monthExpense - needs;
     final needsPct = needs / monthIncome * 100,
         wantsPct = wants / monthIncome * 100,

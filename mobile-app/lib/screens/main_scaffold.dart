@@ -28,6 +28,8 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold>
     with WidgetsBindingObserver {
+  static const int _ledgerTabIndex = 1;
+
   int _currentIndex = 0;
 
   final _ledgerKey = GlobalKey<LedgerPageState>();
@@ -41,11 +43,18 @@ class _MainScaffoldState extends State<MainScaffold>
           _currentIndex = 2;
         });
       },
+      onOpenTransaction: _openTransaction,
     ),
     LedgerPage(key: _ledgerKey),
     const AITabPage(),
     const ProfilePage(),
   ];
+
+  /// Switches to the Ledger tab and shows the transaction [id] in its detail sheet.
+  void _openTransaction(int id) {
+    setState(() => _currentIndex = _ledgerTabIndex);
+    _ledgerKey.currentState?.showTransaction(id);
+  }
 
   @override
   void initState() {

@@ -21,6 +21,7 @@ class SessionService {
   static const String _fieldUserId = 'userId';
   static const String _fieldToken = 'token';
   static const String _fieldRefreshToken = 'refreshToken';
+  static const String _fieldRemember = 'remember';
 
   // The format before the JSON session: one key per value. Read once to migrate, removed once the JSON session is stored.
   static const String _legacyKeyUserId = 'current_user_id';
@@ -49,9 +50,18 @@ class SessionService {
   static String? get currentToken => _session.token;
   static String? get currentRefreshToken => _session.refreshToken;
 
+  /// Loads the stored session at a cold start. A session signed in without "remember me" ends here: it lived only
+  /// until the app was closed.
   static Future<void> init() async {
     final prefs = await _preferences();
     final stored = _Session.decode(prefs.getString(_keySession));
+    if (stored != null && !stored.remember) {
+      debugPrint(
+        'SessionService: the last sign-in was not remembered, the session ends with the app restart.',
+      );
+      await clearSession();
+      return;
+    }
     if (stored != null) {
       _session = stored;
       // A migration that stored the JSON session but could not remove the old keys ends here.
@@ -88,8 +98,19 @@ class SessionService {
   /// Replaces the token pair and keeps the signed-in user. The cache takes the new pair only once it is stored, so the
   /// app never runs on tokens that the next start would not find. Throws [SessionStorageException] when the write fails;
   /// storage and cache then both still hold the previous pair.
-  static Future<void> setTokens(String token, String refreshToken) =>
-      _replace(_session.copyWith(token: token, refreshToken: refreshToken));
+  /// [remember] is the "remember me" choice of a sign-in: false ends the session at the next cold start (init). A renewal
+  /// leaves it out and keeps the choice of the session.
+  static Future<void> setTokens(
+    String token,
+    String refreshToken, {
+    bool? remember,
+  }) => _replace(
+    _session.copyWith(
+      token: token,
+      refreshToken: refreshToken,
+      remember: remember,
+    ),
+  );
 
   static Future<void> _replace(_Session next) async {
     final prefs = await _preferences();
@@ -140,7 +161,12 @@ class SessionService {
 
 @immutable
 class _Session {
-  const _Session({this.userId, this.token, this.refreshToken});
+  const _Session({
+    this.userId,
+    this.token,
+    this.refreshToken,
+    this.remember = true,
+  });
 
   static const _Session empty = _Session();
 
@@ -148,20 +174,30 @@ class _Session {
   final String? token;
   final String? refreshToken;
 
+  /// Whether the session survives a restart of the app. Sessions stored before the choice existed have no such field
+  /// and are remembered, as they always were.
+  final bool remember;
+
   bool get isEmpty => userId == null && token == null && refreshToken == null;
 
-  _Session copyWith({int? userId, String? token, String? refreshToken}) =>
-      _Session(
-        userId: userId ?? this.userId,
-        token: token ?? this.token,
-        refreshToken: refreshToken ?? this.refreshToken,
-      );
+  _Session copyWith({
+    int? userId,
+    String? token,
+    String? refreshToken,
+    bool? remember,
+  }) => _Session(
+    userId: userId ?? this.userId,
+    token: token ?? this.token,
+    refreshToken: refreshToken ?? this.refreshToken,
+    remember: remember ?? this.remember,
+  );
 
   /// All three keys, always: a value the session does not have (no tokens in local mode) is stored as null.
   String encode() => jsonEncode({
     SessionService._fieldUserId: userId,
     SessionService._fieldToken: token,
     SessionService._fieldRefreshToken: refreshToken,
+    SessionService._fieldRemember: remember,
   });
 
   /// Null when nothing is stored, or when what is stored is not a session.
@@ -177,10 +213,12 @@ class _Session {
     final userId = data[SessionService._fieldUserId];
     final token = data[SessionService._fieldToken];
     final refreshToken = data[SessionService._fieldRefreshToken];
+    final remember = data[SessionService._fieldRemember];
     return _Session(
       userId: userId is int ? userId : null,
       token: token is String ? token : null,
       refreshToken: refreshToken is String ? refreshToken : null,
+      remember: remember is bool ? remember : true,
     );
   }
 }

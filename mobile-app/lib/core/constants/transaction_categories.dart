@@ -10,24 +10,50 @@ class TransactionCategories {
   static const String food = 'Ăn uống';
   static const String otherExpense = 'Khác';
 
+  /// Essential default expense categories, by the name core-backend stores (DefaultCategory key in each comment).
+  static const String groceries = 'Siêu thị & Chợ'; // groceries
+  static const String transport = 'Di chuyển'; // transport
+  static const String housing = 'Nhà ở'; // housing
+  static const String utilities = 'Điện nước'; // utilities
+  static const String telecom = 'Internet & Điện thoại'; // telecom
+  static const String health = 'Sức khỏe'; // health
+  static const String education = 'Giáo dục'; // education
+  static const String family = 'Gia đình & Con cái'; // family
+  static const String insurance = 'Bảo hiểm'; // insurance
+
+  /// The default expense categories that are needs (the "50" of the 50/30/20 rule): food, home, bills, getting around,
+  /// health, schooling, children and insurance. Shopping, entertainment, travel, gifts and "Khác" are wants.
+  static const Set<String> essentialExpenses = {
+    food,
+    groceries,
+    transport,
+    housing,
+    utilities,
+    telecom,
+    health,
+    education,
+    family,
+    insurance,
+  };
+
   /// The default categories, by the Vietnamese name core-backend stores (its DefaultCategory enum, whose stable key is
   /// in each comment), and their text in the language the app shows. Renaming one there means renaming it here too.
   static final Map<String, String Function(AppLocalizations)> _labelByName = {
     all: (loc) => loc.categoryAll,
     food: (loc) => loc.categoryFood, // food
-    'Siêu thị & Chợ': (loc) => loc.categoryGroceries, // groceries
-    'Di chuyển': (loc) => loc.categoryTransport, // transport
-    'Nhà ở': (loc) => loc.categoryHousing, // housing
-    'Điện nước': (loc) => loc.categoryUtilities, // utilities
-    'Internet & Điện thoại': (loc) => loc.categoryTelecom, // telecom
+    groceries: (loc) => loc.categoryGroceries, // groceries
+    transport: (loc) => loc.categoryTransport, // transport
+    housing: (loc) => loc.categoryHousing, // housing
+    utilities: (loc) => loc.categoryUtilities, // utilities
+    telecom: (loc) => loc.categoryTelecom, // telecom
     'Mua sắm': (loc) => loc.categoryShopping, // shopping
-    'Sức khỏe': (loc) => loc.categoryHealth, // health
-    'Giáo dục': (loc) => loc.categoryEducation, // education
+    health: (loc) => loc.categoryHealth, // health
+    education: (loc) => loc.categoryEducation, // education
     'Giải trí': (loc) => loc.categoryEntertainment, // entertainment
     'Du lịch': (loc) => loc.categoryTravel, // travel
-    'Gia đình & Con cái': (loc) => loc.categoryFamily, // family
+    family: (loc) => loc.categoryFamily, // family
     'Hiếu hỉ': (loc) => loc.categorySocial, // social
-    'Bảo hiểm': (loc) => loc.categoryInsurance, // insurance
+    insurance: (loc) => loc.categoryInsurance, // insurance
     otherExpense: (loc) => loc.categoryOtherExpense, // other_expense
     'Lương': (loc) => loc.categorySalary, // salary
     'Thưởng': (loc) => loc.categoryBonus, // bonus

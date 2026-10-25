@@ -212,6 +212,12 @@ abstract class AppLocalizations {
   /// **'This notification can\'t be opened yet.'**
   String get notificationsDetailUnavailable;
 
+  /// Snackbar on the Ledger when a tapped notification points to a transaction that is not in the user's list (for example deleted).
+  ///
+  /// In en, this message translates to:
+  /// **'The transaction of this notification wasn\'t found; it may have been deleted.'**
+  String get notificationsTransactionNotFound;
+
   /// Screen reader label of the dot that marks an unread notification.
   ///
   /// In en, this message translates to:

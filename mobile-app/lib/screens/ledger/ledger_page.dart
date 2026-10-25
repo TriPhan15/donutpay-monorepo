@@ -53,6 +53,9 @@ class LedgerPageState extends State<LedgerPage> {
   bool _budgetsFailed = false;
   List<BudgetProgress> _budgetProgress = [];
 
+  /// Server id of a transaction asked for by [showTransaction] that is not in the list yet: shown when the load ends.
+  int? _pendingTransactionId;
+
   DateTime _selectedDate = DateTime.now();
   LedgerPeriod _period = LedgerPeriod.month;
 
@@ -119,6 +122,7 @@ class LedgerPageState extends State<LedgerPage> {
       _budgetsFailed = budgets == null;
       _refreshBudgetProgress();
     });
+    _openPendingTransaction();
     if (budgets != null) {
       // Not awaited, so a dialog waiting for the user does not hold up the pull-to-refresh.
       unawaited(
@@ -132,6 +136,41 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   void reload() => _refresh();
+
+  /// Shows the transaction with the server id [id] in its detail sheet, with the period moved to its date (a tapped
+  /// notification). Not in the list yet (created after the last load): the list is loaded again first.
+  void showTransaction(int id) {
+    _pendingTransactionId = id;
+    if (_transactionWithId(id) != null) {
+      _openPendingTransaction();
+    } else if (!_isLoading) {
+      _load();
+    }
+    // While a load runs, it opens the transaction when it ends.
+  }
+
+  TransactionModel? _transactionWithId(int id) {
+    final wanted = '$id';
+    for (final tx in _transactions) {
+      if (tx.id == wanted) return tx;
+    }
+    return null;
+  }
+
+  void _openPendingTransaction() {
+    final id = _pendingTransactionId;
+    if (id == null || !mounted) return;
+    _pendingTransactionId = null;
+    final tx = _transactionWithId(id);
+    if (tx == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.loc.notificationsTransactionNotFound)),
+      );
+      return;
+    }
+    setState(() => _selectedDate = tx.date);
+    _showTransactionDetails(tx);
+  }
 
   /// Asked for by the user (pull-to-refresh, a tap on the tab it is on): what waits in the outbox is sent again first.
   /// Not awaited, the outcome of each send reaches the page through dataChangedNotifier.

@@ -76,6 +76,10 @@
   "@notificationsDetailUnavailable": {
     "description": "Snackbar shown when the tapped notification has no screen to open in the app yet."
   },
+  "notificationsTransactionNotFound": "The transaction of this notification wasn't found; it may have been deleted.",
+  "@notificationsTransactionNotFound": {
+    "description": "Snackbar on the Ledger when a tapped notification points to a transaction that is not in the user's list (for example deleted)."
+  },
   "notificationsUnread": "Unread",
   "@notificationsUnread": {
     "description": "Screen reader label of the dot that marks an unread notification."

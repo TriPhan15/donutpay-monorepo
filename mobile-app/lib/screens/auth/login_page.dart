@@ -24,7 +24,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _rememberMe = false;
+  // Checked by default, as the app always kept the session; unchecked, the session ends when the app is closed.
+  bool _rememberMe = true;
   bool _obscure = true;
   bool _isLoginLoading = false;
   bool _isSocialLoading = false;
@@ -70,7 +71,11 @@ class _LoginScreenState extends State<LoginScreen> {
               as int?;
 
       if (token.isNotEmpty && refreshToken.isNotEmpty) {
-        await SessionService.setTokens(token, refreshToken);
+        await SessionService.setTokens(
+          token,
+          refreshToken,
+          remember: _rememberMe,
+        );
       }
 
       if (userId == null) {
@@ -135,7 +140,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final userId = (user?['id'] ?? data['userId'] ?? res['userId']) as int?;
 
       if (token.isNotEmpty && refreshToken.isNotEmpty) {
-        await SessionService.setTokens(token, refreshToken);
+        await SessionService.setTokens(
+          token,
+          refreshToken,
+          remember: _rememberMe,
+        );
       }
 
       if (userId != null) {

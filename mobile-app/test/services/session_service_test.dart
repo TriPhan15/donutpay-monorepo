@@ -101,6 +101,7 @@ void main() {
           'userId': 7,
           'token': 'old-access',
           'refreshToken': 'old-refresh',
+          'remember': true,
         });
         for (final key in _legacyKeys) {
           expect(storage.containsKey(key), isFalse, reason: key);
@@ -118,6 +119,7 @@ void main() {
           'userId': 3,
           'token': null,
           'refreshToken': null,
+          'remember': true,
         });
       },
     );
@@ -205,6 +207,7 @@ void main() {
           'userId': 7,
           'token': 'access-2',
           'refreshToken': 'refresh-2',
+          'remember': true,
         });
         for (final key in _legacyKeys) {
           expect(storage.containsKey(key), isFalse, reason: key);
@@ -278,5 +281,53 @@ void main() {
         }
       },
     );
+  });
+
+  group('remember me', () {
+    test(
+      'a sign-in that is not remembered is stored for this run and ends at the next cold start',
+      () async {
+        await startWith({});
+        await SessionService.setTokens(
+          'access-1',
+          'refresh-1',
+          remember: false,
+        );
+        await SessionService.setCurrentUserId(7);
+        await expectSignedInAs(7, 'access-1', 'refresh-1');
+        expect(storedSession()!['remember'], isFalse);
+
+        // A renewal keeps the choice.
+        await SessionService.setTokens('access-2', 'refresh-2');
+        expect(storedSession()!['remember'], isFalse);
+
+        await SessionService.init();
+
+        await expectSignedInAs(null, null, null);
+        expect(storage.containsKey(_sessionKey), isFalse);
+      },
+    );
+
+    test('a remembered sign-in survives the cold start', () async {
+      await startWith({});
+      await SessionService.setTokens('access-1', 'refresh-1', remember: true);
+      await SessionService.setCurrentUserId(7);
+
+      await SessionService.init();
+
+      await expectSignedInAs(7, 'access-1', 'refresh-1');
+    });
+
+    test('a session stored before the choice existed is remembered', () async {
+      await startWith({
+        _sessionKey: jsonEncode({
+          'userId': 7,
+          'token': 'access-1',
+          'refreshToken': 'refresh-1',
+        }),
+      });
+
+      await expectSignedInAs(7, 'access-1', 'refresh-1');
+    });
   });
 }
