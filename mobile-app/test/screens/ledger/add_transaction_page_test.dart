@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ledger/add_transaction_page.dart';
@@ -86,13 +87,19 @@ void main() {
     backend.on('GET', '/api/categories', (_) => okResponse(_serverCategories));
   });
 
-  Future<void> openForm(WidgetTester tester) async {
+  Future<void> openForm(
+    WidgetTester tester, {
+    Locale locale = const Locale('vi'),
+  }) async {
     // Tall, so that the whole form is on screen, and wide, because the test font is much wider than a real one.
     tester.view.physicalSize = const Size(600, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: _Launcher(
           onClosed: (saved) {
             closed = true;
@@ -272,6 +279,35 @@ void main() {
         expect(find.text('Số tiền không hợp lệ'), findsOneWidget);
         expect(store.rows, isEmpty);
         expect(sentBodies(), isEmpty);
+      },
+    );
+  });
+
+  group('in English', () {
+    testWidgets(
+      'the form speaks English and a refusal shows the app text instead of the Vietnamese server message',
+      (tester) async {
+        backend.on(
+          'POST',
+          _checkout,
+          (_) =>
+              jsonResponse(400, {'code': 400, 'message': 'Số dư ví không đủ'}),
+        );
+        await openForm(tester, locale: const Locale('en'));
+
+        expect(find.text('Add transaction'), findsOneWidget);
+        expect(find.text('Ăn uống'), findsNothing);
+        await typeAmount(tester, '45000');
+        await tapText(tester, 'Save transaction');
+
+        expect(find.text('Could not save'), findsOneWidget);
+        expect(
+          find.text(
+            'The server refused this transaction. Please check the details.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Số dư ví không đủ'), findsNothing);
       },
     );
   });

@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
 
@@ -18,13 +19,16 @@ class LinkedServicesPage extends StatefulWidget {
 class _LinkedServicesPageState extends State<LinkedServicesPage> {
   /// 60 checks, 2 s apart: about two minutes for the user to pay in the wallet app.
   static const int _maxPollTries = 60;
-  static const String _createOrderFailedPrefix = 'Tạo đơn đồng bộ thất bại.';
-  static const String _pollTimedOutMessage =
-      'Chưa nhận được kết quả thanh toán. Vui lòng kiểm tra lại trong Lịch sử đồng bộ.';
-  static const _wallets = [
+  static const String _demoProvider = 'MOCK';
+
+  /// The smallest amount a wallet accepts, in VND.
+  static const double _minAmount = 1000;
+
+  /// Provider code and brand name; the demo wallet has no brand, its name follows the language.
+  static const List<(String, String?)> _wallets = [
     ('VNPAY', 'VNPAY'),
     ('ZALOPAY', 'ZaloPay'),
-    ('MOCK', 'Ví Demo'),
+    (_demoProvider, null),
   ];
 
   bool _syncing = false;
@@ -36,11 +40,8 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
     super.dispose();
   }
 
-  String _fmt(num v) => NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: '₫',
-    decimalDigits: 0,
-  ).format(v);
+  String _fmt(double v) =>
+      CurrencyHelper.formatVND(v, context.loc, showSign: false);
 
   void _snack(String m) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
@@ -51,7 +52,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
         {
           'VNPAY': Icons.account_balance_rounded,
           'ZALOPAY': Icons.account_balance_wallet_rounded,
-          'MOCK': Icons.wallet_rounded,
+          _demoProvider: Icons.wallet_rounded,
         }[provider] ??
         Icons.payment_rounded;
     return Image.asset(
@@ -68,12 +69,12 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
     final amount = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Đồng bộ từ $label'),
+        title: Text(ctx.loc.linkedSyncFrom(label)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Số tiền nạp vào ngân sách chi tiêu:',
+              ctx.loc.linkedAmountPrompt,
               style: TextStyle(
                 color: Theme.of(ctx).colorScheme.onSurfaceVariant,
                 fontSize: 13,
@@ -85,14 +86,14 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
               controller: ctrl,
               keyboardType: TextInputType.number,
               autofocus: true,
-              decoration: const InputDecoration(hintText: 'VD: 100000'),
+              decoration: InputDecoration(hintText: ctx.loc.linkedAmountHint),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
+            child: Text(ctx.loc.dialogCancel),
           ),
           FilledButton(
             onPressed: () {
@@ -101,14 +102,14 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
               );
               Navigator.pop(ctx, a);
             },
-            child: const Text('Đồng bộ'),
+            child: Text(ctx.loc.linkedSync),
           ),
         ],
       ),
     );
-    if (amount == null) return;
-    if (amount < 1000) {
-      _snack('Số tiền tối thiểu 1.000₫.');
+    if (amount == null || !mounted) return;
+    if (amount < _minAmount) {
+      _snack(context.loc.linkedMinAmount(_fmt(_minAmount)));
       return;
     }
     await _runSync(provider, amount);
@@ -132,9 +133,8 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
     } catch (e) {
       UserFacingError.log('Create sync order', e);
       if (mounted) {
-        _snack(
-          '$_createOrderFailedPrefix ${UserFacingError.messageOf(e, context.loc)}',
-        );
+        final loc = context.loc;
+        _snack(loc.linkedCreateOrderFailed(UserFacingError.messageOf(e, loc)));
         setState(() => _syncing = false);
       }
     }
@@ -148,16 +148,17 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
       try {
         final st = await RemoteApiHelper.instance.paymentStatus(orderCode);
         final status = st['status'];
-        if (status != 'PENDING') {
+        if (status != paymentStatusPending) {
           t.cancel();
           if (!mounted) return;
           setState(() => _syncing = false);
-          if (status == 'SUCCESS') {
+          final loc = context.loc;
+          if (status == paymentStatusSuccess) {
             RemoteApiHelper.instance.dataChangedNotifier.value++;
-            _snack('Đã đồng bộ ${_fmt(amount)} vào ngân sách chi tiêu.');
+            _snack(loc.linkedSynced(_fmt(amount)));
             if (mounted) Navigator.pop(context, true);
           } else {
-            _snack('Đồng bộ: $status');
+            _snack(loc.linkedSyncOutcome(paymentStatusLabel(loc, '$status')));
           }
         }
       } catch (e) {
@@ -168,7 +169,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
         t.cancel();
         if (!mounted) return;
         setState(() => _syncing = false);
-        _snack(_pollTimedOutMessage);
+        _snack(context.loc.linkedPollTimedOut);
       }
     });
   }
@@ -176,18 +177,19 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     return Scaffold(
       backgroundColor: colors.surface,
       // The icons take the app bar theme (onSurface).
       appBar: AppBar(
         backgroundColor: colors.surface,
-        title: const Text(
-          'Dịch vụ liên kết',
+        title: Text(
+          loc.profileLinkedServices,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
-            tooltip: 'Lịch sử đồng bộ',
+            tooltip: loc.linkedHistoryTooltip,
             icon: const Icon(Icons.history_rounded),
             onPressed: () => Navigator.push(
               context,
@@ -201,17 +203,20 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'Ví điện tử đã liên kết',
+            Text(
+              loc.linkedWalletsHeading,
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
-              'Đồng bộ tiền từ ví vào ngân sách để quản lý chi tiêu.',
+              loc.linkedWalletsDescription,
               style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
             ),
             const SizedBox(height: 16),
-            ..._wallets.map((w) => _walletTile(colors, w.$1, w.$2)),
+            ..._wallets.map(
+              (w) =>
+                  _walletTile(colors, loc, w.$1, w.$2 ?? loc.linkedDemoWallet),
+            ),
             if (_syncing) ...[
               const SizedBox(height: 20),
               Center(
@@ -220,7 +225,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
                     const CircularProgressIndicator(),
                     const SizedBox(height: 8),
                     Text(
-                      'Đang đồng bộ... hoàn tất thanh toán trên cổng.',
+                      loc.linkedSyncing,
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 12,
@@ -236,7 +241,12 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
     );
   }
 
-  Widget _walletTile(ColorScheme colors, String provider, String label) {
+  Widget _walletTile(
+    ColorScheme colors,
+    AppLocalizations loc,
+    String provider,
+    String label,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -259,16 +269,16 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
                 const SizedBox(height: 2),
                 // Green "linked" status: readable on both themes (6.1:1 on the dark surface).
                 Row(
-                  children: const [
-                    Icon(
+                  children: [
+                    const Icon(
                       Icons.check_circle_rounded,
                       color: Colors.green,
                       size: 13,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
-                      'Đã liên kết',
-                      style: TextStyle(color: Colors.green, fontSize: 11),
+                      loc.linkedLinked,
+                      style: const TextStyle(color: Colors.green, fontSize: 11),
                     ),
                   ],
                 ),
@@ -278,7 +288,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
           FilledButton.icon(
             onPressed: () => _openSync(provider, label),
             icon: const Icon(Icons.sync_rounded, size: 18),
-            label: const Text('Đồng bộ'),
+            label: Text(loc.linkedSync),
           ),
         ],
       ),

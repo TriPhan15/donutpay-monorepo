@@ -915,4 +915,469 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get savingsUpdate => 'Cập nhật';
+
+  @override
+  String get commonSessionExpiredTitle => 'Phiên đăng nhập hết hạn';
+
+  @override
+  String get commonInvalidAmountTitle => 'Số tiền không hợp lệ';
+
+  @override
+  String get commonSummary => 'Tổng kết';
+
+  @override
+  String get currencySymbol => 'đ';
+
+  @override
+  String get transactionSaveFailed =>
+      'Không lưu được giao dịch. Vui lòng thử lại.';
+
+  @override
+  String get transactionNotSentTitle => 'Chưa gửi được lên máy chủ';
+
+  @override
+  String get transactionNotSentMessage =>
+      'Giao dịch đã được lưu trên thiết bị nhưng chưa gửi được lên máy chủ. Khi có mạng, mở Sổ sách, chọn giao dịch và bấm \"Gửi lại\". Gửi lại sẽ không tạo giao dịch trùng.';
+
+  @override
+  String get transactionCategoryLabel => 'Danh mục';
+
+  @override
+  String get transactionDateLabel => 'Ngày giao dịch';
+
+  @override
+  String get transactionNoteOptional => 'Ghi chú (tùy chọn)';
+
+  @override
+  String get transactionPickExpenseCategory => 'Chọn danh mục chi';
+
+  @override
+  String get transactionPickIncomeCategory => 'Chọn danh mục thu';
+
+  @override
+  String get transactionExpenseMoney => 'Tiền chi';
+
+  @override
+  String get transactionIncomeMoney => 'Tiền thu';
+
+  @override
+  String get transactionExpenseKind => 'Khoản chi';
+
+  @override
+  String get transactionIncomeKind => 'Khoản thu';
+
+  @override
+  String get addTransactionTitle => 'Thêm giao dịch';
+
+  @override
+  String get addTransactionAmountLabel => 'Số tiền';
+
+  @override
+  String get addTransactionInvalidAmount => 'Vui lòng nhập số tiền hợp lệ.';
+
+  @override
+  String get addTransactionNoteHint => 'VD: Mua cafe Highlands';
+
+  @override
+  String get addTransactionSubmit => 'Lưu giao dịch';
+
+  @override
+  String get addTransactionSaved => 'Đã thêm giao dịch mới.';
+
+  @override
+  String get editTransactionTitle => 'Sửa giao dịch';
+
+  @override
+  String get editTransactionAmountLabel => 'Số tiền (₫)';
+
+  @override
+  String get editTransactionNoServerIdTitle => 'Không sửa được giao dịch';
+
+  @override
+  String get editTransactionNoServerIdMessage =>
+      'Giao dịch này chưa có mã trên máy chủ.';
+
+  @override
+  String get editTransactionAmountPositive =>
+      'Vui lòng nhập số tiền lớn hơn 0.';
+
+  @override
+  String get editTransactionNoChangesTitle => 'Chưa có thay đổi';
+
+  @override
+  String get editTransactionNoChangesMessage =>
+      'Hãy sửa số tiền, danh mục hoặc ghi chú trước khi lưu.';
+
+  @override
+  String get editTransactionSaveFailedTitle => 'Không lưu được giao dịch';
+
+  @override
+  String get editTransactionRejected =>
+      'Máy chủ chưa xử lý được yêu cầu. Vui lòng thử lại sau.';
+
+  @override
+  String get editTransactionSavedTitle => 'Đã lưu thay đổi';
+
+  @override
+  String get editTransactionSavedMessage => 'Giao dịch đã được cập nhật.';
+
+  @override
+  String get editTransactionCategoriesUnavailable =>
+      'Không tải được danh sách danh mục. Bạn vẫn có thể sửa số tiền và ghi chú.';
+
+  @override
+  String get ledgerTitle => 'Sổ sách';
+
+  @override
+  String get ledgerSearchHint => 'Tìm tên, danh mục...';
+
+  @override
+  String get ledgerCalendar => 'Lịch';
+
+  @override
+  String get ledgerLegendIncome => 'Thu';
+
+  @override
+  String get ledgerLegendExpense => 'Chi';
+
+  @override
+  String ledgerChartMonth(String month) {
+    return 'Th$month';
+  }
+
+  @override
+  String get ledgerIncome => 'Thu nhập';
+
+  @override
+  String get ledgerExpense => 'Chi tiêu';
+
+  @override
+  String get ledgerRecent => 'Giao dịch gần đây';
+
+  @override
+  String get ledgerEmptyPeriod => 'Không có giao dịch trong kỳ này.';
+
+  @override
+  String get ledgerTotalIncome => 'Tổng thu';
+
+  @override
+  String get ledgerTotalExpense => 'Tổng chi';
+
+  @override
+  String get ledgerBalance => 'Số dư';
+
+  @override
+  String get ledgerFilterTitle => 'Bộ lọc & Sắp xếp thông minh';
+
+  @override
+  String get ledgerFilterType => '1. Loại giao dịch';
+
+  @override
+  String get ledgerFilterAll => 'Tất cả';
+
+  @override
+  String get ledgerFilterExpenseOnly => 'Chỉ Khoản Chi';
+
+  @override
+  String get ledgerFilterIncomeOnly => 'Chỉ Khoản Thu';
+
+  @override
+  String get ledgerFilterAmount => '2. Khoảng tiền';
+
+  @override
+  String get ledgerFilterAnyAmount => 'Mọi mức giá';
+
+  @override
+  String get ledgerFilterSort => '3. Sắp xếp theo';
+
+  @override
+  String get ledgerSortNewest => 'Mới nhất';
+
+  @override
+  String get ledgerSortOldest => 'Cũ nhất';
+
+  @override
+  String get ledgerSortHighest => 'Giá trị cao nhất';
+
+  @override
+  String get ledgerFilterApply => 'Áp dụng bộ lọc';
+
+  @override
+  String get ledgerDetailAmount => 'Số tiền:';
+
+  @override
+  String get ledgerDetailTime => 'Thời gian:';
+
+  @override
+  String get ledgerDetailReceiptStatus => 'Trạng thái hóa đơn:';
+
+  @override
+  String get ledgerDetailSync => 'Đồng bộ:';
+
+  @override
+  String get ledgerDetailUnsyncedHint =>
+      'Giao dịch chưa được máy chủ xác nhận. Khi đã có mạng, bấm \"Gửi lại\". Gửi lại sẽ không tạo giao dịch trùng.';
+
+  @override
+  String get ledgerDetailReceiptImage => 'Ảnh hóa đơn gốc:';
+
+  @override
+  String get ledgerResend => 'Gửi lại';
+
+  @override
+  String get ledgerDelete => 'Xóa giao dịch này';
+
+  @override
+  String get ledgerDeleteTitle => 'Xóa giao dịch?';
+
+  @override
+  String get ledgerDeleteMessage =>
+      'Hành động này sẽ hoàn lại tiền vào ví và không thể khôi phục. Bạn chắc chứ?';
+
+  @override
+  String get ledgerDeleteNow => 'Xóa ngay';
+
+  @override
+  String get ledgerDeleted => 'Đã xóa giao dịch và hoàn tiền';
+
+  @override
+  String get ledgerDeleteFailed => 'Xóa thất bại, vui lòng thử lại';
+
+  @override
+  String get ledgerResendFailedTitle => 'Gửi lại thất bại';
+
+  @override
+  String get ledgerResendFailedMessage =>
+      'Không gửi lại được giao dịch. Vui lòng thử lại.';
+
+  @override
+  String get ledgerResent => 'Đã gửi giao dịch lên máy chủ';
+
+  @override
+  String get ledgerStillNotSentTitle => 'Vẫn chưa gửi được';
+
+  @override
+  String get ledgerStillNotSentMessage =>
+      'Chưa kết nối được máy chủ. Giao dịch vẫn được giữ trên thiết bị, bạn có thể gửi lại sau.';
+
+  @override
+  String get ledgerDeleteUnsyncedTitle => 'Xóa giao dịch chưa gửi?';
+
+  @override
+  String get ledgerDeleteUnsyncedMessage =>
+      'Giao dịch này chưa được máy chủ xác nhận. Xóa khỏi thiết bị và không gửi nữa? Hành động này không thể khôi phục.';
+
+  @override
+  String get ledgerDeletedUnsynced => 'Đã xóa giao dịch chưa gửi';
+
+  @override
+  String get ledgerLoadFailedNotice =>
+      'Không tải được danh sách từ máy chủ. Chỉ hiển thị các giao dịch chưa gửi trên thiết bị. Kéo xuống để thử lại.';
+
+  @override
+  String ledgerExcelSheet(String month) {
+    return 'Chi tiêu tháng $month';
+  }
+
+  @override
+  String get ledgerExcelDate => 'Ngày';
+
+  @override
+  String get ledgerExcelTotal => 'Tổng cộng';
+
+  @override
+  String ledgerExcelBudgetHeader(String month) {
+    return 'NGÂN SÁCH THÁNG $month';
+  }
+
+  @override
+  String get ledgerExcelLimit => 'Giới hạn';
+
+  @override
+  String get ledgerExcelSpent => 'Đã tiêu';
+
+  @override
+  String get ledgerExcelRemaining => 'Còn lại';
+
+  @override
+  String ledgerExcelFileName(String month, String date) {
+    return 'chi_tieu_$month$date';
+  }
+
+  @override
+  String ledgerExcelShareText(String month) {
+    return 'Báo cáo chi tiêu tháng $month';
+  }
+
+  @override
+  String get reviewTitle => 'Xác nhận hóa đơn';
+
+  @override
+  String get reviewDateFallback =>
+      'Không đọc được ngày trên hóa đơn, đang dùng thời điểm hiện tại. Chạm để chọn lại.';
+
+  @override
+  String get reviewNoTotal =>
+      'Donut chưa đọc được tổng tiền từ ảnh — vui lòng nhập tay.';
+
+  @override
+  String get reviewScanFailed =>
+      'Quét hóa đơn thất bại (Kiểm tra AI service). Vui lòng nhập tay.';
+
+  @override
+  String get reviewPhotoUploadFailedTitle => 'Không tải được ảnh hóa đơn';
+
+  @override
+  String get reviewPhotoUploadFailedMessage =>
+      'Ảnh hóa đơn chưa được tải lên máy chủ. Bạn có muốn lưu giao dịch mà không kèm ảnh không?';
+
+  @override
+  String get reviewSaveWithoutPhoto => 'Lưu không kèm ảnh';
+
+  @override
+  String get reviewLater => 'Để sau';
+
+  @override
+  String get reviewTotalPositive => 'Vui lòng nhập tổng tiền lớn hơn 0.';
+
+  @override
+  String get reviewSaved => 'Đã lưu giao dịch từ hóa đơn.';
+
+  @override
+  String get reviewAnalyzing => 'Đang phân tích hóa đơn...';
+
+  @override
+  String get reviewPleaseWait => 'Vui lòng đợi trong giây lát';
+
+  @override
+  String get reviewExtracted => 'Trích xuất thành công';
+
+  @override
+  String get reviewCheckDetails =>
+      'Vui lòng kiểm tra lại thông tin bên dưới và đối chiếu với ảnh gốc trước khi lưu.';
+
+  @override
+  String get reviewGeneralInfo => 'Thông tin chung';
+
+  @override
+  String get reviewStoreName => 'Tên cửa hàng';
+
+  @override
+  String get reviewTotalLabel => 'Tổng tiền (đ)';
+
+  @override
+  String get reviewSubtotal => 'Tạm tính:';
+
+  @override
+  String get reviewTax => 'Thuế VAT/Khác:';
+
+  @override
+  String get reviewGrandTotal => 'TỔNG TIỀN:';
+
+  @override
+  String get reviewSubmit => 'Xác nhận & Lưu CSDL';
+
+  @override
+  String get paymentHistoryTitle => 'Lịch sử nạp/rút';
+
+  @override
+  String paymentHistoryLoadFailed(String reason) {
+    return 'Không tải được lịch sử. $reason';
+  }
+
+  @override
+  String get paymentHistoryEmpty => 'Chưa có giao dịch nạp/rút.';
+
+  @override
+  String paymentCancelled(String code) {
+    return 'Đã hủy đơn $code';
+  }
+
+  @override
+  String paymentCancelFailed(String reason) {
+    return 'Hủy đơn thất bại. $reason';
+  }
+
+  @override
+  String get paymentDeposit => 'Nạp tiền';
+
+  @override
+  String get paymentWithdrawal => 'Rút tiền';
+
+  @override
+  String paymentOrderCode(String code) {
+    return 'Mã: $code';
+  }
+
+  @override
+  String get paymentCancelOrder => 'Hủy đơn';
+
+  @override
+  String get paymentStatusSuccess => 'Thành công';
+
+  @override
+  String get paymentStatusFailed => 'Thất bại';
+
+  @override
+  String get paymentStatusCancelled => 'Đã hủy';
+
+  @override
+  String get paymentStatusPending => 'Đang chờ';
+
+  @override
+  String linkedCreateOrderFailed(String reason) {
+    return 'Tạo đơn đồng bộ thất bại. $reason';
+  }
+
+  @override
+  String get linkedPollTimedOut =>
+      'Chưa nhận được kết quả thanh toán. Vui lòng kiểm tra lại trong Lịch sử đồng bộ.';
+
+  @override
+  String get linkedDemoWallet => 'Ví Demo';
+
+  @override
+  String linkedSyncFrom(String wallet) {
+    return 'Đồng bộ từ $wallet';
+  }
+
+  @override
+  String get linkedAmountPrompt => 'Số tiền nạp vào ngân sách chi tiêu:';
+
+  @override
+  String get linkedAmountHint => 'VD: 100000';
+
+  @override
+  String get linkedSync => 'Đồng bộ';
+
+  @override
+  String linkedMinAmount(String amount) {
+    return 'Số tiền tối thiểu $amount.';
+  }
+
+  @override
+  String linkedSynced(String amount) {
+    return 'Đã đồng bộ $amount vào ngân sách chi tiêu.';
+  }
+
+  @override
+  String linkedSyncOutcome(String status) {
+    return 'Đồng bộ: $status';
+  }
+
+  @override
+  String get linkedHistoryTooltip => 'Lịch sử đồng bộ';
+
+  @override
+  String get linkedWalletsHeading => 'Ví điện tử đã liên kết';
+
+  @override
+  String get linkedWalletsDescription =>
+      'Đồng bộ tiền từ ví vào ngân sách để quản lý chi tiêu.';
+
+  @override
+  String get linkedSyncing => 'Đang đồng bộ... hoàn tất thanh toán trên cổng.';
+
+  @override
+  String get linkedLinked => 'Đã liên kết';
 }

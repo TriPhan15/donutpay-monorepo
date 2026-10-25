@@ -123,7 +123,12 @@ void main() {
       .toList();
 
   group('Ledger', () {
-    const app = MaterialApp(home: LedgerPage());
+    const app = MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: Locale('vi'),
+      home: LedgerPage(),
+    );
 
     Finder rowOf(String title) =>
         find.ancestor(of: find.text(title), matching: find.byType(InkWell));

@@ -3,7 +3,32 @@ import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
+
+/// Order states core-backend sends for a deposit or withdrawal.
+const String paymentStatusSuccess = 'SUCCESS';
+const String paymentStatusFailed = 'FAILED';
+const String paymentStatusCancelled = 'CANCELLED';
+const String paymentStatusPending = 'PENDING';
+
+/// [status] of an order as the user should read it in the language of [loc]; an unknown state is shown as it came.
+String paymentStatusLabel(AppLocalizations loc, String status) {
+  switch (status) {
+    case paymentStatusSuccess:
+      return loc.paymentStatusSuccess;
+    case paymentStatusFailed:
+      return loc.paymentStatusFailed;
+    case paymentStatusCancelled:
+      return loc.paymentStatusCancelled;
+    case paymentStatusPending:
+      return loc.paymentStatusPending;
+    default:
+      return status;
+  }
+}
 
 class PaymentHistoryScreen extends StatefulWidget {
   const PaymentHistoryScreen({super.key});
@@ -15,7 +40,9 @@ class PaymentHistoryScreen extends StatefulWidget {
 class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   List<Map<String, dynamic>> _orders = [];
   bool _loading = true;
-  String? _error;
+
+  /// Why the last load failed, turned into a text in build so it follows the language.
+  Object? _error;
 
   @override
   void initState() {
@@ -36,9 +63,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         _loading = false;
       });
     } catch (e) {
+      UserFacingError.log('Load payment history', e);
       if (!mounted) return;
       setState(() {
-        _error = 'Tải lịch sử lỗi: $e';
+        _error = e;
         _loading = false;
       });
     }
@@ -47,23 +75,24 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   Future<void> _cancel(String orderCode) async {
     try {
       await RemoteApiHelper.instance.cancelPayment(orderCode);
-      _snack('Đã hủy đơn $orderCode');
-      await _load();
     } catch (e) {
-      _snack('Hủy lỗi: $e');
+      UserFacingError.log('Cancel payment', e);
+      if (!mounted) return;
+      final loc = context.loc;
+      _snack(loc.paymentCancelFailed(UserFacingError.messageOf(e, loc)));
+      return;
     }
+    if (!mounted) return;
+    _snack(context.loc.paymentCancelled(orderCode));
+    await _load();
   }
 
   void _snack(String m) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
-  String _fmt(dynamic v) {
+  String _fmt(dynamic v, AppLocalizations loc) {
     final n = (v is num) ? v.toDouble() : double.tryParse('$v') ?? 0;
-    return NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: '₫',
-      decimalDigits: 0,
-    ).format(n);
+    return CurrencyHelper.formatVND(n, loc, showSign: false);
   }
 
   String _date(dynamic iso) {
@@ -75,11 +104,11 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   /// Success, failure and pending take the status colours of the theme; a cancelled order is neutral.
   Color _statusColor(ColorScheme colors, SemanticColors semantic, String s) {
     switch (s) {
-      case 'SUCCESS':
+      case paymentStatusSuccess:
         return semantic.successColor;
-      case 'FAILED':
+      case paymentStatusFailed:
         return colors.error;
-      case 'CANCELLED':
+      case paymentStatusCancelled:
         return colors.onSurfaceVariant;
       default:
         return semantic.warningColor;
@@ -91,24 +120,28 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final semantic = theme.semanticColors;
+    final loc = context.loc;
+    final error = _error;
     return Scaffold(
       backgroundColor: colors.surface,
       // The back arrow takes the app bar theme.
       appBar: AppBar(
         backgroundColor: colors.surface,
-        title: const Text(
-          'Lịch sử nạp/rút',
+        title: Text(
+          loc.paymentHistoryTitle,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
+          : error != null
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  _error!,
+                  loc.paymentHistoryLoadFailed(
+                    UserFacingError.messageOf(error, loc),
+                  ),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: colors.onSurfaceVariant),
                 ),
@@ -117,7 +150,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
           : _orders.isEmpty
           ? Center(
               child: Text(
-                'Chưa có giao dịch nạp/rút.',
+                loc.paymentHistoryEmpty,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
             )
@@ -128,7 +161,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                 itemCount: _orders.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 // The tokens come from this build: nothing looks up the theme per row.
-                itemBuilder: (_, i) => _tile(colors, semantic, _orders[i]),
+                itemBuilder: (_, i) => _tile(colors, semantic, loc, _orders[i]),
               ),
             ),
     );
@@ -138,12 +171,13 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   Widget _tile(
     ColorScheme colors,
     SemanticColors semantic,
+    AppLocalizations loc,
     Map<String, dynamic> o,
   ) {
     final type = '${o['type']}';
     final status = '${o['status']}';
     final isDeposit = type == 'DEPOSIT';
-    final canCancel = status == 'PENDING';
+    final canCancel = status == paymentStatusPending;
     final flow = isDeposit ? semantic.incomeColor : semantic.warningColor;
     final statusColor = _statusColor(colors, semantic, status);
     final detailStyle = TextStyle(color: colors.onSurfaceVariant, fontSize: 11);
@@ -167,12 +201,12 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                isDeposit ? 'Nạp tiền' : 'Rút tiền',
+                isDeposit ? loc.paymentDeposit : loc.paymentWithdrawal,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               Text(
-                '${isDeposit ? '+' : '-'}${_fmt(o['amount'])}',
+                '${isDeposit ? '+' : '-'}${_fmt(o['amount'], loc)}',
                 style: TextStyle(color: flow, fontWeight: FontWeight.bold),
               ),
             ],
@@ -192,7 +226,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  status,
+                  paymentStatusLabel(loc, status),
                   style: TextStyle(
                     color: statusColor,
                     fontSize: 11,
@@ -204,7 +238,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
               Text(_date(o['createdAt']), style: detailStyle),
             ],
           ),
-          Text('Mã: ${o['orderCode']}', style: detailStyle),
+          Text(loc.paymentOrderCode('${o['orderCode']}'), style: detailStyle),
           if (canCancel) ...[
             const SizedBox(height: 6),
             Align(
@@ -213,7 +247,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                 onPressed: () => _cancel('${o['orderCode']}'),
                 style: TextButton.styleFrom(foregroundColor: colors.error),
                 icon: const Icon(Icons.close_rounded, size: 16),
-                label: const Text('Hủy đơn'),
+                label: Text(loc.paymentCancelOrder),
               ),
             ),
           ],

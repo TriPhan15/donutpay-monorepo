@@ -5,6 +5,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -23,10 +25,11 @@ import '../../helpers/fake_local_store.dart';
 import '../../helpers/fake_settings_repository.dart';
 import '../../helpers/theme_colors.dart';
 
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: 'đ',
-  decimalDigits: 0,
+/// Amounts as the Vietnamese screens write them.
+String _money(num amount) => CurrencyHelper.formatVND(
+  amount.toDouble(),
+  AppLanguage.vietnamese.localizations,
+  showSign: false,
 );
 
 const List<Map<String, Object?>> _serverCategories = [
@@ -227,7 +230,7 @@ void main() {
               colors.onSurfaceVariant,
             );
             expect(
-              paintedColor(tester, find.text(_money.format(5000000)).first),
+              paintedColor(tester, find.text(_money(5000000)).first),
               colors.onSurface,
             );
             expect(
@@ -250,11 +253,11 @@ void main() {
               colors.onSurfaceVariant,
             );
             expect(
-              paintedColor(tester, find.text('+ ${_money.format(5000000)}')),
+              paintedColor(tester, find.text('+ ${_money(5000000)}')),
               money.incomeColor,
             );
             expect(
-              paintedColor(tester, find.text('- ${_money.format(50000)}')),
+              paintedColor(tester, find.text('- ${_money(50000)}')),
               money.expenseColor,
             );
             if (mode == ThemeMode.dark) {
@@ -273,11 +276,11 @@ void main() {
             );
             expect(paintedColor(tester, find.text('Số dư')), colors.onSurface);
             expect(
-              paintedColor(tester, find.text(_money.format(4950000))),
+              paintedColor(tester, find.text(_money(4950000))),
               money.incomeColor,
             );
             expect(
-              paintedColor(tester, find.text(_money.format(50000)).last),
+              paintedColor(tester, find.text(_money(50000)).last),
               money.expenseColor,
             );
             expect(paintedColor(tester, find.text('Excel')), colors.primary);
@@ -369,7 +372,7 @@ void main() {
               colors.onSurfaceVariant,
             );
             expect(
-              paintedColor(tester, find.text('-${_money.format(50000)}')),
+              paintedColor(tester, find.text('-${_money(50000)}')),
               money.expenseColor,
             );
             expect(
@@ -511,7 +514,7 @@ void main() {
               'Số tiền',
               'Danh mục',
               'Ngày giao dịch',
-              'Ghi chú (Tùy chọn)',
+              'Ghi chú (tùy chọn)',
             ]) {
               expect(
                 paintedColor(tester, find.text(label)),
@@ -692,11 +695,11 @@ void main() {
       expect(statCard.boxShadow, isNull);
       expect(paintedColor(tester, find.text('Thu nhập')), AppTheme.textGray);
       expect(
-        paintedColor(tester, find.text('+ ${_money.format(5000000)}')),
+        paintedColor(tester, find.text('+ ${_money(5000000)}')),
         AppTheme.positive,
       );
       expect(
-        paintedColor(tester, find.text('- ${_money.format(50000)}')),
+        paintedColor(tester, find.text('- ${_money(50000)}')),
         AppTheme.dangerColor,
       );
       final stepper = boxDecoration(tester, find.text('Lịch'));

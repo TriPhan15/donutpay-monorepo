@@ -2,17 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
-
-const String _saveFailedMessage = 'Không lưu được giao dịch. Vui lòng thử lại.';
-const String _notSentTitle = 'Chưa gửi được lên máy chủ';
-const String _notSentMessage =
-    'Giao dịch đã được lưu trên thiết bị nhưng chưa gửi được lên máy chủ. '
-    'Khi có mạng, mở Sổ sách, chọn giao dịch và bấm "Gửi lại". Gửi lại sẽ không tạo giao dịch trùng.';
 
 class AddTransactionPage extends StatefulWidget {
   const AddTransactionPage({super.key, this.initialDate});
@@ -27,7 +22,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   bool _isExpense = true;
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
-  String _selectedCategory = 'Khác';
+  String _selectedCategory = TransactionCategories.otherExpense;
   late DateTime _selectedDate;
   bool _isSaving = false;
 
@@ -77,7 +72,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       _isExpense = isExpense;
       final categories = TransactionCategories.forType(isExpense: _isExpense);
       if (!categories.contains(_selectedCategory)) {
-        _selectedCategory = categories.isNotEmpty ? categories.first : 'Khác';
+        _selectedCategory = categories.isNotEmpty
+            ? categories.first
+            : TransactionCategories.otherExpense;
       }
     });
   }
@@ -97,6 +94,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       ),
       builder: (context) {
         final colors = Theme.of(context).colorScheme;
+        final loc = context.loc;
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
@@ -105,7 +103,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                 child: Text(
-                  _isExpense ? 'Chọn danh mục chi' : 'Chọn danh mục thu',
+                  _isExpense
+                      ? loc.transactionPickExpenseCategory
+                      : loc.transactionPickIncomeCategory,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -120,7 +120,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     color: selected ? colors.primary : colors.onSurfaceVariant,
                   ),
                   title: Text(
-                    category,
+                    TransactionCategories.displayName(loc, category),
                     style: TextStyle(
                       color: selected
                           ? colors.onSurface
@@ -185,25 +185,24 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   Future<void> _saveTransaction() async {
-    if (_isSaving) return;
+    if (_isSaving || !mounted) return;
+    final loc = context.loc;
     final userId = SessionService.currentUserId;
     if (userId == null) {
-      if (!mounted) return;
       await AppDialog.error(
         context,
-        title: 'Phiên đăng nhập hết hạn',
-        message: 'Vui lòng đăng nhập lại.',
+        title: loc.commonSessionExpiredTitle,
+        message: loc.accountInfoSignInAgain,
       );
       return;
     }
 
     final amount = _parseAmount(_amountController.text.trim());
     if (amount == null) {
-      if (!mounted) return;
       await AppDialog.error(
         context,
-        title: 'Số tiền không hợp lệ',
-        message: 'Vui lòng nhập số tiền hợp lệ.',
+        title: loc.commonInvalidAmountTitle,
+        message: loc.addTransactionInvalidAmount,
       );
       return;
     }
@@ -229,16 +228,20 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         transaction,
       );
     } on TransactionRefusedException catch (e) {
-      failure = e.message;
+      failure = e.messageFor(loc);
     } catch (e) {
       debugPrint('Lỗi lưu giao dịch: $e');
-      failure = _saveFailedMessage;
+      failure = loc.transactionSaveFailed;
     }
     if (!mounted) return;
     setState(() => _isSaving = false);
 
     if (failure != null) {
-      await AppDialog.error(context, title: 'Lưu thất bại', message: failure);
+      await AppDialog.error(
+        context,
+        title: loc.commonSaveFailed,
+        message: failure,
+      );
       return;
     }
     // The transaction is on the device in either case; when the server does not have it yet, the Ledger shows it flagged
@@ -246,14 +249,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     if (status == SyncStatus.synced) {
       await AppDialog.success(
         context,
-        title: 'Thành công',
-        message: 'Đã thêm giao dịch mới.',
+        title: loc.commonSuccess,
+        message: loc.addTransactionSaved,
       );
     } else {
       await AppDialog.warning(
         context,
-        title: _notSentTitle,
-        message: _notSentMessage,
+        title: loc.transactionNotSentTitle,
+        message: loc.transactionNotSentMessage,
       );
     }
     if (!mounted) return;
@@ -273,10 +276,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     final colors = theme.colorScheme;
     final semantic = theme.semanticColors;
     final labelStyle = TextStyle(color: colors.onSurfaceVariant, fontSize: 14);
+    final loc = context.loc;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Thêm giao dịch',
+        title: Text(
+          loc.addTransactionTitle,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
@@ -289,9 +293,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTypeToggle(colors),
+            _buildTypeToggle(colors, loc),
             const SizedBox(height: 32),
-            Text('Số tiền', style: labelStyle),
+            Text(loc.addTransactionAmountLabel, style: labelStyle),
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
@@ -306,14 +310,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   color: colors.onSurfaceVariant.withValues(alpha: 0.3),
                   fontSize: 40,
                 ),
-                suffixText: 'đ',
+                suffixText: loc.currencySymbol,
                 suffixStyle: TextStyle(color: colors.onSurface, fontSize: 24),
                 border: InputBorder.none,
               ),
             ),
             Divider(color: colors.onSurfaceVariant.withValues(alpha: 0.3)),
             const SizedBox(height: 24),
-            Text('Danh mục', style: labelStyle),
+            Text(loc.transactionCategoryLabel, style: labelStyle),
             const SizedBox(height: 8),
             InkWell(
               onTap: _pickCategory,
@@ -339,7 +343,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                        _selectedCategory,
+                        TransactionCategories.displayName(
+                          loc,
+                          _selectedCategory,
+                        ),
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),
@@ -358,7 +365,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Ngày giao dịch', style: labelStyle),
+                      Text(loc.transactionDateLabel, style: labelStyle),
                       const SizedBox(height: 8),
                       InkWell(
                         onTap: _pickDate,
@@ -393,13 +400,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ],
             ),
             const SizedBox(height: 24),
-            Text('Ghi chú (Tùy chọn)', style: labelStyle),
+            Text(loc.transactionNoteOptional, style: labelStyle),
             const SizedBox(height: 8),
             // Text, hint and fill come from the theme: onSurface, onSurfaceVariant and the surface colour.
             TextField(
               controller: _noteController,
               decoration: InputDecoration(
-                hintText: 'VD: Mua cafe Highlands',
+                hintText: loc.addTransactionNoteHint,
                 filled: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -418,8 +425,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   ),
                 ),
                 onPressed: _isSaving ? null : _saveTransaction,
-                child: const Text(
-                  'Lưu giao dịch',
+                child: Text(
+                  loc.addTransactionSubmit,
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -430,7 +437,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  Widget _buildTypeToggle(ColorScheme colors) {
+  Widget _buildTypeToggle(ColorScheme colors, AppLocalizations loc) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -450,7 +457,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
                 child: Center(
                   child: Text(
-                    'Tiền chi',
+                    loc.transactionExpenseMoney,
                     style: TextStyle(
                       color: _isExpense
                           ? colors.onError
@@ -473,7 +480,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 ),
                 child: Center(
                   child: Text(
-                    'Tiền thu',
+                    loc.transactionIncomeMoney,
                     style: TextStyle(
                       color: !_isExpense
                           ? colors.onPrimary

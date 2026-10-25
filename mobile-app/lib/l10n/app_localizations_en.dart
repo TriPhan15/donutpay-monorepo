@@ -928,4 +928,485 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get savingsUpdate => 'Update';
+
+  @override
+  String get commonSessionExpiredTitle => 'Session expired';
+
+  @override
+  String get commonInvalidAmountTitle => 'Invalid amount';
+
+  @override
+  String get commonSummary => 'Summary';
+
+  @override
+  String get currencySymbol => 'đ';
+
+  @override
+  String get transactionSaveFailed =>
+      'Couldn\'t save the transaction. Please try again.';
+
+  @override
+  String get transactionNotSentTitle => 'Not sent to the server yet';
+
+  @override
+  String get transactionNotSentMessage =>
+      'The transaction is saved on this device but hasn\'t reached the server yet. When you\'re back online, open the Ledger, select the transaction and tap \"Resend\". Resending won\'t create a duplicate.';
+
+  @override
+  String get transactionCategoryLabel => 'Category';
+
+  @override
+  String get transactionDateLabel => 'Transaction date';
+
+  @override
+  String get transactionNoteOptional => 'Note (optional)';
+
+  @override
+  String get transactionPickExpenseCategory => 'Choose an expense category';
+
+  @override
+  String get transactionPickIncomeCategory => 'Choose an income category';
+
+  @override
+  String get transactionExpenseMoney => 'Expense';
+
+  @override
+  String get transactionIncomeMoney => 'Income';
+
+  @override
+  String get transactionExpenseKind => 'Expense';
+
+  @override
+  String get transactionIncomeKind => 'Income';
+
+  @override
+  String get addTransactionTitle => 'Add transaction';
+
+  @override
+  String get addTransactionAmountLabel => 'Amount';
+
+  @override
+  String get addTransactionInvalidAmount => 'Please enter a valid amount.';
+
+  @override
+  String get addTransactionNoteHint => 'e.g. Coffee at Highlands';
+
+  @override
+  String get addTransactionSubmit => 'Save transaction';
+
+  @override
+  String get addTransactionSaved => 'New transaction added.';
+
+  @override
+  String get editTransactionTitle => 'Edit transaction';
+
+  @override
+  String get editTransactionAmountLabel => 'Amount (₫)';
+
+  @override
+  String get editTransactionNoServerIdTitle => 'Can\'t edit this transaction';
+
+  @override
+  String get editTransactionNoServerIdMessage =>
+      'This transaction doesn\'t have a server ID yet.';
+
+  @override
+  String get editTransactionAmountPositive =>
+      'Please enter an amount greater than 0.';
+
+  @override
+  String get editTransactionNoChangesTitle => 'No changes yet';
+
+  @override
+  String get editTransactionNoChangesMessage =>
+      'Change the amount, category or note before saving.';
+
+  @override
+  String get editTransactionSaveFailedTitle => 'Couldn\'t save the transaction';
+
+  @override
+  String get editTransactionRejected =>
+      'The server couldn\'t process the request. Please try again later.';
+
+  @override
+  String get editTransactionSavedTitle => 'Changes saved';
+
+  @override
+  String get editTransactionSavedMessage => 'The transaction has been updated.';
+
+  @override
+  String get editTransactionCategoriesUnavailable =>
+      'Couldn\'t load the category list. You can still edit the amount and note.';
+
+  @override
+  String get ledgerTitle => 'Ledger';
+
+  @override
+  String get ledgerSearchHint => 'Search name, category...';
+
+  @override
+  String get ledgerCalendar => 'Calendar';
+
+  @override
+  String get ledgerLegendIncome => 'Income';
+
+  @override
+  String get ledgerLegendExpense => 'Expense';
+
+  @override
+  String ledgerChartMonth(String month) {
+    String _temp0 = intl.Intl.selectLogic(month, {
+      '1': 'Jan',
+      '2': 'Feb',
+      '3': 'Mar',
+      '4': 'Apr',
+      '5': 'May',
+      '6': 'Jun',
+      '7': 'Jul',
+      '8': 'Aug',
+      '9': 'Sep',
+      '10': 'Oct',
+      '11': 'Nov',
+      '12': 'Dec',
+      'other': '$month',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get ledgerIncome => 'Income';
+
+  @override
+  String get ledgerExpense => 'Spending';
+
+  @override
+  String get ledgerRecent => 'Recent transactions';
+
+  @override
+  String get ledgerEmptyPeriod => 'No transactions in this period.';
+
+  @override
+  String get ledgerTotalIncome => 'Total income';
+
+  @override
+  String get ledgerTotalExpense => 'Total spending';
+
+  @override
+  String get ledgerBalance => 'Balance';
+
+  @override
+  String get ledgerFilterTitle => 'Smart filter & sort';
+
+  @override
+  String get ledgerFilterType => '1. Transaction type';
+
+  @override
+  String get ledgerFilterAll => 'All';
+
+  @override
+  String get ledgerFilterExpenseOnly => 'Expenses only';
+
+  @override
+  String get ledgerFilterIncomeOnly => 'Income only';
+
+  @override
+  String get ledgerFilterAmount => '2. Amount range';
+
+  @override
+  String get ledgerFilterAnyAmount => 'Any amount';
+
+  @override
+  String get ledgerFilterSort => '3. Sort by';
+
+  @override
+  String get ledgerSortNewest => 'Newest';
+
+  @override
+  String get ledgerSortOldest => 'Oldest';
+
+  @override
+  String get ledgerSortHighest => 'Highest amount';
+
+  @override
+  String get ledgerFilterApply => 'Apply filters';
+
+  @override
+  String get ledgerDetailAmount => 'Amount:';
+
+  @override
+  String get ledgerDetailTime => 'Time:';
+
+  @override
+  String get ledgerDetailReceiptStatus => 'Receipt status:';
+
+  @override
+  String get ledgerDetailSync => 'Sync:';
+
+  @override
+  String get ledgerDetailUnsyncedHint =>
+      'The server hasn\'t confirmed this transaction yet. When you\'re back online, tap \"Resend\". Resending won\'t create a duplicate.';
+
+  @override
+  String get ledgerDetailReceiptImage => 'Original receipt photo:';
+
+  @override
+  String get ledgerResend => 'Resend';
+
+  @override
+  String get ledgerDelete => 'Delete this transaction';
+
+  @override
+  String get ledgerDeleteTitle => 'Delete transaction?';
+
+  @override
+  String get ledgerDeleteMessage =>
+      'The amount will go back to your wallet and this can\'t be undone. Are you sure?';
+
+  @override
+  String get ledgerDeleteNow => 'Delete now';
+
+  @override
+  String get ledgerDeleted => 'Transaction deleted and amount refunded';
+
+  @override
+  String get ledgerDeleteFailed => 'Couldn\'t delete. Please try again';
+
+  @override
+  String get ledgerResendFailedTitle => 'Resend failed';
+
+  @override
+  String get ledgerResendFailedMessage =>
+      'Couldn\'t resend the transaction. Please try again.';
+
+  @override
+  String get ledgerResent => 'Transaction sent to the server';
+
+  @override
+  String get ledgerStillNotSentTitle => 'Still not sent';
+
+  @override
+  String get ledgerStillNotSentMessage =>
+      'Can\'t reach the server. The transaction stays on this device and you can resend it later.';
+
+  @override
+  String get ledgerDeleteUnsyncedTitle => 'Delete unsent transaction?';
+
+  @override
+  String get ledgerDeleteUnsyncedMessage =>
+      'The server hasn\'t confirmed this transaction. Remove it from this device and stop sending it? This can\'t be undone.';
+
+  @override
+  String get ledgerDeletedUnsynced => 'Unsent transaction deleted';
+
+  @override
+  String get ledgerLoadFailedNotice =>
+      'Couldn\'t load the list from the server. Only the unsent transactions on this device are shown. Pull down to try again.';
+
+  @override
+  String ledgerExcelSheet(String month) {
+    return 'Spending $month';
+  }
+
+  @override
+  String get ledgerExcelDate => 'Date';
+
+  @override
+  String get ledgerExcelTotal => 'Total';
+
+  @override
+  String ledgerExcelBudgetHeader(String month) {
+    return 'BUDGETS $month';
+  }
+
+  @override
+  String get ledgerExcelLimit => 'Limit';
+
+  @override
+  String get ledgerExcelSpent => 'Spent';
+
+  @override
+  String get ledgerExcelRemaining => 'Remaining';
+
+  @override
+  String ledgerExcelFileName(String month, String date) {
+    return 'spending_$month$date';
+  }
+
+  @override
+  String ledgerExcelShareText(String month) {
+    return 'Spending report for $month';
+  }
+
+  @override
+  String get reviewTitle => 'Confirm receipt';
+
+  @override
+  String get reviewDateFallback =>
+      'Couldn\'t read the date on the receipt, so the current time is used. Tap to choose another.';
+
+  @override
+  String get reviewNoTotal =>
+      'Donut couldn\'t read the total from the photo. Please enter it manually.';
+
+  @override
+  String get reviewScanFailed =>
+      'Receipt scan failed (check the AI service). Please enter the details manually.';
+
+  @override
+  String get reviewPhotoUploadFailedTitle =>
+      'Couldn\'t upload the receipt photo';
+
+  @override
+  String get reviewPhotoUploadFailedMessage =>
+      'The receipt photo hasn\'t been uploaded to the server. Save the transaction without the photo?';
+
+  @override
+  String get reviewSaveWithoutPhoto => 'Save without photo';
+
+  @override
+  String get reviewLater => 'Later';
+
+  @override
+  String get reviewTotalPositive => 'Please enter a total greater than 0.';
+
+  @override
+  String get reviewSaved => 'Transaction saved from the receipt.';
+
+  @override
+  String get reviewAnalyzing => 'Analyzing the receipt...';
+
+  @override
+  String get reviewPleaseWait => 'This will only take a moment';
+
+  @override
+  String get reviewExtracted => 'Extraction complete';
+
+  @override
+  String get reviewCheckDetails =>
+      'Check the details below against the original photo before saving.';
+
+  @override
+  String get reviewGeneralInfo => 'General information';
+
+  @override
+  String get reviewStoreName => 'Store name';
+
+  @override
+  String get reviewTotalLabel => 'Total (đ)';
+
+  @override
+  String get reviewSubtotal => 'Subtotal:';
+
+  @override
+  String get reviewTax => 'VAT/Other taxes:';
+
+  @override
+  String get reviewGrandTotal => 'TOTAL:';
+
+  @override
+  String get reviewSubmit => 'Confirm & save';
+
+  @override
+  String get paymentHistoryTitle => 'Deposit/withdrawal history';
+
+  @override
+  String paymentHistoryLoadFailed(String reason) {
+    return 'Couldn\'t load the history. $reason';
+  }
+
+  @override
+  String get paymentHistoryEmpty => 'No deposits or withdrawals yet.';
+
+  @override
+  String paymentCancelled(String code) {
+    return 'Order $code cancelled';
+  }
+
+  @override
+  String paymentCancelFailed(String reason) {
+    return 'Couldn\'t cancel the order. $reason';
+  }
+
+  @override
+  String get paymentDeposit => 'Deposit';
+
+  @override
+  String get paymentWithdrawal => 'Withdrawal';
+
+  @override
+  String paymentOrderCode(String code) {
+    return 'Code: $code';
+  }
+
+  @override
+  String get paymentCancelOrder => 'Cancel order';
+
+  @override
+  String get paymentStatusSuccess => 'Successful';
+
+  @override
+  String get paymentStatusFailed => 'Failed';
+
+  @override
+  String get paymentStatusCancelled => 'Cancelled';
+
+  @override
+  String get paymentStatusPending => 'Pending';
+
+  @override
+  String linkedCreateOrderFailed(String reason) {
+    return 'Couldn\'t create the sync order. $reason';
+  }
+
+  @override
+  String get linkedPollTimedOut =>
+      'No payment result yet. Please check again in the sync history.';
+
+  @override
+  String get linkedDemoWallet => 'Demo wallet';
+
+  @override
+  String linkedSyncFrom(String wallet) {
+    return 'Sync from $wallet';
+  }
+
+  @override
+  String get linkedAmountPrompt => 'Amount to add to your spending budget:';
+
+  @override
+  String get linkedAmountHint => 'e.g. 100000';
+
+  @override
+  String get linkedSync => 'Sync';
+
+  @override
+  String linkedMinAmount(String amount) {
+    return 'The minimum amount is $amount.';
+  }
+
+  @override
+  String linkedSynced(String amount) {
+    return 'Synced $amount to your spending budget.';
+  }
+
+  @override
+  String linkedSyncOutcome(String status) {
+    return 'Sync: $status';
+  }
+
+  @override
+  String get linkedHistoryTooltip => 'Sync history';
+
+  @override
+  String get linkedWalletsHeading => 'Linked e-wallets';
+
+  @override
+  String get linkedWalletsDescription =>
+      'Sync money from a wallet into your budget to manage spending.';
+
+  @override
+  String get linkedSyncing => 'Syncing... finish the payment on the gateway.';
+
+  @override
+  String get linkedLinked => 'Linked';
 }

@@ -4,6 +4,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -14,10 +16,11 @@ import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_settings_repository.dart';
 import '../../helpers/theme_colors.dart';
 
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: '₫',
-  decimalDigits: 0,
+/// Amounts as the Vietnamese screens write them.
+String _money(num amount) => CurrencyHelper.formatVND(
+  amount.toDouble(),
+  AppLanguage.vietnamese.localizations,
+  showSign: false,
 );
 
 Map<String, Object?> _order(
@@ -108,7 +111,7 @@ void main() {
             colors.onSurface,
           );
           expect(
-            paintedColor(tester, find.text('+${_money.format(100000)}')),
+            paintedColor(tester, find.text('+${_money(100000)}')),
             semantic.incomeColor,
           );
           expect(
@@ -119,7 +122,7 @@ void main() {
             semantic.incomeColor,
           );
           expect(
-            paintedColor(tester, find.text('-${_money.format(50000)}')),
+            paintedColor(tester, find.text('-${_money(50000)}')),
             semantic.warningColor,
           );
           expect(
@@ -128,10 +131,10 @@ void main() {
           );
 
           for (final (status, color) in [
-            ('SUCCESS', semantic.successColor),
-            ('FAILED', colors.error),
-            ('CANCELLED', colors.onSurfaceVariant),
-            ('PENDING', semantic.warningColor),
+            ('Thành công', semantic.successColor),
+            ('Thất bại', colors.error),
+            ('Đã hủy', colors.onSurfaceVariant),
+            ('Đang chờ', semantic.warningColor),
           ]) {
             expect(
               paintedColor(tester, find.text(status)),
@@ -190,6 +193,30 @@ void main() {
       );
       expect(paintedColor(tester, find.text('Mã: A1')), AppTheme.textGray);
       expect(paintedColor(tester, find.text('ZALOPAY')), AppTheme.mintAccent);
+    },
+  );
+
+  testWidgets(
+    'in English the history, its order types and states speak English',
+    (tester) async {
+      tester.view.physicalSize = const Size(600, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        withAppSettings(
+          const PaymentHistoryScreen(),
+          settings: FakeSettingsRepository(language: AppLanguage.english),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Deposit/withdrawal history'), findsOneWidget);
+      expect(find.text('Deposit'), findsWidgets);
+      expect(find.text('Code: A1'), findsOneWidget);
+      for (final status in ['Successful', 'Failed', 'Cancelled', 'Pending']) {
+        expect(find.text(status), findsOneWidget, reason: status);
+      }
+      expect(find.text('Cancel order'), findsOneWidget);
     },
   );
 }

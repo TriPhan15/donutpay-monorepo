@@ -7,8 +7,11 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 import 'dart:io';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
@@ -62,11 +65,9 @@ class LedgerPageState extends State<LedgerPage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  static final _fmtCur = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: 'đ',
-    decimalDigits: 0,
-  );
+  /// [amount] in VND, with a minus only when it is negative (a balance), as the language of [loc] writes it.
+  static String _money(double amount, AppLocalizations loc) =>
+      CurrencyHelper.formatVND(amount, loc, showSign: amount < 0);
 
   @override
   void initState() {
@@ -174,13 +175,17 @@ class LedgerPageState extends State<LedgerPage> {
     return date.year == _selectedDate.year && date.month == _selectedDate.month;
   }
 
-  String get _periodLabel {
+  String _periodLabel(AppLocalizations loc) {
     if (_period == LedgerPeriod.week) {
       final e = _weekEnd.subtract(const Duration(days: 1));
       return '${DateFormat('dd/MM').format(_weekStart)} - ${DateFormat('dd/MM/yyyy').format(e)}';
     }
-    return DateFormat('MMMM yyyy', 'vi_VN').format(_selectedDate);
+    return _monthLabel(loc);
   }
+
+  /// The selected month as the language of [loc] names it, e.g. "October 2026".
+  String _monthLabel(AppLocalizations loc) =>
+      DateFormat('MMMM yyyy', loc.localeName).format(_selectedDate);
 
   List<TransactionModel> get _periodTransactions {
     final q = _searchQuery.toLowerCase().trim();
@@ -238,20 +243,21 @@ class LedgerPageState extends State<LedgerPage> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final semantic = theme.semanticColors;
+    final loc = context.loc;
     return Scaffold(
       appBar: AppBar(
         title: _isSearching
             ? TextField(
                 controller: _searchController,
                 autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Tìm tên, danh mục...',
+                decoration: InputDecoration(
+                  hintText: loc.ledgerSearchHint,
                   border: InputBorder.none,
                 ),
                 onChanged: (v) => setState(() => _searchQuery = v),
               )
-            : const Text(
-                'Sổ sách',
+            : Text(
+                loc.ledgerTitle,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
               ),
         leading: _isSearching
@@ -338,8 +344,8 @@ class LedgerPageState extends State<LedgerPage> {
                 color: colors.primary,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Lịch',
+              Text(
+                context.loc.ledgerCalendar,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(width: 8),
@@ -354,8 +360,16 @@ class LedgerPageState extends State<LedgerPage> {
     );
   }
 
-  String _wdShort(DateTime d) {
-    const w = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  static String _wdShort(DateTime d, AppLocalizations loc) {
+    final w = [
+      loc.weekdayShortMon,
+      loc.weekdayShortTue,
+      loc.weekdayShortWed,
+      loc.weekdayShortThu,
+      loc.weekdayShortFri,
+      loc.weekdayShortSat,
+      loc.weekdayShortSun,
+    ];
     return w[d.weekday - 1];
   }
 
@@ -395,13 +409,14 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   Widget _buildPeriodHeader(ColorScheme colors) {
+    final loc = context.loc;
     return Row(
       children: [
         _circleBtn(colors, Icons.chevron_left_rounded, () => _shiftPeriod(-1)),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            _periodLabel,
+            _periodLabel(loc),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: colors.onSurfaceVariant,
@@ -434,11 +449,14 @@ class LedgerPageState extends State<LedgerPage> {
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
-              items: const [
-                DropdownMenuItem(value: LedgerPeriod.week, child: Text('Tuần')),
+              items: [
+                DropdownMenuItem(
+                  value: LedgerPeriod.week,
+                  child: Text(loc.budgetPeriodWeek),
+                ),
                 DropdownMenuItem(
                   value: LedgerPeriod.month,
-                  child: Text('Tháng'),
+                  child: Text(loc.budgetPeriodMonth),
                 ),
               ],
               onChanged: (v) {
@@ -457,6 +475,7 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   Widget _buildChartCard(ColorScheme colors, SemanticColors semantic) {
+    final loc = context.loc;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       decoration: AppTheme.cardDecoration(colors),
@@ -465,9 +484,13 @@ class LedgerPageState extends State<LedgerPage> {
         children: [
           Row(
             children: [
-              _legendDot(colors, semantic.incomeColor, 'Thu'),
+              _legendDot(colors, semantic.incomeColor, loc.ledgerLegendIncome),
               const SizedBox(width: 16),
-              _legendDot(colors, semantic.expenseColor, 'Chi'),
+              _legendDot(
+                colors,
+                semantic.expenseColor,
+                loc.ledgerLegendExpense,
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -492,20 +515,21 @@ class LedgerPageState extends State<LedgerPage> {
     final List<double> income = [];
     final List<double> expense = [];
     final List<String> labels = [];
+    final loc = context.loc;
 
     if (_period == LedgerPeriod.week) {
       for (int i = 0; i < 7; i++) {
         final day = _weekStart.add(Duration(days: i));
         income.add(_sumOn(day, false, isDay: true));
         expense.add(_sumOn(day, true, isDay: true));
-        labels.add(_wdShort(day));
+        labels.add(_wdShort(day, loc));
       }
     } else {
       for (int i = 5; i >= 0; i--) {
         final m = DateTime(_selectedDate.year, _selectedDate.month - i);
         income.add(_sumOn(m, false, isDay: false));
         expense.add(_sumOn(m, true, isDay: false));
-        labels.add('Th${m.month}');
+        labels.add(loc.ledgerChartMonth('${m.month}'));
       }
     }
 
@@ -592,13 +616,14 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   Widget _buildStatCards(ColorScheme colors, SemanticColors semantic) {
+    final loc = context.loc;
     return Row(
       children: [
         Expanded(
           child: _statCard(
             colors,
             icon: Icons.south_west_rounded,
-            label: 'Thu nhập',
+            label: loc.ledgerIncome,
             amount: _periodIncome,
             color: semantic.incomeColor,
           ),
@@ -608,7 +633,7 @@ class LedgerPageState extends State<LedgerPage> {
           child: _statCard(
             colors,
             icon: Icons.north_east_rounded,
-            label: 'Chi tiêu',
+            label: loc.ledgerExpense,
             amount: _periodExpense,
             color: semantic.expenseColor,
           ),
@@ -643,7 +668,7 @@ class LedgerPageState extends State<LedgerPage> {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
-              _fmtCur.format(amount),
+              _money(amount, context.loc),
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
@@ -680,6 +705,7 @@ class LedgerPageState extends State<LedgerPage> {
 
   Widget _buildRecentList(ColorScheme colors, SemanticColors semantic) {
     final txs = _periodTransactions;
+    final loc = context.loc;
     // Made once for the whole list rather than once per row.
     final card = AppTheme.cardDecoration(colors);
     final detailStyle = TextStyle(color: colors.onSurfaceVariant, fontSize: 12);
@@ -694,8 +720,8 @@ class LedgerPageState extends State<LedgerPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Giao dịch gần đây',
+        Text(
+          loc.ledgerRecent,
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 12),
@@ -704,7 +730,7 @@ class LedgerPageState extends State<LedgerPage> {
             padding: const EdgeInsets.all(16),
             decoration: card,
             child: Text(
-              'Không có giao dịch trong kỳ này.',
+              loc.ledgerEmptyPeriod,
               style: TextStyle(color: colors.onSurfaceVariant),
             ),
           )
@@ -741,7 +767,7 @@ class LedgerPageState extends State<LedgerPage> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${tx.category} • ${DateFormat('dd/MM HH:mm').format(tx.date)}',
+                              '${TransactionCategories.displayName(loc, tx.category)} • ${DateFormat('dd/MM HH:mm').format(tx.date)}',
                               style: detailStyle,
                             ),
                             if (tx.receiptStatus != null) ...[
@@ -756,7 +782,7 @@ class LedgerPageState extends State<LedgerPage> {
                         ),
                       ),
                       Text(
-                        '${tx.isExpense ? "- " : "+ "}${_fmtCur.format(tx.amount)}',
+                        '${tx.isExpense ? "- " : "+ "}${_money(tx.amount, loc)}',
                         style: tx.isExpense ? expenseStyle : incomeStyle,
                       ),
                     ],
@@ -771,6 +797,7 @@ class LedgerPageState extends State<LedgerPage> {
 
   Widget _buildSummaryBlock(ColorScheme colors, SemanticColors semantic) {
     final balance = _periodIncome - _periodExpense;
+    final loc = context.loc;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -779,8 +806,8 @@ class LedgerPageState extends State<LedgerPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Tổng kết',
+            Text(
+              loc.commonSummary,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             TextButton.icon(
@@ -798,21 +825,21 @@ class LedgerPageState extends State<LedgerPage> {
             children: [
               _summaryRow(
                 colors,
-                'Tổng thu',
+                loc.ledgerTotalIncome,
                 _periodIncome,
                 semantic.incomeColor,
               ),
               const SizedBox(height: 8),
               _summaryRow(
                 colors,
-                'Tổng chi',
+                loc.ledgerTotalExpense,
                 _periodExpense,
                 semantic.expenseColor,
               ),
               const Divider(height: 24),
               _summaryRow(
                 colors,
-                'Số dư',
+                loc.ledgerBalance,
                 balance,
                 balance >= 0 ? semantic.incomeColor : semantic.expenseColor,
                 bold: true,
@@ -842,7 +869,7 @@ class LedgerPageState extends State<LedgerPage> {
           ),
         ),
         Text(
-          _fmtCur.format(amount),
+          _money(amount, context.loc),
           style: TextStyle(color: color, fontWeight: FontWeight.bold),
         ),
       ],
@@ -861,6 +888,7 @@ class LedgerPageState extends State<LedgerPage> {
           color: Theme.of(ctx).colorScheme.primary,
           fontWeight: FontWeight.bold,
         );
+        final loc = ctx.loc;
         return StatefulBuilder(
           builder: (ctx, setModalState) => SafeArea(
             child: Padding(
@@ -869,18 +897,18 @@ class LedgerPageState extends State<LedgerPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Bộ lọc & Sắp xếp thông minh',
+                  Text(
+                    loc.ledgerFilterTitle,
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
 
-                  Text('1. Loại giao dịch', style: sectionStyle),
+                  Text(loc.ledgerFilterType, style: sectionStyle),
                   Wrap(
                     spacing: 8,
                     children: [
                       ChoiceChip(
-                        label: const Text('Tất cả'),
+                        label: Text(loc.ledgerFilterAll),
                         selected: _showExpenses && _showIncome,
                         onSelected: (_) => setModalState(() {
                           _showExpenses = true;
@@ -888,7 +916,7 @@ class LedgerPageState extends State<LedgerPage> {
                         }),
                       ),
                       ChoiceChip(
-                        label: const Text('Chỉ Khoản Chi'),
+                        label: Text(loc.ledgerFilterExpenseOnly),
                         selected: _showExpenses && !_showIncome,
                         onSelected: (_) => setModalState(() {
                           _showExpenses = true;
@@ -896,7 +924,7 @@ class LedgerPageState extends State<LedgerPage> {
                         }),
                       ),
                       ChoiceChip(
-                        label: const Text('Chỉ Khoản Thu'),
+                        label: Text(loc.ledgerFilterIncomeOnly),
                         selected: !_showExpenses && _showIncome,
                         onSelected: (_) => setModalState(() {
                           _showExpenses = false;
@@ -907,12 +935,12 @@ class LedgerPageState extends State<LedgerPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  Text('2. Khoảng tiền', style: sectionStyle),
+                  Text(loc.ledgerFilterAmount, style: sectionStyle),
                   Wrap(
                     spacing: 8,
                     children: [
                       ChoiceChip(
-                        label: const Text('Mọi mức giá'),
+                        label: Text(loc.ledgerFilterAnyAmount),
                         selected:
                             _filterMaxAmount == null &&
                             _filterMinAmount == null,
@@ -953,24 +981,24 @@ class LedgerPageState extends State<LedgerPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  Text('3. Sắp xếp theo', style: sectionStyle),
+                  Text(loc.ledgerFilterSort, style: sectionStyle),
                   Wrap(
                     spacing: 8,
                     children: [
                       ChoiceChip(
-                        label: const Text('Mới nhất'),
+                        label: Text(loc.ledgerSortNewest),
                         selected: _sortOption == 'date_desc',
                         onSelected: (_) =>
                             setModalState(() => _sortOption = 'date_desc'),
                       ),
                       ChoiceChip(
-                        label: const Text('Cũ nhất'),
+                        label: Text(loc.ledgerSortOldest),
                         selected: _sortOption == 'date_asc',
                         onSelected: (_) =>
                             setModalState(() => _sortOption = 'date_asc'),
                       ),
                       ChoiceChip(
-                        label: const Text('Giá trị cao nhất'),
+                        label: Text(loc.ledgerSortHighest),
                         selected: _sortOption == 'amount_desc',
                         onSelected: (_) =>
                             setModalState(() => _sortOption = 'amount_desc'),
@@ -987,8 +1015,8 @@ class LedgerPageState extends State<LedgerPage> {
                         setState(() {});
                         Navigator.pop(ctx);
                       },
-                      child: const Text(
-                        'Áp dụng bộ lọc',
+                      child: Text(
+                        loc.ledgerFilterApply,
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -1017,6 +1045,7 @@ class LedgerPageState extends State<LedgerPage> {
           color: colors.onSurfaceVariant,
           fontSize: 15,
         );
+        final loc = ctx.loc;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
@@ -1048,7 +1077,10 @@ class LedgerPageState extends State<LedgerPage> {
                               ),
                             ),
                             Text(
-                              tx.category,
+                              TransactionCategories.displayName(
+                                loc,
+                                tx.category,
+                              ),
                               style: TextStyle(
                                 color: colors.onSurfaceVariant,
                                 fontSize: 14,
@@ -1067,14 +1099,14 @@ class LedgerPageState extends State<LedgerPage> {
 
                   _buildDetailRow(
                     labelStyle,
-                    'Số tiền:',
-                    '${tx.isExpense ? "-" : "+"}${_fmtCur.format(tx.amount)}',
+                    loc.ledgerDetailAmount,
+                    '${tx.isExpense ? "-" : "+"}${_money(tx.amount, loc)}',
                     tx.isExpense ? semantic.expenseColor : semantic.incomeColor,
                   ),
                   const SizedBox(height: 12),
                   _buildDetailRow(
                     labelStyle,
-                    'Thời gian:',
+                    loc.ledgerDetailTime,
                     DateFormat('dd/MM/yyyy - HH:mm').format(tx.date),
                     colors.onSurface,
                   ),
@@ -1090,7 +1122,10 @@ class LedgerPageState extends State<LedgerPage> {
                         spacing: 8,
                         runSpacing: 6,
                         children: [
-                          Text('Trạng thái hóa đơn:', style: labelStyle),
+                          Text(
+                            loc.ledgerDetailReceiptStatus,
+                            style: labelStyle,
+                          ),
                           ReceiptStatusBadge(status: tx.receiptStatus!),
                         ],
                       ),
@@ -1106,14 +1141,14 @@ class LedgerPageState extends State<LedgerPage> {
                         spacing: 8,
                         runSpacing: 6,
                         children: [
-                          Text('Đồng bộ:', style: labelStyle),
+                          Text(loc.ledgerDetailSync, style: labelStyle),
                           SyncStatusBadge(status: tx.syncStatus),
                         ],
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Giao dịch chưa được máy chủ xác nhận. Khi đã có mạng, bấm "Gửi lại". Gửi lại sẽ không tạo giao dịch trùng.',
+                      loc.ledgerDetailUnsyncedHint,
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 13,
@@ -1123,7 +1158,7 @@ class LedgerPageState extends State<LedgerPage> {
                   if (tx.imageUrl != null && tx.imageUrl!.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text(
-                      'Ảnh hóa đơn gốc:',
+                      loc.ledgerDetailReceiptImage,
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 14,
@@ -1181,8 +1216,8 @@ class LedgerPageState extends State<LedgerPage> {
                       height: 50,
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.cloud_upload_rounded),
-                        label: const Text(
-                          'Gửi lại',
+                        label: Text(
+                          loc.ledgerResend,
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         onPressed: () {
@@ -1200,8 +1235,8 @@ class LedgerPageState extends State<LedgerPage> {
                       height: 50,
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.edit_rounded),
-                        label: const Text(
-                          'Sửa giao dịch',
+                        label: Text(
+                          loc.editTransactionTitle,
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         onPressed: () {
@@ -1222,8 +1257,8 @@ class LedgerPageState extends State<LedgerPage> {
                         elevation: 0,
                       ),
                       icon: const Icon(Icons.delete_rounded),
-                      label: const Text(
-                        'Xóa giao dịch này',
+                      label: Text(
+                        loc.ledgerDelete,
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       onPressed: () {
@@ -1281,20 +1316,21 @@ class LedgerPageState extends State<LedgerPage> {
       context: context,
       builder: (ctx) {
         final colors = Theme.of(ctx).colorScheme;
+        final loc = ctx.loc;
         return AlertDialog(
-          title: const Text(
-            'Xóa giao dịch?',
+          title: Text(
+            loc.ledgerDeleteTitle,
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: Text(
-            'Hành động này sẽ hoàn lại tiền vào ví và không thể khôi phục. Bạn chắc chứ?',
+            loc.ledgerDeleteMessage,
             style: TextStyle(color: colors.onSurfaceVariant),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text(
-                'Hủy',
+                loc.dialogCancel,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
             ),
@@ -1302,7 +1338,7 @@ class LedgerPageState extends State<LedgerPage> {
               style: ElevatedButton.styleFrom(backgroundColor: colors.error),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(
-                'Xóa ngay',
+                loc.ledgerDeleteNow,
                 style: TextStyle(
                   color: colors.onError,
                   fontWeight: FontWeight.bold,
@@ -1317,38 +1353,32 @@ class LedgerPageState extends State<LedgerPage> {
     if (confirm != true) return;
 
     final success = await RemoteApiHelper.instance.deleteTransaction(id);
-    if (success) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa giao dịch và hoàn tiền')),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Xóa thất bại, vui lòng thử lại')),
-        );
-      }
-    }
+    if (!mounted) return;
+    final loc = context.loc;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? loc.ledgerDeleted : loc.ledgerDeleteFailed),
+      ),
+    );
   }
 
   /// Sends a transaction that the server has not confirmed again. It carries the clientId it was created with, so when
   /// the first send did arrive the server answers with that transaction instead of creating a second one.
   Future<void> _resendTransactionAction(TransactionModel tx) async {
     if (!mounted) return;
+    final loc = context.loc;
     final userId = SessionService.currentUserId;
     if (userId == null) {
       await AppDialog.error(
         context,
-        title: 'Phiên đăng nhập hết hạn',
-        message: 'Vui lòng đăng nhập lại.',
+        title: loc.commonSessionExpiredTitle,
+        message: loc.accountInfoSignInAgain,
       );
       return;
     }
     final clientId = tx.clientId;
     if (clientId == null || !_resendingClientIds.add(clientId)) return;
 
-    final loc = context.locOrDefault;
     SyncStatus? outcome;
     String? failure;
     try {
@@ -1357,7 +1387,7 @@ class LedgerPageState extends State<LedgerPage> {
       failure = e.messageFor(loc);
     } catch (e) {
       debugPrint('Lỗi gửi lại giao dịch: $e');
-      failure = 'Không gửi lại được giao dịch. Vui lòng thử lại.';
+      failure = loc.ledgerResendFailedMessage;
     } finally {
       _resendingClientIds.remove(clientId);
     }
@@ -1366,19 +1396,18 @@ class LedgerPageState extends State<LedgerPage> {
     if (failure != null) {
       await AppDialog.error(
         context,
-        title: 'Gửi lại thất bại',
+        title: loc.ledgerResendFailedTitle,
         message: failure,
       );
     } else if (outcome == SyncStatus.synced) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã gửi giao dịch lên máy chủ')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(loc.ledgerResent)));
     } else {
       await AppDialog.warning(
         context,
-        title: 'Vẫn chưa gửi được',
-        message:
-            'Chưa kết nối được máy chủ. Giao dịch vẫn được giữ trên thiết bị, bạn có thể gửi lại sau.',
+        title: loc.ledgerStillNotSentTitle,
+        message: loc.ledgerStillNotSentMessage,
       );
     }
   }
@@ -1391,12 +1420,12 @@ class LedgerPageState extends State<LedgerPage> {
     final clientId = tx.clientId;
     if (userId == null || clientId == null) return;
 
+    final loc = context.loc;
     final confirmed = await AppDialog.confirm(
       context,
-      title: 'Xóa giao dịch chưa gửi?',
-      message:
-          'Giao dịch này chưa được máy chủ xác nhận. Xóa khỏi thiết bị và không gửi nữa? Hành động này không thể khôi phục.',
-      confirmText: 'Xóa ngay',
+      title: loc.ledgerDeleteUnsyncedTitle,
+      message: loc.ledgerDeleteUnsyncedMessage,
+      confirmText: loc.ledgerDeleteNow,
       danger: true,
     );
     if (!confirmed || !mounted) return;
@@ -1405,7 +1434,7 @@ class LedgerPageState extends State<LedgerPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Đã xóa giao dịch chưa gửi')));
+    ).showSnackBar(SnackBar(content: Text(context.loc.ledgerDeletedUnsynced)));
   }
 
   Widget _buildLoadFailedNotice(ColorScheme colors, SemanticColors semantic) {
@@ -1422,7 +1451,7 @@ class LedgerPageState extends State<LedgerPage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Không tải được danh sách từ máy chủ. Chỉ hiển thị các giao dịch chưa gửi trên thiết bị. Kéo xuống để thử lại.',
+              context.loc.ledgerLoadFailedNotice,
               style: const TextStyle(fontSize: 13),
             ),
           ),
@@ -1432,16 +1461,17 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   Future<void> _exportToExcel() async {
-    final monthName = DateFormat('MMMM yyyy', 'vi_VN').format(_selectedDate);
+    final loc = context.loc;
+    final monthName = _monthLabel(loc);
 
     var excel = Excel.createExcel();
-    var sheet = excel['Chi tiêu tháng $monthName'];
+    var sheet = excel[loc.ledgerExcelSheet(monthName)];
 
     sheet.appendRow([
-      TextCellValue('Ngày'),
-      TextCellValue('Danh mục'),
-      TextCellValue('Tiền chi'),
-      TextCellValue('Tiền thu'),
+      TextCellValue(loc.ledgerExcelDate),
+      TextCellValue(loc.transactionCategoryLabel),
+      TextCellValue(loc.transactionExpenseMoney),
+      TextCellValue(loc.transactionIncomeMoney),
     ]);
 
     double totalExpense = 0;
@@ -1461,7 +1491,7 @@ class LedgerPageState extends State<LedgerPage> {
         totalExpense += tx.amount;
         sheet.appendRow([
           TextCellValue(dateStr),
-          TextCellValue(tx.category),
+          TextCellValue(TransactionCategories.displayName(loc, tx.category)),
           DoubleCellValue(tx.amount),
           TextCellValue(''),
         ]);
@@ -1469,7 +1499,7 @@ class LedgerPageState extends State<LedgerPage> {
         totalIncome += tx.amount;
         sheet.appendRow([
           TextCellValue(dateStr),
-          TextCellValue(tx.category),
+          TextCellValue(TransactionCategories.displayName(loc, tx.category)),
           TextCellValue(''),
           DoubleCellValue(tx.amount),
         ]);
@@ -1478,25 +1508,25 @@ class LedgerPageState extends State<LedgerPage> {
 
     sheet.appendRow([]);
     sheet.appendRow([
-      TextCellValue('Tổng cộng'),
+      TextCellValue(loc.ledgerExcelTotal),
       TextCellValue(''),
       DoubleCellValue(totalExpense),
       DoubleCellValue(totalIncome),
     ]);
     sheet.appendRow([
-      TextCellValue('Số dư'),
+      TextCellValue(loc.ledgerBalance),
       TextCellValue(''),
       TextCellValue(''),
       DoubleCellValue(totalIncome - totalExpense),
     ]);
 
     sheet.appendRow([]);
-    sheet.appendRow([TextCellValue('NGÂN SÁCH THÁNG $monthName')]);
+    sheet.appendRow([TextCellValue(loc.ledgerExcelBudgetHeader(monthName))]);
     sheet.appendRow([
-      TextCellValue('Danh mục'),
-      TextCellValue('Giới hạn'),
-      TextCellValue('Đã tiêu'),
-      TextCellValue('Còn lại'),
+      TextCellValue(loc.transactionCategoryLabel),
+      TextCellValue(loc.ledgerExcelLimit),
+      TextCellValue(loc.ledgerExcelSpent),
+      TextCellValue(loc.ledgerExcelRemaining),
     ]);
 
     final monthStart = DateTime(_selectedDate.year, _selectedDate.month, 1);
@@ -1508,7 +1538,7 @@ class LedgerPageState extends State<LedgerPage> {
       _transactions,
     )) {
       sheet.appendRow([
-        TextCellValue(progress.budget.categoryLabel(context.loc)),
+        TextCellValue(progress.budget.categoryLabel(loc)),
         DoubleCellValue(progress.limit),
         DoubleCellValue(progress.spent),
         DoubleCellValue(progress.remaining),
@@ -1517,7 +1547,7 @@ class LedgerPageState extends State<LedgerPage> {
 
     final directory = Directory.systemTemp;
     final fileName =
-        'chi_tieu_$monthName${DateFormat('ddMMyyyy').format(DateTime.now())}.xlsx';
+        '${loc.ledgerExcelFileName(monthName, DateFormat('ddMMyyyy').format(DateTime.now()))}.xlsx';
     final file = File('${directory.path}/$fileName');
     final bytes = excel.encode();
     if (bytes != null) {
@@ -1527,8 +1557,8 @@ class LedgerPageState extends State<LedgerPage> {
         ShareParams(
           files: [XFile(file.path)],
           fileNameOverrides: [fileName],
-          subject: 'Chi tiêu tháng $monthName',
-          text: 'Báo cáo chi tiêu tháng $monthName',
+          subject: loc.ledgerExcelSheet(monthName),
+          text: loc.ledgerExcelShareText(monthName),
         ),
       );
     }

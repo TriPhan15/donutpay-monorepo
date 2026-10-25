@@ -1765,6 +1765,840 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Update'**
   String get savingsUpdate;
+
+  /// Title of the dialog shown when a form is used without a signed-in user.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired'**
+  String get commonSessionExpiredTitle;
+
+  /// Title of the dialog shown when the typed amount is not a positive number.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid amount'**
+  String get commonInvalidAmountTitle;
+
+  /// Heading of a totals block (Ledger, receipt form).
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get commonSummary;
+
+  /// The VND symbol shown after an amount field; the unit stays VND in every language.
+  ///
+  /// In en, this message translates to:
+  /// **'đ'**
+  String get currencySymbol;
+
+  /// A transaction could not be saved for an unexpected reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the transaction. Please try again.'**
+  String get transactionSaveFailed;
+
+  /// Title when a new transaction was kept on the device but has not reached the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent to the server yet'**
+  String get transactionNotSentTitle;
+
+  /// Explains how to resend a transaction kept on the device.
+  ///
+  /// In en, this message translates to:
+  /// **'The transaction is saved on this device but hasn\'t reached the server yet. When you\'re back online, open the Ledger, select the transaction and tap \"Resend\". Resending won\'t create a duplicate.'**
+  String get transactionNotSentMessage;
+
+  /// Label of the category field or column.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get transactionCategoryLabel;
+
+  /// Label of the transaction date field.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction date'**
+  String get transactionDateLabel;
+
+  /// Label of the optional note field.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get transactionNoteOptional;
+
+  /// Title of the expense category picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an expense category'**
+  String get transactionPickExpenseCategory;
+
+  /// Title of the income category picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an income category'**
+  String get transactionPickIncomeCategory;
+
+  /// Money going out: the type toggle of the add form and the Excel column.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense'**
+  String get transactionExpenseMoney;
+
+  /// Money coming in: the type toggle of the add form and the Excel column.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get transactionIncomeMoney;
+
+  /// The kind of an existing transaction that spends money.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense'**
+  String get transactionExpenseKind;
+
+  /// The kind of an existing transaction that brings money in.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get transactionIncomeKind;
+
+  /// Title of the add transaction form.
+  ///
+  /// In en, this message translates to:
+  /// **'Add transaction'**
+  String get addTransactionTitle;
+
+  /// Label of the amount field of the add form.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get addTransactionAmountLabel;
+
+  /// The typed amount is not usable.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid amount.'**
+  String get addTransactionInvalidAmount;
+
+  /// Example note in the add form.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Coffee at Highlands'**
+  String get addTransactionNoteHint;
+
+  /// Save button of the add form.
+  ///
+  /// In en, this message translates to:
+  /// **'Save transaction'**
+  String get addTransactionSubmit;
+
+  /// The server saved the new transaction.
+  ///
+  /// In en, this message translates to:
+  /// **'New transaction added.'**
+  String get addTransactionSaved;
+
+  /// Title of the edit form and the Ledger button that opens it.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit transaction'**
+  String get editTransactionTitle;
+
+  /// Label of the amount field of the edit form.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (₫)'**
+  String get editTransactionAmountLabel;
+
+  /// Title when the transaction has no server id.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t edit this transaction'**
+  String get editTransactionNoServerIdTitle;
+
+  /// The transaction has no server id, so it cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction doesn\'t have a server ID yet.'**
+  String get editTransactionNoServerIdMessage;
+
+  /// The amount must be above zero.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter an amount greater than 0.'**
+  String get editTransactionAmountPositive;
+
+  /// Title when the user saves without changing anything.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes yet'**
+  String get editTransactionNoChangesTitle;
+
+  /// Asks the user to change something first.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the amount, category or note before saving.'**
+  String get editTransactionNoChangesMessage;
+
+  /// Title when the server did not save the edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the transaction'**
+  String get editTransactionSaveFailedTitle;
+
+  /// A 4xx answer without a message from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'The server couldn\'t process the request. Please try again later.'**
+  String get editTransactionRejected;
+
+  /// Title when the edit was saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes saved'**
+  String get editTransactionSavedTitle;
+
+  /// The edit was saved.
+  ///
+  /// In en, this message translates to:
+  /// **'The transaction has been updated.'**
+  String get editTransactionSavedMessage;
+
+  /// The category list could not be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the category list. You can still edit the amount and note.'**
+  String get editTransactionCategoriesUnavailable;
+
+  /// Title of the Ledger page.
+  ///
+  /// In en, this message translates to:
+  /// **'Ledger'**
+  String get ledgerTitle;
+
+  /// Hint of the Ledger search box.
+  ///
+  /// In en, this message translates to:
+  /// **'Search name, category...'**
+  String get ledgerSearchHint;
+
+  /// Label of the date picker button.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get ledgerCalendar;
+
+  /// Chart legend for income bars.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get ledgerLegendIncome;
+
+  /// Chart legend for expense bars.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense'**
+  String get ledgerLegendExpense;
+
+  /// Short month label under a chart bar; month is the month number 1-12.
+  ///
+  /// In en, this message translates to:
+  /// **'{month, select, 1{Jan} 2{Feb} 3{Mar} 4{Apr} 5{May} 6{Jun} 7{Jul} 8{Aug} 9{Sep} 10{Oct} 11{Nov} 12{Dec} other{{month}}}'**
+  String ledgerChartMonth(String month);
+
+  /// Stat card: income of the period.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get ledgerIncome;
+
+  /// Stat card: spending of the period.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending'**
+  String get ledgerExpense;
+
+  /// Heading of the transaction list.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent transactions'**
+  String get ledgerRecent;
+
+  /// The period has no transactions.
+  ///
+  /// In en, this message translates to:
+  /// **'No transactions in this period.'**
+  String get ledgerEmptyPeriod;
+
+  /// Summary row: total income.
+  ///
+  /// In en, this message translates to:
+  /// **'Total income'**
+  String get ledgerTotalIncome;
+
+  /// Summary row: total spending.
+  ///
+  /// In en, this message translates to:
+  /// **'Total spending'**
+  String get ledgerTotalExpense;
+
+  /// Summary row and Excel row: income minus spending.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get ledgerBalance;
+
+  /// Title of the filter sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart filter & sort'**
+  String get ledgerFilterTitle;
+
+  /// Filter section: transaction type.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Transaction type'**
+  String get ledgerFilterType;
+
+  /// Filter chip: expenses and income.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get ledgerFilterAll;
+
+  /// Filter chip: expenses only.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses only'**
+  String get ledgerFilterExpenseOnly;
+
+  /// Filter chip: income only.
+  ///
+  /// In en, this message translates to:
+  /// **'Income only'**
+  String get ledgerFilterIncomeOnly;
+
+  /// Filter section: amount range.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Amount range'**
+  String get ledgerFilterAmount;
+
+  /// Filter chip: no amount limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Any amount'**
+  String get ledgerFilterAnyAmount;
+
+  /// Filter section: sort order.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Sort by'**
+  String get ledgerFilterSort;
+
+  /// Sort chip: newest first.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get ledgerSortNewest;
+
+  /// Sort chip: oldest first.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest'**
+  String get ledgerSortOldest;
+
+  /// Sort chip: highest amount first.
+  ///
+  /// In en, this message translates to:
+  /// **'Highest amount'**
+  String get ledgerSortHighest;
+
+  /// Button that applies the filters.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply filters'**
+  String get ledgerFilterApply;
+
+  /// Detail sheet label.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount:'**
+  String get ledgerDetailAmount;
+
+  /// Detail sheet label.
+  ///
+  /// In en, this message translates to:
+  /// **'Time:'**
+  String get ledgerDetailTime;
+
+  /// Detail sheet label.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt status:'**
+  String get ledgerDetailReceiptStatus;
+
+  /// Detail sheet label of the sync state.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync:'**
+  String get ledgerDetailSync;
+
+  /// Explains the Resend button.
+  ///
+  /// In en, this message translates to:
+  /// **'The server hasn\'t confirmed this transaction yet. When you\'re back online, tap \"Resend\". Resending won\'t create a duplicate.'**
+  String get ledgerDetailUnsyncedHint;
+
+  /// Detail sheet label above the receipt photo.
+  ///
+  /// In en, this message translates to:
+  /// **'Original receipt photo:'**
+  String get ledgerDetailReceiptImage;
+
+  /// Button that sends an unsynced transaction again.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get ledgerResend;
+
+  /// Delete button of the detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this transaction'**
+  String get ledgerDelete;
+
+  /// Title of the delete confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete transaction?'**
+  String get ledgerDeleteTitle;
+
+  /// Delete confirmation text.
+  ///
+  /// In en, this message translates to:
+  /// **'The amount will go back to your wallet and this can\'t be undone. Are you sure?'**
+  String get ledgerDeleteMessage;
+
+  /// Confirm button of a delete dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete now'**
+  String get ledgerDeleteNow;
+
+  /// Snack bar after a delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction deleted and amount refunded'**
+  String get ledgerDeleted;
+
+  /// Snack bar when a delete failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete. Please try again'**
+  String get ledgerDeleteFailed;
+
+  /// Title when the server refused a resend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend failed'**
+  String get ledgerResendFailedTitle;
+
+  /// A resend failed for an unexpected reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t resend the transaction. Please try again.'**
+  String get ledgerResendFailedMessage;
+
+  /// Snack bar after a successful resend.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction sent to the server'**
+  String get ledgerResent;
+
+  /// Title when a resend did not reach the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Still not sent'**
+  String get ledgerStillNotSentTitle;
+
+  /// A resend did not reach the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the server. The transaction stays on this device and you can resend it later.'**
+  String get ledgerStillNotSentMessage;
+
+  /// Title of the local delete confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete unsent transaction?'**
+  String get ledgerDeleteUnsyncedTitle;
+
+  /// Local delete confirmation text.
+  ///
+  /// In en, this message translates to:
+  /// **'The server hasn\'t confirmed this transaction. Remove it from this device and stop sending it? This can\'t be undone.'**
+  String get ledgerDeleteUnsyncedMessage;
+
+  /// Snack bar after a local delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsent transaction deleted'**
+  String get ledgerDeletedUnsynced;
+
+  /// Notice above the list when the server list failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the list from the server. Only the unsent transactions on this device are shown. Pull down to try again.'**
+  String get ledgerLoadFailedNotice;
+
+  /// Excel sheet name and share subject; month is e.g. 'October 2026'.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending {month}'**
+  String ledgerExcelSheet(String month);
+
+  /// Excel column: date.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get ledgerExcelDate;
+
+  /// Excel row: totals.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get ledgerExcelTotal;
+
+  /// Excel heading of the budget table.
+  ///
+  /// In en, this message translates to:
+  /// **'BUDGETS {month}'**
+  String ledgerExcelBudgetHeader(String month);
+
+  /// Excel column: budget limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit'**
+  String get ledgerExcelLimit;
+
+  /// Excel column: amount spent.
+  ///
+  /// In en, this message translates to:
+  /// **'Spent'**
+  String get ledgerExcelSpent;
+
+  /// Excel column: amount left.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get ledgerExcelRemaining;
+
+  /// Excel file name without extension.
+  ///
+  /// In en, this message translates to:
+  /// **'spending_{month}{date}'**
+  String ledgerExcelFileName(String month, String date);
+
+  /// Text sent with the shared Excel file.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending report for {month}'**
+  String ledgerExcelShareText(String month);
+
+  /// Title of the receipt review form.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm receipt'**
+  String get reviewTitle;
+
+  /// Shown under the date when the scan found no date.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the date on the receipt, so the current time is used. Tap to choose another.'**
+  String get reviewDateFallback;
+
+  /// The scan found no total.
+  ///
+  /// In en, this message translates to:
+  /// **'Donut couldn\'t read the total from the photo. Please enter it manually.'**
+  String get reviewNoTotal;
+
+  /// The scan request failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt scan failed (check the AI service). Please enter the details manually.'**
+  String get reviewScanFailed;
+
+  /// Title when the photo upload failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t upload the receipt photo'**
+  String get reviewPhotoUploadFailedTitle;
+
+  /// Asks whether to save without the photo.
+  ///
+  /// In en, this message translates to:
+  /// **'The receipt photo hasn\'t been uploaded to the server. Save the transaction without the photo?'**
+  String get reviewPhotoUploadFailedMessage;
+
+  /// Confirm button: save without the photo.
+  ///
+  /// In en, this message translates to:
+  /// **'Save without photo'**
+  String get reviewSaveWithoutPhoto;
+
+  /// Cancel button: do not save now.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get reviewLater;
+
+  /// The total must be above zero.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a total greater than 0.'**
+  String get reviewTotalPositive;
+
+  /// The server saved the receipt transaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction saved from the receipt.'**
+  String get reviewSaved;
+
+  /// Shown while the scan runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyzing the receipt...'**
+  String get reviewAnalyzing;
+
+  /// Shown while the scan runs.
+  ///
+  /// In en, this message translates to:
+  /// **'This will only take a moment'**
+  String get reviewPleaseWait;
+
+  /// Heading once the scan answered.
+  ///
+  /// In en, this message translates to:
+  /// **'Extraction complete'**
+  String get reviewExtracted;
+
+  /// Asks the user to check the scanned fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the details below against the original photo before saving.'**
+  String get reviewCheckDetails;
+
+  /// Section heading of the review form.
+  ///
+  /// In en, this message translates to:
+  /// **'General information'**
+  String get reviewGeneralInfo;
+
+  /// Label of the store name field.
+  ///
+  /// In en, this message translates to:
+  /// **'Store name'**
+  String get reviewStoreName;
+
+  /// Label of the total field.
+  ///
+  /// In en, this message translates to:
+  /// **'Total (đ)'**
+  String get reviewTotalLabel;
+
+  /// Totals card row.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal:'**
+  String get reviewSubtotal;
+
+  /// Totals card row.
+  ///
+  /// In en, this message translates to:
+  /// **'VAT/Other taxes:'**
+  String get reviewTax;
+
+  /// Totals card row: the grand total.
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL:'**
+  String get reviewGrandTotal;
+
+  /// Save button of the review form.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm & save'**
+  String get reviewSubmit;
+
+  /// Title of the payment history page.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit/withdrawal history'**
+  String get paymentHistoryTitle;
+
+  /// The history could not be loaded; reason is a user-facing error text.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the history. {reason}'**
+  String paymentHistoryLoadFailed(String reason);
+
+  /// The history is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No deposits or withdrawals yet.'**
+  String get paymentHistoryEmpty;
+
+  /// Snack bar after cancelling an order.
+  ///
+  /// In en, this message translates to:
+  /// **'Order {code} cancelled'**
+  String paymentCancelled(String code);
+
+  /// Cancelling failed; reason is a user-facing error text.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t cancel the order. {reason}'**
+  String paymentCancelFailed(String reason);
+
+  /// Order type: deposit.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit'**
+  String get paymentDeposit;
+
+  /// Order type: withdrawal.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal'**
+  String get paymentWithdrawal;
+
+  /// The order code.
+  ///
+  /// In en, this message translates to:
+  /// **'Code: {code}'**
+  String paymentOrderCode(String code);
+
+  /// Button that cancels a pending order.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel order'**
+  String get paymentCancelOrder;
+
+  /// Order status SUCCESS.
+  ///
+  /// In en, this message translates to:
+  /// **'Successful'**
+  String get paymentStatusSuccess;
+
+  /// Order status FAILED.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get paymentStatusFailed;
+
+  /// Order status CANCELLED.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get paymentStatusCancelled;
+
+  /// Order status PENDING.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get paymentStatusPending;
+
+  /// Creating the order failed; reason is a user-facing error text.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the sync order. {reason}'**
+  String linkedCreateOrderFailed(String reason);
+
+  /// The payment status did not change in time.
+  ///
+  /// In en, this message translates to:
+  /// **'No payment result yet. Please check again in the sync history.'**
+  String get linkedPollTimedOut;
+
+  /// Name of the demo e-wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo wallet'**
+  String get linkedDemoWallet;
+
+  /// Title of the sync dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync from {wallet}'**
+  String linkedSyncFrom(String wallet);
+
+  /// Sync dialog prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount to add to your spending budget:'**
+  String get linkedAmountPrompt;
+
+  /// Example amount in the sync dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 100000'**
+  String get linkedAmountHint;
+
+  /// Button that syncs money from a wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get linkedSync;
+
+  /// The amount is below the minimum.
+  ///
+  /// In en, this message translates to:
+  /// **'The minimum amount is {amount}.'**
+  String linkedMinAmount(String amount);
+
+  /// The payment succeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced {amount} to your spending budget.'**
+  String linkedSynced(String amount);
+
+  /// The payment ended without success; status is a translated order status.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync: {status}'**
+  String linkedSyncOutcome(String status);
+
+  /// Tooltip of the history button.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync history'**
+  String get linkedHistoryTooltip;
+
+  /// Heading of the wallet list.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked e-wallets'**
+  String get linkedWalletsHeading;
+
+  /// Explains the wallet list.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync money from a wallet into your budget to manage spending.'**
+  String get linkedWalletsDescription;
+
+  /// Shown while a payment is pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing... finish the payment on the gateway.'**
+  String get linkedSyncing;
+
+  /// Status of a linked wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked'**
+  String get linkedLinked;
 }
 
 class _AppLocalizationsDelegate

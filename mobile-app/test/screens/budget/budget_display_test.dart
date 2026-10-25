@@ -377,7 +377,13 @@ void main() {
         await withCapturedLogs((logs) async {
           await tester.pumpWidget(app);
           await tester.pump();
-          await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+          await tester.pumpWidget(
+            const MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: SizedBox(),
+            ),
+          );
           pending.complete(okResponse([_budget()]));
           await tester.pumpAndSettle();
 
@@ -497,7 +503,12 @@ void main() {
 
     setUp(() {
       ledger = GlobalKey<LedgerPageState>();
-      app = MaterialApp(home: LedgerPage(key: ledger));
+      app = MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('vi'),
+        home: LedgerPage(key: ledger),
+      );
     });
 
     testWidgets(
@@ -679,7 +690,13 @@ void main() {
 
         await tester.pumpWidget(app);
         await tester.pump();
-        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+        await tester.pumpWidget(
+          const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SizedBox(),
+          ),
+        );
         pending.complete(okResponse([_budget()]));
         await tester.pumpAndSettle();
 

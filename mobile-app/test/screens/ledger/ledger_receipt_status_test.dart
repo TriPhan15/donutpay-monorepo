@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -24,10 +25,11 @@ const String _failedLabel = 'Lỗi · cần xác nhận lại';
 const String _editLabel = 'Sửa giao dịch';
 const String _deleteLabel = 'Xóa giao dịch này';
 
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: 'đ',
-  decimalDigits: 0,
+/// Amounts as the Vietnamese screens write them.
+String _money(num amount) => CurrencyHelper.formatVND(
+  amount.toDouble(),
+  AppLanguage.vietnamese.localizations,
+  showSign: false,
 );
 
 final List<Map<String, Object?>> _serverCategories = [
@@ -106,7 +108,12 @@ void main() {
   }
 
   group('Ledger', () {
-    const app = MaterialApp(home: LedgerPage());
+    const app = MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: Locale('vi'),
+      home: LedgerPage(),
+    );
 
     Finder rowOf(int id) => find.ancestor(
       of: find.text('Giao dịch $id'),
@@ -208,7 +215,7 @@ void main() {
           return okResponse(transactions.single);
         });
         await pump(tester, app);
-        expect(find.text('- ${_money.format(45000)}'), findsOneWidget);
+        expect(find.text('- ${_money(45000)}'), findsOneWidget);
 
         await tapText(tester, 'Giao dịch 1');
         await tapText(tester, _editLabel);
@@ -231,8 +238,8 @@ void main() {
           findsNothing,
           reason: 'back on the ledger',
         );
-        expect(find.text('- ${_money.format(50000)}'), findsOneWidget);
-        expect(find.text('- ${_money.format(45000)}'), findsNothing);
+        expect(find.text('- ${_money(50000)}'), findsOneWidget);
+        expect(find.text('- ${_money(45000)}'), findsNothing);
       },
     );
 
@@ -249,7 +256,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Lưu thay đổi'), findsNothing);
-      expect(find.text('- ${_money.format(45000)}'), findsOneWidget);
+      expect(find.text('- ${_money(45000)}'), findsOneWidget);
       expect(backend.requests.where((r) => r.method == 'PUT'), isEmpty);
       expect(
         backend.requests
@@ -285,4 +292,32 @@ void main() {
       expect(find.text(_successLabel), findsOneWidget);
     });
   });
+
+  testWidgets(
+    'in English the Ledger, its rows and the details sheet speak English, with default categories translated',
+    (tester) async {
+      transactions = [_tx(1, receiptStatus: 'FAILED')];
+      await pump(
+        tester,
+        const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('en'),
+          home: LedgerPage(),
+        ),
+      );
+
+      expect(find.text('Ledger'), findsOneWidget);
+      expect(find.text('Recent transactions'), findsOneWidget);
+      expect(find.textContaining('Food & drinks •'), findsOneWidget);
+      expect(find.textContaining('Ăn uống'), findsNothing);
+      expect(find.text('- 45,000 đ'), findsOneWidget);
+
+      await tapText(tester, 'Giao dịch 1');
+
+      expect(find.text('Receipt status:'), findsOneWidget);
+      expect(find.text('Edit transaction'), findsOneWidget);
+      expect(find.text('Delete this transaction'), findsOneWidget);
+    },
+  );
 }

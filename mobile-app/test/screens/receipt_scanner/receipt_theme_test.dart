@@ -4,6 +4,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
@@ -18,10 +20,11 @@ import '../../helpers/theme_colors.dart';
 /// A real file of the project, so that the scan can read it: it stands for the photo of the receipt.
 const String _photo = 'assets/images/logo.png';
 
-final NumberFormat _money = NumberFormat.currency(
-  locale: 'vi_VN',
-  symbol: 'đ',
-  decimalDigits: 0,
+/// Amounts as the Vietnamese screens write them.
+String _money(num amount) => CurrencyHelper.formatVND(
+  amount.toDouble(),
+  AppLanguage.vietnamese.localizations,
+  showSign: false,
 );
 
 void main() {
@@ -206,7 +209,7 @@ void main() {
             paintedColor(tester, find.text('TỔNG TIỀN:')),
             colors.onSurface,
           );
-          final totals = find.text(_money.format(45000));
+          final totals = find.text(_money(45000));
           expect(paintedColor(tester, totals.first), colors.onSurface);
           expect(paintedColor(tester, totals.last), semantic.expenseColor);
           final divider =
@@ -290,7 +293,7 @@ void main() {
       );
       expect(paintedColor(tester, find.text('Tạm tính:')), AppTheme.textGray);
       expect(
-        paintedColor(tester, find.text(_money.format(45000)).last),
+        paintedColor(tester, find.text(_money(45000)).last),
         AppTheme.dangerColor,
       );
       expect(

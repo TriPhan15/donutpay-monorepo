@@ -8,6 +8,7 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/receipt_item_model.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -32,14 +33,6 @@ const List<String> _scannedDateFormats = [
   'yyyy-MM-dd HH:mm',
   'yyyy-MM-dd',
 ];
-
-const String _dateFallbackHint =
-    'Không đọc được ngày trên hóa đơn, đang dùng thời điểm hiện tại. Chạm để chọn lại.';
-const String _saveFailedMessage = 'Không lưu được giao dịch. Vui lòng thử lại.';
-const String _notSentTitle = 'Chưa gửi được lên máy chủ';
-const String _notSentMessage =
-    'Giao dịch đã được lưu trên thiết bị nhưng chưa gửi được lên máy chủ. '
-    'Khi có mạng, mở Sổ sách, chọn giao dịch và bấm "Gửi lại". Gửi lại sẽ không tạo giao dịch trùng.';
 
 class ReviewFormPage extends StatefulWidget {
   final String imagePath;
@@ -69,7 +62,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   late final TextEditingController _dateController = TextEditingController(
     text: _formatDate(_selectedDate),
   );
-  String _selectedCategory = 'Ăn uống';
+  String _selectedCategory = TransactionCategories.food;
 
   @override
   void initState() {
@@ -129,7 +122,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       });
 
       if (total == 0 && mounted) {
-        _showSnack('Donut chưa đọc được tổng tiền từ ảnh — vui lòng nhập tay.');
+        _showSnack(context.loc.reviewNoTotal);
       }
     } catch (e) {
       debugPrint('Lỗi quét hóa đơn: $e');
@@ -138,9 +131,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
         _setDate(DateTime.now(), isFallback: true);
         _isProcessing = false;
       });
-      _showSnack(
-        'Quét hóa đơn thất bại (Kiểm tra AI service). Vui lòng nhập tay.',
-      );
+      _showSnack(context.loc.reviewScanFailed);
     }
   }
 
@@ -208,13 +199,13 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     _imageUrl ??= await RemoteApiHelper.instance.uploadImage(widget.imagePath);
     if (_imageUrl != null || !mounted) return true;
     setState(() => _isSaving = false);
+    final loc = context.loc;
     final withoutPhoto = await AppDialog.confirm(
       context,
-      title: 'Không tải được ảnh hóa đơn',
-      message:
-          'Ảnh hóa đơn chưa được tải lên máy chủ. Bạn có muốn lưu giao dịch mà không kèm ảnh không?',
-      confirmText: 'Lưu không kèm ảnh',
-      cancelText: 'Để sau',
+      title: loc.reviewPhotoUploadFailedTitle,
+      message: loc.reviewPhotoUploadFailedMessage,
+      confirmText: loc.reviewSaveWithoutPhoto,
+      cancelText: loc.reviewLater,
     );
     if (withoutPhoto && mounted) setState(() => _isSaving = true);
     return withoutPhoto;
@@ -224,12 +215,13 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   /// when it cannot be sent, so a lost answer never makes the user save (and pay) it twice.
   Future<void> _saveToDatabase() async {
     if (_isSaving) return;
+    final loc = context.loc;
     final userId = SessionService.currentUserId;
     if (userId == null) {
       await AppDialog.error(
         context,
-        title: 'Phiên đăng nhập hết hạn',
-        message: 'Vui lòng đăng nhập lại.',
+        title: loc.commonSessionExpiredTitle,
+        message: loc.accountInfoSignInAgain,
       );
       return;
     }
@@ -238,8 +230,8 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     if (amount == null) {
       await AppDialog.error(
         context,
-        title: 'Số tiền không hợp lệ',
-        message: 'Vui lòng nhập tổng tiền lớn hơn 0.',
+        title: loc.commonInvalidAmountTitle,
+        message: loc.reviewTotalPositive,
       );
       return;
     }
@@ -264,7 +256,6 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       rawReceiptData: rawScan == null ? null : jsonEncode(rawScan),
     );
 
-    final loc = context.locOrDefault;
     SyncStatus? status;
     String? failure;
     try {
@@ -276,26 +267,30 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       failure = e.messageFor(loc);
     } catch (e) {
       debugPrint('Lỗi lưu giao dịch từ hóa đơn: $e');
-      failure = _saveFailedMessage;
+      failure = loc.transactionSaveFailed;
     }
     if (!mounted) return;
     setState(() => _isSaving = false);
 
     if (failure != null) {
-      await AppDialog.error(context, title: 'Lưu thất bại', message: failure);
+      await AppDialog.error(
+        context,
+        title: loc.commonSaveFailed,
+        message: failure,
+      );
       return;
     }
     if (status == SyncStatus.synced) {
       await AppDialog.success(
         context,
-        title: 'Thành công',
-        message: 'Đã lưu giao dịch từ hóa đơn.',
+        title: loc.commonSuccess,
+        message: loc.reviewSaved,
       );
     } else {
       await AppDialog.warning(
         context,
-        title: _notSentTitle,
-        message: _notSentMessage,
+        title: loc.transactionNotSentTitle,
+        message: loc.transactionNotSentMessage,
       );
     }
     if (!mounted) return;
@@ -315,16 +310,20 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       ),
       builder: (sheetContext) {
         final colors = Theme.of(sheetContext).colorScheme;
+        final loc = sheetContext.loc;
         return SafeArea(
           child: ListView(
             shrinkWrap: true,
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 12, 20, 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                 child: Text(
-                  'Chọn danh mục chi',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  loc.transactionPickExpenseCategory,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               ...TransactionCategories.expenseSelectable.map((cat) {
@@ -335,7 +334,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
                     color: selected ? colors.primary : colors.onSurfaceVariant,
                   ),
                   title: Text(
-                    cat,
+                    TransactionCategories.displayName(loc, cat),
                     style: TextStyle(
                       color: selected
                           ? colors.onSurface
@@ -364,28 +363,29 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final loc = context.loc;
     return Scaffold(
-      appBar: AppBar(title: const Text('Xác nhận hóa đơn')),
+      appBar: AppBar(title: Text(loc.reviewTitle)),
       body: _isProcessing
-          ? _buildProcessingState(colors)
-          : _buildFormContent(colors, theme.semanticColors),
+          ? _buildProcessingState(colors, loc)
+          : _buildFormContent(colors, theme.semanticColors, loc),
     );
   }
 
-  Widget _buildProcessingState(ColorScheme colors) {
+  Widget _buildProcessingState(ColorScheme colors, AppLocalizations loc) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 24),
-          const Text(
-            'Đang phân tích hóa đơn...',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            loc.reviewAnalyzing,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Vui lòng đợi trong giây lát',
+            loc.reviewPleaseWait,
             style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
           ),
         ],
@@ -393,13 +393,11 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     );
   }
 
-  Widget _buildFormContent(ColorScheme colors, SemanticColors semantic) {
-    final fmt = NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: 'đ',
-      decimalDigits: 0,
-    );
-
+  Widget _buildFormContent(
+    ColorScheme colors,
+    SemanticColors semantic,
+    AppLocalizations loc,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -436,7 +434,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Trích xuất thành công',
+                      loc.reviewExtracted,
                       style: TextStyle(
                         color: colors.primary,
                         fontWeight: FontWeight.bold,
@@ -445,7 +443,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Vui lòng kiểm tra lại thông tin bên dưới và đối chiếu với ảnh gốc trước khi lưu.',
+                      loc.reviewCheckDetails,
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 13,
@@ -459,17 +457,17 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
           ),
           const SizedBox(height: 32),
 
-          _buildSectionTitle('Thông tin chung'),
+          _buildSectionTitle(loc.reviewGeneralInfo),
           _buildTextField(
             colors,
-            'Tên cửa hàng',
+            loc.reviewStoreName,
             _storeNameController,
             Icons.storefront,
           ),
           const SizedBox(height: 16),
           _buildTextField(
             colors,
-            'Tổng tiền (đ)',
+            loc.reviewTotalLabel,
             _amountController,
             Icons.payments_outlined,
             keyboardType: TextInputType.number,
@@ -478,17 +476,17 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
           const SizedBox(height: 16),
           _buildTextField(
             colors,
-            'Ngày giao dịch',
+            loc.transactionDateLabel,
             _dateController,
             Icons.calendar_today,
             onTap: _pickDate,
-            warning: _dateIsFallback ? _dateFallbackHint : null,
+            warning: _dateIsFallback ? loc.reviewDateFallback : null,
             warningColor: semantic.warningColor,
           ),
           const SizedBox(height: 16),
 
           Text(
-            'Danh mục',
+            loc.transactionCategoryLabel,
             style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
           ),
           const SizedBox(height: 8),
@@ -511,7 +509,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _selectedCategory,
+                      TransactionCategories.displayName(loc, _selectedCategory),
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),
@@ -525,14 +523,14 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
           ),
 
           const SizedBox(height: 24),
-          _buildSectionTitle('Tổng kết'),
+          _buildSectionTitle(loc.commonSummary),
           // Only the card follows the amount field as it is typed in, not the whole form.
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: _amountController,
             builder: (_, value, _) => _buildTotalsCard(
               colors,
               semantic,
-              fmt,
+              loc,
               CurrencyHelper.parseAmount(value.text) ?? 0,
             ),
           ),
@@ -556,9 +554,9 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text(
-                      'Xác nhận & Lưu CSDL',
-                      style: TextStyle(
+                  : Text(
+                      loc.reviewSubmit,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -573,22 +571,24 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   Widget _buildTotalsCard(
     ColorScheme colors,
     SemanticColors semantic,
-    NumberFormat fmt,
+    AppLocalizations loc,
     double amount,
   ) {
+    String money(double value) =>
+        CurrencyHelper.formatVND(value, loc, showSign: false);
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildTotalRow(colors, semantic, 'Tạm tính:', fmt.format(amount)),
+            _buildTotalRow(colors, semantic, loc.reviewSubtotal, money(amount)),
             const SizedBox(height: 8),
             _buildTotalRow(
               colors,
               semantic,
-              'Thuế VAT/Khác:',
-              fmt.format(_receipt.tax),
+              loc.reviewTax,
+              money(_receipt.tax),
             ),
             // The theme divider: the white 10% line of the old dark design did not show on the light card.
             const Padding(
@@ -598,8 +598,8 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
             _buildTotalRow(
               colors,
               semantic,
-              'TỔNG TIỀN:',
-              fmt.format(amount),
+              loc.reviewGrandTotal,
+              money(amount),
               isGrandTotal: true,
             ),
           ],

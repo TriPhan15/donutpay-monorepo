@@ -6,11 +6,15 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 class TransactionCategories {
   static const String all = 'Tất cả';
 
+  /// Default categories the forms preselect, by the name core-backend stores.
+  static const String food = 'Ăn uống';
+  static const String otherExpense = 'Khác';
+
   /// The default categories, by the Vietnamese name core-backend stores (its DefaultCategory enum, whose stable key is
   /// in each comment), and their text in the language the app shows. Renaming one there means renaming it here too.
   static final Map<String, String Function(AppLocalizations)> _labelByName = {
     all: (loc) => loc.categoryAll,
-    'Ăn uống': (loc) => loc.categoryFood, // food
+    food: (loc) => loc.categoryFood, // food
     'Siêu thị & Chợ': (loc) => loc.categoryGroceries, // groceries
     'Di chuyển': (loc) => loc.categoryTransport, // transport
     'Nhà ở': (loc) => loc.categoryHousing, // housing
@@ -24,7 +28,7 @@ class TransactionCategories {
     'Gia đình & Con cái': (loc) => loc.categoryFamily, // family
     'Hiếu hỉ': (loc) => loc.categorySocial, // social
     'Bảo hiểm': (loc) => loc.categoryInsurance, // insurance
-    'Khác': (loc) => loc.categoryOtherExpense, // other_expense
+    otherExpense: (loc) => loc.categoryOtherExpense, // other_expense
     'Lương': (loc) => loc.categorySalary, // salary
     'Thưởng': (loc) => loc.categoryBonus, // bonus
     'Kinh doanh': (loc) => loc.categoryBusiness, // business

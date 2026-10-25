@@ -1213,5 +1213,634 @@
   "savingsUpdate": "Update",
   "@savingsUpdate": {
     "description": "Button that opens the update goal dialog."
+  },
+  "commonSessionExpiredTitle": "Session expired",
+  "@commonSessionExpiredTitle": {
+    "description": "Title of the dialog shown when a form is used without a signed-in user."
+  },
+  "commonInvalidAmountTitle": "Invalid amount",
+  "@commonInvalidAmountTitle": {
+    "description": "Title of the dialog shown when the typed amount is not a positive number."
+  },
+  "commonSummary": "Summary",
+  "@commonSummary": {
+    "description": "Heading of a totals block (Ledger, receipt form)."
+  },
+  "currencySymbol": "đ",
+  "@currencySymbol": {
+    "description": "The VND symbol shown after an amount field; the unit stays VND in every language."
+  },
+  "transactionSaveFailed": "Couldn't save the transaction. Please try again.",
+  "@transactionSaveFailed": {
+    "description": "A transaction could not be saved for an unexpected reason."
+  },
+  "transactionNotSentTitle": "Not sent to the server yet",
+  "@transactionNotSentTitle": {
+    "description": "Title when a new transaction was kept on the device but has not reached the server."
+  },
+  "transactionNotSentMessage": "The transaction is saved on this device but hasn't reached the server yet. When you're back online, open the Ledger, select the transaction and tap \"Resend\". Resending won't create a duplicate.",
+  "@transactionNotSentMessage": {
+    "description": "Explains how to resend a transaction kept on the device."
+  },
+  "transactionCategoryLabel": "Category",
+  "@transactionCategoryLabel": {
+    "description": "Label of the category field or column."
+  },
+  "transactionDateLabel": "Transaction date",
+  "@transactionDateLabel": {
+    "description": "Label of the transaction date field."
+  },
+  "transactionNoteOptional": "Note (optional)",
+  "@transactionNoteOptional": {
+    "description": "Label of the optional note field."
+  },
+  "transactionPickExpenseCategory": "Choose an expense category",
+  "@transactionPickExpenseCategory": {
+    "description": "Title of the expense category picker."
+  },
+  "transactionPickIncomeCategory": "Choose an income category",
+  "@transactionPickIncomeCategory": {
+    "description": "Title of the income category picker."
+  },
+  "transactionExpenseMoney": "Expense",
+  "@transactionExpenseMoney": {
+    "description": "Money going out: the type toggle of the add form and the Excel column."
+  },
+  "transactionIncomeMoney": "Income",
+  "@transactionIncomeMoney": {
+    "description": "Money coming in: the type toggle of the add form and the Excel column."
+  },
+  "transactionExpenseKind": "Expense",
+  "@transactionExpenseKind": {
+    "description": "The kind of an existing transaction that spends money."
+  },
+  "transactionIncomeKind": "Income",
+  "@transactionIncomeKind": {
+    "description": "The kind of an existing transaction that brings money in."
+  },
+  "addTransactionTitle": "Add transaction",
+  "@addTransactionTitle": {
+    "description": "Title of the add transaction form."
+  },
+  "addTransactionAmountLabel": "Amount",
+  "@addTransactionAmountLabel": {
+    "description": "Label of the amount field of the add form."
+  },
+  "addTransactionInvalidAmount": "Please enter a valid amount.",
+  "@addTransactionInvalidAmount": {
+    "description": "The typed amount is not usable."
+  },
+  "addTransactionNoteHint": "e.g. Coffee at Highlands",
+  "@addTransactionNoteHint": {
+    "description": "Example note in the add form."
+  },
+  "addTransactionSubmit": "Save transaction",
+  "@addTransactionSubmit": {
+    "description": "Save button of the add form."
+  },
+  "addTransactionSaved": "New transaction added.",
+  "@addTransactionSaved": {
+    "description": "The server saved the new transaction."
+  },
+  "editTransactionTitle": "Edit transaction",
+  "@editTransactionTitle": {
+    "description": "Title of the edit form and the Ledger button that opens it."
+  },
+  "editTransactionAmountLabel": "Amount (₫)",
+  "@editTransactionAmountLabel": {
+    "description": "Label of the amount field of the edit form."
+  },
+  "editTransactionNoServerIdTitle": "Can't edit this transaction",
+  "@editTransactionNoServerIdTitle": {
+    "description": "Title when the transaction has no server id."
+  },
+  "editTransactionNoServerIdMessage": "This transaction doesn't have a server ID yet.",
+  "@editTransactionNoServerIdMessage": {
+    "description": "The transaction has no server id, so it cannot be edited."
+  },
+  "editTransactionAmountPositive": "Please enter an amount greater than 0.",
+  "@editTransactionAmountPositive": {
+    "description": "The amount must be above zero."
+  },
+  "editTransactionNoChangesTitle": "No changes yet",
+  "@editTransactionNoChangesTitle": {
+    "description": "Title when the user saves without changing anything."
+  },
+  "editTransactionNoChangesMessage": "Change the amount, category or note before saving.",
+  "@editTransactionNoChangesMessage": {
+    "description": "Asks the user to change something first."
+  },
+  "editTransactionSaveFailedTitle": "Couldn't save the transaction",
+  "@editTransactionSaveFailedTitle": {
+    "description": "Title when the server did not save the edit."
+  },
+  "editTransactionRejected": "The server couldn't process the request. Please try again later.",
+  "@editTransactionRejected": {
+    "description": "A 4xx answer without a message from the server."
+  },
+  "editTransactionSavedTitle": "Changes saved",
+  "@editTransactionSavedTitle": {
+    "description": "Title when the edit was saved."
+  },
+  "editTransactionSavedMessage": "The transaction has been updated.",
+  "@editTransactionSavedMessage": {
+    "description": "The edit was saved."
+  },
+  "editTransactionCategoriesUnavailable": "Couldn't load the category list. You can still edit the amount and note.",
+  "@editTransactionCategoriesUnavailable": {
+    "description": "The category list could not be loaded."
+  },
+  "ledgerTitle": "Ledger",
+  "@ledgerTitle": {
+    "description": "Title of the Ledger page."
+  },
+  "ledgerSearchHint": "Search name, category...",
+  "@ledgerSearchHint": {
+    "description": "Hint of the Ledger search box."
+  },
+  "ledgerCalendar": "Calendar",
+  "@ledgerCalendar": {
+    "description": "Label of the date picker button."
+  },
+  "ledgerLegendIncome": "Income",
+  "@ledgerLegendIncome": {
+    "description": "Chart legend for income bars."
+  },
+  "ledgerLegendExpense": "Expense",
+  "@ledgerLegendExpense": {
+    "description": "Chart legend for expense bars."
+  },
+  "ledgerChartMonth": "{month, select, 1{Jan} 2{Feb} 3{Mar} 4{Apr} 5{May} 6{Jun} 7{Jul} 8{Aug} 9{Sep} 10{Oct} 11{Nov} 12{Dec} other{{month}}}",
+  "@ledgerChartMonth": {
+    "description": "Short month label under a chart bar; month is the month number 1-12.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "ledgerIncome": "Income",
+  "@ledgerIncome": {
+    "description": "Stat card: income of the period."
+  },
+  "ledgerExpense": "Spending",
+  "@ledgerExpense": {
+    "description": "Stat card: spending of the period."
+  },
+  "ledgerRecent": "Recent transactions",
+  "@ledgerRecent": {
+    "description": "Heading of the transaction list."
+  },
+  "ledgerEmptyPeriod": "No transactions in this period.",
+  "@ledgerEmptyPeriod": {
+    "description": "The period has no transactions."
+  },
+  "ledgerTotalIncome": "Total income",
+  "@ledgerTotalIncome": {
+    "description": "Summary row: total income."
+  },
+  "ledgerTotalExpense": "Total spending",
+  "@ledgerTotalExpense": {
+    "description": "Summary row: total spending."
+  },
+  "ledgerBalance": "Balance",
+  "@ledgerBalance": {
+    "description": "Summary row and Excel row: income minus spending."
+  },
+  "ledgerFilterTitle": "Smart filter & sort",
+  "@ledgerFilterTitle": {
+    "description": "Title of the filter sheet."
+  },
+  "ledgerFilterType": "1. Transaction type",
+  "@ledgerFilterType": {
+    "description": "Filter section: transaction type."
+  },
+  "ledgerFilterAll": "All",
+  "@ledgerFilterAll": {
+    "description": "Filter chip: expenses and income."
+  },
+  "ledgerFilterExpenseOnly": "Expenses only",
+  "@ledgerFilterExpenseOnly": {
+    "description": "Filter chip: expenses only."
+  },
+  "ledgerFilterIncomeOnly": "Income only",
+  "@ledgerFilterIncomeOnly": {
+    "description": "Filter chip: income only."
+  },
+  "ledgerFilterAmount": "2. Amount range",
+  "@ledgerFilterAmount": {
+    "description": "Filter section: amount range."
+  },
+  "ledgerFilterAnyAmount": "Any amount",
+  "@ledgerFilterAnyAmount": {
+    "description": "Filter chip: no amount limit."
+  },
+  "ledgerFilterSort": "3. Sort by",
+  "@ledgerFilterSort": {
+    "description": "Filter section: sort order."
+  },
+  "ledgerSortNewest": "Newest",
+  "@ledgerSortNewest": {
+    "description": "Sort chip: newest first."
+  },
+  "ledgerSortOldest": "Oldest",
+  "@ledgerSortOldest": {
+    "description": "Sort chip: oldest first."
+  },
+  "ledgerSortHighest": "Highest amount",
+  "@ledgerSortHighest": {
+    "description": "Sort chip: highest amount first."
+  },
+  "ledgerFilterApply": "Apply filters",
+  "@ledgerFilterApply": {
+    "description": "Button that applies the filters."
+  },
+  "ledgerDetailAmount": "Amount:",
+  "@ledgerDetailAmount": {
+    "description": "Detail sheet label."
+  },
+  "ledgerDetailTime": "Time:",
+  "@ledgerDetailTime": {
+    "description": "Detail sheet label."
+  },
+  "ledgerDetailReceiptStatus": "Receipt status:",
+  "@ledgerDetailReceiptStatus": {
+    "description": "Detail sheet label."
+  },
+  "ledgerDetailSync": "Sync:",
+  "@ledgerDetailSync": {
+    "description": "Detail sheet label of the sync state."
+  },
+  "ledgerDetailUnsyncedHint": "The server hasn't confirmed this transaction yet. When you're back online, tap \"Resend\". Resending won't create a duplicate.",
+  "@ledgerDetailUnsyncedHint": {
+    "description": "Explains the Resend button."
+  },
+  "ledgerDetailReceiptImage": "Original receipt photo:",
+  "@ledgerDetailReceiptImage": {
+    "description": "Detail sheet label above the receipt photo."
+  },
+  "ledgerResend": "Resend",
+  "@ledgerResend": {
+    "description": "Button that sends an unsynced transaction again."
+  },
+  "ledgerDelete": "Delete this transaction",
+  "@ledgerDelete": {
+    "description": "Delete button of the detail sheet."
+  },
+  "ledgerDeleteTitle": "Delete transaction?",
+  "@ledgerDeleteTitle": {
+    "description": "Title of the delete confirmation."
+  },
+  "ledgerDeleteMessage": "The amount will go back to your wallet and this can't be undone. Are you sure?",
+  "@ledgerDeleteMessage": {
+    "description": "Delete confirmation text."
+  },
+  "ledgerDeleteNow": "Delete now",
+  "@ledgerDeleteNow": {
+    "description": "Confirm button of a delete dialog."
+  },
+  "ledgerDeleted": "Transaction deleted and amount refunded",
+  "@ledgerDeleted": {
+    "description": "Snack bar after a delete."
+  },
+  "ledgerDeleteFailed": "Couldn't delete. Please try again",
+  "@ledgerDeleteFailed": {
+    "description": "Snack bar when a delete failed."
+  },
+  "ledgerResendFailedTitle": "Resend failed",
+  "@ledgerResendFailedTitle": {
+    "description": "Title when the server refused a resend."
+  },
+  "ledgerResendFailedMessage": "Couldn't resend the transaction. Please try again.",
+  "@ledgerResendFailedMessage": {
+    "description": "A resend failed for an unexpected reason."
+  },
+  "ledgerResent": "Transaction sent to the server",
+  "@ledgerResent": {
+    "description": "Snack bar after a successful resend."
+  },
+  "ledgerStillNotSentTitle": "Still not sent",
+  "@ledgerStillNotSentTitle": {
+    "description": "Title when a resend did not reach the server."
+  },
+  "ledgerStillNotSentMessage": "Can't reach the server. The transaction stays on this device and you can resend it later.",
+  "@ledgerStillNotSentMessage": {
+    "description": "A resend did not reach the server."
+  },
+  "ledgerDeleteUnsyncedTitle": "Delete unsent transaction?",
+  "@ledgerDeleteUnsyncedTitle": {
+    "description": "Title of the local delete confirmation."
+  },
+  "ledgerDeleteUnsyncedMessage": "The server hasn't confirmed this transaction. Remove it from this device and stop sending it? This can't be undone.",
+  "@ledgerDeleteUnsyncedMessage": {
+    "description": "Local delete confirmation text."
+  },
+  "ledgerDeletedUnsynced": "Unsent transaction deleted",
+  "@ledgerDeletedUnsynced": {
+    "description": "Snack bar after a local delete."
+  },
+  "ledgerLoadFailedNotice": "Couldn't load the list from the server. Only the unsent transactions on this device are shown. Pull down to try again.",
+  "@ledgerLoadFailedNotice": {
+    "description": "Notice above the list when the server list failed."
+  },
+  "ledgerExcelSheet": "Spending {month}",
+  "@ledgerExcelSheet": {
+    "description": "Excel sheet name and share subject; month is e.g. 'October 2026'.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "ledgerExcelDate": "Date",
+  "@ledgerExcelDate": {
+    "description": "Excel column: date."
+  },
+  "ledgerExcelTotal": "Total",
+  "@ledgerExcelTotal": {
+    "description": "Excel row: totals."
+  },
+  "ledgerExcelBudgetHeader": "BUDGETS {month}",
+  "@ledgerExcelBudgetHeader": {
+    "description": "Excel heading of the budget table.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "ledgerExcelLimit": "Limit",
+  "@ledgerExcelLimit": {
+    "description": "Excel column: budget limit."
+  },
+  "ledgerExcelSpent": "Spent",
+  "@ledgerExcelSpent": {
+    "description": "Excel column: amount spent."
+  },
+  "ledgerExcelRemaining": "Remaining",
+  "@ledgerExcelRemaining": {
+    "description": "Excel column: amount left."
+  },
+  "ledgerExcelFileName": "spending_{month}{date}",
+  "@ledgerExcelFileName": {
+    "description": "Excel file name without extension.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "ledgerExcelShareText": "Spending report for {month}",
+  "@ledgerExcelShareText": {
+    "description": "Text sent with the shared Excel file.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewTitle": "Confirm receipt",
+  "@reviewTitle": {
+    "description": "Title of the receipt review form."
+  },
+  "reviewDateFallback": "Couldn't read the date on the receipt, so the current time is used. Tap to choose another.",
+  "@reviewDateFallback": {
+    "description": "Shown under the date when the scan found no date."
+  },
+  "reviewNoTotal": "Donut couldn't read the total from the photo. Please enter it manually.",
+  "@reviewNoTotal": {
+    "description": "The scan found no total."
+  },
+  "reviewScanFailed": "Receipt scan failed (check the AI service). Please enter the details manually.",
+  "@reviewScanFailed": {
+    "description": "The scan request failed."
+  },
+  "reviewPhotoUploadFailedTitle": "Couldn't upload the receipt photo",
+  "@reviewPhotoUploadFailedTitle": {
+    "description": "Title when the photo upload failed."
+  },
+  "reviewPhotoUploadFailedMessage": "The receipt photo hasn't been uploaded to the server. Save the transaction without the photo?",
+  "@reviewPhotoUploadFailedMessage": {
+    "description": "Asks whether to save without the photo."
+  },
+  "reviewSaveWithoutPhoto": "Save without photo",
+  "@reviewSaveWithoutPhoto": {
+    "description": "Confirm button: save without the photo."
+  },
+  "reviewLater": "Later",
+  "@reviewLater": {
+    "description": "Cancel button: do not save now."
+  },
+  "reviewTotalPositive": "Please enter a total greater than 0.",
+  "@reviewTotalPositive": {
+    "description": "The total must be above zero."
+  },
+  "reviewSaved": "Transaction saved from the receipt.",
+  "@reviewSaved": {
+    "description": "The server saved the receipt transaction."
+  },
+  "reviewAnalyzing": "Analyzing the receipt...",
+  "@reviewAnalyzing": {
+    "description": "Shown while the scan runs."
+  },
+  "reviewPleaseWait": "This will only take a moment",
+  "@reviewPleaseWait": {
+    "description": "Shown while the scan runs."
+  },
+  "reviewExtracted": "Extraction complete",
+  "@reviewExtracted": {
+    "description": "Heading once the scan answered."
+  },
+  "reviewCheckDetails": "Check the details below against the original photo before saving.",
+  "@reviewCheckDetails": {
+    "description": "Asks the user to check the scanned fields."
+  },
+  "reviewGeneralInfo": "General information",
+  "@reviewGeneralInfo": {
+    "description": "Section heading of the review form."
+  },
+  "reviewStoreName": "Store name",
+  "@reviewStoreName": {
+    "description": "Label of the store name field."
+  },
+  "reviewTotalLabel": "Total (đ)",
+  "@reviewTotalLabel": {
+    "description": "Label of the total field."
+  },
+  "reviewSubtotal": "Subtotal:",
+  "@reviewSubtotal": {
+    "description": "Totals card row."
+  },
+  "reviewTax": "VAT/Other taxes:",
+  "@reviewTax": {
+    "description": "Totals card row."
+  },
+  "reviewGrandTotal": "TOTAL:",
+  "@reviewGrandTotal": {
+    "description": "Totals card row: the grand total."
+  },
+  "reviewSubmit": "Confirm & save",
+  "@reviewSubmit": {
+    "description": "Save button of the review form."
+  },
+  "paymentHistoryTitle": "Deposit/withdrawal history",
+  "@paymentHistoryTitle": {
+    "description": "Title of the payment history page."
+  },
+  "paymentHistoryLoadFailed": "Couldn't load the history. {reason}",
+  "@paymentHistoryLoadFailed": {
+    "description": "The history could not be loaded; reason is a user-facing error text.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentHistoryEmpty": "No deposits or withdrawals yet.",
+  "@paymentHistoryEmpty": {
+    "description": "The history is empty."
+  },
+  "paymentCancelled": "Order {code} cancelled",
+  "@paymentCancelled": {
+    "description": "Snack bar after cancelling an order.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentCancelFailed": "Couldn't cancel the order. {reason}",
+  "@paymentCancelFailed": {
+    "description": "Cancelling failed; reason is a user-facing error text.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentDeposit": "Deposit",
+  "@paymentDeposit": {
+    "description": "Order type: deposit."
+  },
+  "paymentWithdrawal": "Withdrawal",
+  "@paymentWithdrawal": {
+    "description": "Order type: withdrawal."
+  },
+  "paymentOrderCode": "Code: {code}",
+  "@paymentOrderCode": {
+    "description": "The order code.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentCancelOrder": "Cancel order",
+  "@paymentCancelOrder": {
+    "description": "Button that cancels a pending order."
+  },
+  "paymentStatusSuccess": "Successful",
+  "@paymentStatusSuccess": {
+    "description": "Order status SUCCESS."
+  },
+  "paymentStatusFailed": "Failed",
+  "@paymentStatusFailed": {
+    "description": "Order status FAILED."
+  },
+  "paymentStatusCancelled": "Cancelled",
+  "@paymentStatusCancelled": {
+    "description": "Order status CANCELLED."
+  },
+  "paymentStatusPending": "Pending",
+  "@paymentStatusPending": {
+    "description": "Order status PENDING."
+  },
+  "linkedCreateOrderFailed": "Couldn't create the sync order. {reason}",
+  "@linkedCreateOrderFailed": {
+    "description": "Creating the order failed; reason is a user-facing error text.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedPollTimedOut": "No payment result yet. Please check again in the sync history.",
+  "@linkedPollTimedOut": {
+    "description": "The payment status did not change in time."
+  },
+  "linkedDemoWallet": "Demo wallet",
+  "@linkedDemoWallet": {
+    "description": "Name of the demo e-wallet."
+  },
+  "linkedSyncFrom": "Sync from {wallet}",
+  "@linkedSyncFrom": {
+    "description": "Title of the sync dialog.",
+    "placeholders": {
+      "wallet": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedAmountPrompt": "Amount to add to your spending budget:",
+  "@linkedAmountPrompt": {
+    "description": "Sync dialog prompt."
+  },
+  "linkedAmountHint": "e.g. 100000",
+  "@linkedAmountHint": {
+    "description": "Example amount in the sync dialog."
+  },
+  "linkedSync": "Sync",
+  "@linkedSync": {
+    "description": "Button that syncs money from a wallet."
+  },
+  "linkedMinAmount": "The minimum amount is {amount}.",
+  "@linkedMinAmount": {
+    "description": "The amount is below the minimum.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedSynced": "Synced {amount} to your spending budget.",
+  "@linkedSynced": {
+    "description": "The payment succeeded.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedSyncOutcome": "Sync: {status}",
+  "@linkedSyncOutcome": {
+    "description": "The payment ended without success; status is a translated order status.",
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedHistoryTooltip": "Sync history",
+  "@linkedHistoryTooltip": {
+    "description": "Tooltip of the history button."
+  },
+  "linkedWalletsHeading": "Linked e-wallets",
+  "@linkedWalletsHeading": {
+    "description": "Heading of the wallet list."
+  },
+  "linkedWalletsDescription": "Sync money from a wallet into your budget to manage spending.",
+  "@linkedWalletsDescription": {
+    "description": "Explains the wallet list."
+  },
+  "linkedSyncing": "Syncing... finish the payment on the gateway.",
+  "@linkedSyncing": {
+    "description": "Shown while a payment is pending."
+  },
+  "linkedLinked": "Linked",
+  "@linkedLinked": {
+    "description": "Status of a linked wallet."
   }
 }

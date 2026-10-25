@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/screens/ledger/edit_transaction_page.dart';
@@ -102,14 +103,18 @@ void main() {
 
   Future<void> openForm(
     WidgetTester tester,
-    TransactionModel transaction,
-  ) async {
+    TransactionModel transaction, {
+    Locale locale = const Locale('vi'),
+  }) async {
     // Tall, so that the whole form is on screen, and wide, because the test font is much wider than a real one.
     tester.view.physicalSize = const Size(600, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: _Launcher(
           transaction: transaction,
           onClosed: (saved) {
@@ -443,7 +448,7 @@ void main() {
           isNotNull,
         );
         expect(
-          logs.where((line) => line.startsWith('Lỗi sửa giao dịch')),
+          logs.where((line) => line.startsWith('Edit transaction failed')),
           hasLength(1),
         );
       });
@@ -487,13 +492,13 @@ void main() {
       },
     );
 
-    testWidgets('a server error without a message (500) gets a generic one', (
+    testWidgets('a server error (500) gets the fixed server error text', (
       tester,
     ) {
       return expectRefusal(
         tester,
         (_) => jsonResponse(500, {}),
-        'Máy chủ chưa xử lý được yêu cầu. Vui lòng thử lại sau.',
+        'Máy chủ đang gặp sự cố. Vui lòng thử lại sau.',
       );
     });
 
@@ -549,11 +554,52 @@ void main() {
         await tester.tap(find.text(_saveLabel));
         await tester.pump();
 
-        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+        // The same delegates, since the replacement app rebuilds the leaving form once before it is disposed.
+        await tester.pumpWidget(
+          const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SizedBox(),
+          ),
+        );
         pending.complete(okResponse({'id': 5}));
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
+      },
+    );
+  });
+
+  group('in English', () {
+    testWidgets(
+      'labels are English and a refusal shows the app text instead of the Vietnamese server message',
+      (tester) async {
+        backend.on(
+          'PUT',
+          _putPath,
+          (_) => jsonResponse(400, {
+            'code': 400,
+            'message': 'Số dư ví không đủ để thực hiện thay đổi này',
+          }),
+        );
+        await openForm(tester, _tx(), locale: const Locale('en'));
+
+        expect(find.text('Edit transaction'), findsOneWidget);
+        expect(find.text('Expense'), findsOneWidget);
+        await typeAmount(tester, '50000');
+        await tapText(tester, 'Save changes');
+
+        expect(find.text("Couldn't save the transaction"), findsOneWidget);
+        expect(
+          find.text(
+            "The server couldn't process the request. Please try again later.",
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Số dư ví không đủ để thực hiện thay đổi này'),
+          findsNothing,
+        );
       },
     );
   });

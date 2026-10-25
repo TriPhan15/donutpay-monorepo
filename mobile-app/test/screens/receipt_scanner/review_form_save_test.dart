@@ -8,6 +8,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
@@ -162,11 +164,11 @@ void main() {
       await tester.pump();
       expect(
         find.text(
-          NumberFormat.currency(
-            locale: 'vi_VN',
-            symbol: 'đ',
-            decimalDigits: 0,
-          ).format(50000),
+          CurrencyHelper.formatVND(
+            50000,
+            AppLanguage.vietnamese.localizations,
+            showSign: false,
+          ),
         ),
         findsNWidgets(2),
         reason: 'the totals card follows the amount field',

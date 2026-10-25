@@ -1,10 +1,15 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -17,9 +22,6 @@ import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 const String _fieldAmount = 'amount';
 const String _fieldCategory = 'categoryName';
 const String _fieldNote = 'note';
-
-const int _httpUnauthorized = 401;
-const int _httpForbidden = 403;
 
 /// Form to correct the amount, category and note of a transaction that the server has. It sends just what the user
 /// changed, which leaves the date, the type and the receipt alone, and pops with true once the server has saved it.
@@ -102,34 +104,27 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     };
   }
 
-  static String _messageOf(Object error) {
-    if (error is! DioException) return 'Đã xảy ra lỗi. Vui lòng thử lại.';
-    final response = error.response;
-    if (response == null) {
-      return 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.';
-    }
-
-    final data = response.data;
-    final serverMessage = (data is Map ? data['message'] : null)
-        ?.toString()
-        .trim();
-    if (serverMessage != null && serverMessage.isNotEmpty) return serverMessage;
-
-    final status = response.statusCode;
-    if (status == _httpUnauthorized || status == _httpForbidden) {
-      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
-    }
-    return 'Máy chủ chưa xử lý được yêu cầu. Vui lòng thử lại sau.';
-  }
-
-  /// Sends the changes. Returns null once the server has saved them, or the message to show when it did not.
-  Future<String?> _send(String id, Map<String, dynamic> changes) async {
+  /// Sends the changes. Returns null once the server has saved them, or the message to show in the language of [loc]
+  /// when it did not.
+  Future<String?> _send(
+    String id,
+    Map<String, dynamic> changes,
+    AppLocalizations loc,
+  ) async {
     try {
       await RemoteApiHelper.instance.updateTransaction(id, changes);
       return null;
     } catch (e) {
-      debugPrint('Lỗi sửa giao dịch: $e');
-      return _messageOf(e);
+      UserFacingError.log('Edit transaction', e);
+      // Without a token core-backend answers 403, so a refusal with no reason means the login is gone.
+      final status = e is DioException ? e.response?.statusCode : null;
+      return UserFacingError.messageOf(
+        e,
+        loc,
+        rejectedMessage: status == HttpStatus.forbidden
+            ? loc.errorSessionExpired
+            : loc.editTransactionRejected,
+      );
     }
   }
 
@@ -137,11 +132,12 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   /// before the pop: here for the validation dialogs (nothing is awaited before them) and after each await below.
   Future<void> _save() async {
     if (!mounted) return;
+    final loc = context.loc;
     if (SessionService.currentUserId == null) {
       await AppDialog.error(
         context,
-        title: 'Phiên đăng nhập hết hạn',
-        message: 'Vui lòng đăng nhập lại.',
+        title: loc.commonSessionExpiredTitle,
+        message: loc.accountInfoSignInAgain,
       );
       return;
     }
@@ -149,8 +145,8 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     if (id == null) {
       await AppDialog.error(
         context,
-        title: 'Không sửa được giao dịch',
-        message: 'Giao dịch này chưa có mã trên máy chủ.',
+        title: loc.editTransactionNoServerIdTitle,
+        message: loc.editTransactionNoServerIdMessage,
       );
       return;
     }
@@ -158,8 +154,8 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     if (amount == null) {
       await AppDialog.error(
         context,
-        title: 'Số tiền không hợp lệ',
-        message: 'Vui lòng nhập số tiền lớn hơn 0.',
+        title: loc.commonInvalidAmountTitle,
+        message: loc.editTransactionAmountPositive,
       );
       return;
     }
@@ -167,29 +163,29 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     if (changes.isEmpty) {
       await AppDialog.info(
         context,
-        title: 'Chưa có thay đổi',
-        message: 'Hãy sửa số tiền, danh mục hoặc ghi chú trước khi lưu.',
+        title: loc.editTransactionNoChangesTitle,
+        message: loc.editTransactionNoChangesMessage,
       );
       return;
     }
 
     setState(() => _isSaving = true);
-    final failure = await _send(id, changes);
+    final failure = await _send(id, changes, loc);
     if (!mounted) return;
     setState(() => _isSaving = false);
 
     if (failure != null) {
       await AppDialog.error(
         context,
-        title: 'Không lưu được giao dịch',
+        title: loc.editTransactionSaveFailedTitle,
         message: failure,
       );
       return;
     }
     await AppDialog.success(
       context,
-      title: 'Đã lưu thay đổi',
-      message: 'Giao dịch đã được cập nhật.',
+      title: loc.editTransactionSavedTitle,
+      message: loc.editTransactionSavedMessage,
     );
     if (!mounted) return;
     Navigator.pop(context, true);
@@ -197,10 +193,11 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = context.loc;
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Sửa giao dịch',
+        title: Text(
+          loc.editTransactionTitle,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
@@ -220,11 +217,11 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
             const SizedBox(height: 24),
             CustomTextField(
               controller: _amountController,
-              label: 'Số tiền (₫)',
+              label: loc.editTransactionAmountLabel,
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 20),
-            const _SectionLabel('Danh mục'),
+            _SectionLabel(loc.transactionCategoryLabel),
             const SizedBox(height: 8),
             _CategoryChips(
               categories: _categories,
@@ -233,17 +230,15 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
               onSelected: (category) => setState(() => _category = category),
             ),
             if (_categoriesUnavailable)
-              const _Hint(
-                'Không tải được danh sách danh mục. Bạn vẫn có thể sửa số tiền và ghi chú.',
-              ),
+              _Hint(loc.editTransactionCategoriesUnavailable),
             const SizedBox(height: 20),
             CustomTextField(
               controller: _noteController,
-              label: 'Ghi chú (tùy chọn)',
+              label: loc.transactionNoteOptional,
             ),
             const SizedBox(height: 32),
             PrimaryButton(
-              text: _isSaving ? 'Đang lưu...' : 'Lưu thay đổi',
+              text: _isSaving ? loc.commonSaving : loc.commonSaveChanges,
               onPressed: _isSaving ? null : _save,
             ),
           ],
@@ -265,6 +260,7 @@ class _Summary extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = transaction.receiptStatus;
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppTheme.cardDecoration(colors),
@@ -284,7 +280,9 @@ class _Summary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  transaction.isExpense ? 'Khoản chi' : 'Khoản thu',
+                  transaction.isExpense
+                      ? loc.transactionExpenseKind
+                      : loc.transactionIncomeKind,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
@@ -324,6 +322,7 @@ class _CategoryChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     final side = BorderSide(
       color: colors.onSurfaceVariant.withValues(alpha: 0.3),
     );
@@ -334,7 +333,7 @@ class _CategoryChips extends StatelessWidget {
       children: [
         for (final category in categories)
           ChoiceChip(
-            label: Text(category),
+            label: Text(TransactionCategories.displayName(loc, category)),
             selected: category == selected,
             showCheckmark: false,
             onSelected: (_) => onSelected(category),
