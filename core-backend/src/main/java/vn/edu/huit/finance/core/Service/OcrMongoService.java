@@ -7,7 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
+import vn.edu.huit.finance.core.Dto.OcrRawLogResponseDto;
 import org.springframework.stereotype.Service;
 import vn.edu.huit.finance.core.Document.OcrRawLog;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
@@ -63,6 +66,11 @@ public class OcrMongoService {
         }
     }
 
+
+    /** Một trang nhật ký OCR thô cho quản trị viên, đã ánh xạ sang DTO (không trả document MongoDB ra API). */
+    public Page<OcrRawLogResponseDto> getOcrLogs(Pageable pageable) {
+        return ocrRawLogRepository.findAll(pageable).map(OcrRawLogResponseDto::from);
+    }
 
     public boolean resolveFeedback(String feedbackId) {
         Optional<OcrFeedback> optionalFeedback = ocrFeedbackRepository.findById(feedbackId);

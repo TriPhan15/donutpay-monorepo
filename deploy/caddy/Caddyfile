@@ -6,7 +6,11 @@
 #   - Máy dev: để trống -> ":80", chỉ HTTP, không xin chứng chỉ.
 #
 # Đường dẫn:
-#   /ai/donut/*, /ai/spade/*, /ai/health -> data-mining-api:8000 (bỏ tiền tố /ai; app mobile dùng ML_BASE=<gốc>/ai)
+#   /ai/donut/*, /ai/spade/*             -> data-mining-api:8000 (bỏ tiền tố /ai; app mobile dùng ML_BASE=<gốc>/ai)
+#                                           CHỈ khi có access token hợp lệ: forward_auth hỏi core-api GET /api/auth/check
+#                                           (gửi kèm header Authorization: Bearer <access token>); 204 -> cho qua,
+#                                           401/403 của core-api được trả thẳng cho client.
+#   /ai/health                            -> data-mining-api:8000, công khai (không cần token)
 #   /ai/* còn lại (vd. /ai/admin/segment)  -> 404: chỉ core-api gọi được qua mạng nội bộ
 #   /actuator/* trừ /actuator/health        -> 404
 #   mọi đường dẫn khác                      -> core-api:8080 (REST API /api/..., trang admin)
@@ -15,8 +19,15 @@
 	encode gzip
 
 	handle_path /ai/* {
-		@publicAi path /donut/* /spade/* /health
-		handle @publicAi {
+		handle /health {
+			reverse_proxy data-mining-api:8000
+		}
+		@protectedAi path /donut/* /spade/*
+		handle @protectedAi {
+			# forward_auth gửi GET /api/auth/check (không kèm body) với các header gốc của request, gồm Authorization.
+			forward_auth core-api:8080 {
+				uri /api/auth/check
+			}
 			reverse_proxy data-mining-api:8000
 		}
 		handle {

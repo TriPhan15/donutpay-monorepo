@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,6 +51,7 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -75,6 +75,11 @@ public class AdminController {
     private static final String AI_SEGMENT_PATH = "/admin/segment";
     private static final String AI_SEGMENTS_KEY = "segments";
     private static final String MSG_AI_SERVICE_UNAVAILABLE = "Dịch vụ AI tạm thời không phản hồi, vui lòng thử lại sau.";
+    private static final String MSG_BACKUP_TYPE_INVALID = "Loại sao lưu không hợp lệ (chỉ hỗ trợ FULL, SCHEMA_ONLY, DATA_ONLY).";
+    private static final String MSG_BACKUP_SUCCESS = "Đã sao lưu %s thành công!";
+    private static final String MSG_BACKUP_FAILED = "Lỗi sao lưu! Kiểm tra lại đường dẫn PostgreSQL.";
+    private static final String MSG_RESTORE_SUCCESS = "Đã phục hồi từ bản sao lưu FULL mới nhất!";
+    private static final String MSG_RESTORE_FAILED = "Lỗi phục hồi! Không tìm thấy bản sao lưu FULL hoặc pg_restore lỗi.";
 
     /** Base URL of the AI service; env AI_SERVICE_URL, by default the docker-compose service name. */
     @Value("${app.ai-service.url:${AI_SERVICE_URL:http://data-mining-api:8000}}")
@@ -163,13 +168,14 @@ public class AdminController {
     @GetMapping("/receipts")
     public String showReceipts(
             @RequestParam(defaultValue = "0") int receiptPage,
-            @RequestParam(defaultValue = "0") int userPage,
             @RequestParam(defaultValue = "10") int size,
             Model model) {
-        addUserAndReceiptPages(
-                model,
-                PageRequest.of(Math.max(userPage, 0), normalizePageSize(size), Sort.by(Sort.Direction.DESC, "id")),
+        // Trang hóa đơn chỉ còn danh sách hóa đơn (Duyệt / Từ chối); quản lý tài khoản nằm ở /admin/users.
+        Page<Receipt> receiptsPage = receiptRepo.findAllByOrderByCreatedAtDesc(
                 PageRequest.of(Math.max(receiptPage, 0), normalizePageSize(size)));
+        model.addAttribute("receipts", receiptsPage.getContent());
+        model.addAttribute("receiptsPage", receiptsPage);
+        model.addAttribute("pageSize", normalizePageSize(size));
         return "admin/receipts";
     }
 
@@ -323,34 +329,32 @@ public class AdminController {
     @ResponseBody
     public Map<String, Object> executeBackup(@RequestParam("type") String type) {
         Map<String, Object> response = new HashMap<>();
-
-        boolean isSuccess = backupService.backupDatabase(type);
-
-        if (isSuccess) {
-            response.put("success", true);
-            response.put("message", "Đã sao lưu toàn bộ dữ liệu thành công!");
-        } else {
+        Optional<BackupType> backupType = BackupType.fromParam(type);
+        if (backupType.isEmpty()) {
             response.put("success", false);
-            response.put("message", "Lỗi sao lưu! Kiểm tra lại đường dẫn PostgreSQL.");
+            response.put("message", MSG_BACKUP_TYPE_INVALID);
+            return response;
         }
+
+        boolean isSuccess = backupService.backupDatabase(backupType.get());
+
+        response.put("success", isSuccess);
+        response.put("message", isSuccess
+                ? String.format(MSG_BACKUP_SUCCESS, backupType.get().getLabel())
+                : MSG_BACKUP_FAILED);
         return response;
     }
 
-
+    // Chỉ phục hồi từ bản FULL mới nhất (bản schema-only / data-only không đủ để dựng lại cơ sở dữ liệu).
     @PostMapping("/backup/restore")
     @ResponseBody
-    public Map<String, Object> executeRestore(@RequestParam(value = "type", defaultValue = "FULL") String type) {
+    public Map<String, Object> executeRestore() {
         Map<String, Object> response = new HashMap<>();
 
-        boolean isSuccess = backupService.restoreLatest(type);
+        boolean isSuccess = backupService.restoreLatestFull();
 
-        if (isSuccess) {
-            response.put("success", true);
-            response.put("message", "Đã phục hồi từ bản backup " + type + " mới nhất!");
-        } else {
-            response.put("success", false);
-            response.put("message", "Lỗi phục hồi! Không tìm thấy file backup " + type + " hoặc pg_restore lỗi.");
-        }
+        response.put("success", isSuccess);
+        response.put("message", isSuccess ? MSG_RESTORE_SUCCESS : MSG_RESTORE_FAILED);
         return response;
     }
 
@@ -418,17 +422,6 @@ public class AdminController {
             return String.format(MSG_FILTER_FIELD_INVALID, fieldError.getField());
         }
         return error.getDefaultMessage();
-    }
-
-    private void addUserAndReceiptPages(Model model, Pageable userPageable, Pageable receiptPageable) {
-        Page<User> usersPage = userRepo.findAll(userPageable);
-        Page<Receipt> receiptsPage = receiptRepo.findAllByOrderByCreatedAtDesc(receiptPageable);
-
-        model.addAttribute("users", usersPage.getContent());
-        model.addAttribute("usersPage", usersPage);
-        model.addAttribute("receipts", receiptsPage.getContent());
-        model.addAttribute("receiptsPage", receiptsPage);
-        model.addAttribute("pageSize", userPageable.getPageSize());
     }
 
     private int normalizePageSize(int size) {

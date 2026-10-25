@@ -23,6 +23,12 @@ class AuthPathsTest {
         assertFalse(AuthPaths.isPublic(AuthPaths.LOGOUT_URL));
     }
 
+    @Test
+    void theTokenCheckOfTheProxyNeedsAJwt_soTheFilterReallyChecksIt() {
+        assertFalse(AuthPaths.isPublic(AuthPaths.CHECK_URL));
+        assertEquals("/api/auth/check", AuthPaths.CHECK_URL);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"", "/api/budgets", "/api/notifications", "/api/authentic/login", "/api/auth"})
     void pathsOutsideTheAuthApiAreNotPublicAuthEndpoints(String path) {

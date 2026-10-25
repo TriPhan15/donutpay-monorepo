@@ -27,8 +27,9 @@
                         <div class="alert alert-warning border-warning border-start border-4 bg-warning bg-opacity-10 mb-5">
                             <h5 class="fw-bold text-dark"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i> Lưu ý quan trọng từ Server</h5>
                             <ul class="mb-0 text-dark">
-                                <li>File backup sẽ được mã hóa và lưu trữ trực tiếp trên máy chủ tại: <code class="bg-light px-2 py-1 rounded">/var/backups/finance_db/</code></li>
-                                <li>Quá trình sao lưu (Full Backup) có thể gây nghẽn cổ chai (Bottleneck).Vui lòng thực hiện vào ban đêm.</li>
+                                <li>File sao lưu (định dạng custom của <code>pg_dump</code>, không mã hóa) được lưu trên máy chủ, trong thư mục <code class="bg-light px-2 py-1 rounded">backups/</code> của ứng dụng.</li>
+                                <li>PostgreSQL không có sao lưu vi sai (Differential) hay sao lưu nhật ký (Log) qua <code>pg_dump</code>, nên trang này chỉ có các loại <code>pg_dump</code> làm được thật.</li>
+                                <li>Sao lưu FULL có thể làm chậm hệ thống khi dữ liệu lớn. Vui lòng thực hiện vào giờ thấp điểm.</li>
                             </ul>
                         </div>
 
@@ -43,17 +44,17 @@
                                 </button>
                             </div>
                             <div class="col-md-4">
-                                <button onclick="ConfirmBackup('DIFF')" class="btn btn-outline-warning btn-lg w-100 p-4 rounded-4 hover-effect">
-                                    <i class="bi bi-file-earmark-diff-fill display-4 d-block mb-3"></i>
-                                    <strong class="fs-5">DIFFERENTIAL</strong>
-                                    <div class="small text-muted mt-2">Chỉ sao lưu phần thay đổi</div>
+                                <button onclick="ConfirmBackup('SCHEMA_ONLY')" class="btn btn-outline-warning btn-lg w-100 p-4 rounded-4 hover-effect">
+                                    <i class="bi bi-diagram-3-fill display-4 d-block mb-3"></i>
+                                    <strong class="fs-5">SCHEMA ONLY</strong>
+                                    <div class="small text-muted mt-2">Chỉ cấu trúc bảng, không có dữ liệu</div>
                                 </button>
                             </div>
                             <div class="col-md-4">
-                                <button onclick="ConfirmBackup('LOG')" class="btn btn-outline-secondary btn-lg w-100 p-4 rounded-4 hover-effect">
-                                    <i class="bi bi-clock-history display-4 d-block mb-3"></i>
-                                    <strong class="fs-5">LOG BACKUP</strong>
-                                    <div class="small text-muted mt-2">Sao lưu nhật ký giao dịch</div>
+                                <button onclick="ConfirmBackup('DATA_ONLY')" class="btn btn-outline-secondary btn-lg w-100 p-4 rounded-4 hover-effect">
+                                    <i class="bi bi-table display-4 d-block mb-3"></i>
+                                    <strong class="fs-5">DATA ONLY</strong>
+                                    <div class="small text-muted mt-2">Chỉ dữ liệu, không có lệnh tạo bảng</div>
                                 </button>
                             </div>
                         </div>
@@ -64,7 +65,7 @@
                             <div class="card-body p-4 text-center">
                                 <h5 class="text-danger fw-bold mb-3"><i class="bi bi-radioactive me-2"></i> CẢNH BÁO RỦI RO</h5>
                                 <p class="text-dark mb-4">
-                                    Hệ thống sẽ thực hiện khôi phục chuỗi dữ liệu (Full ➔ Diff ➔ Log).<br>
+                                    Hệ thống sẽ phục hồi từ bản sao lưu <strong>FULL</strong> mới nhất (bản Schema/Data Only không dùng để phục hồi).<br>
                                     <strong>Toàn bộ dữ liệu giao dịch mới phát sinh kể từ bản Backup cuối cùng sẽ BỊ XÓA VĨNH VIỄN.</strong>
                                 </p>
                                 <button onclick="ConfirmRestore()" class="btn btn-danger btn-lg px-5 fw-bold shadow">
@@ -99,7 +100,7 @@
 
             function ConfirmBackup(loai) {
                 Swal.fire({
-                    title: `Khởi chạy ${loai} BACKUP?`,
+                    title: `Khởi chạy sao lưu ${loai}?`,
                     text: "Máy chủ sẽ tốn một ít tài nguyên để nén dữ liệu.",
                     icon: 'question',
                     showCancelButton: true,

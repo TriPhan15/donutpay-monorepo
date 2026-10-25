@@ -75,6 +75,7 @@ public class TransactionService {
 
     private static final String MSG_LOW_BALANCE = "CẢNH BÁO: Số dư ví của bạn sắp cạn kiệt (Dưới 50,000 VNĐ)!";
     private static final String MSG_INSUFFICIENT_BALANCE = "GIAO DỊCH THẤT BẠI: Số dư ví không đủ!";
+    private static final String MSG_DELETE_WOULD_OVERDRAW = "Không thể xóa khoản thu này: số dư ví hiện tại không đủ để hoàn lại số tiền đã cộng.";
     private static final String MSG_CATEGORY_NOT_FOUND = "Không tìm thấy danh mục";
     private static final String MSG_CATEGORY_REQUIRED = "Thiếu danh mục (categoryId hoặc categoryName)";
     private static final String MSG_TRANSACTION_NOT_FOUND = "Không tìm thấy giao dịch";
@@ -161,9 +162,10 @@ public class TransactionService {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
 
+        // Luôn khóa ví trước khi đọc số dư (có hay không có clientId), để hai lần ghi đồng thời không ghi đè số dư của nhau.
+        user = lockWallet(user);
         String clientId = normalizeClientId(request.getClientId());
         if (clientId != null) {
-            user = lockWallet(user);
             Optional<Transaction> original = transactionRepo.findByUserIdAndClientId(userId, clientId);
             if (original.isPresent()) {
                 log.info("Duplicate checkout answered with the original transaction, userId={}, transactionId={}",
@@ -176,15 +178,7 @@ public class TransactionService {
 
         BigDecimal finalAmount = request.getAmount();
 
-        if (request.isExpense()) {
-            if (user.getWalletBalance().compareTo(finalAmount) < 0) {
-                throw new RuntimeException(MSG_INSUFFICIENT_BALANCE);
-            }
-            user.setWalletBalance(user.getWalletBalance().subtract(finalAmount));
-        } else {
-            user.setWalletBalance(user.getWalletBalance().add(finalAmount));
-        }
-        userRepo.save(user);
+        moveWallet(user, signedAmount(finalAmount, request.isExpense()));
 
         Transaction transaction = new Transaction();
         transaction.setAmount(finalAmount);
@@ -299,7 +293,8 @@ public class TransactionService {
 
         BigDecimal undo = signedAmount(transaction.getAmount(), transaction.isExpense()).negate();
         User owner = lockWallet(caller);
-        writeWallet(owner, owner.getWalletBalance().add(undo));
+        // Xóa một khoản thu sẽ trừ lại tiền khỏi ví: cùng quy tắc với thanh toán, số dư không được xuống dưới 0.
+        moveWallet(owner, undo, MSG_DELETE_WOULD_OVERDRAW);
         transactionRepo.delete(transaction);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_TOTALS, caller.getId()));
         auditLogService.record(AuditEntry.of(AuditAction.TRANSACTION_DELETED, AuditActor.of(caller), transactionId,
@@ -613,11 +608,16 @@ public class TransactionService {
 
     /** Adds [change] to the wallet and writes it now. A change that lowers the balance may not take it below zero. */
     private void moveWallet(User owner, BigDecimal change) {
+        moveWallet(owner, change, MSG_INSUFFICIENT_BALANCE);
+    }
+
+    /** Như {@link #moveWallet(User, BigDecimal)}, với thông báo lỗi riêng của thao tác gọi nó. */
+    private void moveWallet(User owner, BigDecimal change, String insufficientBalanceMessage) {
         BigDecimal newBalance = owner.getWalletBalance().add(change);
         if (change.signum() < 0 && newBalance.signum() < 0) {
             log.warn("Wallet change rejected: insufficient balance, userId={}, balance={}, change={}",
                     owner.getId(), owner.getWalletBalance(), change);
-            throw new InsufficientBalanceException(MSG_INSUFFICIENT_BALANCE);
+            throw new InsufficientBalanceException(insufficientBalanceMessage);
         }
         writeWallet(owner, newBalance);
     }

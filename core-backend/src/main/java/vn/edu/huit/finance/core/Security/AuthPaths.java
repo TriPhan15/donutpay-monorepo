@@ -8,12 +8,15 @@ public final class AuthPaths {
     public static final String BASE = "/api/auth";
     public static final String CHANGE_PASSWORD = "/change-password";
     public static final String LOGOUT = "/logout";
+    /** Kiểm tra access token cho forward_auth của Caddy (chặn /ai/donut/*, /ai/spade/* khi chưa đăng nhập). */
+    public static final String CHECK = "/check";
 
     public static final String CHANGE_PASSWORD_URL = BASE + CHANGE_PASSWORD;
     public static final String LOGOUT_URL = BASE + LOGOUT;
+    public static final String CHECK_URL = BASE + CHECK;
 
-    /** The only endpoints under {@link #BASE} that need a JWT (they act on the caller's own session); every other one is public. */
-    private static final Set<String> AUTHENTICATED_URLS = Set.of(CHANGE_PASSWORD_URL, LOGOUT_URL);
+    /** The only endpoints under {@link #BASE} that need a JWT (they act on, or check, the caller's own session); every other one is public. */
+    private static final Set<String> AUTHENTICATED_URLS = Set.of(CHANGE_PASSWORD_URL, LOGOUT_URL, CHECK_URL);
 
     private AuthPaths() {
     }

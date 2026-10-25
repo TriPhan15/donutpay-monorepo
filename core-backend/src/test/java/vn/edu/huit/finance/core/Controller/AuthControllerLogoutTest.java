@@ -403,4 +403,49 @@ class AuthControllerLogoutTest {
 
         verifyNoInteractions(authService);
     }
+
+    // ------------------------------------------------- GET /api/auth/check: forward_auth of Caddy in front of /ai/*
+
+    private static MockHttpServletRequestBuilder checkRequest() {
+        return get(AuthPaths.CHECK_URL).servletPath(AuthPaths.CHECK_URL);
+    }
+
+    @Test
+    void check_answers204WithoutABody_forAValidAccessToken() throws Exception {
+        mockMvc.perform(withToken(checkRequest(), TOKEN))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void check_answersTheJson401_withoutAToken() throws Exception {
+        mockMvc.perform(checkRequest())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {REVOKED_TOKEN, BAD_TOKEN, EXPIRED_TOKEN, REFRESH_TOKEN, OUTDATED_TOKEN, UNVERSIONED_TOKEN})
+    void check_answersTheJson401_forEveryTokenThatIsNotAUsableAccessToken(String token) throws Exception {
+        mockMvc.perform(withToken(checkRequest(), token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    void check_answers403_forALockedAccount() throws Exception {
+        User locked = new User();
+        locked.setUsername(USERNAME);
+        locked.setActive(false);
+        locked.setRole("ROLE_USER");
+        locked.setLastActionTime(LocalDateTime.now());
+        locked.setCredentialsVersion(CURRENT_VERSION);
+        when(userDetailsService.loadApplicationUser(USERNAME)).thenReturn(locked);
+
+        mockMvc.perform(withToken(checkRequest(), TOKEN))
+                .andExpect(status().isForbidden());
+    }
 }

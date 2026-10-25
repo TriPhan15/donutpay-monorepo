@@ -15,12 +15,19 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import vn.edu.huit.finance.core.Document.OcrFeedback;
 import vn.edu.huit.finance.core.Document.OcrRawLog;
 import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
+import vn.edu.huit.finance.core.Dto.OcrRawLogResponseDto;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrFeedbackRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -240,5 +247,48 @@ class OcrMongoServiceTest {
             then(ocrFeedbackRepository).should(never()).save(any());
         }
     }
-}
 
+    // =========================================================================
+    // NHÓM: getOcrLogs — trả DTO, không trả document MongoDB
+    // =========================================================================
+    @Nested
+    @DisplayName("getOcrLogs — DTO mapping")
+    class GetOcrLogs {
+
+        @Test
+        @DisplayName("Mỗi document được ánh xạ sang OcrRawLogResponseDto, rawJsonData thành Map thường, giữ thông tin trang")
+        void mapsEveryDocumentToADto() {
+            OcrRawLog log = new OcrRawLog();
+            log.setId("abc123");
+            log.setTransactionId(42L);
+            log.setRawJsonData(new Document("seller", new Document("total_cost", "120000")));
+            log.setAverageConfidenceScore(0.87);
+            log.setCreatedAt(LocalDateTime.of(2026, 10, 25, 9, 30));
+            PageRequest pageable = PageRequest.of(1, 5);
+            given(ocrRawLogRepository.findAll(pageable)).willReturn(new PageImpl<>(List.of(log), pageable, 6));
+
+            Page<OcrRawLogResponseDto> page = ocrMongoService.getOcrLogs(pageable);
+
+            assertThat(page.getTotalElements()).isEqualTo(6);
+            assertThat(page.getNumber()).isEqualTo(1);
+            OcrRawLogResponseDto dto = page.getContent().get(0);
+            assertThat(dto.getId()).isEqualTo("abc123");
+            assertThat(dto.getTransactionId()).isEqualTo(42L);
+            assertThat(dto.getAverageConfidenceScore()).isEqualTo(0.87);
+            assertThat(dto.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 10, 25, 9, 30));
+            assertThat(dto.getRawJsonData()).isNotInstanceOf(Document.class).containsKey("seller");
+            assertThat(((Map<?, ?>) dto.getRawJsonData().get("seller")).get("total_cost")).isEqualTo("120000");
+        }
+
+        @Test
+        @DisplayName("Document không có rawJsonData vẫn ánh xạ được (null)")
+        void aDocumentWithoutRawJsonMapsToNull() {
+            OcrRawLog log = new OcrRawLog();
+            log.setId("empty");
+            PageRequest pageable = PageRequest.of(0, 20);
+            given(ocrRawLogRepository.findAll(pageable)).willReturn(new PageImpl<>(List.of(log), pageable, 1));
+
+            assertThat(ocrMongoService.getOcrLogs(pageable).getContent().get(0).getRawJsonData()).isNull();
+        }
+    }
+}

@@ -338,7 +338,7 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.message").value(startsWith(VALIDATION_PREFIX)));
         verifyNoInteractions(transactionService);
 
-        when(transactionService.createMyTransaction(any())).thenThrow(new RuntimeException("GIAO DỊCH THẤT BẠI: Số dư ví không đủ!"));
+        when(transactionService.createMyTransaction(any())).thenThrow(new InsufficientBalanceException("GIAO DỊCH THẤT BẠI: Số dư ví không đủ!"));
         String body = "{\"amount\":10000,\"location\":\"Quán A\",\"paymentMethod\":\"Ví chính\","
                 + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true}";
         mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))

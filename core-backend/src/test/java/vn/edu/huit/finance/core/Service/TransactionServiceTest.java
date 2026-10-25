@@ -100,6 +100,10 @@ class TransactionServiceTest {
     @BeforeEach
     void realStatisticsOverTheMockedRepository() {
         ReflectionTestUtils.setField(service, "userStatisticsService", new UserStatisticsService(transactionRepo));
+        // Every checkout locks the wallet (with or without a client id); unless a test says otherwise the locked row
+        // holds what the copy read earlier holds.
+        lenient().when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(alice);
+        lenient().when(entityManager.find(User.class, BOB_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(bob);
     }
 
     // ---------------------------------------------------------------------------------------------------------- fixtures
@@ -618,14 +622,46 @@ class TransactionServiceTest {
     }
 
     @Test
-    void deletingAnIncomeTakesItBackOutOfTheWalletEvenBelowZero() {
-        alice.setWalletBalance(new BigDecimal("30000"));
+    void deletingAnIncomeTakesItBackOutOfTheWallet_downToExactlyZero() {
+        alice.setWalletBalance(HUNDRED_THOUSAND);
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, false);
 
         service.deleteTransaction(TX_ID);
 
-        assertMoney("-70000", alice.getWalletBalance()); // the rule of the old endpoint, kept as it was
-        verify(transactionRepo).delete(transaction);
+        assertMoney("0", alice.getWalletBalance());
+        InOrder order = inOrder(entityManager, userRepo, transactionRepo);
+        order.verify(entityManager).find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE);
+        order.verify(userRepo).saveAndFlush(alice);
+        order.verify(transactionRepo).delete(transaction);
+    }
+
+    @Test
+    void deletingAnIncomeTheWalletNoLongerHoldsIsRefused_likeACheckoutTheWalletCannotCarry() {
+        alice.setWalletBalance(new BigDecimal("30000"));
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, false);
+
+        InsufficientBalanceException refused =
+                assertThrows(InsufficientBalanceException.class, () -> service.deleteTransaction(TX_ID));
+
+        assertEquals("Không thể xóa khoản thu này: số dư ví hiện tại không đủ để hoàn lại số tiền đã cộng.",
+                refused.getMessage());
+        assertMoney("30000", alice.getWalletBalance());
+        verify(userRepo, never()).saveAndFlush(any());
+        verify(transactionRepo, never()).delete(any());
+        verifyNoInteractions(auditLogService, eventPublisher);
+    }
+
+    @Test
+    void deletingAnIncomeChecksTheBalanceReadUnderTheLock_notTheOneReadEarlier() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, false);
+        // Another request of Alice spent money after this one first read her: the locked row holds only 50,000.
+        User reloaded = user(ALICE_ID, new BigDecimal("50000"));
+        when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(reloaded);
+
+        assertThrows(InsufficientBalanceException.class, () -> service.deleteTransaction(TX_ID));
+
+        assertMoney("50000", reloaded.getWalletBalance());
+        verify(transactionRepo, never()).delete(any());
     }
 
     @Test
@@ -1277,7 +1313,8 @@ class TransactionServiceTest {
         TransactionRequestDto request = checkout(true, "50000.01");
         request.setCategoryId(FOOD_ID);
 
-        RuntimeException refused = assertThrows(RuntimeException.class, () -> service.createMyTransaction(request));
+        InsufficientBalanceException refused =
+                assertThrows(InsufficientBalanceException.class, () -> service.createMyTransaction(request));
 
         assertEquals("GIAO DỊCH THẤT BẠI: Số dư ví không đủ!", refused.getMessage());
         assertMoney("50000", alice.getWalletBalance());
@@ -1432,7 +1469,7 @@ class TransactionServiceTest {
         assertMoney("550000", reloaded.getWalletBalance());
         assertMoney("1000000", alice.getWalletBalance()); // the stale copy is never charged
         assertMoney("550000", (BigDecimal) result.get("remainingBalance"));
-        verify(userRepo).save(reloaded);
+        verify(userRepo).saveAndFlush(reloaded);
         assertSame(reloaded, savedTransaction().getUser());
     }
 
@@ -1466,16 +1503,34 @@ class TransactionServiceTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "   ", "\t"})
-    void aCheckoutWithoutAClientIdIsNeverLookedUpNorLockedAndStoresNoId(String clientId) {
+    void aCheckoutWithoutAClientIdIsNeverLookedUpButStillLocksTheWalletAndStoresNoId(String clientId) {
         checkoutAsAlice();
         when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
 
         service.createMyTransaction(checkoutWithClientId(clientId));
 
         verify(transactionRepo, never()).findByUserIdAndClientId(any(), any());
-        verifyWalletNotLocked();
+        InOrder order = inOrder(entityManager, userRepo, transactionRepo);
+        order.verify(entityManager).detach(alice);
+        order.verify(entityManager).find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE);
+        order.verify(userRepo).saveAndFlush(alice);
+        order.verify(transactionRepo).save(any(Transaction.class));
         assertNull(savedTransaction().getClientId());
         assertMoney("850000", alice.getWalletBalance());
+    }
+
+    @Test
+    void aCheckoutWithoutAClientIdChargesTheBalanceReadUnderTheLockToo() {
+        checkoutAsAlice();
+        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        // Another checkout of Alice committed -900,000 after this one first read the user: 150,000 no longer fits.
+        User reloaded = user(ALICE_ID, new BigDecimal("100000"));
+        when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(reloaded);
+
+        assertThrows(InsufficientBalanceException.class, () -> service.createMyTransaction(checkoutWithClientId(null)));
+
+        assertMoney("100000", reloaded.getWalletBalance());
+        verify(transactionRepo, never()).save(any());
     }
 
     @Test

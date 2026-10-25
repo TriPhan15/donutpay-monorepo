@@ -257,6 +257,14 @@ public class AuthController {
                 .build());
     }
 
+    // Dùng cho forward_auth của Caddy trước /ai/donut/* và /ai/spade/*. Toàn bộ việc kiểm tra token (chữ ký, loại ACCESS,
+    // hết hạn, danh sách thu hồi, phiên bản mật khẩu, tài khoản bị khóa) đã do JwtAuthFilter làm; token không dùng được
+    // thì JsonAuthenticationEntryPoint trả 401/403 trước khi tới đây. Tới được đây nghĩa là hợp lệ: 204, không có body.
+    @GetMapping(AuthPaths.CHECK)
+    public ResponseEntity<Void> checkAccessToken() {
+        return ResponseEntity.noContent().build();
+    }
+
     private String bearerTokenOf(String authorizationHeader) {
         return BearerToken.extract(authorizationHeader).orElseThrow(() -> new InvalidTokenException(MSG_TOKEN_MISSING));
     }
