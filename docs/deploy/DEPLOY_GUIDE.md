@@ -3,6 +3,9 @@
 Tài liệu cho người mới: đưa LedgerMind lên một máy AWS EC2 (Ubuntu) có HTTPS, để CI tự deploy mỗi lần push `main`, và
 để mỗi tag `v*` tạo một file APK có mã QR tải về. Phần cuối là dữ liệu demo (T2b).
 
+Không dùng AWS: tạo máy theo **Phụ lục A (Oracle Cloud Always Free, miễn phí)** thay cho mục 2,
+rồi làm tiếp từ mục 3. Các secret CI vẫn tên `AWS_HOST`, `AWS_USERNAME`, `AWS_SSH_KEY` dù máy ở đâu.
+
 Những ô **[ĐIỀN]** là chỗ bạn thay bằng giá trị của mình. Không ghi giá trị thật (mật khẩu, khóa) vào file này hay bất
 kỳ file nào được commit.
 
@@ -21,7 +24,9 @@ kỳ file nào được commit.
         ▼
   proxy (Caddy)  ── tự xin + tự gia hạn chứng chỉ Let's Encrypt cho SITE_ADDRESS
         │  mạng nội bộ finance-network (không mở ra ngoài)
-        ├── /ai/donut/*, /ai/spade/*, /ai/health ──► data-mining-api:8000 (bỏ tiền tố /ai)
+        ├── /ai/health ─────────────────────────────► data-mining-api:8000 (bỏ tiền tố /ai, công khai)
+        ├── /ai/donut/*, /ai/spade/* ── hỏi core-api GET /api/auth/check (cần Bearer token, sai → 401)
+        │                            └─ hợp lệ ──► data-mining-api:8000 (bỏ tiền tố /ai)
         ├── /ai/* còn lại, /actuator/* trừ health ──► 404
         └── mọi đường dẫn khác ─────────────────────► core-api:8080 (REST /api/..., trang admin)
                                                         ├── db (PostgreSQL)  127.0.0.1:5432
@@ -205,6 +210,7 @@ release tại máy) thì dùng chính keystore đó cho CI, đừng tạo khóa 
 curl -I http://[ĐIỀN tên miền API]                 # 308 chuyển sang https
 curl https://[ĐIỀN tên miền API]/actuator/health   # {"status":"UP"...}
 curl https://[ĐIỀN tên miền API]/ai/health         # trả lời của ai-service
+curl -o /dev/null -w '%{http_code}\n' https://[ĐIỀN tên miền API]/ai/spade/analyze   # 401: không có token thì bị chặn
 curl -o /dev/null -w '%{http_code}\n' https://[ĐIỀN tên miền API]/ai/admin/segment   # 404: không lộ ra ngoài
 nc -zv -w 5 [ĐIỀN Elastic IP] 8080                  # phải thất bại (timeout/refused)
 nc -zv -w 5 [ĐIỀN Elastic IP] 8000                  # phải thất bại
@@ -318,3 +324,73 @@ cấu trúc, nhưng khoảng ngày của dữ liệu sẽ dời theo.
 
 Lưu ý: hạn mức ngân sách được tính từ số tiền đã chi trong kỳ hiện tại. Nếu seed vào sáng sớm ngày 1 (tháng chưa có
 khoản chi nào) thì ngân sách "Ăn uống" chưa vượt 80% và sẽ không có thông báo cảnh báo. Nên seed từ ngày 2 trở đi.
+
+## Phụ lục: tiền và credit
+
+Máy chạy 24/7 nên bị tính tiền cả khi không ai dùng. Máy 4 GB RAM + ổ đĩa + IP tĩnh tốn khoảng 30–40 USD/tháng: 100 USD
+credit chỉ đủ khoảng 3 tháng (đây là lý do subscription Azure for Students cũ bị khóa). Ổ đĩa và IP tĩnh vẫn tính tiền khi
+máy đã tắt; chỉ xóa máy mới dừng hẳn. Ở nhà cung cấp nào cũng đặt **cảnh báo ngân sách** (vd. báo khi đã tiêu 50% credit).
+
+## Phụ lục A. Oracle Cloud Always Free (máy ARM)
+
+Gói Always Free cho máy **Ampere A1 (ARM64)** tối đa 4 OCPU và 24 GB RAM, không mất tiền nếu không vượt giới hạn. Kiểm tra
+lại giới hạn hiện hành trên trang Oracle Cloud Free Tier.
+
+Lưu ý ARM: mọi image trong `docker-compose.yml` (Caddy, PostgreSQL, Redis, MongoDB 6, Temurin, python-slim) và PyTorch
+CPU đều có bản ARM64, nhưng project **chưa từng được build trên ARM**. Lần build đầu hãy xem kỹ log `data-mining-api`.
+
+### A1. Tài khoản và thẻ
+
+1. Đăng ký ở https://www.oracle.com/cloud/free/. Oracle giữ tạm một khoản nhỏ trên thẻ để xác minh rồi hoàn lại.
+   Thẻ ảo/trả trước thường bị từ chối; tên và địa chỉ khai báo nên trùng với thẻ.
+2. **Home Region chọn một lần, không đổi được**, và máy A1 miễn phí chỉ tạo được ở Home Region. Vùng đông người
+   (Singapore, Tokyo) hay hết máy; vùng ít người hơn dễ tạo hơn, đổi lại độ trễ cao hơn.
+3. Tùy chọn: nâng tài khoản lên **Pay As You Go**. Tài nguyên Always Free vẫn miễn phí, máy dễ tạo hơn và không bị
+   thu hồi khi chạy rảnh lâu ngày; bù lại vượt giới hạn là bị tính tiền thật, nên phải đặt **Budget** (Billing → Budgets)
+   trước.
+
+### A2. Tạo máy
+
+1. **Compute → Instances → Create instance**:
+   - Image: **Canonical Ubuntu 24.04** (bản aarch64 khớp với shape bên dưới).
+   - Shape: **Ampere → VM.Standard.A1.Flex**, chọn **2 OCPU / 12 GB** (hoặc 4 / 24). Phải thấy nhãn *Always Free-eligible*.
+   - Networking: tạo VCN mới, subnet **public**, **Assign a public IPv4 address**.
+   - SSH keys: tải lên `~/.ssh/ledgermind-oci.pub` (tạo bằng `ssh-keygen -t ed25519 -f ~/.ssh/ledgermind-oci`).
+   - Boot volume: 50 GB là đủ (giới hạn miễn phí tính tổng các ổ).
+2. Báo lỗi **"Out of capacity for shape VM.Standard.A1.Flex"**: thử Availability Domain khác, giảm xuống 1 OCPU / 6 GB,
+   hoặc thử lại vào giờ khác. Đây là lỗi thiếu máy của Oracle, không phải lỗi cấu hình.
+3. Mở cổng ở **hai lớp tường lửa**:
+   - **VCN → Subnet → Security List → Add Ingress Rules**: Source `0.0.0.0/0`, TCP, cổng `80` và `443` (cổng 22 có sẵn).
+   - **Bên trong máy Ubuntu của Oracle**, iptables mặc định chặn mọi cổng trừ 22. Mở 80 và 443 và lưu lại:
+
+     ```bash
+     sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+     sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+     sudo netfilter-persistent save
+     ```
+
+   Thiếu một trong hai lớp thì Caddy không xin được chứng chỉ (mục 12).
+4. SSH: `ssh -i ~/.ssh/ledgermind-oci ubuntu@<Public IP>`. User mặc định là `ubuntu` (có `sudo` không cần mật khẩu).
+
+Rồi làm tiếp **mục 3–6** (máy 12 GB RAM thì không cần swap). Secrets CI: `AWS_HOST` = Public IP, `AWS_USERNAME` =
+`ubuntu`, `AWS_SSH_KEY` = nội dung `~/.ssh/ledgermind-oci`. IP công khai kiểu ephemeral giữ nguyên khi stop/start máy,
+chỉ mất khi xóa (terminate) máy; muốn chắc chắn hơn thì đổi sang *Reserved public IP* trong VNIC của máy.
+
+## Phụ lục B. Chuyển sang máy hoặc nhà cung cấp khác
+
+Toàn bộ hệ thống là mã nguồn trên GitHub + `docker compose`, nên chuyển máy chỉ là dựng lại:
+
+1. Muốn giữ dữ liệu thì sao lưu database trên máy cũ **trước khi** máy bị khóa/xóa (biến lấy từ `.env`):
+
+   ```bash
+   cd ~/Deploy_Project
+   sudo docker compose exec -T db pg_dump -U "$(grep ^DB_USERNAME= .env | cut -d= -f2)" finance_db > backup.sql
+   scp -i <file khóa> <user>@<IP cũ>:~/Deploy_Project/backup.sql .    # chạy trên máy bạn
+   ```
+
+   Không cần giữ dữ liệu (chỉ có dữ liệu demo) thì bỏ qua bước này và để `SEED_DEMO=true` ở máy mới.
+2. Sao lại file `.env` của máy cũ về máy bạn (hoặc tạo lại theo mục 5). Không commit file này.
+3. Máy mới: làm mục 4–6. Có `backup.sql` thì trước khi bật core-api lần đầu, chạy `sudo docker compose up -d db`, rồi
+   `sudo docker compose exec -T db psql -U <DB_USERNAME> finance_db < backup.sql`, sau đó mới `up -d --build --wait`.
+4. Sửa bản ghi A (`api` và bản ghi gốc) trên name.com sang IP mới, và sửa secret `AWS_HOST`, `AWS_USERNAME`,
+   `AWS_SSH_KEY` trên GitHub. App mobile không phải build lại vì vẫn gọi `https://api.ledgermind.dev`.
