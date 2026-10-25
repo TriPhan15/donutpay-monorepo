@@ -7,25 +7,73 @@ import io.jsonwebtoken.MissingClaimException;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 
+@Slf4j
 @Component
 public class JwtUtil {
 
-    private static final String SECRET = "DayLaChungChiBaoMatSieuCapVipProCuaPhanTriTaiChinh2026";
+    /** Profile của môi trường thật (SPRING_PROFILES_ACTIVE=prod trên EC2): ở đó JWT_SECRET là bắt buộc. */
+    static final String PROD_PROFILE = "prod";
+    /** HS256 cần khóa tối thiểu 256 bit = 32 byte. */
+    static final int MIN_SECRET_BYTES = 32;
+    /** Khóa chỉ dùng cho dev/test khi chưa đặt JWT_SECRET; không bao giờ được dùng ở prod. */
+    static final String DEV_FALLBACK_SECRET = "DayLaChungChiBaoMatSieuCapVipProCuaPhanTriTaiChinh2026";
+
     private static final long ACCESS_TOKEN_EXPIRATION = 900000;
     private static final long REFRESH_TOKEN_EXPIRATION = 2592000000L;
 
     /** The User.credentialsVersion a token was issued for; a token whose value is no longer the user's is refused. */
     public static final String CLAIM_CREDENTIALS_VERSION = "credentialsVersion";
 
+    private final Key signingKey;
+
+    /** Dev/test (không có Spring context): dùng khóa dev cố định. */
+    public JwtUtil() {
+        this(DEV_FALLBACK_SECRET);
+    }
+
+    /**
+     * Spring: khóa đọc từ biến môi trường JWT_SECRET (hoặc thuộc tính app.jwt.secret). Ở profile prod mà thiếu khóa thì
+     * ứng dụng dừng ngay lúc khởi động thay vì ký token bằng một khóa ai cũng biết.
+     */
+    @Autowired
+    public JwtUtil(@Value("${app.jwt.secret:${JWT_SECRET:}}") String configuredSecret, Environment environment) {
+        this(resolveSecret(configuredSecret, environment.acceptsProfiles(Profiles.of(PROD_PROFILE))));
+    }
+
+    JwtUtil(String secret) {
+        byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException("JWT_SECRET phải dài ít nhất " + MIN_SECRET_BYTES + " byte");
+        }
+        this.signingKey = Keys.hmacShaKeyFor(bytes);
+    }
+
+    static String resolveSecret(String configuredSecret, boolean production) {
+        if (configuredSecret != null && !configuredSecret.isBlank()) {
+            return configuredSecret.trim();
+        }
+        if (production) {
+            throw new IllegalStateException("Thiếu JWT_SECRET: bắt buộc khi chạy profile " + PROD_PROFILE);
+        }
+        log.warn("JWT_SECRET chưa được đặt: đang dùng khóa dev cố định, KHÔNG dùng cấu hình này ở prod");
+        return DEV_FALLBACK_SECRET;
+    }
+
     private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET.getBytes());
+        return signingKey;
     }
 
     /** An access token (JOSE header typ = ACCESS): the only kind the protected API accepts. */
@@ -97,4 +145,4 @@ public class JwtUtil {
             return false;
         }
     }
-}
+}

@@ -21,7 +21,7 @@
                 Ứng dụng quản lý tài chính cá nhân tự động hóa. Tích hợp AI quét hóa đơn, biểu đồ thông minh và đồng bộ đám mây an toàn.
             </p>
             
-            <a href="https://github.com/TriPhan15/donutpay-monorepo/releases/download/v1.0.0/LedgerMind.apk" 
+            <a href="https://github.com/TriPhan15/donutpay-monorepo/releases/latest/download/LedgerMind.apk" 
                class="inline-flex items-center justify-center gap-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 transform hover:-translate-y-1">
                 <i class="fab fa-android text-2xl"></i>
                 Tải về cho Android (.apk)
@@ -35,8 +35,8 @@
         <div class="flex-none bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-2xl flex flex-col items-center">
             <h3 class="text-slate-300 font-semibold mb-4 text-sm uppercase tracking-wider">Quét để tải ngay</h3>
             <div class="bg-white p-2 rounded-xl">
-              <!-- Chỉ đổi phần data= thành địa chỉ trang web của em -->
-<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://ledgermind.dev" 
+              <!-- QR mã hóa link APK của bản Release mới nhất (CI đẩy LedgerMind.apk khi có tag v*); data= phải được URL-encode -->
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fgithub.com%2FTriPhan15%2Fdonutpay-monorepo%2Freleases%2Flatest%2Fdownload%2FLedgerMind.apk" 
      alt="QR Code Tải App" class="w-48 h-48">
             </div>
             <div class="mt-4 flex gap-2">

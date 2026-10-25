@@ -1,0 +1,43 @@
+# Reverse proxy duy nhất được mở ra Internet (cổng 80/443). core-api và data-mining-api chỉ nằm trong finance-network.
+#
+# SITE_ADDRESS (đặt trong .env, xem docs/deploy/DEPLOY_GUIDE.md):
+#   - Server thật: tên miền, ví dụ api.example.com -> Caddy tự xin và tự gia hạn chứng chỉ HTTPS (Let's Encrypt).
+#     DNS của tên miền phải trỏ về IP của EC2 và cổng 80/443 phải mở trước khi khởi động.
+#   - Máy dev: để trống -> ":80", chỉ HTTP, không xin chứng chỉ.
+#
+# Đường dẫn:
+#   /ai/donut/*, /ai/spade/*, /ai/health -> data-mining-api:8000 (bỏ tiền tố /ai; app mobile dùng ML_BASE=<gốc>/ai)
+#   /ai/* còn lại (vd. /ai/admin/segment)  -> 404: chỉ core-api gọi được qua mạng nội bộ
+#   /actuator/* trừ /actuator/health        -> 404
+#   mọi đường dẫn khác                      -> core-api:8080 (REST API /api/..., trang admin)
+
+{$SITE_ADDRESS} {
+	encode gzip
+
+	handle_path /ai/* {
+		@publicAi path /donut/* /spade/* /health
+		handle @publicAi {
+			reverse_proxy data-mining-api:8000
+		}
+		handle {
+			respond 404
+		}
+	}
+
+	@internalActuator {
+		path /actuator/*
+		not path /actuator/health
+	}
+	handle @internalActuator {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy core-api:8080
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

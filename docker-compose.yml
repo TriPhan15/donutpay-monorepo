@@ -1,4 +1,39 @@
 services:
+  # -1. REVERSE PROXY (Caddy): the only container published on the public interface (80/443). It terminates HTTPS with a
+  # certificate it obtains and renews by itself for SITE_ADDRESS, and forwards to core-api / data-mining-api on
+  # finance-network (routes in deploy/caddy/Caddyfile). Leave SITE_ADDRESS empty on a dev machine: plain HTTP on :80.
+  proxy:
+    image: caddy:2.8-alpine
+    container_name: finance-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - SITE_ADDRESS=${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account: keep them, or Let's Encrypt rate limits may bite after a few rebuilds.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      core-api:
+        condition: service_healthy
+      data-mining-api:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - finance-network
+
   # 0. DATABASE: PostgreSQL self-hosted on the same VPS (no cloud database).
   # core-api reaches it on the Docker network as db:5432. The host port is bound to 127.0.0.1 only, for admin
   # work on the VPS itself (psql, pg_dump); it is never published on the public interface.
@@ -106,8 +141,11 @@ services:
       context: ./core-backend
       dockerfile: Dockerfile
     container_name: finance-core-api
-    ports:
-      - "8080:8080"
+    # No host port: only the proxy (and the other containers of finance-network) reach it.
+    expose:
+      - "8080"
+    # JWT_SECRET comes from this file (required when SPRING_PROFILES_ACTIVE=prod, see Security/JwtUtil.java). It is not
+    # repeated under "environment" so that the value of DEPLOY_ENV_FILE is the one that counts.
     env_file:           
       - ${DEPLOY_ENV_FILE:-.env}
     environment:
@@ -132,6 +170,8 @@ services:
       - PAYMENT_ZALOPAY_SECRET=${ZALOPAY_SECRET}
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
       - DATA_MINING_URL=http://data-mining-api:8000
+      # ai-service as seen from inside finance-network (property app.ai-service.url, e.g. /admin/segment).
+      - AI_SERVICE_URL=http://data-mining-api:8000
       # Demo data (Config/DataSeeder): off unless SEED_DEMO=true; seeds only an empty database, never deletes. The two
       # passwords must pass @StrongPassword (8-72 chars, a letter and a digit) or the app stops at startup.
       - APP_SEED_DEMO=${SEED_DEMO:-false}
@@ -177,8 +217,9 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: finance-data-mining
-    ports:
-      - "8000:8000"
+    # No host port: the mobile app reaches it through the proxy (<site>/ai/...), core-api directly on finance-network.
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
@@ -206,3 +247,5 @@ volumes:
   # All database data lives here and survives rebuilds and restarts. Never run "docker compose down -v": it deletes it.
   postgres_data:
   mongodb_data:
+  caddy_data:
+  caddy_config:

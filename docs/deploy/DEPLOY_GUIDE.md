@@ -1,6 +1,269 @@
 # Hướng dẫn triển khai
 
-> Các bước deploy EC2 (T8) sẽ được bổ sung vào file này. Hiện file chỉ có phần dữ liệu demo (T2b).
+Tài liệu cho người mới: đưa LedgerMind lên một máy AWS EC2 (Ubuntu) có HTTPS, để CI tự deploy mỗi lần push `main`, và
+để mỗi tag `v*` tạo một file APK có mã QR tải về. Phần cuối là dữ liệu demo (T2b).
+
+Những ô **[ĐIỀN]** là chỗ bạn thay bằng giá trị của mình. Không ghi giá trị thật (mật khẩu, khóa) vào file này hay bất
+kỳ file nào được commit.
+
+| Ô | Giá trị của bạn |
+|---|---|
+| Tên miền API (`SITE_ADDRESS`) | **[ĐIỀN]** vd. `api.example.com` |
+| Elastic IP của EC2 | **[ĐIỀN]** vd. `203.0.113.10` |
+| User SSH | **[ĐIỀN]** `ubuntu` với AMI Ubuntu |
+| File khóa SSH trên máy bạn | **[ĐIỀN]** vd. `~/.ssh/ledgermind-ec2.pem` (không để trong repo) |
+
+## 1. Kiến trúc khi chạy trên EC2
+
+```text
+Điện thoại / trình duyệt
+        │ HTTPS 443 (HTTP 80 chỉ để chuyển hướng và xin chứng chỉ)
+        ▼
+  proxy (Caddy)  ── tự xin + tự gia hạn chứng chỉ Let's Encrypt cho SITE_ADDRESS
+        │  mạng nội bộ finance-network (không mở ra ngoài)
+        ├── /ai/donut/*, /ai/spade/*, /ai/health ──► data-mining-api:8000 (bỏ tiền tố /ai)
+        ├── /ai/* còn lại, /actuator/* trừ health ──► 404
+        └── mọi đường dẫn khác ─────────────────────► core-api:8080 (REST /api/..., trang admin)
+                                                        ├── db (PostgreSQL)  127.0.0.1:5432
+                                                        ├── redis            (không có cổng)
+                                                        └── mongodb          127.0.0.1:27017
+```
+
+- Chỉ container `proxy` publish cổng ra Internet (80, 443). `core-api` và `data-mining-api` không còn publish
+  8080/8000: muốn gọi thì đi qua proxy.
+- Cấu hình proxy: `deploy/caddy/Caddyfile`. Chọn Caddy vì nó tự lo chứng chỉ HTTPS, không cần certbot hay cron.
+- App mobile đọc hai địa chỉ lúc build (`mobile-app/lib/config/app_config.dart`): `API_BASE=https://<tên miền>` và
+  `ML_BASE=https://<tên miền>/ai`. CI tự truyền hai giá trị này (mục 7).
+
+## 2. Tạo máy EC2 và Security Group
+
+1. AWS Console → EC2 → **Launch instance**:
+   - AMI: **Ubuntu Server 24.04 LTS** (hoặc 22.04).
+   - Loại máy: tối thiểu **t3.medium (4 GB RAM)**. Tổng giới hạn RAM trong compose khoảng 2,5 GB (ai-service 1 GB,
+     core-api 512 MB, MongoDB 512 MB, Redis 192 MB, proxy 128 MB) chưa tính PostgreSQL và hệ điều hành.
+   - Ổ đĩa: **30 GB** gp3 trở lên (image PyTorch + model Donut khá nặng).
+   - Key pair: tạo mới, tải file `.pem` về máy bạn: **[ĐIỀN]** đường dẫn. Không commit file này.
+2. **Security Group** (inbound), chỉ mở đúng 3 cổng:
+
+   | Cổng | Giao thức | Nguồn | Dùng cho |
+   |---|---|---|---|
+   | 22 | TCP | `0.0.0.0/0` (xem ghi chú) | SSH: bạn và GitHub Actions deploy |
+   | 80 | TCP | `0.0.0.0/0` | Caddy xin chứng chỉ, chuyển hướng sang HTTPS |
+   | 443 | TCP + UDP | `0.0.0.0/0` | HTTPS (UDP cho HTTP/3, không bắt buộc) |
+
+   Không mở 8080, 8000, 5432, 6379, 27017. Ghi chú: GitHub Actions SSH vào từ dải IP thay đổi liên tục, nên cổng 22 phải
+   mở rộng; bù lại chỉ đăng nhập bằng khóa (mặc định của Ubuntu trên EC2, không có mật khẩu).
+3. **Elastic IP**: EC2 → Elastic IPs → Allocate → Associate với máy vừa tạo. Không có Elastic IP thì IP đổi mỗi lần
+   stop/start máy và DNS sẽ trỏ sai. Ghi lại: **[ĐIỀN]** IP.
+
+## 3. Trỏ DNS
+
+Ở nhà cung cấp tên miền, tạo bản ghi:
+
+| Loại | Tên | Giá trị | TTL |
+|---|---|---|---|
+| A | **[ĐIỀN]** vd. `api` | **[ĐIỀN]** Elastic IP | 300 |
+
+Kiểm tra từ máy bạn (đợi vài phút tới vài giờ):
+
+```bash
+dig +short [ĐIỀN tên miền API]      # phải in ra đúng Elastic IP
+```
+
+Làm bước này **trước** khi khởi động lần đầu: Caddy chỉ xin được chứng chỉ khi tên miền đã trỏ về máy và cổng 80/443
+đã mở.
+
+## 4. Cài Docker trên Ubuntu
+
+```bash
+chmod 400 [ĐIỀN đường dẫn file .pem]
+ssh -i [ĐIỀN đường dẫn file .pem] [ĐIỀN user]@[ĐIỀN Elastic IP]
+
+# Trên server:
+sudo apt-get update && sudo apt-get -y upgrade
+sudo apt-get install -y ca-certificates curl git
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo docker run --rm hello-world          # in ra "Hello from Docker!" là được
+
+# Nên có swap 2 GB để build image không bị hết RAM:
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+## 5. Lấy mã nguồn và tạo `.env` trên server
+
+CI deploy vào đúng thư mục `~/Deploy_Project` (xem `.github/workflows/ci.yml`), nên clone vào đó:
+
+```bash
+cd ~
+git clone https://github.com/TriPhan15/donutpay-monorepo.git Deploy_Project
+cd Deploy_Project
+cp .env.example .env
+chmod 600 .env
+nano .env
+```
+
+Danh sách biến (mẫu đầy đủ, có chú thích: `.env.example` ở gốc repo). Không biến nào có giá trị mặc định an toàn: tự
+tạo mật khẩu mới cho server, đừng dùng lại mật khẩu máy dev.
+
+| Biến | Giá trị trên EC2 | Ghi chú |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` | Bật kiểm tra bắt buộc `JWT_SECRET`, tắt Swagger |
+| `SITE_ADDRESS` | **[ĐIỀN]** tên miền API, không có `https://` | Để trống = chỉ HTTP cổng 80 (máy dev) |
+| `JWT_SECRET` | **[ĐIỀN]** kết quả `openssl rand -base64 48` | ≥ 32 ký tự. Thiếu hoặc ngắn hơn: core-api dừng lúc khởi động. Đổi khóa = mọi người phải đăng nhập lại |
+| `DB_USERNAME`, `DB_PASSWORD` | **[ĐIỀN]** | PostgreSQL được tạo mới với tài khoản này ở lần chạy đầu |
+| `REDIS_PASSWORD` | **[ĐIỀN]** | Bắt buộc |
+| `MONGO_ROOT_USERNAME`, `MONGO_ROOT_PASSWORD` | **[ĐIỀN]** chỉ chữ và số | Bắt buộc; mật khẩu nằm trong URI |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | **[ĐIỀN]** | Ảnh hóa đơn |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | **[ĐIỀN]** Gmail + App Password | Gửi OTP quên mật khẩu |
+| `GOOGLE_WEB_CLIENT_ID` | **[ĐIỀN]** | Đăng nhập Google |
+| `PAYMENT_SECRET`, `MOCK_GATEWAY_URL`, `PAYMENT_WEBHOOK_URL`, `VNPAY_SECRET`, `ZALOPAY_SECRET` | **[ĐIỀN]** | Thanh toán demo |
+| `SEED_DEMO` | `true` ở lần đầu | Database trên EC2 tạo mới, không có dữ liệu cần giữ. Xem mục "Dữ liệu demo" |
+| `SEED_ADMIN_PASSWORD`, `SEED_DEMO_PASSWORD` | **[ĐIỀN]** | 8–72 ký tự, có chữ và số |
+| `DB_URL` | để trống | `docker-compose.yml` tự đặt `jdbc:postgresql://db:5432/finance_db` |
+
+Tạo mật khẩu ngẫu nhiên chỉ có chữ và số (dùng được cho mọi ô trên): `openssl rand -hex 24`.
+
+## 6. Khởi động lần đầu
+
+```bash
+cd ~/Deploy_Project
+sudo docker compose up -d --build --wait     # lần đầu build mất 10–20 phút
+sudo docker compose ps                        # mọi service "running (healthy)" hoặc "running"
+sudo docker compose logs --tail=50 proxy      # tìm dòng "certificate obtained successfully"
+```
+
+Sau khi seed xong (log core-api có dòng của DataSeeder), có thể sửa `SEED_DEMO=false` trong `.env`; dữ liệu vẫn giữ.
+
+## 7. GitHub Secrets và Variables
+
+Repo trên GitHub → **Settings → Secrets and variables → Actions**.
+
+**Secrets** (tab *Secrets*):
+
+| Tên | Giá trị | Dùng bởi |
+|---|---|---|
+| `AWS_HOST` | **[ĐIỀN]** Elastic IP (hoặc tên miền) | job `deploy` |
+| `AWS_USERNAME` | **[ĐIỀN]** user SSH, vd. `ubuntu` | job `deploy` |
+| `AWS_SSH_KEY` | toàn bộ nội dung file `.pem` (cả dòng BEGIN/END) | job `deploy` |
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w 0 upload-keystore.jks` | job `release-apk` |
+| `ANDROID_KEYSTORE_PASSWORD` | **[ĐIỀN]** mật khẩu keystore | job `release-apk` |
+| `ANDROID_KEY_ALIAS` | **[ĐIỀN]** vd. `upload` | job `release-apk` |
+| `ANDROID_KEY_PASSWORD` | **[ĐIỀN]** mật khẩu khóa (thường trùng mật khẩu keystore) | job `release-apk` |
+| `GOOGLE_SERVICES_JSON_BASE64` | `base64 -w 0 mobile-app/android/app/google-services.json` | job `release-apk` (file này không được commit nhưng Gradle cần nó) |
+
+**Variables** (tab *Variables*, không bí mật):
+
+| Tên | Giá trị |
+|---|---|
+| `APP_API_BASE` | `https://[ĐIỀN tên miền API]` (không có `/` cuối, không có `/api`) |
+
+### Tạo keystore ký APK (làm một lần)
+
+```bash
+keytool -genkeypair -v -keystore upload-keystore.jks -storetype JKS \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+base64 -w 0 upload-keystore.jks > upload-keystore.b64   # dán nội dung vào secret ANDROID_KEYSTORE_BASE64
+rm upload-keystore.b64
+```
+
+**Cất bản sao keystore và mật khẩu ở nơi an toàn** (trình quản lý mật khẩu, ổ cứng riêng). Mất keystore thì không phát
+hành bản cập nhật cho người đã cài app được nữa: điện thoại sẽ từ chối cài đè bản ký bằng khóa khác.
+
+Nếu máy bạn đã có `mobile-app/android/app/upload-keystore.jks` và `mobile-app/android/key.properties` (đang dùng để build
+release tại máy) thì dùng chính keystore đó cho CI, đừng tạo khóa mới. Gradle (`android/app/build.gradle.kts`) đọc
+`key.properties` nếu có, nếu không thì đọc biến môi trường `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` (CI đặt các biến này).
+
+## 8. Quy trình hằng ngày
+
+- **Deploy backend:** push lên `main`. CI chạy test backend/mobile/AI; xanh hết thì job `deploy` SSH vào EC2,
+  `git reset --hard origin/main`, `docker compose build` rồi `up -d --wait`. Job dừng ngay nếu `.env` trên server thiếu
+  hoặc thiếu `JWT_SECRET`.
+- **Phát hành APK:**
+
+  ```bash
+  git tag v1.1.0
+  git push origin v1.1.0
+  ```
+
+  Job `release-apk` build APK release (tên phiên bản lấy từ tag, `versionCode` = số lần chạy CI), ký bằng keystore,
+  tạo GitHub Release và đính kèm `LedgerMind.apk`. Nút tải và mã QR ở `index.html` trỏ tới
+  `https://github.com/TriPhan15/donutpay-monorepo/releases/latest/download/LedgerMind.apk`, nên luôn là bản mới nhất.
+  Repo phải để **public** thì link mới mở được khi chưa đăng nhập GitHub.
+
+## 9. Kiểm tra sau deploy
+
+```bash
+# Từ máy bạn:
+curl -I http://[ĐIỀN tên miền API]                 # 308 chuyển sang https
+curl https://[ĐIỀN tên miền API]/actuator/health   # {"status":"UP"...}
+curl https://[ĐIỀN tên miền API]/ai/health         # trả lời của ai-service
+curl -o /dev/null -w '%{http_code}\n' https://[ĐIỀN tên miền API]/ai/admin/segment   # 404: không lộ ra ngoài
+nc -zv -w 5 [ĐIỀN Elastic IP] 8080                  # phải thất bại (timeout/refused)
+nc -zv -w 5 [ĐIỀN Elastic IP] 8000                  # phải thất bại
+```
+
+Sau đó: mở Web Admin qua `https://[ĐIỀN tên miền API]` (đường dẫn trang admin của core-api) bằng tài khoản `admin`, cài APK bằng cách quét QR, đăng nhập bằng
+tài khoản demo, quét thử một hóa đơn.
+
+## 10. Xem log
+
+```bash
+cd ~/Deploy_Project
+sudo docker compose ps
+sudo docker compose logs -f --tail=100 core-api          # Ctrl+C để thoát
+sudo docker compose logs --tail=100 data-mining-api
+sudo docker compose logs --tail=100 proxy                # lỗi chứng chỉ, request bị từ chối
+sudo docker stats --no-stream                            # RAM/CPU từng container
+```
+
+Log mỗi container giới hạn 3 file × 10 MB, nên không làm đầy ổ đĩa.
+
+## 11. Rollback
+
+Backend (trên server):
+
+```bash
+cd ~/Deploy_Project
+git log --oneline -5                       # chọn commit ổn định trước đó
+git reset --hard [ĐIỀN mã commit]
+sudo docker compose up -d --build --wait
+```
+
+Cách này chỉ tạm thời: lần push `main` sau CI sẽ đưa server về `origin/main`. Muốn rollback lâu dài thì `git revert`
+commit lỗi trên máy bạn rồi push.
+
+APK: trên GitHub → Releases, sửa bản phát hành trước đó và tick **Set as the latest release** (link `latest` sẽ trỏ về
+bản đó), hoặc xóa bản lỗi. Điện thoại đã cài bản mới hơn phải gỡ app rồi cài lại bản cũ (Android không cho hạ
+`versionCode`).
+
+Không bao giờ chạy `docker compose down -v` trên server: `-v` xóa volume database và chứng chỉ.
+
+## 12. Lỗi thường gặp
+
+| Hiện tượng | Nguyên nhân hay gặp |
+|---|---|
+| Log proxy báo không xin được chứng chỉ | DNS chưa trỏ đúng Elastic IP, hoặc Security Group chưa mở 80/443, hoặc `SITE_ADDRESS` có `https://` |
+| core-api khởi động lại liên tục, log "Thiếu JWT_SECRET" | `.env` thiếu `JWT_SECRET` hoặc ngắn hơn 32 ký tự khi `SPRING_PROFILES_ACTIVE=prod` |
+| `docker compose` báo "Set REDIS_PASSWORD in .env" / "Set MONGO_..." | Thiếu biến bắt buộc trong `.env` |
+| App trên điện thoại báo lỗi mạng | `APP_API_BASE` sai hoặc không phải `https://`, hoặc build APK trước khi đặt variable |
+| Job `release-apk` dừng ở "Check release secrets" | Thiếu một secret/variable ở mục 7 (tên được in trong log) |
+| Build trên EC2 bị kill | Hết RAM: thêm swap (mục 4) hoặc dùng máy lớn hơn |
+
+## 13. Máy dev (docker compose tại máy)
+
+- Để trống `SITE_ADDRESS` trong `.env`: proxy chạy HTTP ở `http://localhost` (cổng 80). 8080/8000 không còn mở ra máy
+  host.
+- Điện thoại thật trong cùng Wi-Fi: `mobile-app/deploy.sh` build với `API_BASE=http://<IP máy>` và
+  `ML_BASE=http://<IP máy>/ai`.
+- `SPRING_PROFILES_ACTIVE=dev` thì `JWT_SECRET` có thể để trống (dùng khóa dev cố định, log có cảnh báo).
 
 ## Dữ liệu demo
 

@@ -3,6 +3,8 @@ name: Microservices CI
 on:
   push:
     branches: [main]
+    # Đẩy tag v* (vd. v1.1.0) -> chạy test rồi job release-apk build APK ký sẵn và đưa lên GitHub Release.
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -82,6 +84,8 @@ jobs:
             # 1. Kiểm tra tồn tại thư mục project và file cấu hình mật
             cd ~/Deploy_Project || { echo "Lỗi: Thư mục Deploy_Project không tồn tại!"; exit 1; }
             if [ ! -f .env ]; then echo "Lỗi: Không tìm thấy file .env chứa biến môi trường!"; exit 1; fi
+            # core-api ở profile prod sẽ dừng ngay nếu thiếu JWT_SECRET: báo sớm thay vì đợi healthcheck hết giờ.
+            if ! grep -qE '^JWT_SECRET=.{32,}' .env; then echo "Lỗi: .env thiếu JWT_SECRET (ít nhất 32 ký tự)!"; exit 1; fi
             
             # 2. Xóa sạch rác local và ép đồng bộ nhánh main
             git fetch --all
@@ -102,3 +106,87 @@ jobs:
             sudo docker builder prune -f
             
             echo "TOÀN BỘ HỆ THỐNG ĐÃ LÊN LIVE THÀNH CÔNG!"
+
+  # Chỉ chạy khi đẩy tag v*: build APK release ký bằng keystore trong GitHub Secrets và đưa lên GitHub Release với tên
+  # cố định LedgerMind.apk, để link .../releases/latest/download/LedgerMind.apk (nút tải + QR ở index.html) luôn trỏ
+  # tới bản mới nhất. Cần: secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+  # ANDROID_KEY_PASSWORD, GOOGLE_SERVICES_JSON_BASE64 và variable APP_API_BASE (vd. https://api.example.com).
+  release-apk:
+    name: Build & release signed APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [mobile-ci]
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17 (Android Gradle Plugin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Check release secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          APP_API_BASE: ${{ vars.APP_API_BASE }}
+        run: |
+          missing=0
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD GOOGLE_SERVICES_JSON_BASE64 APP_API_BASE; do
+            if [ -z "${!name}" ]; then echo "::error::Thiếu $name (xem docs/deploy/DEPLOY_GUIDE.md)"; missing=1; fi
+          done
+          case "$APP_API_BASE" in https://*) ;; *) echo "::error::APP_API_BASE phải bắt đầu bằng https://"; missing=1;; esac
+          exit $missing
+
+      - name: Restore keystore and google-services.json
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > mobile-app/android/app/google-services.json
+
+      - name: Build signed release APK
+        env:
+          # Đọc bởi mobile-app/android/app/build.gradle.kts khi không có android/key.properties.
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/upload-keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          APP_API_BASE: ${{ vars.APP_API_BASE }}
+        run: |
+          # Tên phiên bản lấy từ tag (v1.1.0 -> 1.1.0), versionCode tăng theo số lần chạy: không sửa pubspec.yaml.
+          # API_BASE / ML_BASE là hai khóa mà mobile-app/lib/config/app_config.dart đọc bằng String.fromEnvironment.
+          API_BASE="${APP_API_BASE%/}"
+          cd mobile-app
+          flutter pub get
+          flutter build apk --release \
+            --build-name="${GITHUB_REF_NAME#v}" \
+            --build-number="${GITHUB_RUN_NUMBER}" \
+            --dart-define=API_BASE="$API_BASE" \
+            --dart-define=ML_BASE="$API_BASE/ai"
+          cp build/app/outputs/flutter-apk/app-release.apk "$GITHUB_WORKSPACE/LedgerMind.apk"
+
+      - name: Remove keystore from runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload-keystore.jks" mobile-app/android/app/google-services.json
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: LedgerMind.apk
+          generate_release_notes: true
+          make_latest: 'true'

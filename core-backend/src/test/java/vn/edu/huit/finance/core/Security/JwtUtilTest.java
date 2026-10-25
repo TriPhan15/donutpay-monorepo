@@ -8,6 +8,7 @@ import io.jsonwebtoken.security.SignatureException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.mock.env.MockEnvironment;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -183,5 +184,42 @@ class JwtUtilTest {
         assertThrows(JwtException.class, () -> jwtUtil.parse("not.a.jwt", TokenType.ACCESS));
         assertThrows(IllegalArgumentException.class, () -> jwtUtil.parse("", TokenType.ACCESS));
         assertThrows(IllegalArgumentException.class, () -> jwtUtil.parse(null, TokenType.ACCESS));
+    }
+
+    // ---- Khóa ký đọc từ JWT_SECRET (T8) ----
+
+    private static final String CONFIGURED_SECRET = "a-test-secret-that-is-long-enough-for-hs256-0123456789";
+
+    private static MockEnvironment profile(String... profiles) {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles(profiles);
+        return environment;
+    }
+
+    @Test
+    void prodWithoutJwtSecret_stopsTheApplication() {
+        assertThrows(IllegalStateException.class, () -> new JwtUtil("", profile(JwtUtil.PROD_PROFILE)));
+        assertThrows(IllegalStateException.class, () -> new JwtUtil("   ", profile(JwtUtil.PROD_PROFILE)));
+    }
+
+    @Test
+    void aSecretShorterThan32Bytes_isRefusedEvenInDev() {
+        assertThrows(IllegalStateException.class, () -> new JwtUtil("too-short", profile("dev")));
+    }
+
+    @Test
+    void prodWithJwtSecret_signsWithThatSecret_notWithTheDevKey() {
+        JwtUtil prod = new JwtUtil(CONFIGURED_SECRET, profile(JwtUtil.PROD_PROFILE));
+        String token = prod.generateToken(SUBJECT, VERSION);
+
+        assertEquals(SUBJECT, prod.parse(token, TokenType.ACCESS).subject());
+        assertThrows(SignatureException.class, () -> jwtUtil.parse(token, TokenType.ACCESS));
+    }
+
+    @Test
+    void devWithoutJwtSecret_fallsBackToTheDevKey() {
+        JwtUtil dev = new JwtUtil(null, profile("dev"));
+
+        assertEquals(SUBJECT, jwtUtil.parse(dev.generateToken(SUBJECT, VERSION), TokenType.ACCESS).subject());
     }
 }

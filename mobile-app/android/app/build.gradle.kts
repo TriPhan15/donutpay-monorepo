@@ -7,11 +7,17 @@ plugins {
 }
 
 apply(plugin = "com.google.gms.google-services")
+// Khóa ký bản release: máy dev đọc android/key.properties (không commit); CI không có file đó nên đọc biến môi trường
+// ANDROID_KEYSTORE_PATH / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD (xem .github/workflows/ci.yml).
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+fun releaseSigningValue(propertyKey: String, envKey: String): String? =
+    keystoreProperties.getProperty(propertyKey)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(envKey)?.takeIf { it.isNotBlank() }
+val releaseStoreFilePath = releaseSigningValue("storeFile", "ANDROID_KEYSTORE_PATH")
 android {
     namespace = "dev.ledgermind.dev"
     compileSdk = flutter.compileSdkVersion
@@ -43,19 +49,21 @@ android {
         }
         
         create("release") {
-            keyAlias = keystoreProperties.getProperty("keyAlias")
-            keyPassword = keystoreProperties.getProperty("keyPassword")
-            val storeFilePath = keystoreProperties.getProperty("storeFile")
-            if (storeFilePath != null) {
-                storeFile = file(storeFilePath)
+            keyAlias = releaseSigningValue("keyAlias", "ANDROID_KEY_ALIAS")
+            keyPassword = releaseSigningValue("keyPassword", "ANDROID_KEY_PASSWORD")
+            if (releaseStoreFilePath != null) {
+                storeFile = file(releaseStoreFilePath)
             }
-            storePassword = keystoreProperties.getProperty("storePassword")
+            storePassword = releaseSigningValue("storePassword", "ANDROID_KEYSTORE_PASSWORD")
         }
     }
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            // Không có keystore thì không ký (build release sẽ báo lỗi) thay vì lặng lẽ ký bằng khóa debug.
+            if (releaseStoreFilePath != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }

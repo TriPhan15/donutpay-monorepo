@@ -7,6 +7,8 @@
 *.env
 .env
 .env.*
+# Mẫu không chứa giá trị thật (T8)
+!.env.example
 .env_deploy
 *.pem
 *.p12
