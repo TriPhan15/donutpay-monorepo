@@ -1,0 +1,47 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam ComponentBackgroundColor white
+skinparam DatabaseBackgroundColor white
+skinparam NodeBackgroundColor white
+skinparam linetype ortho
+skinparam defaultFontSize 16
+top to bottom direction
+
+rectangle "Tầng trình bày" {
+  component "Ứng dụng di động\n(Flutter, Dart)\nSQLite: hàng đợi offline" as MOB
+  component "Web Admin\n(trình duyệt, trang Thymeleaf)" as WEB
+}
+
+component "Reverse proxy Caddy\n(HTTPS, cổng 80/443)" as PROXY
+
+rectangle "Tầng dịch vụ" {
+  component "Core Backend\n(Spring Boot 3.2.5, Java 21)\nREST /api/~**, trang /admin/~**" as CORE
+  component "AI Service\n(FastAPI, PyTorch)\nDONUT, WCM-SPADE, RFM" as AI
+}
+
+rectangle "Tầng dữ liệu" {
+  database "PostgreSQL 15\n(dữ liệu nghiệp vụ)\nJDBC/JPA" as PG
+  database "Redis 8\n(cache thống kê,\nmã OTP), Lettuce" as RD
+  database "MongoDB 6\n(nhật ký AI thô)\nMongoDB driver" as MG
+}
+
+rectangle "Dịch vụ bên ngoài" {
+  component "Cloudinary\n(lưu ảnh hóa đơn)" as CLD
+  component "Máy chủ SMTP\n(gửi mã OTP)" as SMTP
+  component "Google, Facebook\n(xác minh đăng nhập)" as SOC
+}
+
+MOB --> PROXY : HTTPS, JSON + JWT
+WEB --> PROXY : HTTPS, phiên đăng nhập
+PROXY --> CORE : /api/~**, /admin/~**
+PROXY --> AI : /ai/donut/*, /ai/spade/*
+CORE --> AI : POST /admin/segment
+CORE --> PG
+CORE --> RD
+CORE --> MG
+PG -[hidden]down- CLD
+CORE --> CLD
+CORE --> SMTP
+CORE --> SOC
+@enduml

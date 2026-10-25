@@ -227,6 +227,22 @@
 - Kiểm chứng (T7.2a, 21/10/2026): trang tóm tắt của tác giả https://brucehardie.com/abstracts/abstract-fhl_rfm_clv_2005-02.html và mục trích dẫn trên Wikipedia "RFM (market research)" khớp tên, tập, số, trang. DOI chưa xác nhận nên không ghi.
 - Dùng cho: 2.2.6 (phân khúc khách hàng RFM trên Web Admin; AI Service áp luật ngưỡng, không dùng mô hình của bài báo).
 
+[50] E. F. Codd, A Relational Model of Data for Large Shared Data Banks, Communications of the ACM (vol. 13, no. 6, pp. 377–387), 1970. DOI: 10.1145/362384.362685.
+- Kiểm chứng (T7.3a, 25/10/2026): api.crossref.org/works/10.1145/362384.362685 (tác giả Codd, CACM 13(6), 377–387, 06/1970).
+- Dùng cho: 3.3.1 (mô hình quan hệ).
+
+[51] P. P.-S. Chen, The Entity-Relationship Model—Toward a Unified View of Data, ACM Transactions on Database Systems (vol. 1, no. 1, pp. 9–36), 1976. DOI: 10.1145/320434.320440.
+- Kiểm chứng (T7.3a, 25/10/2026): api.crossref.org/works/10.1145/320434.320440 (tác giả Chen, ACM TODS 1(1), 9–36, 03/1976).
+- Dùng cho: 3.3.2 (sơ đồ thực thể kết hợp).
+
+[52] Caddy Documentation, https://caddyserver.com/docs/, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3a, 25/10/2026): trang trả về HTTP 200.
+- Dùng cho: 3.2.2 (reverse proxy, HTTPS tự động trong sơ đồ triển khai).
+
+[53] Amazon EC2 Documentation, https://docs.aws.amazon.com/ec2/, truy cập ngày 25/10/2026.
+- Kiểm chứng (T7.3a, 25/10/2026): trang trả về HTTP 200.
+- Dùng cho: 3.2.2 (máy chủ triển khai).
+
 ---
 
 ## Đã loại

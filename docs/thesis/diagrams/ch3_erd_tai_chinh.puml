@@ -1,0 +1,105 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam ClassBackgroundColor white
+skinparam linetype ortho
+skinparam defaultFontSize 13
+hide circle
+hide methods
+
+entity "users" as U {
+  * id : bigint <<PK>>
+  --
+  * username : varchar <<UQ>>
+  * email : varchar <<UQ>>
+  * phone : varchar <<UQ>>
+  * password : varchar
+  * role : varchar
+  * active : boolean
+  * wallet_balance : numeric
+  * credentials_version : integer
+  ai_label : varchar(50)
+  last_login_time, last_action_time
+}
+entity "categories" as C {
+  * id : bigint <<PK>>
+  --
+  * name : varchar
+  * type : varchar
+}
+entity "transactions" as T {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * category_id : bigint <<FK>>
+  receipt_id : bigint <<FK, UQ>>
+  * amount : numeric
+  * is_expense : boolean
+  * transaction_date : timestamp
+  client_id : varchar(64)
+  category_name, note, location,
+  payment_method, raw_receipt_data
+}
+entity "receipts" as R {
+  * id : bigint <<PK>>
+  --
+  * status : varchar
+  * version : bigint
+  vendor_name : varchar
+  extracted_total : numeric
+  extracted_date : date
+  image_url : varchar(2048)
+  error_code : varchar(40)
+}
+entity "receipt_processing_attempts" as A {
+  * id : bigint <<PK>>
+  --
+  * receipt_id : bigint <<FK>>
+  * attempt_number : integer
+  * status : varchar(20)
+  * ai_raw_data : text
+  * created_at : timestamp
+  client_id : varchar(64)
+  error_code, safe_error_message,
+  completed_at
+}
+entity "budgets" as B {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  category_id : bigint <<FK>>
+  * category_key : bigint
+  * amount : numeric(19,2)
+  * period_type : varchar(10)
+  * start_date : date
+  * end_date : date
+}
+entity "saving_goals" as S {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * title : varchar
+  * target_amount : numeric
+  * current_amount : numeric
+  deadline : varchar
+}
+entity "notifications" as N {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * type : varchar(30)
+  * message : varchar(500)
+  * is_read : boolean
+  transaction_id, budget_id,
+  receipt_id : bigint
+}
+
+U ||--o{ T
+C ||--o{ T
+T |o--o| R
+R ||--o{ A
+U ||--o{ B
+C |o--o{ B
+U ||--o{ S
+U ||--o{ N
+@enduml

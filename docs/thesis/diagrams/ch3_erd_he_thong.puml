@@ -1,0 +1,74 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam ClassBackgroundColor white
+skinparam linetype ortho
+skinparam defaultFontSize 13
+hide circle
+hide methods
+
+entity "users" as U {
+  * id : bigint <<PK>>
+  --
+  * email : varchar <<UQ>>
+  (các cột khác: Hình 3.3)
+}
+entity "app_reviews" as V {
+  * id : bigint <<PK>>
+  --
+  user_id : bigint <<FK>>
+  user_email : varchar
+  * rating : integer
+  comment : text
+  * status : varchar
+  created_at : timestamp
+}
+entity "payment_orders" as P {
+  * id : bigint <<PK>>
+  --
+  * order_code : varchar(64) <<UQ>>
+  * user_id : bigint
+  * amount : numeric(19,2)
+  * type : varchar(16)
+  * status : varchar(16)
+  * provider : varchar(16)
+  description : varchar(255)
+  gateway_txn_id : varchar(64)
+  signature : varchar(128)
+}
+entity "action_logs" as L {
+  * id : bigint <<PK>>
+  --
+  user_id : bigint
+  user_email : varchar(255)
+  action : varchar
+  target_type : varchar(32)
+  target_id : bigint
+  result : varchar(16)
+  description : varchar(1000)
+  ip_address : varchar
+  timestamp : timestamp
+}
+entity "subscription_plans" as SP {
+  * id : bigint <<PK>>
+  --
+  plan_name : varchar
+  price : float8
+  duration_days : integer
+  max_ai_scans : integer
+  * is_wcm_spade_enabled : boolean
+  * active : boolean
+}
+entity "revoked_tokens" as RT {
+  * id : bigint <<PK>>
+  --
+  * token_hash : varchar(64) <<UQ>>
+  * expires_at : timestamp
+  * revoked_at : timestamp
+}
+
+U |o--o{ V
+U |o..o{ P
+U |o..o{ L
+SP -[hidden]- RT
+@enduml
