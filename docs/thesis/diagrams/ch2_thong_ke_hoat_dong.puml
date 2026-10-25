@@ -1,0 +1,37 @@
+@startuml ch2_thong_ke_hoat_dong
+' Hình 2.11: Sơ đồ hoạt động quy trình thống kê và báo cáo thói quen chi tiêu (mục 2.2.5); nhánh Sổ giao dịch chỉ mô tả trong Bảng 2.5
+!include _style.iuml
+|Người dùng|
+start
+:Mở ứng dụng;
+|Ứng dụng di động|
+:Lấy hồ sơ, giao dịch và ngân sách\ncủa người dùng;
+|Core Backend|
+:Trả về hồ sơ, giao dịch, ngân sách;
+|Ứng dụng di động|
+:Gộp giao dịch chưa đồng bộ,\ntính số dư, tổng thu chi,\ntiến độ ngân sách;
+:Hiển thị Tổng quan;
+|Người dùng|
+:Mở tab AI;
+  |Ứng dụng di động|
+  :Lấy giao dịch và mục tiêu tiết kiệm;
+  |Core Backend|
+  :Trả về giao dịch và mục tiêu;
+  |Ứng dụng di động|
+  fork
+    :Gửi giao dịch trong khoảng\nthời gian đang chọn;
+    |AI Service|
+    :Khai phá mẫu chuỗi bằng WCM-SPADE\n(danh sách rỗng nếu có\nít hơn 3 khoản chi hợp lệ);
+  fork again
+    |Ứng dụng di động|
+    if (Có mục tiêu tiết kiệm\nđang theo đuổi?) then (có)
+      :Gửi toàn bộ giao dịch và\nmục tiêu gần hạn nhất;
+      |AI Service|
+      :Phân tích xu hướng,\nđề xuất ngân sách;
+    else (không)
+    endif
+  end fork
+  |Ứng dụng di động|
+  :Hiển thị mẫu chi tiêu,\nbiểu đồ và gợi ý;
+stop
+@enduml

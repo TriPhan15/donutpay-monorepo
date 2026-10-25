@@ -1,0 +1,54 @@
+@startuml ch2_quet_hoa_don_hoat_dong
+' Hình 2.5: Sơ đồ hoạt động quy trình quét hóa đơn và đối soát (mục 2.2.3)
+!include _style.iuml
+|Người dùng|
+start
+:Chụp hóa đơn bằng trình quét tài liệu\nhoặc chọn ảnh từ thư viện;
+|Ứng dụng di động|
+:Gửi ảnh tới AI Service;
+|AI Service|
+:Trích xuất bốn trường bằng DONUT;
+|Ứng dụng di động|
+if (AI Service trả lời?) then (không)
+  :Báo quét thất bại;
+  |Người dùng|
+  :Nhập tay giao dịch\n(quy trình 2.2.2);
+  stop
+else (có)
+endif
+|Ứng dụng di động|
+:Tải ảnh gốc lên Core Backend;
+|Core Backend|
+:Lưu ảnh lên kho ảnh đám mây,\ntrả về đường dẫn;
+|Ứng dụng di động|
+if (Tổng tiền AI đọc lớn hơn 0?) then (không)
+  :Báo chưa đọc được tổng tiền;
+  |Người dùng|
+  :Nhập tay giao dịch\n(quy trình 2.2.2);
+  stop
+else (có)
+endif
+|Ứng dụng di động|
+:Hiển thị biểu mẫu đối soát:\nảnh và các trường AI đọc;
+|Người dùng|
+:Đối chiếu với hóa đơn giấy,\nsửa tên cửa hàng, ngày, chọn danh mục;
+if (Xác nhận lưu?) then (không)
+  stop
+else (có)
+endif
+|Ứng dụng di động|
+:Gửi giao dịch kèm dữ liệu AI\nvà đường dẫn ảnh;
+|Core Backend|
+if (Dữ liệu hợp lệ và đủ số dư?) then (có)
+  :Lưu giao dịch, cập nhật ví,\nkiểm tra ngân sách;
+  :Lưu hóa đơn: có tổng tiền → COMPLETED_RAW,\nkhông có → FAILED kèm mã lý do;
+  :Ghi nhật ký; sau khi giao dịch CSDL\nhoàn tất, ghi kết quả AI vào MongoDB;
+  |Ứng dụng di động|
+  :Báo lưu thành công;
+else (không)
+  |Ứng dụng di động|
+  :Báo lưu thất bại;
+  stop
+endif
+stop
+@enduml

@@ -1,0 +1,25 @@
+@startuml ch2_quan_tri_tuan_tu
+' Hình 2.15: Sơ đồ tuần tự quy trình quản trị hệ thống (mục 2.2.6): đăng nhập và thêm một danh mục
+!include _style.iuml
+hide footbox
+autonumber
+actor "Quản trị viên" as QT
+participant "Web Admin" as WEB
+participant "Core Backend" as BE
+entity "Tài khoản\nngười dùng" as TK
+entity "Danh mục" as DM
+entity "Nhật ký\nhoạt động" as NK
+QT -> WEB ++ : Nhập tên đăng nhập, mật khẩu
+WEB -> BE ++ : Gửi thông tin đăng nhập
+BE -> TK : Kiểm tra trạng thái khóa, mật khẩu
+BE -> NK : Ghi đăng nhập thành công
+BE -> BE : Kiểm tra vai trò ROLE_ADMIN
+return Trang Tổng quan
+WEB --> QT : Hiển thị số liệu hệ thống
+QT -> WEB : Nhập tên và loại danh mục mới
+WEB -> BE ++ : Yêu cầu thêm danh mục
+BE -> DM : Lưu danh mục
+BE -> NK : Ghi thao tác thêm danh mục
+return Kết quả
+WEB --> QT -- : Cập nhật danh sách danh mục
+@enduml

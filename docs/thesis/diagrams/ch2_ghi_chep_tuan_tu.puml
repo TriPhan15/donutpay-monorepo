@@ -1,0 +1,27 @@
+@startuml ch2_ghi_chep_tuan_tu
+' Hình 2.3: Sơ đồ tuần tự quy trình ghi chép thu chi (mục 2.2.2), dòng cơ bản
+!include _style.iuml
+hide footbox
+autonumber
+actor "Người dùng" as ND
+participant "Ứng dụng\ndi động" as APP
+participant "Core Backend" as BE
+entity "Ví" as VI
+entity "Giao dịch" as GD
+entity "Ngân sách" as NS
+ND -> APP ++ : Mở chức năng thêm giao dịch
+APP -> BE ++ : Lấy danh mục
+return Danh sách danh mục
+ND -> APP : Nhập thông tin giao dịch
+APP -> APP : Gán clientId, lưu bản ghi chờ đồng bộ
+APP -> BE ++ : Gửi giao dịch (kèm clientId)
+BE -> BE : Kiểm tra dữ liệu
+BE -> VI ++ : Khóa và đọc số dư
+return Số dư hiện tại
+BE -> VI : Cộng/trừ số tiền
+BE -> GD : Lưu giao dịch
+BE -> NS : Kiểm tra ngưỡng ngân sách
+BE --> APP -- : Giao dịch và số dư mới
+APP -> APP : Đánh dấu bản ghi đã đồng bộ
+APP --> ND -- : Thông báo thành công
+@enduml

@@ -1,0 +1,18 @@
+@startuml ch2_ghi_chep_cong_tac
+' Hình 2.4: Sơ đồ cộng tác quy trình ghi chép thu chi (mục 2.2.2); số thứ tự trùng Hình 2.3
+!include _style.iuml
+!pragma layout smetana
+actor "Người dùng" as ND
+rectangle ":Ứng dụng di động" as APP
+rectangle ":Core Backend" as BE
+rectangle ":Ví" as VI
+rectangle ":Giao dịch" as GD
+rectangle ":Ngân sách" as NS
+ND -- APP : "1: Mở chức năng thêm giao dịch ↓\n4: Nhập thông tin giao dịch ↓\n↑ 15: Thông báo thành công"
+APP -- APP : "5: Gán clientId, lưu bản ghi\n14: Đánh dấu đã đồng bộ"
+APP -- BE : "2: Lấy danh mục ↓\n↑ 3: Danh sách danh mục\n6: Gửi giao dịch (clientId) ↓\n↑ 13: Giao dịch và số dư mới"
+BE -- BE : "7: Kiểm tra dữ liệu"
+BE -- VI : "8: Khóa và đọc số dư ↓\n↑ 9: Số dư hiện tại\n10: Cộng/trừ số tiền ↓"
+BE -- GD : "11: Lưu giao dịch ↓"
+BE -- NS : "12: Kiểm tra ngưỡng ngân sách ↓"
+@enduml

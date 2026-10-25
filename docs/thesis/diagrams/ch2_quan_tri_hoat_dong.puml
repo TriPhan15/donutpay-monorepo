@@ -1,0 +1,41 @@
+@startuml ch2_quan_tri_hoat_dong
+' Hình 2.14: Sơ đồ hoạt động quy trình quản trị hệ thống (mục 2.2.6)
+!include _style.iuml
+|Quản trị viên|
+start
+:Nhập tên đăng nhập, mật khẩu\ntrên trang đăng nhập Web Admin;
+|Core Backend|
+if (Tài khoản hoặc địa chỉ IP\nđang bị khóa đăng nhập?) then (có)
+  :Từ chối, ghi nhật ký khóa đăng nhập;
+  stop
+else (không)
+endif
+if (Đúng tên đăng nhập và mật khẩu?) then (không)
+  :Tăng số lần đăng nhập sai, báo lỗi\n(5 lần sai: khóa 15 phút);
+  stop
+else (có)
+endif
+:Ghi nhật ký đăng nhập thành công;
+if (Có vai trò ROLE_ADMIN?) then (không)
+  :Từ chối truy cập trang quản trị;
+  stop
+else (có)
+endif
+:Tổng hợp số liệu trang Tổng quan;
+|Quản trị viên|
+:Xem trang Tổng quan;
+repeat
+  :Chọn chức năng: người dùng, danh mục,\ngói dịch vụ, đánh giá, nhật ký,\nsao lưu, phân khúc khách hàng;
+  :Thực hiện thao tác;
+  |Core Backend|
+  if (Thao tác hợp lệ?) then (có)
+    :Cập nhật dữ liệu;
+    :Ghi nhật ký hoạt động;
+  else (không)
+    :Báo lỗi, giữ nguyên dữ liệu;
+  endif
+  |Quản trị viên|
+repeat while (Tiếp tục quản trị?) is (có) not (không)
+:Đăng xuất;
+stop
+@enduml

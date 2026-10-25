@@ -1,0 +1,30 @@
+@startuml ch2_duyet_hoa_don_tuan_tu
+' Hình 2.18: Sơ đồ tuần tự quy trình duyệt hóa đơn AI (mục 2.2.7), dòng cơ bản (duyệt)
+!include _style.iuml
+hide footbox
+autonumber
+actor "Quản trị viên" as QT
+participant "Web Admin" as WEB
+participant "Core Backend" as BE
+entity "Hóa đơn" as HD
+entity "Giao dịch" as GD
+entity "Ví" as VI
+entity "Nhật ký\nhoạt động" as NK
+QT -> WEB ++ : Mở trang Hóa đơn
+WEB -> BE ++ : Lấy danh sách hóa đơn
+BE -> HD : Đọc hóa đơn, mới nhất trước
+return Danh sách hóa đơn
+WEB --> QT : Hiển thị người bán, tổng tiền, ảnh, trạng thái
+QT -> WEB : Đối chiếu ảnh, chọn duyệt
+WEB -> BE ++ : Yêu cầu duyệt hóa đơn
+BE -> VI : Khóa ví của chủ hóa đơn
+BE -> HD : Kiểm tra trạng thái và tổng tiền
+opt Số tiền giao dịch khác tổng tiền hóa đơn
+  BE -> GD : Đặt số tiền bằng tổng tiền hóa đơn
+  BE -> VI : Điều chỉnh số dư theo chênh lệch
+end
+BE -> HD : Chuyển trạng thái APPROVED
+BE -> NK : Ghi nhật ký duyệt hóa đơn
+return Danh sách đã cập nhật
+WEB --> QT -- : Hiển thị kết quả
+@enduml

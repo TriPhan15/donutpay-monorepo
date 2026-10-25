@@ -1,0 +1,37 @@
+@startuml ch2_ghi_chep_hoat_dong
+' Hình 2.2: Sơ đồ hoạt động quy trình ghi chép thu chi (mục 2.2.2)
+!include _style.iuml
+|Người dùng|
+start
+:Mở chức năng thêm giao dịch;
+|Ứng dụng di động|
+:Tải danh mục thu chi;
+|Người dùng|
+:Chọn loại thu/chi, nhập số tiền,\ndanh mục, ngày, ghi chú;
+|Ứng dụng di động|
+:Điền nơi giao dịch, phương thức ví,\ngán clientId, lưu bản ghi\nchờ đồng bộ vào SQLite;
+repeat
+  :Gửi giao dịch lên Core Backend;
+  backward:Giữ bản ghi lỗi đồng bộ,\ngửi lại khi mở ứng dụng,\nlàm mới Sổ giao dịch\nhoặc người dùng chọn gửi lại;
+repeat while (Mất mạng hoặc lỗi máy chủ?) is (có) not (không)
+|Core Backend|
+:Kiểm tra dữ liệu, khóa ví người dùng;
+if (clientId đã tồn tại?) then (có)
+  :Trả lại giao dịch đã lưu,\nkhông cập nhật ví lần hai;
+elseif (Dữ liệu hợp lệ và\nđủ số dư cho khoản chi?) then (có)
+  :Cập nhật số dư ví, lưu giao dịch;
+  :Kiểm tra ngân sách liên quan\n(quy trình 2.2.4);
+  :Ghi nhật ký hoạt động;
+else (không)
+  :Từ chối yêu cầu;
+endif
+|Ứng dụng di động|
+if (Máy chủ chấp nhận?) then (có)
+  :Đánh dấu bản ghi đã đồng bộ,\ncập nhật Sổ giao dịch;
+else (không)
+  :Lần gửi đầu: xóa bản ghi cục bộ,\nlần gửi lại: giữ trạng thái lỗi;
+endif
+|Người dùng|
+:Nhận thông báo kết quả;
+stop
+@enduml

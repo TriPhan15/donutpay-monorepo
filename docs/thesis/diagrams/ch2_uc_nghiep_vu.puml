@@ -1,0 +1,23 @@
+@startuml ch2_uc_nghiep_vu
+' Hình 2.1: Sơ đồ use case nghiệp vụ (mục 2.2.1)
+!include _style.iuml
+!pragma layout smetana
+left to right direction
+actor "Người dùng" as ND
+actor "Quản trị viên" as QT
+rectangle "Nghiệp vụ quản lý tài chính cá nhân LedgerMind" {
+  usecase "Ghi chép thu chi" as U1
+  usecase "Quét hóa đơn và đối soát" as U2
+  usecase "Lập và theo dõi ngân sách" as U3
+  usecase "Thống kê và báo cáo\nthói quen chi tiêu" as U4
+  usecase "Quản trị hệ thống" as U5
+  usecase "Duyệt hóa đơn AI" as U6
+}
+ND -- U1
+ND -- U2
+ND -- U3
+ND -- U4
+U5 -- QT
+U6 -- QT
+U2 .> U1 : <<include>>
+@enduml

@@ -1,0 +1,17 @@
+@startuml ch2_quan_tri_cong_tac
+' Hình 2.16: Sơ đồ cộng tác quy trình quản trị hệ thống (mục 2.2.6); số thứ tự trùng Hình 2.15
+!include _style.iuml
+!pragma layout smetana
+actor "Quản trị viên" as QT
+rectangle ":Web Admin" as WEB
+rectangle ":Core Backend" as BE
+rectangle ":Tài khoản người dùng" as TK
+rectangle ":Danh mục" as DM
+rectangle ":Nhật ký hoạt động" as NK
+QT -- WEB : "1: Nhập thông tin đăng nhập ↓\n↑ 7: Số liệu hệ thống\n8: Nhập danh mục mới ↓\n↑ 13: Danh sách danh mục"
+WEB -- BE : "2: Gửi thông tin đăng nhập ↓\n↑ 6: Trang Tổng quan\n9: Yêu cầu thêm danh mục ↓\n↑ 12: Kết quả"
+BE -- BE : "5: Kiểm tra vai trò ROLE_ADMIN"
+BE -- TK : "3: Kiểm tra trạng thái khóa, mật khẩu ↓"
+BE -- DM : "10: Lưu danh mục ↓"
+BE -- NK : "4: Ghi đăng nhập thành công ↓\n11: Ghi thao tác thêm danh mục ↓"
+@enduml

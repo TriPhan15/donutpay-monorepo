@@ -215,6 +215,18 @@
 - Kiểm chứng: HTTP 200, tiêu đề "Dart overview".
 - Dùng cho: 1.7.1.
 
+[47] Object Management Group, OMG Unified Modeling Language (OMG UML) Version 2.5.1, formal/17-12-05, 2017. https://www.omg.org/spec/UML/About-UML/, truy cập ngày 21/10/2026.
+- Kiểm chứng (T7.2a, 21/10/2026): trang omg.org/spec/UML liệt kê Version 2.5.1, Document Status formal, Publication Date December 2017, file PDF formal/17-12-05.
+- Dùng cho: Ch.2 (use case, sơ đồ hoạt động, tuần tự, giao tiếp/cộng tác).
+
+[48] M. J. Zaki, SPADE: An Efficient Algorithm for Mining Frequent Sequences, Machine Learning (vol. 42, no. 1–2, pp. 31–60), 2001. DOI: 10.1023/A:1007652502315.
+- Kiểm chứng (T7.2a, 21/10/2026): mlanthology.org/mlj/2001/zaki2001mlj-spade, tài liệu SPMF (philippe-fournier-viger.com/spmf/SPADE.php) ghi cùng tập, số, trang và DOI.
+- Dùng cho: 2.2.5 (WCM-SPADE trong ai-service/wcm_spade.py dùng id-list dọc của SPADE); Ch.3/Ch.4 nếu mô tả thuật toán.
+
+[49] P. S. Fader, B. G. S. Hardie, K. L. Lee, RFM and CLV: Using Iso-Value Curves for Customer Base Analysis, Journal of Marketing Research (vol. 42, no. 4, pp. 415–430), 2005.
+- Kiểm chứng (T7.2a, 21/10/2026): trang tóm tắt của tác giả https://brucehardie.com/abstracts/abstract-fhl_rfm_clv_2005-02.html và mục trích dẫn trên Wikipedia "RFM (market research)" khớp tên, tập, số, trang. DOI chưa xác nhận nên không ghi.
+- Dùng cho: 2.2.6 (phân khúc khách hàng RFM trên Web Admin; AI Service áp luật ngưỡng, không dùng mô hình của bài báo).
+
 ---
 
 ## Đã loại

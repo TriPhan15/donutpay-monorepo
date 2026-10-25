@@ -1,0 +1,17 @@
+@startuml ch2_ngan_sach_cong_tac
+' Hình 2.10: Sơ đồ cộng tác quy trình lập và theo dõi ngân sách (mục 2.2.4); số thứ tự trùng Hình 2.9
+!include _style.iuml
+!pragma layout smetana
+actor "Người dùng" as ND
+rectangle ":Ứng dụng di động" as APP
+rectangle ":Core Backend" as BE
+rectangle ":Ngân sách" as NS
+rectangle ":Giao dịch" as GD
+rectangle ":Thông báo" as TB
+ND -- APP : "1: Mở Ngân sách, chọn thêm ↓\n4: Nhập thông tin ngân sách ↓\n↑ 9: Ngân sách và tiến độ\n10: Ghi khoản chi ↓\n↑ 18: Chuông thông báo, hộp thoại cảnh báo"
+APP -- BE : "2: Lấy danh mục chi ↓\n↑ 3: Danh sách danh mục\n5: Gửi ngân sách ↓\n↑ 8: Ngân sách đã lưu\n11: Gửi giao dịch ↓\n↑ 15: Giao dịch đã lưu\n16: Lấy số thông báo chưa đọc ↓\n↑ 17: Số thông báo chưa đọc"
+BE -- BE : "6: Kiểm tra hạn mức, kỳ, trùng lặp"
+BE -- NS : "7: Lưu ngân sách ↓\n13: Tính tỉ lệ đã chi ↓"
+BE -- GD : "12: Lưu giao dịch ↓"
+BE -- TB : "14: [đạt mốc] Tạo cảnh báo ↓"
+@enduml

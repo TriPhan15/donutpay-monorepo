@@ -1,0 +1,45 @@
+@startuml ch2_ngan_sach_hoat_dong
+' Hình 2.8: Sơ đồ hoạt động quy trình lập và theo dõi ngân sách (mục 2.2.4)
+!include _style.iuml
+|Người dùng|
+start
+:Mở màn hình Ngân sách, chọn thêm;
+|Ứng dụng di động|
+:Tải danh mục chi;
+|Người dùng|
+:Chọn danh mục (hoặc tất cả),\nkỳ tuần/tháng, ngày bắt đầu,\nngày kết thúc, hạn mức;
+|Ứng dụng di động|
+:Gửi ngân sách lên Core Backend;
+|Core Backend|
+if (Hạn mức > 0, khoảng ngày\nkhớp loại kỳ?) then (không)
+  |Ứng dụng di động|
+  :Báo dữ liệu không hợp lệ;
+  stop
+else (có)
+endif
+|Core Backend|
+if (Danh mục không tồn tại hoặc đã có\nngân sách cùng danh mục, loại kỳ,\nngày bắt đầu?) then (có)
+  |Ứng dụng di động|
+  :Báo lỗi danh mục\nhoặc ngân sách bị trùng;
+  stop
+else (không)
+endif
+|Core Backend|
+:Lưu ngân sách, ghi nhật ký;
+|Ứng dụng di động|
+:Hiển thị ngân sách và\nthanh tiến độ chi tiêu;
+|Người dùng|
+:Ghi khoản chi (quy trình 2.2.2);
+|Core Backend|
+:Tìm ngân sách phủ ngày giao dịch\n(cùng danh mục hoặc tất cả danh mục);
+:Tính tỉ lệ đã chi trước và sau giao dịch;
+if (Tỉ lệ từ dưới lên đạt mốc\n80% hoặc 100% ở lần ghi này?) then (có)
+  :Tạo thông báo ở mốc cao nhất vừa đạt;
+  |Ứng dụng di động|
+  :Hiện số thông báo chưa đọc trên chuông,\ntự tính tiến độ, hiện hộp thoại cảnh báo;
+  |Người dùng|
+  :Xem Trung tâm thông báo,\nđánh dấu đã đọc;
+else (không)
+endif
+stop
+@enduml

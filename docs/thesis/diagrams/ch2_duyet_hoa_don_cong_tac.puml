@@ -1,0 +1,18 @@
+@startuml ch2_duyet_hoa_don_cong_tac
+' Hình 2.19: Sơ đồ cộng tác quy trình duyệt hóa đơn AI (mục 2.2.7); số thứ tự trùng Hình 2.18
+!include _style.iuml
+!pragma layout smetana
+actor "Quản trị viên" as QT
+rectangle ":Web Admin" as WEB
+rectangle ":Core Backend" as BE
+rectangle ":Hóa đơn" as HD
+rectangle ":Giao dịch" as GD
+rectangle ":Ví" as VI
+rectangle ":Nhật ký hoạt động" as NK
+QT -- WEB : "1: Mở trang Hóa đơn ↓\n↑ 5: Danh sách hóa đơn\n6: Chọn duyệt ↓\n↑ 15: Kết quả"
+WEB -- BE : "2: Lấy danh sách hóa đơn ↓\n↑ 4: Danh sách hóa đơn\n7: Yêu cầu duyệt ↓\n↑ 14: Danh sách đã cập nhật"
+BE -- HD : "3: Đọc hóa đơn ↓\n9: Kiểm tra trạng thái, tổng tiền ↓\n12: Chuyển APPROVED ↓"
+BE -- GD : "10: [số tiền khác] Đặt số tiền bằng tổng tiền ↓"
+BE -- VI : "8: Khóa ví ↓\n11: [số tiền khác] Điều chỉnh số dư ↓"
+BE -- NK : "13: Ghi nhật ký duyệt ↓"
+@enduml

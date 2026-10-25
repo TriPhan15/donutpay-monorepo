@@ -1,0 +1,31 @@
+@startuml ch2_thong_ke_tuan_tu
+' Hình 2.12: Sơ đồ tuần tự quy trình thống kê và báo cáo thói quen chi tiêu (mục 2.2.5), dòng cơ bản
+!include _style.iuml
+hide footbox
+autonumber
+actor "Người dùng" as ND
+participant "Ứng dụng\ndi động" as APP
+participant "Core Backend" as BE
+participant "AI Service" as AI
+entity "Giao dịch" as GD
+entity "Mục tiêu\ntiết kiệm" as MT
+ND -> APP ++ : Mở Tổng quan
+APP -> BE ++ : Lấy hồ sơ, giao dịch, ngân sách
+BE -> GD : Đọc giao dịch
+return Hồ sơ, giao dịch, ngân sách
+APP -> APP : Tính số dư, tổng thu chi, tiến độ ngân sách
+APP --> ND : Hiển thị Tổng quan
+ND -> APP : Mở tab AI
+APP -> BE ++ : Lấy giao dịch và mục tiêu tiết kiệm
+BE -> MT : Đọc mục tiêu
+return Giao dịch và mục tiêu
+par
+  APP -> AI ++ : Gửi giao dịch trong khoảng đang chọn
+  AI -> AI : Khai phá mẫu chuỗi (WCM-SPADE)
+  AI --> APP -- : Các mẫu chi tiêu
+else Có mục tiêu tiết kiệm
+  APP -> AI ++ : Gửi toàn bộ giao dịch và mục tiêu gần hạn nhất
+  AI --> APP -- : Xu hướng, gợi ý ngân sách, tóm tắt
+end
+APP --> ND -- : Hiển thị mẫu chi tiêu và gợi ý
+@enduml

@@ -1,0 +1,40 @@
+@startuml ch2_duyet_hoa_don_hoat_dong
+' Hình 2.17: Sơ đồ hoạt động quy trình duyệt hóa đơn AI (mục 2.2.7)
+!include _style.iuml
+|Quản trị viên|
+start
+:Mở trang Hóa đơn trên Web Admin;
+|Core Backend|
+:Trả về danh sách hóa đơn mới nhất trước:\nngười bán, tổng tiền AI đọc, ảnh, trạng thái;
+|Quản trị viên|
+:Mở ảnh gốc, đối chiếu tổng tiền;
+if (Kết quả AI đúng?) then (đúng)
+  :Chọn duyệt;
+  |Core Backend|
+  :Khóa ví của chủ hóa đơn;
+  if (Hóa đơn được phép duyệt\nvà có tổng tiền > 0?) then (không)
+    :Từ chối thao tác, báo lỗi;
+    stop
+  else (có)
+  endif
+  if (Số tiền giao dịch khác tổng tiền hóa đơn?) then (có)
+    :Đặt số tiền giao dịch bằng tổng tiền,\nđiều chỉnh số dư ví theo chênh lệch;
+    :Kiểm tra ngân sách liên quan;
+  else (không)
+  endif
+  :Chuyển hóa đơn sang APPROVED;
+  :Ghi nhật ký duyệt hóa đơn;
+else (sai)
+  |Quản trị viên|
+  :Chọn từ chối;
+  |Core Backend|
+  if (Hóa đơn đã ở trạng thái FAILED?) then (không)
+    :Chuyển sang FAILED,\nmã lý do REJECTED_BY_ADMIN;
+    :Ghi nhật ký từ chối hóa đơn;
+  else (có)
+  endif
+endif
+|Quản trị viên|
+:Xem danh sách đã cập nhật;
+stop
+@enduml

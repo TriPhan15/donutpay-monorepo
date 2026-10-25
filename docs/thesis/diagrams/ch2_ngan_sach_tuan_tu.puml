@@ -1,0 +1,32 @@
+@startuml ch2_ngan_sach_tuan_tu
+' Hình 2.9: Sơ đồ tuần tự quy trình lập và theo dõi ngân sách (mục 2.2.4), dòng cơ bản
+!include _style.iuml
+hide footbox
+autonumber
+actor "Người dùng" as ND
+participant "Ứng dụng\ndi động" as APP
+participant "Core Backend" as BE
+entity "Ngân sách" as NS
+entity "Giao dịch" as GD
+entity "Thông báo" as TB
+ND -> APP ++ : Mở màn hình Ngân sách, chọn thêm
+APP -> BE ++ : Lấy danh mục chi
+return Danh sách danh mục
+ND -> APP : Nhập danh mục, kỳ, thời gian, hạn mức
+APP -> BE ++ : Gửi ngân sách
+BE -> BE : Kiểm tra hạn mức, kỳ, trùng lặp
+BE -> NS : Lưu ngân sách
+return Ngân sách đã lưu
+APP --> ND : Hiển thị ngân sách và tiến độ
+ND -> APP : Ghi một khoản chi
+APP -> BE ++ : Gửi giao dịch
+BE -> GD : Lưu giao dịch
+BE -> NS : Tính tỉ lệ đã chi của ngân sách liên quan
+opt Đạt mốc 80% hoặc 100% ở lần ghi này
+  BE -> TB : Tạo cảnh báo ngân sách
+end
+return Giao dịch đã lưu
+APP -> BE ++ : Lấy số thông báo chưa đọc
+return Số thông báo chưa đọc
+APP --> ND -- : Hiện chuông thông báo; hộp thoại cảnh báo\ntính từ tiến độ ngân sách trên thiết bị
+@enduml
