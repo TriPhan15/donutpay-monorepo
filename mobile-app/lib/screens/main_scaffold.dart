@@ -14,6 +14,7 @@ import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 
@@ -65,6 +66,8 @@ class _MainScaffoldState extends State<MainScaffold>
     WidgetsBinding.instance.addObserver(this);
     MainTabs.attach(_showTab);
     _resendOutbox();
+    // Reads on the receipts that the user queued before the app was closed.
+    unawaited(ReceiptScanQueue.instance.resume());
   }
 
   @override
