@@ -24,6 +24,7 @@ import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.TransactionSortField;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
@@ -38,12 +39,17 @@ import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Transactions and the wallet they move. Every method that changes a transaction changes User.walletBalance in the same
@@ -88,6 +94,13 @@ public class TransactionService {
     private static final String MSG_RECEIPT_NOT_APPROVABLE = "Hóa đơn đang ở trạng thái không thể xác nhận";
     private static final String MSG_RECEIPT_NO_TOTAL = "Hóa đơn chưa có tổng tiền hợp lệ nên không thể đối soát";
     private static final String MSG_USER_NOT_FOUND = "Không tìm thấy người dùng";
+    private static final String MSG_DUPLICATE_RECEIPT = "Hóa đơn này có vẻ đã được lưu trước đó";
+
+    /** Accents (combining marks once decomposed) and anything that is not a letter or a digit, for comparing sellers. */
+    private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
+    private static final Pattern NOT_LETTER_OR_DIGIT = Pattern.compile("[^\\p{L}\\p{N}]+");
+    private static final String VIETNAMESE_D = "đ";
+    private static final String LATIN_D = "d";
 
     private static final String AUDIT_EXPENSE = "chi";
     private static final String AUDIT_INCOME = "thu";
@@ -205,6 +218,11 @@ public class TransactionService {
 
         if (request.getRawReceiptData() != null && !request.getRawReceiptData().isBlank()) {
             receiptProcessingService.attachReceipt(transaction, request.getRawReceiptData(), request.getImageUrl());
+            // After the receipt is built: its timestamp and seller are what a second scan of the same paper would repeat.
+            // Under the wallet lock, so two scans saved at the same time cannot both pass.
+            if (!Boolean.TRUE.equals(request.getAllowDuplicate())) {
+                refuseDuplicateReceipt(transaction, userId);
+            }
         }
 
         transactionRepo.save(transaction);
@@ -485,6 +503,48 @@ public class TransactionService {
             throw new IllegalStateException(MSG_RECEIPT_NO_TOTAL);
         }
         return total;
+    }
+
+    /**
+     * Refuses a scanned receipt that looks like one the user has saved already: a transaction of the same direction and
+     * amount, dated in the same minute, at the same seller (compared once normalized; when either side has no seller,
+     * only the other three count). Two different clientIds are two scans, so this catches what the idempotency key
+     * cannot. The oldest match is the one named in the 409.
+     */
+    private void refuseDuplicateReceipt(Transaction transaction, Long userId) {
+        if (transaction.getTransactionDate() == null || transaction.getAmount() == null) {
+            return;
+        }
+        LocalDateTime minuteStart = transaction.getTransactionDate().truncatedTo(ChronoUnit.MINUTES);
+        String seller = normalizedSeller(transaction.getReceipt());
+        transactionRepo.findPossibleReceiptDuplicates(userId, transaction.isExpense(), transaction.getAmount(),
+                        minuteStart, minuteStart.plusMinutes(1)).stream()
+                .filter(candidate -> sameSellerOrUnknown(seller, normalizedSeller(candidate.getReceipt())))
+                .findFirst()
+                .ifPresent(existing -> {
+                    log.warn("Scanned receipt refused as a likely duplicate, userId={}, existingTransactionId={}",
+                            userId, existing.getId());
+                    throw new DuplicateReceiptException(MSG_DUPLICATE_RECEIPT, existing.getId(),
+                            existing.getTransactionDate());
+                });
+    }
+
+    private static boolean sameSellerOrUnknown(String seller, String otherSeller) {
+        return seller == null || otherSeller == null || seller.equals(otherSeller);
+    }
+
+    /**
+     * The seller of a receipt as it is compared: lower case, without accents (đ becomes d), punctuation and runs of
+     * spaces collapsed to one space. Null when there is no receipt or no seller worth comparing.
+     */
+    static String normalizedSeller(Receipt receipt) {
+        if (receipt == null || receipt.getVendorName() == null) {
+            return null;
+        }
+        String decomposed = Normalizer.normalize(receipt.getVendorName().toLowerCase(Locale.ROOT), Normalizer.Form.NFD);
+        String plain = COMBINING_MARKS.matcher(decomposed).replaceAll("").replace(VIETNAMESE_D, LATIN_D);
+        String normalized = NOT_LETTER_OR_DIGIT.matcher(plain).replaceAll(" ").trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     /** What a checkout answers: the transaction, and the wallet as it is now. A repeated checkout gets the same shape. */

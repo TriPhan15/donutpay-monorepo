@@ -26,6 +26,7 @@ import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -524,6 +525,65 @@ class TransactionServiceRollbackTest {
         assertThrows(IllegalStateException.class, () -> service.approveReceipt(orphanId));
 
         assertEquals("WAITING_FOR_REVIEW", receiptRepository.findById(orphanId).orElseThrow().getStatus());
+    }
+
+    // ------------------------------------------------------------------- a second scan of the same receipt (T10d)
+
+    private TransactionRequestDto scanWithClientId(String clientId) {
+        TransactionRequestDto request = scan("245000", CLIENT_DATE, FULL_SCAN);
+        request.setClientId(clientId);
+        return request;
+    }
+
+    @Test
+    void aSecondScanOfTheSameReceiptIsRefusedWith409AndNeitherItsTransactionNorItsReceiptNorItsChargeRemain() {
+        Long first = checkedOut(scanWithClientId("scan-1"), aliceId);
+        BigDecimal walletAfterTheFirst = walletInDatabase();
+        long transactionsAfterTheFirst = transactionRepository.count();
+
+        DuplicateReceiptException refused = assertThrows(DuplicateReceiptException.class,
+                () -> service.createTransaction(scanWithClientId("scan-2"), aliceId));
+
+        assertEquals(first, refused.getExistingTransactionId());
+        assertEquals(LocalDateTime.of(2026, 5, 27, 10, 30), refused.getExistingTransactionDate());
+        assertEquals(transactionsAfterTheFirst, transactionRepository.count());
+        assertEquals(1, receiptRepository.count());
+        assertMoney(walletAfterTheFirst.toPlainString(), walletInDatabase());
+    }
+
+    @Test
+    void theSecondScanSentAgainWithAllowDuplicateIsSavedAndChargedLikeAnyOther() {
+        checkedOut(scanWithClientId("scan-1"), aliceId);
+        BigDecimal walletAfterTheFirst = walletInDatabase();
+        TransactionRequestDto confirmed = scanWithClientId("scan-2");
+        confirmed.setAllowDuplicate(true);
+
+        Long second = checkedOut(confirmed, aliceId);
+
+        assertNotNull(second);
+        assertEquals(2, receiptRepository.count());
+        assertMoney(walletAfterTheFirst.subtract(new BigDecimal("245000")).toPlainString(), walletInDatabase());
+    }
+
+    @Test
+    void aRepeatOfTheFirstScansClientIdIsStillAnsweredWithTheFirstTransactionAndNotRefusedAsADuplicate() {
+        Long first = checkedOut(scanWithClientId("scan-1"), aliceId);
+
+        Long repeated = checkedOut(scanWithClientId("scan-1"), aliceId);
+
+        assertEquals(first, repeated);
+        assertEquals(1, receiptRepository.count());
+    }
+
+    @Test
+    void theSameReceiptScannedByAnotherUserIsNoDuplicateOfAlices() {
+        checkedOut(scanWithClientId("scan-1"), aliceId);
+        Long bobId = persistBob().getId();
+
+        Long bobs = checkedOut(scanWithClientId("scan-1"), bobId);
+
+        assertNotNull(bobs);
+        assertEquals(2, receiptRepository.count());
     }
 
     // ----------------------------------------------------------------------------- checkout with a client id (idempotency)

@@ -5,7 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.SavingGoalDto;
+import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -15,14 +17,19 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * The saving goals of the signed-in caller. No method takes a user id: the owner is the caller, from the SecurityContext,
  * and a goal of somebody else is refused with a 403 (recorded as AUTH_ACCESS_DENIED). Each change and its audit row commit
- * together. The goals are figures the owner keeps for themselves (no money moves), so neither the amounts nor the title
- * are part of the rows.
+ * together. Creating, updating and deleting a goal only change figures the owner keeps for themselves (no money moves);
+ * a contribution does move money: it is an expense of the wallet in the "Tiết kiệm" category, recorded through
+ * TransactionService like any other checkout. Neither the amounts nor the title are part of the audit rows here.
  */
 @Slf4j
 @Service
@@ -33,6 +40,10 @@ public class SavingGoalService {
     private static final String AUDIT_CREATED = "Tạo mục tiêu tiết kiệm";
     private static final String AUDIT_UPDATED = "Cập nhật số tiền đã tiết kiệm";
     private static final String AUDIT_DELETED = "Xóa mục tiêu tiết kiệm";
+    private static final String AUDIT_CONTRIBUTED = "Góp tiền vào mục tiêu tiết kiệm (giao dịch #%s)";
+    /** Where a contribution comes from: the wallet, under the name the mobile app gives that source. */
+    static final String CONTRIBUTION_PAYMENT_METHOD = "WALLET";
+    private static final String KEY_TRANSACTION_ID = "transactionId";
 
     @Autowired
     private SavingGoalRepository savingGoalRepository;
@@ -42,6 +53,9 @@ public class SavingGoalService {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    @Autowired
+    private TransactionService transactionService;
 
     @Transactional(readOnly = true)
     public List<SavingGoalDto> getMySavings() {
@@ -77,6 +91,44 @@ public class SavingGoalService {
         log.info("Saving goal updated, userId={}, goalId={}", caller.getId(), goalId);
     }
 
+    /**
+     * Moves [amount] from the caller's wallet into one of their goals, all or nothing: an expense transaction in the
+     * "Tiết kiệm" category (note = the goal's title, dated now) is recorded through TransactionService, which locks the
+     * wallet, refuses a wallet that cannot carry it (InsufficientBalanceException, 400), raises the budget alerts and
+     * reports the changed statistics; then the goal's currentAmount grows by the same amount. The goal row is locked
+     * first, so two contributions to one goal add up. A goal that does not exist is refused like everywhere here (400),
+     * one of somebody else with a 403, both before the wallet is touched.
+     */
+    @Transactional
+    public SavingGoalDto contributeToMySaving(Long goalId, BigDecimal amount) {
+        User caller = currentUserProvider.getCurrentUser();
+        SavingGoal goal = requireOwned(savingGoalRepository.findLockedById(goalId), goalId, caller);
+
+        Map<String, Object> checkout = transactionService.createMyTransaction(contributionTransaction(goal, amount));
+        Object transactionId = checkout.get(KEY_TRANSACTION_ID);
+
+        BigDecimal current = Objects.requireNonNullElse(goal.getCurrentAmount(), BigDecimal.ZERO);
+        goal.setCurrentAmount(current.add(amount));
+        SavingGoal saved = savingGoalRepository.save(goal);
+
+        auditLogService.record(AuditEntry.of(AuditAction.SAVING_UPDATED, AuditActor.of(caller), goalId,
+                String.format(AUDIT_CONTRIBUTED, transactionId)));
+        log.info("Saving goal contribution, userId={}, goalId={}, transactionId={}", caller.getId(), goalId, transactionId);
+        return toDto(saved);
+    }
+
+    /** The expense a contribution records: from the wallet, now, in the savings category, noted with the goal's title. */
+    private static TransactionRequestDto contributionTransaction(SavingGoal goal, BigDecimal amount) {
+        TransactionRequestDto request = new TransactionRequestDto();
+        request.setAmount(amount);
+        request.setExpense(true);
+        request.setCategoryName(DefaultCategory.SAVINGS.getDisplayName());
+        request.setNote(goal.getTitle());
+        request.setPaymentMethod(CONTRIBUTION_PAYMENT_METHOD);
+        request.setTransactionDate(LocalDateTime.now());
+        return request;
+    }
+
     @Transactional
     public void deleteSaving(Long goalId) {
         User caller = currentUserProvider.getCurrentUser();
@@ -88,7 +140,11 @@ public class SavingGoalService {
 
     /** A goal that does not exist is refused like before (400), one that exists but is somebody else's with a 403. */
     private SavingGoal findOwnedGoal(Long goalId, User caller) {
-        SavingGoal goal = savingGoalRepository.findById(goalId).orElseThrow(() -> {
+        return requireOwned(savingGoalRepository.findById(goalId), goalId, caller);
+    }
+
+    private static SavingGoal requireOwned(Optional<SavingGoal> found, Long goalId, User caller) {
+        SavingGoal goal = found.orElseThrow(() -> {
             log.warn("Saving goal not found, userId={}, goalId={}", caller.getId(), goalId);
             return new NoSuchElementException(MSG_GOAL_NOT_FOUND);
         });

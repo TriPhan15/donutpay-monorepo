@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
+import vn.edu.huit.finance.core.Dto.DuplicateReceiptResponseDto;
 import vn.edu.huit.finance.core.Security.AuditingAccessDeniedHandler;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 
@@ -150,6 +151,23 @@ public class GlobalExceptionHandler {
     public Object handleOptimisticLockingFailure(OptimisticLockingFailureException ex, HttpServletRequest request) {
         log.warn("Optimistic locking conflict, nothing was written, uri={}", request.getRequestURI());
         return buildErrorResponse(HttpStatus.CONFLICT, MSG_CONCURRENT_CHANGE, request);
+    }
+
+    // 409 with the transaction already saved in data, so the app can open it or send the checkout again with
+    // allowDuplicate=true. Nothing was written: the checkout's transaction rolled back.
+    @ExceptionHandler(DuplicateReceiptException.class)
+    public Object handleDuplicateReceipt(DuplicateReceiptException ex, HttpServletRequest request) {
+        if (!isJsonRequest(request)) {
+            return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.<DuplicateReceiptResponseDto>builder()
+                .code(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .data(DuplicateReceiptResponseDto.builder()
+                        .existingTransactionId(ex.getExistingTransactionId())
+                        .existingTransactionDate(ex.getExistingTransactionDate())
+                        .build())
+                .build());
     }
 
     @ExceptionHandler({InsufficientBalanceException.class, InvalidRoleException.class, InvalidSortFieldException.class})

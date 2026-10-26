@@ -23,6 +23,8 @@ public enum DefaultCategory {
     FAMILY("family", "Gia đình & Con cái", true),
     SOCIAL("social", "Hiếu hỉ", true),
     INSURANCE("insurance", "Bảo hiểm", true),
+    /** Tiền chuyển từ ví vào một mục tiêu tiết kiệm (POST /api/savings/{id}/contributions). */
+    SAVINGS("savings", "Tiết kiệm", true),
     OTHER_EXPENSE("other_expense", "Khác", true),
 
     // ------------------------------------------------------------------------------------------------------------ thu

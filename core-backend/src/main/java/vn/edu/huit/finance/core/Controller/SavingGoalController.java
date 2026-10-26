@@ -1,9 +1,12 @@
 package vn.edu.huit.finance.core.Controller;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
+import vn.edu.huit.finance.core.Dto.SavingContributionRequestDto;
 import vn.edu.huit.finance.core.Dto.SavingGoalDto;
 import vn.edu.huit.finance.core.Service.SavingGoalService;
 
@@ -18,6 +21,7 @@ public class SavingGoalController {
     private static final String MSG_CREATED = "Thêm thành công";
     private static final String MSG_UPDATED = "Cập nhật thành công";
     private static final String MSG_DELETED = "Xóa thành công";
+    private static final String MSG_CONTRIBUTED = "Góp tiền vào mục tiêu thành công";
     private static final int CODE_OK = 200;
 
     @Autowired
@@ -39,6 +43,14 @@ public class SavingGoalController {
     public ResponseEntity<ApiResponse<String>> updateCurrentAmount(@PathVariable Long id, @RequestBody SavingGoalDto dto) {
         savingGoalService.updateCurrentAmount(id, dto.getCurrent());
         return ResponseEntity.ok(ApiResponse.<String>builder().code(CODE_OK).message(MSG_UPDATED).build());
+    }
+
+    /** Moves money from the caller's wallet into the goal: an expense in "Tiết kiệm", and the goal's current amount grows. */
+    @PostMapping("/{id}/contributions")
+    public ResponseEntity<ApiResponse<SavingGoalDto>> contribute(@PathVariable Long id,
+                                                                 @Valid @RequestBody SavingContributionRequestDto request) {
+        return ApiResponses.respond(HttpStatus.OK, MSG_CONTRIBUTED,
+                savingGoalService.contributeToMySaving(id, request.getAmount()));
     }
 
     @DeleteMapping("/{id}")

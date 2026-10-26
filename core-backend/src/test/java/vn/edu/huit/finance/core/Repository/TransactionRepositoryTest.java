@@ -15,6 +15,7 @@ import vn.edu.huit.finance.core.Entity.User;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -274,5 +275,61 @@ class TransactionRepositoryTest {
         persistWithClientId(alice, null);
 
         assertEquals(4, transactionRepository.findByUserIdOrderByTransactionDateDesc(alice.getId()).size());
+    }
+
+    // ------------------------------------------------------------------ findPossibleReceiptDuplicates (T10, scanned receipts)
+
+    private static final LocalDateTime NOON = LocalDateTime.of(2026, 9, 1, 12, 0);
+
+    private List<Transaction> possibleDuplicatesOfAlice(boolean isExpense, String amount) {
+        return transactionRepository.findPossibleReceiptDuplicates(withReceipt.getUser().getId(), isExpense,
+                new BigDecimal(amount), NOON, NOON.plusMinutes(1));
+    }
+
+    private Transaction persistOfAlice(boolean isExpense, String amount, LocalDateTime date) {
+        Transaction transaction = newTransaction(withReceipt.getUser(), withReceipt.getCategory());
+        transaction.setExpense(isExpense);
+        transaction.setAmount(new BigDecimal(amount));
+        transaction.setTransactionDate(date);
+        return entityManager.persistAndFlush(transaction);
+    }
+
+    @Test
+    void possibleReceiptDuplicatesAreTheSameDirectionAmountAndMinute_oldestFirst_withTheirReceiptInOneStatement() {
+        forgetLoadedEntities();
+
+        List<Transaction> found = possibleDuplicatesOfAlice(true, "100000.00");
+        String seller = found.get(0).getReceipt().getVendorName();
+
+        assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()), found.stream().map(Transaction::getId).toList());
+        assertEquals("Highlands", seller);
+        assertNull(found.get(1).getReceipt());
+        assertEquals(1, statistics().getPrepareStatementCount(), "reading the receipts must not add queries");
+    }
+
+    @Test
+    void possibleReceiptDuplicatesIncludeTheWholeMinuteButNotTheNextOneNorTheOneBefore() {
+        Transaction lateInTheMinute = persistOfAlice(true, "100000", NOON.plusSeconds(59));
+        persistOfAlice(true, "100000", NOON.plusMinutes(1));
+        persistOfAlice(true, "100000", NOON.minusSeconds(1));
+
+        List<Long> found = possibleDuplicatesOfAlice(true, "100000").stream().map(Transaction::getId).toList();
+
+        assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId(), lateInTheMinute.getId()), found);
+    }
+
+    @Test
+    void possibleReceiptDuplicatesNeverHoldAnotherAmountAnotherDirectionOrAnotherUser() {
+        persistOfAlice(true, "100001", NOON);
+        Transaction income = persistOfAlice(false, "100000", NOON);
+        Transaction bobs = newTransaction(persistBob(), withReceipt.getCategory());
+        entityManager.persistAndFlush(bobs);
+
+        assertEquals(List.of(income.getId()),
+                possibleDuplicatesOfAlice(false, "100000").stream().map(Transaction::getId).toList());
+        assertTrue(possibleDuplicatesOfAlice(true, "99999").isEmpty());
+        assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()),
+                possibleDuplicatesOfAlice(true, "100000").stream().map(Transaction::getId).toList(),
+                "neither the other amount, nor the income, nor Bob's transaction of the same minute");
     }
 }

@@ -73,6 +73,7 @@ class BudgetControllerTest {
     private static final String AMOUNT = "\"amount\":2000000";
     private static final String MONTH = "\"periodType\":\"MONTH\"";
     private static final String WEEK = "\"periodType\":\"WEEK\"";
+    private static final String YEAR = "\"periodType\":\"YEAR\"";
     private static final String SEPTEMBER_FIRST = "\"startDate\":\"2026-09-01\"";
     private static final String SEPTEMBER_LAST = "\"endDate\":\"2026-09-30\"";
     private static final String VALID_BODY = json(CATEGORY, AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST);
@@ -246,6 +247,9 @@ class BudgetControllerTest {
                 Arguments.of("a week of exactly 7 days", json(CATEGORY, AMOUNT, WEEK, SEPTEMBER_FIRST, "\"endDate\":\"2026-09-07\"")),
                 Arguments.of("a month of exactly 31 days", json(CATEGORY, AMOUNT, MONTH, "\"startDate\":\"2026-08-01\"", "\"endDate\":\"2026-08-31\"")),
                 Arguments.of("a single-day range", json(CATEGORY, AMOUNT, WEEK, SEPTEMBER_FIRST, SEPTEMBER_FIRST.replace("startDate", "endDate"))),
+                Arguments.of("a calendar year of 365 days", json(CATEGORY, AMOUNT, YEAR, "\"startDate\":\"2026-01-01\"", "\"endDate\":\"2026-12-31\"")),
+                Arguments.of("a leap year of exactly 366 days", json(CATEGORY, AMOUNT, YEAR, "\"startDate\":\"2028-01-01\"", "\"endDate\":\"2028-12-31\"")),
+                Arguments.of("a yearly budget for every category", json(AMOUNT, YEAR, "\"startDate\":\"2026-01-01\"", "\"endDate\":\"2026-12-31\"")),
                 Arguments.of("an amount with two decimals", json(CATEGORY, "\"amount\":1234.56", MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST)));
     }
 
@@ -256,6 +260,25 @@ class BudgetControllerTest {
 
         mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL, body)))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void aYearlyBudgetReachesTheServiceAsYearAndIsAnsweredAsYear() throws Exception {
+        BudgetResponseDto yearly = BudgetResponseDto.builder()
+                .id(8L).categoryId(10L).categoryName("Ăn uống")
+                .amount(new BigDecimal("24000000.00")).periodType(BudgetPeriodType.YEAR)
+                .startDate(LocalDate.of(2026, 1, 1)).endDate(LocalDate.of(2026, 12, 31))
+                .build();
+        when(budgetService.createBudget(any())).thenReturn(yearly);
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL,
+                        json(CATEGORY, "\"amount\":24000000", YEAR, "\"startDate\":\"2026-01-01\"", "\"endDate\":\"2026-12-31\""))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.periodType").value("YEAR"));
+
+        ArgumentCaptor<BudgetRequestDto> sent = ArgumentCaptor.forClass(BudgetRequestDto.class);
+        verify(budgetService).createBudget(sent.capture());
+        assertEquals(BudgetPeriodType.YEAR, sent.getValue().getPeriodType());
     }
 
     static Stream<Arguments> invalidBodies() {
@@ -283,6 +306,8 @@ class BudgetControllerTest {
                 Arguments.of("a week of 8 days", json(CATEGORY, AMOUNT, WEEK, SEPTEMBER_FIRST, "\"endDate\":\"2026-09-08\""),
                         "vượt quá độ dài của kỳ hạn"),
                 Arguments.of("a month of 32 days", json(CATEGORY, AMOUNT, MONTH, SEPTEMBER_FIRST, "\"endDate\":\"2026-10-02\""),
+                        "vượt quá độ dài của kỳ hạn"),
+                Arguments.of("a year of 367 days", json(CATEGORY, AMOUNT, YEAR, "\"startDate\":\"2026-01-01\"", "\"endDate\":\"2027-01-02\""),
                         "vượt quá độ dài của kỳ hạn"),
                 Arguments.of("category id 0", json("\"categoryId\":0", AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST),
                         "Mã danh mục không hợp lệ"),
@@ -324,7 +349,7 @@ class BudgetControllerTest {
 
     static Stream<Arguments> malformedBodies() {
         return Stream.of(
-                Arguments.of("an unknown period type", json(CATEGORY, AMOUNT, "\"periodType\":\"YEAR\"", SEPTEMBER_FIRST, SEPTEMBER_LAST)),
+                Arguments.of("an unknown period type", json(CATEGORY, AMOUNT, "\"periodType\":\"DECADE\"", SEPTEMBER_FIRST, SEPTEMBER_LAST)),
                 Arguments.of("a date that is not a date", json(CATEGORY, AMOUNT, MONTH, "\"startDate\":\"not-a-date\"", SEPTEMBER_LAST)),
                 Arguments.of("text that is not JSON", "this is not json"));
     }

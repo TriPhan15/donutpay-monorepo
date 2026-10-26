@@ -30,6 +30,7 @@ import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
@@ -345,6 +346,33 @@ class TransactionControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("GIAO DỊCH THẤT BẠI: Số dư ví không đủ!"));
+    }
+
+    // ----------------------------------------------------------- POST /checkout: a scanned receipt saved twice (T10d)
+
+    @Test
+    void aScannedReceiptThatLooksSavedAlreadyIsA409WithTheTransactionAlreadySaved() throws Exception {
+        when(transactionService.createMyTransaction(any())).thenThrow(new DuplicateReceiptException(
+                "Hóa đơn này có vẻ đã được lưu trước đó", 123L, LocalDateTime.of(2026, 5, 27, 10, 30)));
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", checkoutBodyWith(",\"rawReceiptData\":\"{}\""))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value(409))
+                .andExpect(jsonPath("$.message").value("Hóa đơn này có vẻ đã được lưu trước đó"))
+                .andExpect(jsonPath("$.data.existingTransactionId").value(123))
+                .andExpect(jsonPath("$.data.existingTransactionDate").value("2026-05-27T10:30:00"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {",\"allowDuplicate\":true", ",\"allowDuplicate\":false", ",\"allowDuplicate\":null", ""})
+    void allowDuplicateIsPassedOnToTheServiceAsSent(String extraFields) throws Exception {
+        when(transactionService.createMyTransaction(any())).thenReturn(Map.of("transactionId", 5));
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", checkoutBodyWith(extraFields))))
+                .andExpect(status().isOk());
+
+        Boolean expected = extraFields.contains("true") ? Boolean.TRUE : extraFields.contains("false") ? Boolean.FALSE : null;
+        assertEquals(expected, checkoutSentToTheService().getAllowDuplicate());
     }
 
     // ------------------------------------------------------------------- POST /checkout: the optional client id

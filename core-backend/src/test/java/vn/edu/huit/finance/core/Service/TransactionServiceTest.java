@@ -33,6 +33,7 @@ import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.InvalidSortFieldException;
@@ -62,6 +63,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -1054,6 +1056,176 @@ class TransactionServiceTest {
         assertThrows(IllegalStateException.class, () -> service.createTransaction(checkout("{\"seller\": {}}"), ALICE_ID));
 
         verify(transactionRepo, never()).save(any());
+    }
+
+    // -------------------------------------------------------------- checkout with a scanned receipt: duplicates (T10d)
+
+    private static final LocalDateTime SCANNED_MINUTE = LocalDateTime.of(2026, 5, 27, 10, 30);
+    private static final String SCAN = "{\"seller\": {}}";
+    private static final Long EARLIER_ID = 55L;
+
+    /** What attachReceipt does for real: the receipt's seller and timestamp (here 10:30:42) replace what the client sent. */
+    private void theScanReads(String seller) {
+        doAnswer(invocation -> {
+            Transaction transaction = invocation.getArgument(0);
+            Receipt receipt = new Receipt();
+            receipt.setVendorName(seller);
+            transaction.setReceipt(receipt);
+            transaction.setTransactionDate(SCANNED_MINUTE.plusSeconds(42));
+            return null;
+        }).when(receiptProcessingService).attachReceipt(any(), any(), any());
+    }
+
+    private Transaction savedEarlier(String seller) {
+        Transaction earlier = transaction(alice, HUNDRED_THOUSAND, true);
+        earlier.setId(EARLIER_ID);
+        earlier.setTransactionDate(SCANNED_MINUTE.plusSeconds(5));
+        if (seller != null) {
+            Receipt receipt = new Receipt();
+            receipt.setVendorName(seller);
+            earlier.setReceipt(receipt);
+        }
+        return earlier;
+    }
+
+    /** What the repository finds for Alice: expenses of 100,000 from 10:30:00 (inclusive) to 10:31:00 (exclusive). */
+    private void aliceHasInThatMinute(Transaction... transactions) {
+        when(transactionRepo.findPossibleReceiptDuplicates(ALICE_ID, true, HUNDRED_THOUSAND, SCANNED_MINUTE,
+                SCANNED_MINUTE.plusMinutes(1))).thenReturn(List.of(transactions));
+    }
+
+    private void aliceScansFoodAs(String seller) {
+        checkoutAsAlice();
+        when(categoryRepo.findByName(food.getName())).thenReturn(Optional.of(food));
+        theScanReads(seller);
+    }
+
+    @Test
+    void aScanOfTheSameSellerAmountAndMinuteIsRefusedAsADuplicateNamingTheEarlierTransactionAndNothingIsSaved() {
+        aliceScansFoodAs("Bách Hóa Xanh");
+        aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
+
+        DuplicateReceiptException refused = assertThrows(DuplicateReceiptException.class,
+                () -> service.createMyTransaction(checkout(SCAN)));
+
+        assertEquals("Hóa đơn này có vẻ đã được lưu trước đó", refused.getMessage());
+        assertEquals(EARLIER_ID, refused.getExistingTransactionId());
+        assertEquals(SCANNED_MINUTE.plusSeconds(5), refused.getExistingTransactionDate());
+        verify(transactionRepo, never()).save(any());
+        verify(budgetAlertService, never()).notifyAfterCreate(any());
+        verifyNoInteractions(eventPublisher, auditLogService);
+        verify(receiptProcessingService, never()).recordAttachedReceipt(any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"  BACH HOA   XANH ", "bách hóa xanh", "Bách-Hóa Xanh.", "Bach Hoa Xanh"})
+    void theSellersAreComparedWithoutCaseAccentsPunctuationOrExtraSpaces(String earlierSeller) {
+        aliceScansFoodAs("Bách Hóa Xanh");
+        aliceHasInThatMinute(savedEarlier(earlierSeller));
+
+        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(checkout(SCAN)));
+    }
+
+    @Test
+    void aScanAtAnotherSellerOfTheSameAmountAndMinuteIsSaved() {
+        aliceScansFoodAs("Highlands Coffee");
+        aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
+
+        service.createMyTransaction(checkout(SCAN));
+
+        verify(transactionRepo).save(any(Transaction.class));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", "..."})
+    void withoutASellerOnTheScanOnlyTheDirectionAmountAndMinuteCount(String seller) {
+        aliceScansFoodAs(seller);
+        aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
+
+        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(checkout(SCAN)));
+    }
+
+    @Test
+    void anEarlierTransactionWithoutASellerMatchesOnTheDirectionAmountAndMinute() {
+        aliceScansFoodAs("Bách Hóa Xanh");
+        Transaction withoutSeller = savedEarlier(null);
+        withoutSeller.setId(EARLIER_ID + 1);
+        aliceHasInThatMinute(savedEarlier("Highlands"), withoutSeller);
+
+        DuplicateReceiptException refused = assertThrows(DuplicateReceiptException.class,
+                () -> service.createMyTransaction(checkout(SCAN)));
+
+        assertEquals(EARLIER_ID + 1, refused.getExistingTransactionId());
+    }
+
+    @Test
+    void theLookupIsTheCallersOwnSameDirectionAndAmountInTheMinuteOfTheReceiptsTimestamp() {
+        aliceScansFoodAs("Bách Hóa Xanh");
+
+        service.createMyTransaction(checkout(SCAN));
+
+        verify(transactionRepo).findPossibleReceiptDuplicates(ALICE_ID, true, HUNDRED_THOUSAND, SCANNED_MINUTE,
+                SCANNED_MINUTE.plusMinutes(1));
+        verify(transactionRepo).save(any(Transaction.class));
+    }
+
+    @Test
+    void aScanSentAgainWithAllowDuplicateIsSavedWithoutLookingForDuplicates() {
+        aliceScansFoodAs("Bách Hóa Xanh");
+        TransactionRequestDto request = checkout(SCAN);
+        request.setAllowDuplicate(true);
+
+        service.createMyTransaction(request);
+
+        verify(transactionRepo, never()).findPossibleReceiptDuplicates(anyLong(), anyBoolean(), any(), any(), any());
+        verify(transactionRepo).save(any(Transaction.class));
+    }
+
+    @Test
+    void allowDuplicateFalseIsTheSameAsNotSendingIt() {
+        aliceScansFoodAs("Bách Hóa Xanh");
+        aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
+        TransactionRequestDto request = checkout(SCAN);
+        request.setAllowDuplicate(false);
+
+        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(request));
+    }
+
+    @Test
+    void aManualCheckoutIsNeverCheckedForDuplicates() {
+        checkoutAsAlice();
+        when(categoryRepo.findByName(food.getName())).thenReturn(Optional.of(food));
+
+        service.createMyTransaction(checkout((String) null));
+
+        verify(transactionRepo, never()).findPossibleReceiptDuplicates(anyLong(), anyBoolean(), any(), any(), any());
+        verify(transactionRepo).save(any(Transaction.class));
+    }
+
+    @Test
+    void aRepeatOfTheSameClientIdIsAnsweredWithTheOriginalAndIsNoDuplicate() {
+        checkoutAsAlice();
+        aliceAlreadyCheckedOutWith(CLIENT_ID);
+        TransactionRequestDto request = checkout(SCAN);
+        request.setClientId(CLIENT_ID);
+
+        Map<String, Object> result = service.createMyTransaction(request);
+
+        assertEquals(TX_ID, result.get("transactionId"));
+        verify(transactionRepo, never()).findPossibleReceiptDuplicates(anyLong(), anyBoolean(), any(), any(), any());
+        verifyNoInteractions(receiptProcessingService);
+    }
+
+    @Test
+    void theNormalizedSellerIsNullForNoReceiptNoSellerOrNothingButPunctuation() {
+        Receipt receipt = new Receipt();
+        assertNull(TransactionService.normalizedSeller(null));
+        assertNull(TransactionService.normalizedSeller(receipt));
+        receipt.setVendorName(" - . ");
+        assertNull(TransactionService.normalizedSeller(receipt));
+        receipt.setVendorName("  Phở   Đức-Thịnh! ");
+        assertEquals("pho duc thinh", TransactionService.normalizedSeller(receipt));
     }
 
     // --------------------------------------------------------------------------------------- the caller's own listings

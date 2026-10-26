@@ -4,13 +4,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vn.edu.huit.finance.core.Dto.SavingGoalDto;
+import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
@@ -19,6 +22,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -36,6 +40,7 @@ class SavingGoalServiceTest {
     @Mock private SavingGoalRepository repository;
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private AuditLogService auditLogService;
+    @Mock private TransactionService transactionService;
     @InjectMocks private SavingGoalService service;
 
     private final User alice = user(1L);
@@ -136,6 +141,137 @@ class SavingGoalServiceTest {
         NoSuchElementException refused = assertThrows(NoSuchElementException.class, () -> service.deleteSaving(99L));
 
         assertEquals("Không tìm thấy mục tiêu tiết kiệm", refused.getMessage());
+        verifyNoInteractions(auditLogService);
+    }
+
+    // ------------------------------------------------------------------------------------------ contributions (T10c)
+
+    private static final BigDecimal CONTRIBUTION = new BigDecimal("500000");
+
+    /** Bob's or Alice's goal "Mua xe" (6), 1,000,000 of 50,000,000 saved, found under its row lock. */
+    private SavingGoal lockedGoalOf(User owner) {
+        SavingGoal goal = new SavingGoal();
+        goal.setId(6L);
+        goal.setTitle("Mua xe");
+        goal.setTargetAmount(new BigDecimal("50000000"));
+        goal.setCurrentAmount(new BigDecimal("1000000"));
+        goal.setUser(owner);
+        when(repository.findLockedById(6L)).thenReturn(Optional.of(goal));
+        return goal;
+    }
+
+    private void theCheckoutRecordsTransaction(long transactionId) {
+        when(transactionService.createMyTransaction(any(TransactionRequestDto.class)))
+                .thenReturn(Map.of("transactionId", transactionId));
+    }
+
+    private TransactionRequestDto checkoutSent() {
+        ArgumentCaptor<TransactionRequestDto> sent = ArgumentCaptor.forClass(TransactionRequestDto.class);
+        verify(transactionService).createMyTransaction(sent.capture());
+        return sent.getValue();
+    }
+
+    @Test
+    void aContributionIsAnExpenseOfTheWalletInTheSavingsCategoryNotedWithTheGoalsTitle() {
+        lockedGoalOf(alice);
+        theCheckoutRecordsTransaction(900L);
+        when(repository.save(any(SavingGoal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.contributeToMySaving(6L, CONTRIBUTION);
+
+        TransactionRequestDto sent = checkoutSent();
+        assertEquals(0, CONTRIBUTION.compareTo(sent.getAmount()));
+        assertTrue(sent.isExpense());
+        assertEquals("Tiết kiệm", sent.getCategoryName());
+        assertNull(sent.getCategoryId());
+        assertEquals("Mua xe", sent.getNote());
+        assertEquals("WALLET", sent.getPaymentMethod());
+        assertNotNull(sent.getTransactionDate());
+        assertNull(sent.getRawReceiptData(), "a contribution is no scanned receipt");
+    }
+
+    @Test
+    void aContributionAddsItsAmountToTheGoal_answersTheGoal_andIsRecordedWithTheTransaction() {
+        SavingGoal goal = lockedGoalOf(alice);
+        theCheckoutRecordsTransaction(900L);
+        when(repository.save(any(SavingGoal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SavingGoalDto answer = service.contributeToMySaving(6L, CONTRIBUTION);
+
+        assertEquals(0, new BigDecimal("1500000").compareTo(goal.getCurrentAmount()));
+        assertEquals(6L, answer.getId());
+        assertEquals("Mua xe", answer.getTitle());
+        assertEquals(0, new BigDecimal("1500000").compareTo(answer.getCurrent()));
+        assertEquals(0, new BigDecimal("50000000").compareTo(answer.getTarget()));
+        verify(repository).save(goal);
+        AuditEntry entry = recorded();
+        assertEquals(AuditAction.SAVING_UPDATED, entry.action());
+        assertEquals(AuditActor.of(alice), entry.actor());
+        assertEquals(6L, entry.targetId());
+        assertTrue(entry.description().contains("#900"));
+        assertNoFigureOrTitleIn(entry);
+        assertFalse(entry.description().contains("500000"));
+    }
+
+    @Test
+    void theGoalIsLockedBeforeTheWalletIsChargedAndSavedAfterIt() {
+        SavingGoal goal = lockedGoalOf(alice);
+        theCheckoutRecordsTransaction(900L);
+        when(repository.save(any(SavingGoal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.contributeToMySaving(6L, CONTRIBUTION);
+
+        InOrder inOrder = inOrder(repository, transactionService);
+        inOrder.verify(repository).findLockedById(6L);
+        inOrder.verify(transactionService).createMyTransaction(any());
+        inOrder.verify(repository).save(goal);
+        verify(repository, never()).findById(any());
+    }
+
+    @Test
+    void aGoalThatStillHasNoAmountStartsFromZero() {
+        SavingGoal goal = lockedGoalOf(alice);
+        goal.setCurrentAmount(null);
+        theCheckoutRecordsTransaction(900L);
+        when(repository.save(any(SavingGoal.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.contributeToMySaving(6L, CONTRIBUTION);
+
+        assertEquals(0, CONTRIBUTION.compareTo(goal.getCurrentAmount()));
+    }
+
+    @Test
+    void aContributionToAGoalOfSomebodyElseIsRefusedWith403BeforeTheWalletIsTouched() {
+        SavingGoal bobsGoal = lockedGoalOf(bob);
+
+        assertThrows(TransactionAccessDeniedException.class, () -> service.contributeToMySaving(6L, CONTRIBUTION));
+
+        assertEquals(0, new BigDecimal("1000000").compareTo(bobsGoal.getCurrentAmount()));
+        verifyNoInteractions(transactionService, auditLogService);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void aContributionToAGoalThatDoesNotExistIsRefusedBeforeTheWalletIsTouched() {
+        when(repository.findLockedById(99L)).thenReturn(Optional.empty());
+
+        NoSuchElementException refused = assertThrows(NoSuchElementException.class,
+                () -> service.contributeToMySaving(99L, CONTRIBUTION));
+
+        assertEquals("Không tìm thấy mục tiêu tiết kiệm", refused.getMessage());
+        verifyNoInteractions(transactionService, auditLogService);
+    }
+
+    @Test
+    void aWalletThatCannotCarryTheContributionLeavesTheGoalAsItWas() {
+        SavingGoal goal = lockedGoalOf(alice);
+        when(transactionService.createMyTransaction(any()))
+                .thenThrow(new InsufficientBalanceException("GIAO DỊCH THẤT BẠI: Số dư ví không đủ!"));
+
+        assertThrows(InsufficientBalanceException.class, () -> service.contributeToMySaving(6L, CONTRIBUTION));
+
+        assertEquals(0, new BigDecimal("1000000").compareTo(goal.getCurrentAmount()));
+        verify(repository, never()).save(any());
         verifyNoInteractions(auditLogService);
     }
 }

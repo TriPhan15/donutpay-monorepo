@@ -29,6 +29,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT t FROM Transaction t WHERE t.user.id = :userId AND t.clientId = :clientId")
     Optional<Transaction> findByUserIdAndClientId(@Param("userId") Long userId, @Param("clientId") String clientId);
 
+    /**
+     * The user's transactions a scanned receipt could be a second copy of: same direction, same amount, a date from
+     * minuteStart (inclusive) to minuteEnd (exclusive), oldest first. The receipt comes along in the same query, since
+     * the caller compares its seller (one statement, however many rows match).
+     */
+    @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt " +
+           "WHERE t.user.id = :userId AND t.isExpense = :isExpense AND t.amount = :amount " +
+           "AND t.transactionDate >= :minuteStart AND t.transactionDate < :minuteEnd " +
+           "ORDER BY t.id")
+    List<Transaction> findPossibleReceiptDuplicates(@Param("userId") Long userId,
+                                                    @Param("isExpense") boolean isExpense,
+                                                    @Param("amount") BigDecimal amount,
+                                                    @Param("minuteStart") java.time.LocalDateTime minuteStart,
+                                                    @Param("minuteEnd") java.time.LocalDateTime minuteEnd);
+
     @Query("SELECT t FROM Transaction t " +
            "JOIN FETCH t.user " +
            "JOIN FETCH t.category " +

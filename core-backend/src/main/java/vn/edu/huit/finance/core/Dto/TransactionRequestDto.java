@@ -53,4 +53,12 @@ public class TransactionRequestDto {
     @Size(max = Transaction.CLIENT_ID_MAX_LENGTH,
             message = "Mã định danh yêu cầu (clientId) tối đa " + Transaction.CLIENT_ID_MAX_LENGTH + " ký tự")
     private String clientId;
+
+    /**
+     * Only read for a scanned receipt (rawReceiptData present). Null or false: the checkout is refused with a 409
+     * (DuplicateReceiptException) when the caller already has a transaction of the same direction and amount, in the
+     * same minute, at the same seller; true: saved anyway (the user confirmed it is another purchase). A manual
+     * checkout is never checked.
+     */
+    private Boolean allowDuplicate;
 }
