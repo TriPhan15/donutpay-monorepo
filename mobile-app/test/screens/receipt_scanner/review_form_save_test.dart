@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/app_language.dart';
+import 'package:finance_ai_app/models/receipt_scan_result.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
@@ -142,10 +143,12 @@ void main() {
   }
 
   /// Opens the review form from a page of its own, like MainScaffold does; [result] gets what the form closes with.
-  /// [onOpenTransaction] is what MainScaffold hands over to show a transaction in the Ledger.
+  /// [onOpenTransaction] is what MainScaffold hands over to show a transaction in the Ledger; [initialScan] is a scan
+  /// the scan queue already read.
   Future<List<bool?>> openForm(
     WidgetTester tester, {
     ValueChanged<int>? onOpenTransaction,
+    ReceiptScanResult? initialScan,
   }) async {
     tester.view.physicalSize = const Size(600, 2200);
     tester.view.devicePixelRatio = 1.0;
@@ -162,6 +165,7 @@ void main() {
                   builder: (_) => ReviewFormPage(
                     imagePath: _photo,
                     onOpenTransaction: onOpenTransaction,
+                    initialScan: initialScan,
                   ),
                 ),
               ),
@@ -765,5 +769,91 @@ void main() {
         expect(find.text(_needsCheck), findsNothing);
       },
     );
+  });
+
+  group('a scan already read by the queue (initialScan)', () {
+    int scans() => backend.calls.where((c) => c == 'POST $_scan').length;
+
+    /// A scan of another receipt than the one the fake DONUT answers, so the form can only show it from [initialScan].
+    ReceiptScanResult queued({
+      String? iso = '2026-09-15T12:00:00',
+    }) => ReceiptScanResult.fromResponse({
+      'seller': {
+        'seller_name': 'Phúc Long',
+        'timestamp': '',
+        'total_cost_number': 60000,
+      },
+      'normalized': {
+        'seller': {'raw': 'Phúc Long', 'value': 'Phúc Long', 'valid': false},
+        'timestamp': {'raw': '', 'value': '', 'iso': iso, 'valid': iso != null},
+        'total_cost': {'raw': '60000', 'value': 60000, 'valid': true},
+      },
+    });
+
+    Color? outline(WidgetTester tester, String label) {
+      final decoration = tester
+          .widget<InputDecorator>(
+            find.descendant(
+              of: field(label),
+              matching: find.byType(InputDecorator),
+            ),
+          )
+          .decoration;
+      final border = decoration.errorText == null
+          ? decoration.enabledBorder
+          : decoration.errorBorder;
+      return border?.borderSide.color;
+    }
+
+    testWidgets(
+      'fills the form with it, marks its invalid fields, and sends nothing to DONUT',
+      (tester) async {
+        await openForm(tester, initialScan: queued());
+        final error = Theme.of(
+          tester.element(field('Tên cửa hàng')),
+        ).colorScheme.error;
+
+        expect(scans(), 0);
+        expect(
+          find.descendant(
+            of: field('Tên cửa hàng'),
+            matching: find.text('Phúc Long'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: field('Tổng tiền (đ)'),
+            matching: find.text('60.000'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('15/09/2026'), findsOneWidget);
+        expect(find.text(_needsCheck), findsOneWidget);
+        expect(outline(tester, 'Tên cửa hàng'), error);
+        expect(outline(tester, 'Tổng tiền (đ)'), isNot(error));
+        expect(find.text(_dateFallbackHint), findsNothing);
+      },
+    );
+
+    testWidgets('a scan without a date shows the fallback warning', (
+      tester,
+    ) async {
+      await openForm(tester, initialScan: queued(iso: null));
+
+      expect(scans(), 0);
+      expect(find.text(_dateFallbackHint), findsOneWidget);
+    });
+
+    testWidgets('saving sends the scan as rawReceiptData', (tester) async {
+      final scan = queued();
+      await openForm(tester, initialScan: scan);
+
+      await tapSave(tester);
+
+      expect(scans(), 0);
+      expect(sentBodies(), hasLength(1));
+      expect(sentBodies().single['rawReceiptData'], jsonEncode(scan.raw));
+    });
   });
 }

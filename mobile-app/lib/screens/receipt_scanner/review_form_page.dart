@@ -11,6 +11,7 @@ import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/receipt_item_model.dart';
+import 'package:finance_ai_app/models/receipt_scan_result.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -27,31 +28,6 @@ const String _dateTimeFormat = 'dd/MM/yyyy HH:mm';
 /// The day of the receipt in the note about the balance (day and month only).
 const String _dayMonthFormat = 'dd/MM';
 
-/// The ways a receipt date may come back from the scan, tried in this order. The first ones are the Vietnamese order of
-/// day and month, which is what the receipts print.
-const List<String> _scannedDateFormats = [
-  'dd/MM/yyyy HH:mm:ss',
-  _dateTimeFormat,
-  'dd/MM/yyyy',
-  'dd-MM-yyyy HH:mm:ss',
-  'dd-MM-yyyy HH:mm',
-  'dd-MM-yyyy',
-  'yyyy-MM-dd HH:mm:ss',
-  'yyyy-MM-dd HH:mm',
-  'yyyy-MM-dd',
-];
-
-/// Keys of the "normalized" block that ai-service adds to a scan (ai-service/receipt_postprocess.py).
-abstract final class _NormalizedScan {
-  static const String block = 'normalized';
-  static const String seller = 'seller';
-  static const String timestamp = 'timestamp';
-  static const String totalCost = 'total_cost';
-  static const String value = 'value';
-  static const String iso = 'iso';
-  static const String valid = 'valid';
-}
-
 class ReviewFormPage extends StatefulWidget {
   final String imagePath;
 
@@ -59,10 +35,14 @@ class ReviewFormPage extends StatefulWidget {
   /// Used by "View the saved one" when the server takes the receipt for one already saved.
   final ValueChanged<int>? onOpenTransaction;
 
+  /// A scan already read (by the scan queue): the form starts with it and does not send the photo to DONUT again.
+  final ReceiptScanResult? initialScan;
+
   const ReviewFormPage({
     super.key,
     required this.imagePath,
     this.onOpenTransaction,
+    this.initialScan,
   });
 
   @override
@@ -103,7 +83,15 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   void initState() {
     super.initState();
     _receipt = ReceiptModel(storeName: '', date: '', items: [], tax: 0);
-    _callDonutApi();
+    final scan = widget.initialScan;
+    if (scan == null) {
+      _callDonutApi();
+    } else {
+      // The amount is formatted for the locale of the context, which initState cannot read yet.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _applyScan(scan);
+      });
+    }
   }
 
   @override
@@ -113,83 +101,14 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     super.dispose();
   }
 
+  /// Reads the photo with DONUT, unless the form was opened with a scan already read (the scan queue).
   Future<void> _callDonutApi() async {
     try {
       final result = await RemoteApiHelper.instance.scanReceipt(
         widget.imagePath,
       );
-
-      final seller = result['seller'] is Map
-          ? Map<String, dynamic>.from(result['seller'])
-          : <String, dynamic>{};
-
-      final normalized = result[_NormalizedScan.block] is Map
-          ? Map<String, dynamic>.from(result[_NormalizedScan.block])
-          : null;
-      final normalizedStore = _normalizedString(
-        normalized,
-        _NormalizedScan.seller,
-        _NormalizedScan.value,
-      );
-      final storeName = normalizedStore.isNotEmpty
-          ? normalizedStore
-          : seller['seller_name']?.toString() ?? '';
-      final timestamp = seller['timestamp']?.toString() ?? '';
-      final n = seller['total_cost_number'];
-      final total = n is num
-          ? n.toDouble()
-          : (double.tryParse(
-                  (seller['total_cost'] ?? '0').toString().replaceAll(
-                    RegExp(r'[^\d.]'),
-                    '',
-                  ),
-                ) ??
-                0.0);
-      final scannedDate =
-          DateTime.tryParse(
-            _normalizedString(
-              normalized,
-              _NormalizedScan.timestamp,
-              _NormalizedScan.iso,
-            ),
-          ) ??
-          _parseScannedDate(timestamp);
-
       if (!mounted) return;
-      setState(() {
-        _rawScan = result;
-        if (storeName.isNotEmpty) _storeNameController.text = storeName;
-        _setDate(
-          scannedDate ?? DateTime.now(),
-          isFallback: scannedDate == null,
-        );
-        if (total > 0) {
-          _amountController.text = MoneyInputFormatter.format(
-            total,
-            context.loc.localeName,
-          );
-        }
-        _storeNeedsCheck = _isMarkedInvalid(normalized, _NormalizedScan.seller);
-        _totalNeedsCheck = _isMarkedInvalid(
-          normalized,
-          _NormalizedScan.totalCost,
-        );
-        _dateNeedsCheck = _isMarkedInvalid(
-          normalized,
-          _NormalizedScan.timestamp,
-        );
-        _receipt = ReceiptModel(
-          storeName: storeName,
-          date: timestamp,
-          items: [],
-          tax: 0,
-        );
-        _isProcessing = false;
-      });
-
-      if (total == 0 && mounted) {
-        AppToast.info(context, context.loc.reviewNoTotal);
-      }
+      _applyScan(ReceiptScanResult.fromResponse(result));
     } catch (e) {
       debugPrint('Lỗi quét hóa đơn: $e');
       if (!mounted) return;
@@ -201,34 +120,35 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     }
   }
 
-  /// `normalized[field][key]` as text, or '' when the scan has no such value.
-  static String _normalizedString(
-    Map<String, dynamic>? normalized,
-    String field,
-    String key,
-  ) {
-    final entry = normalized?[field];
-    return entry is Map ? (entry[key]?.toString() ?? '') : '';
-  }
-
-  /// True only when the scan says outright that [field] is not valid.
-  static bool _isMarkedInvalid(Map<String, dynamic>? normalized, String field) {
-    final entry = normalized?[field];
-    return entry is Map && entry[_NormalizedScan.valid] == false;
-  }
-
-  /// The receipt date read by the scan, or null when there is none or it is in none of [_scannedDateFormats].
-  static DateTime? _parseScannedDate(String timestamp) {
-    final text = timestamp.trim();
-    if (text.isEmpty) return null;
-    for (final pattern in _scannedDateFormats) {
-      try {
-        return DateFormat(pattern).parseStrict(text);
-      } on FormatException {
-        // Not this one; the next pattern may fit.
+  /// Fills the form with [scan]: the fields it marks as not valid are outlined, and a date it could not read falls back
+  /// to now with a warning.
+  void _applyScan(ReceiptScanResult scan) {
+    final amount = scan.amount;
+    final date = scan.date;
+    setState(() {
+      _rawScan = scan.raw;
+      _selectedCategory = scan.category;
+      if (scan.storeName.isNotEmpty) _storeNameController.text = scan.storeName;
+      _setDate(date ?? DateTime.now(), isFallback: date == null);
+      if (amount != null) {
+        _amountController.text = MoneyInputFormatter.format(
+          amount,
+          context.loc.localeName,
+        );
       }
-    }
-    return DateTime.tryParse(text);
+      _storeNeedsCheck = scan.invalidFields.contains(
+        ReceiptScanResult.sellerField,
+      );
+      _totalNeedsCheck = scan.invalidFields.contains(
+        ReceiptScanResult.totalCostField,
+      );
+      _dateNeedsCheck = scan.invalidFields.contains(
+        ReceiptScanResult.timestampField,
+      );
+      _isProcessing = false;
+    });
+
+    if (amount == null) AppToast.info(context, context.loc.reviewNoTotal);
   }
 
   /// To be called inside setState.
