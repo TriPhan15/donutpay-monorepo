@@ -1,8 +1,13 @@
 """Unit test cho ai_service.py bang mock, khong tai model Donut vat ly."""
 
+import asyncio
+import threading
+import time
 from io import BytesIO
+from typing import Dict, List, Tuple
 from unittest.mock import patch
 
+import httpx
 from PIL import Image
 
 # --- Global Import Trap ---------------------------------------------------
@@ -81,6 +86,76 @@ def test_extract_receipt_info_success(mocker):
     assert normalized["total_cost"]["value"] == 100000
     assert normalized["total_cost"]["valid"] is True
     assert set(normalized["invalid_fields"]) == {"seller", "address", "timestamp"}
+
+
+SCAN_SECONDS = 0.3
+
+
+def test_scans_run_one_at_a_time_and_health_stays_responsive(mocker):
+    """Hai POST /donut/scan gui cung luc phai doc lan luot (toi da 1 luot
+    DONUT chay cung luc), con GET /health van tra 200 truoc khi luot scan
+    thu hai xong, tuc la suy luan khong chan event loop."""
+    state: Dict[str, int] = {"running": 0, "max_running": 0}
+    state_lock = threading.Lock()
+
+    def fake_run_donut(pil_img: Image.Image) -> str:
+        # Mock: thay suy luan DONUT that bang ham ngu (blocking) va dem so
+        # luot dang chay cung luc.
+        with state_lock:
+            state["running"] += 1
+            state["max_running"] = max(state["max_running"], state["running"])
+        time.sleep(SCAN_SECONDS)
+        with state_lock:
+            state["running"] -= 1
+        return "<s_seller>dummy text</s_seller>"
+
+    mocker.patch.object(ai_service, "_run_donut", side_effect=fake_run_donut)
+    mocker.patch.object(
+        ai_service.processor,
+        "token2json",
+        return_value={"seller": {"total_cost": "100.000đ"}},
+    )
+
+    async def scenario() -> List[Tuple[str, int, float]]:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as async_client:
+            started = time.monotonic()
+
+            async def scan() -> Tuple[str, int, float]:
+                response = await async_client.post(
+                    "/donut/scan",
+                    files={
+                        "image": (
+                            "receipt.jpg",
+                            _make_test_image_bytes(),
+                            "image/jpeg",
+                        )
+                    },
+                )
+                return "scan", response.status_code, time.monotonic() - started
+
+            async def health() -> Tuple[str, int, float]:
+                # Cho hai scan vao truoc de /health chay trong luc DONUT ban
+                await asyncio.sleep(SCAN_SECONDS / 3)
+                response = await async_client.get("/health")
+                return "health", response.status_code, time.monotonic() - started
+
+            return list(await asyncio.gather(scan(), scan(), health()))
+
+    results = asyncio.run(scenario())
+
+    scans = sorted(done for kind, _, done in results if kind == "scan")
+    health_status, health_done = next(
+        (status, done) for kind, status, done in results if kind == "health"
+    )
+    assert [status for kind, status, _ in results if kind == "scan"] == [200, 200]
+    assert state["max_running"] == 1
+    assert health_status == 200
+    assert health_done < scans[1]
+    # Tuan tu that su: luot thu hai xong sau it nhat hai lan ngu
+    assert scans[1] >= 2 * SCAN_SECONDS
 
 
 def test_extract_receipt_info_missing_file():

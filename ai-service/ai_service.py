@@ -9,7 +9,10 @@ from transformers import DonutProcessor, VisionEncoderDecoderModel
 import re
 import io
 import os
+import threading
 import traceback
+
+from starlette.concurrency import run_in_threadpool
 
 from wcm_spade import WCMSpade
 import budget_advisor
@@ -48,6 +51,41 @@ def _raw_fields(sequence: str, prediction: Dict[str, Any]) -> Dict[str, str]:
     return fields
 
 
+# Mỗi lúc chỉ một lượt DONUT: model.generate tốn nhiều RAM/CPU, chạy song song dễ làm sập máy
+_donut_lock = threading.Lock()
+
+
+def _run_donut(pil_img: Image.Image) -> str:
+    """Suy luận DONUT (đồng bộ, nặng CPU): trả về chuỗi sequence đã bỏ eos/pad."""
+    pixel_values = processor(
+        pil_img,
+        return_tensors="pt",
+        do_resize=True,
+        size={"height": IMAGE_HEIGHT, "width": IMAGE_WIDTH},
+        do_align_long_axis=True
+    ).pixel_values.to(DEVICE)
+
+    start_token_id = processor.tokenizer.convert_tokens_to_ids("<s_seller>")
+    outputs = model.generate(
+        pixel_values,
+        max_length=768,
+        decoder_input_ids=torch.tensor([[start_token_id]]).to(DEVICE),
+        pad_token_id=processor.tokenizer.pad_token_id,
+        eos_token_id=processor.tokenizer.eos_token_id,
+        use_cache=True,
+    )
+
+    sequence = processor.batch_decode(outputs)[0]
+    sequence = sequence.replace(processor.tokenizer.eos_token, "").replace(processor.tokenizer.pad_token, "")
+    return re.sub(r"<pad>", "", sequence)
+
+
+def _run_donut_locked(pil_img: Image.Image) -> str:
+    """Giữ _donut_lock quanh _run_donut để các lượt scan đọc lần lượt từng ảnh."""
+    with _donut_lock:
+        return _run_donut(pil_img)
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
@@ -73,27 +111,8 @@ async def extract_receipt_info(image: UploadFile = File(...)):
         print(traceback.format_exc())
         raise HTTPException(status_code=400, detail=f"Lỗi đọc file ảnh: {str(e)}")
 
-    pixel_values = processor(
-        pil_img,
-        return_tensors="pt",
-        do_resize=True,
-        size={"height": IMAGE_HEIGHT, "width": IMAGE_WIDTH},
-        do_align_long_axis=True
-    ).pixel_values.to(DEVICE)
-    
-    start_token_id = processor.tokenizer.convert_tokens_to_ids("<s_seller>")
-    outputs = model.generate(
-        pixel_values,
-        max_length=768,
-        decoder_input_ids=torch.tensor([[start_token_id]]).to(DEVICE),
-        pad_token_id=processor.tokenizer.pad_token_id,
-        eos_token_id=processor.tokenizer.eos_token_id,
-        use_cache=True,
-    )
-
-    sequence = processor.batch_decode(outputs)[0]
-    sequence = sequence.replace(processor.tokenizer.eos_token, "").replace(processor.tokenizer.pad_token, "")
-    sequence = re.sub(r"<pad>", "", sequence)
+    # Suy luận trong threadpool để event loop vẫn trả lời /health và các request khác
+    sequence = await run_in_threadpool(_run_donut_locked, pil_img)
 
     try:
         prediction = processor.token2json(sequence)
