@@ -7,17 +7,18 @@ start
 |Ứng dụng di động|
 :Tải danh mục chi;
 |Người dùng|
-:Chọn danh mục (hoặc tất cả),\nkỳ tuần/tháng, ngày bắt đầu,\nngày kết thúc, hạn mức;
+:Chọn danh mục (hoặc tất cả, hoặc\n“Khác” và gõ tên danh mục),\nkỳ tuần/tháng/năm, ngày bắt đầu,\nngày kết thúc, hạn mức;
 |Ứng dụng di động|
 :Gửi ngân sách lên Core Backend;
 |Core Backend|
-if (Hạn mức > 0, khoảng ngày\nkhớp loại kỳ?) then (không)
+if (Hạn mức > 0, khoảng ngày khớp loại kỳ\n(≤ 7 / 31 / 366 ngày)?) then (không)
   |Ứng dụng di động|
   :Báo dữ liệu không hợp lệ;
   stop
 else (có)
 endif
 |Core Backend|
+:Xác định danh mục: theo mã, hoặc theo tên\n(dùng lại danh mục cùng tên, chưa có thì tạo mới);
 if (Danh mục không tồn tại hoặc đã có\nngân sách cùng danh mục, loại kỳ,\nngày bắt đầu?) then (có)
   |Ứng dụng di động|
   :Báo lỗi danh mục\nhoặc ngân sách bị trùng;

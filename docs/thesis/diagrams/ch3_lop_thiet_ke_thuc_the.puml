@@ -92,8 +92,10 @@ enum NotificationType {
   RECEIPT_PROCESSED
 }
 enum BudgetPeriodType {
-  WEEK
-  MONTH
+  WEEK(7)
+  MONTH(31)
+  YEAR(366)
+  + allowsRange(from, to) : boolean
 }
 
 User "1" -- "0..*" Transaction

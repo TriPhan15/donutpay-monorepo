@@ -20,7 +20,7 @@ node "Máy ảo AWS EC2 (Ubuntu Server)" as EC2 {
   node "Docker Engine – mạng finance-network (bridge)" as DOCKER {
     node "proxy\ncaddy:2.8-alpine\ncổng 80, 443 (công khai)" as PROXY
     node "core-api\neclipse-temurin:21-jre\ncổng 8080 (nội bộ), 512 MB" as CORE
-    node "data-mining-api\npython:3.10-slim\ncổng 8000 (nội bộ), 1 GB" as AI
+    node "data-mining-api\npython:3.10-slim\ncổng 8000 (nội bộ), 3 GB" as AI
     database "db\npostgres:15-alpine\n127.0.0.1:5432" as PG
     database "redis\nredis:8.10-alpine\nkhông mở cổng" as RD
     database "mongodb\nmongo:6.0\n127.0.0.1:27017" as MG
@@ -31,7 +31,7 @@ APK --> PROXY : HTTPS
 BR --> PROXY : HTTPS
 CI --> EC2 : SSH: git reset, docker compose up
 PROXY --> CORE : HTTP
-PROXY --> AI : HTTP /ai/*
+PROXY --> AI : HTTP /ai/* (forward_auth\nqua /api/auth/check)
 CORE --> AI : HTTP
 CORE --> PG
 CORE --> RD

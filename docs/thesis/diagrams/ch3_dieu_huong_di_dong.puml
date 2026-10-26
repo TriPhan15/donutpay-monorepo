@@ -1,5 +1,6 @@
 @startuml
 ' Hình 3.5: Sơ đồ điều hướng giữa các màn hình của ứng dụng di động
+' v9: thêm PendingReceiptsScreen (mở từ banner hàng chờ quét) và các lối đi từ Trang chủ, Thông báo, Cá nhân
 !pragma layout smetana
 !include _style.iuml
 skinparam RectangleBackgroundColor white
@@ -10,11 +11,12 @@ rectangle "LoginScreen\n(Đăng nhập)" as LOGIN
 rectangle "RegisterScreen" as REG
 rectangle "ForgotPasswordScreen" as FORGOT
 rectangle "ResetPasswordScreen" as RESET
-rectangle "MainScaffold\n(thanh điều hướng 4 tab + nút Quét AI)" as MAIN
+rectangle "MainScaffold\n(thanh điều hướng 4 tab, nút Quét AI,\nbanner hàng chờ ScanQueueBanner)" as MAIN
 rectangle "DashboardPage\n(Trang chủ)" as DASH
 rectangle "LedgerPage\n(tab Thống kê,\ntiêu đề Sổ sách)" as LEDGER
 rectangle "AITabPage\n(tab AI)" as AI
 rectangle "ProfilePage\n(Cá nhân)" as PROFILE
+rectangle "PendingReceiptsScreen\n(Chờ xác nhận)" as PENDING
 rectangle "ReviewFormPage\n(Xác nhận hóa đơn)" as REVIEW
 rectangle "AddTransactionPage\nEditTransactionPage" as TX
 rectangle "BudgetScreen" as BUDGET
@@ -31,11 +33,17 @@ MAIN --> DASH
 MAIN --> LEDGER
 MAIN --> AI
 MAIN --> PROFILE
-MAIN --> REVIEW
+MAIN --> REVIEW : Quét AI,\nTừ thư viện
+MAIN --> PENDING : bấm banner
+PENDING --> REVIEW : mục Sẵn sàng
 LEDGER --> TX
+DASH --> TX
 DASH --> BUDGET
 DASH --> NOTI
 DASH --> SAV
+NOTI --> BUDGET
+NOTI --> LEDGER : chi tiết\ngiao dịch
 PROFILE --> SET
+PROFILE --> SAV
 PROFILE --> BUDGET
 @enduml

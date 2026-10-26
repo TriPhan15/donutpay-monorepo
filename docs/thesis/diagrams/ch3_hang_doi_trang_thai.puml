@@ -8,7 +8,7 @@ hide empty description
 queued --> reading : vòng đọc lấy mục\ncũ nhất của người dùng
 reading --> ready : /donut/scan trả kết quả
 reading --> failed : network / server /\nmissing_image
-reading --> queued : phiên kết thúc (401, 403,\nđăng xuất) hoặc app bị tắt\nrồi mở lại (resume)
+reading --> queued : phiên kết thúc khi đang đọc\n(401, 403) hoặc app bị tắt\nrồi mở lại (resume)
 failed --> queued : retry() ("Đọc lại")
 ready --> [*] : lưu thành giao dịch\n(markConfirmed / confirmAllValid)
 ready --> [*] : remove() ("Bỏ")

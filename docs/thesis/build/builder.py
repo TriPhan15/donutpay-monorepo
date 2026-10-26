@@ -21,6 +21,10 @@ Tùy chọn (từ phiên T10/T11, chèn vào giữa quyển):
   TEXT_REPLACE [(chuỗi cũ, chuỗi mới, số lần)] thay trong từng <w:t>;
   RENUMBER = True: đánh số lại mọi chú thích Hình/Bảng theo thứ tự trong quyển, cập nhật mọi tham chiếu
   "Hình c.n"/"Bảng c.n" trong văn bản theo số mới và thay [[key]].
+Tùy chọn (từ phiên v9):
+  PARA_DELETE [đầu đoạn, ...] xóa đúng một đoạn (ví dụ ghi chú tô vàng đã hết hiệu lực);
+  IMAGE_REPLACE [(tên tệp trong word/media, đường dẫn PNG mới[, "fit"])] thay ảnh, giữ chiều rộng đang đặt và tính lại
+  chiều cao; với "fit", ảnh mới được thu lại để không cao hơn ảnh cũ và không quá MAX_FIT_CM.
 """
 import html
 import importlib.util
@@ -31,6 +35,7 @@ import sys
 from pathlib import Path
 
 EMU_PER_CM = 360000
+MAX_FIT_CM = 21  # chiều cao tối đa của hình "fit": vùng chữ 24,7 cm trừ chỗ cho chú thích
 
 
 def esc(s):
@@ -218,6 +223,8 @@ def main(root, content_path):
     insert_after = list(getattr(content, "INSERT_AFTER", []))
     heading_ph = dict(getattr(content, "HEADING_PLACEHOLDERS", {}))
     hits_before, hits_after, ph_done = [0] * len(insert_before), [0] * len(insert_after), set()
+    para_delete = list(getattr(content, "PARA_DELETE", []))
+    hits_delete = [0] * len(para_delete)
     pending_after = ""
     out, pos, last_heading = [], 0, None
     for m in re.finditer(r"<w:p[ >].*?</w:p>|<w:tbl>.*?</w:tbl>", xml, flags=re.S):
@@ -235,6 +242,10 @@ def main(root, content_path):
         if style in ("Heading1", "Heading2", "Heading3"):
             skipping = False
         if skipping:
+            continue
+        hit_del = next((i for i, prefix in enumerate(para_delete) if p.startswith("<w:p") and txt.startswith(prefix)), None)
+        if hit_del is not None:
+            hits_delete[hit_del] += 1
             continue
         for i, (prefix, blocks) in enumerate(insert_before):
             if txt.startswith(prefix):
@@ -283,6 +294,9 @@ def main(root, content_path):
     bad = [x for x, n in zip(insert_before, hits_before) if n != 1] + [x for x, n in zip(insert_after, hits_after) if n != 1]
     if bad or set(heading_ph) - ph_done:
         raise SystemExit(f"Điểm chèn không khớp đúng một lần: {[b[0] for b in bad]}, {set(heading_ph) - ph_done}")
+    bad_del = [x for x, n in zip(para_delete, hits_delete) if n != 1]
+    if bad_del:
+        raise SystemExit(f"PARA_DELETE không khớp đúng một đoạn: {bad_del}")
     for anchor, lines in getattr(content, "PARA_LINES_AFTER", []):
         xml = para_lines_after(xml, anchor, lines)
     for caption, after_row, rows in getattr(content, "TABLE_ROWS", []):
@@ -294,6 +308,8 @@ def main(root, content_path):
 
     for abbr in getattr(content, "ABBREVIATIONS", []):
         xml = add_abbreviation(xml, *abbr)
+    for media_name, png, *opt in getattr(content, "IMAGE_REPLACE", []):
+        xml = image_replace(doc, xml, media_name, png, "fit" in opt)
 
     xml_path.write_text(xml, encoding="utf8")
     doc.rels_path.write_text(doc.rels, encoding="utf8")
@@ -400,6 +416,39 @@ def renumber(xml):
     if "[[" in re.sub(r"<[^>]+>", "", xml):
         raise SystemExit("Còn tham chiếu [[key]] chưa giải được")
     print("renumber:", {k: v for k, v in counters.items()}, "keys:", keys)
+    return xml
+
+
+def image_replace(doc, xml, media_name, png, fit=False):
+    """Chép PNG mới đè lên word/media/<media_name>; mỗi hình dùng ảnh đó giữ cx, cy tính lại theo tỉ lệ ảnh mới."""
+    rid = re.search(r'Id="(rId\d+)"[^>]*Target="media/' + re.escape(media_name) + '"', doc.rels)
+    if not rid:
+        raise SystemExit(f"IMAGE_REPLACE: không có ảnh media/{media_name}")
+    rid = rid.group(1)
+    shutil.copy(png, doc.root / "word/media" / media_name)
+    w, h = png_size(png)
+    count = 0
+
+    def fix(m):
+        nonlocal count
+        d = m.group(0)
+        if f'r:embed="{rid}"' not in d:
+            return d
+        count += 1
+        old = re.search(r'<wp:extent cx="(\d+)" cy="(\d+)"', d)
+        cx, old_cy = int(old.group(1)), int(old.group(2))
+        cy = int(cx * h / w)
+        limit = min(old_cy, MAX_FIT_CM * EMU_PER_CM)
+        if fit and cy > limit:
+            cx, cy = int(limit * w / h), limit
+        size = lambda x: f'{x.group(1)}cx="{cx}" cy="{cy}"'
+        d = re.sub(r'(<wp:extent )cx="\d+" cy="\d+"', size, d)
+        return re.sub(r'(<a:ext )cx="\d+" cy="\d+"', size, d)
+
+    xml = re.sub(r"<w:drawing>.*?</w:drawing>", fix, xml, flags=re.S)
+    if count != 1:
+        raise SystemExit(f"IMAGE_REPLACE: media/{media_name} được dùng {count} lần, cần 1")
+    print("image replaced:", media_name, f"{w}x{h}")
     return xml
 
 
