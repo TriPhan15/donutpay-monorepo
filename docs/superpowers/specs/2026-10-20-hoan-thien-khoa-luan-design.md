@@ -375,6 +375,96 @@ Phân công:
 
 Phạm vi và phong cách sẽ brainstorm riêng khi tới lúc làm, dùng mockup trực quan. Chỉ làm sau khi T1–T8 xong để không phá các ảnh chụp đã đưa vào khóa luận. Nếu redesign xong trước hạn thì chụp lại ảnh cho Chương 5 và 7.
 
+### T10. Góp ý dùng thử của bạn (2026-10-26)
+
+Nguồn: lần bạn dùng thử app trên máy ngày 26/10. Các nhận định "hiện trạng" dưới đây đã kiểm chứng trong code cùng ngày, trừ khi có ghi **(kiểm khi làm)**. Đường dẫn tính từ `mobile-app/lib/`, trừ khi có ghi `core-backend/`. **Phải làm xong T10 rồi mới chụp ảnh màn hình cho khóa luận**, vì T10 đổi giao diện.
+
+**Trả lời các câu hỏi (không cần sửa code)**
+- *Quét hóa đơn ngày cũ (10/07) làm số dư hôm nay (26/10) thay đổi, có đúng không?* **Đúng.** Số dư = Σ thu − Σ chi của mọi giao dịch đã ghi. Ngày của giao dịch chỉ quyết định nó rơi vào báo cáo tháng nào. Money Lover, MISA và Expensify cũng làm như vậy. Sửa duy nhất là ở T10d: hiện một dòng nhắc khi ngày hóa đơn không thuộc tháng hiện tại.
+- *Quên mật khẩu chỉ dùng được với email đã đăng ký?* **Đúng, và nên như vậy.**
+- *Mã PIN để làm gì?* Hiện **không để làm gì**. `profile_bottom_sheets.dart:390` ghi `app_pin` vào SharedPreferences dưới dạng chữ thường, nhưng không chỗ nào đọc lại. Khóa app chưa bao giờ được làm. Xử lý ở T10d.
+- *Ghi nhớ đăng nhập có hoạt động không?* **Có, nhưng hiểu theo nghĩa khác với bạn nghĩ.** `remember` = giữ phiên khi tắt app rồi mở lại (`session_service.dart:53-60`). Đăng xuất thì luôn xóa phiên, và không có gì được điền sẵn. Xử lý ở T10d.
+- *Dịch vụ liên kết có phải dữ liệu giả?* **Đúng**, provider `MOCK` (`linked_services_page.dart:22`). Liên kết ngân hàng thật nằm trong mục "Không làm". Hướng làm thật khả thi là webhook biến động số dư (SePay, Casso), cần tài khoản và đăng ký với bên đó. Phần này ghi vào Chương 6 là hướng phát triển.
+
+**T10a. Trang chủ + tab AI** (`screens/dashboard/`, `screens/ai/`)
+- Tiện ích (`dashboard_page.dart:639`, `_buildUtilityGrid`): 3 ô `spaceBetween` cách nhau quá xa. → Lưới **4 ô đều nhau**:
+  1. Thêm giao dịch (mở form thêm như nút + của Ledger)
+  2. Quét hóa đơn (mở sheet quét của `main_scaffold`)
+  3. Ngân sách
+  4. Sổ tiết kiệm
+
+  "Báo cáo" và "Tất cả tính năng" bỏ khỏi lưới, vì đã có tab Thống kê và AI. Icon có nền tròn, nhãn tối đa 2 dòng.
+- Số dư: `_balanceHidden = false` (`:58`). → Mặc định **che** mỗi lần mở trang chủ sau khi đăng nhập hoặc mở app, không lưu lựa chọn. Bấm icon mắt thì hiện.
+- "Giao dịch gần đây" (`_buildTxItem`, `:774`) không bấm được. Đây là **thiếu sót, không phải chủ ý**. → Bấm vào thì mở đúng màn/sheet chi tiết mà Ledger đang dùng, dùng lại widget của Ledger chứ không viết lại.
+- Phần ngân sách trên trang chủ: bấm cả khối hoặc một thanh thì mở `BudgetScreen`. Đây cũng là **thiếu sót**.
+- Tab AI: "RIGHT OVERFLOWED BY 17 PIXELS" **(kiểm khi làm)**. Tìm `Row` bị tràn trong `ai_tab_page.dart` / `ai_components`, thêm widget test ở chiều rộng 360 dp và 320 dp, ở cả vi và en, để tái hiện rồi sửa (`Expanded` / `Flexible` / ellipsis).
+
+**T10b. Widget dùng chung** (làm **trước** T10a/c/d vì các đợt kia dùng lại)
+- **Thông báo (toast)**: 30 chỗ gọi `ScaffoldMessenger` trong 15 file hiện là thanh trắng ở đáy màn hình. → Thêm `widgets/feedback/app_toast.dart`: `AppToast.success/error/info(context, message)`, nổi ở **trên** màn hình, góc bo, có icon và màu theo loại (lấy từ `AppTheme`/colorScheme, chạy được cả dark mode), tự tắt sau khoảng 3 giây. Thay hết các chỗ gọi cũ, không thêm dependency.
+  - Lỗi "Không thể kết nối máy chủ" thì hiện `AppDialog.error` có nút **Thử lại** khi màn hình có thao tác tải lại được; còn lại dùng toast lỗi.
+  - Xóa giao dịch thành công thì hiện toast success, kèm nút **Hoàn tác** nếu luồng xóa cho phép (kiểm khi làm).
+- **Ô nhập tiền**: thêm `core/utils/money_input_formatter.dart`. Khi gõ, chữ số tự nhóm theo locale: vi `1.000.000`, en `1,000,000`, cùng quy tắc với `CurrencyHelper.formatVND`. Đọc ngược ra `BigDecimal`/`num` qua một hàm duy nhất. Áp cho mọi ô nhập tiền: thêm/sửa giao dịch, review hóa đơn, ngân sách, tiết kiệm. Nếu `review_form_page` đã có formatter riêng thì gộp về file mới.
+- **Chọn ngày**: thêm `widgets/inputs/date_field.dart` dùng chung. Gồm một ô hiển thị ngày (bấm mở `showDatePicker`, có icon lịch), hai chip **Hôm nay** / **Hôm qua**, và nút ↺ "về hôm nay" khi ngày đang chọn khác hôm nay. Form thêm giao dịch luôn mở với **ngày hôm nay**, không giữ tháng đang lọc ở Ledger (kiểm khi làm: luồng hiện tại truyền ngày gì vào). Dùng cho thêm/sửa giao dịch, review hóa đơn, hạn mục tiêu tiết kiệm, ngân sách.
+
+**T10c. Thống kê + Ngân sách + Tiết kiệm**
+- Ledger (`ledger_page.dart`): thêm chế độ lọc **Năm** bên cạnh Tuần/Tháng. Thêm nút **Hôm nay** trên thanh chọn kỳ (chỉ hiện khi kỳ đang xem không chứa hôm nay) để về kỳ hiện tại bằng 1 lần bấm. Sau khi thêm giao dịch mới, Ledger chuyển sang kỳ chứa giao dịch đó.
+- Ngân sách:
+  - Chọn danh mục "Khác" thì hiện ô nhập tên danh mục (bắt buộc, tối đa 50 ký tự). Ngân sách tính theo tên đó, khớp với tên danh mục người dùng nhập ở giao dịch (kiểm khi làm cách backend so khớp danh mục).
+  - Thêm kỳ **Năm**: `core-backend/.../Entity/BudgetPeriodType.java` thêm `YEAR(366)`, mobile thêm nhãn EN/VI. Nếu cột có CHECK constraint thì viết SQL migration vào `core-backend/src/main/resources/db/` để bạn chạy tay. Không để `ddl-auto` tự đổi.
+- Sổ tiết kiệm (`savings_page.dart`):
+  - Ô "Đã tiết kiệm" khi tạo mục tiêu là **tùy chọn**, mặc định 0, gợi ý "Bỏ trống nếu chưa có hoặc không nhớ, sửa được sau".
+  - "Hạn chót (dd/mm/yyyy)" đổi thành **"Ngày đạt mục tiêu"** (en: "Target date"), cũng tùy chọn, dùng `DateField`.
+  - Tiền tiết kiệm không phải tự gõ lại mỗi lần: thêm nút **Góp tiền** trên từng mục tiêu. Backend thêm `POST /api/savings/{id}/contributions {amount}`, trong một `@Transactional` làm 2 việc:
+    - khóa ví và tạo giao dịch chi, danh mục "Tiết kiệm", ghi chú tên mục tiêu;
+    - cộng `currentAmount`.
+
+    Chủ sở hữu lấy từ JWT. Nút "Cập nhật" giữ lại để sửa tay khi cần. Khi đạt 100%, hiện toast chúc mừng.
+
+**T10d. Hóa đơn + đăng nhập + thông báo + dọn chức năng**
+- Review hóa đơn (`receipt_scanner/review_form_page.dart:473`):
+  - Ảnh không bấm được. → Bấm vào thì mở màn xem ảnh toàn màn hình, phóng to bằng `InteractiveViewer` (chụm 2 ngón, chạm 2 lần để zoom).
+  - Thêm chế độ **đối chiếu**: ảnh ở nửa trên, có thể phóng to; 4 trường DONUT ở nửa dưới, sửa được ngay. Trường có cờ `valid=false` vẫn tô viền như T5.
+  - Nút lưu: "Xác nhận & Lưu CSDL" → **"Xác nhận và lưu"** (`app_vi.arb:393`; en giữ "Confirm & save").
+  - Nếu ngày hóa đơn không thuộc tháng hiện tại, hiện dòng nhắc: "Giao dịch ngày dd/mm vẫn được tính vào số dư hiện tại".
+- 🐞 Lưu được 2 hóa đơn giống hệt nhau. `clientId` chỉ chống gửi trùng của **cùng một** lần lưu; hai lần quét là hai `clientId` khác nhau. → Backend: trên luồng lưu hóa đơn, kiểm tra xem người dùng đã có giao dịch cùng loại, **cùng số tiền**, **cùng thời điểm đến phút** và cùng người bán (so sau chuẩn hóa, bỏ qua nếu trống) hay chưa. Nếu có thì trả **409**, `message` cố định, kèm id giao dịch đã có. Mobile hiện dialog với 2 lựa chọn: "Hóa đơn này có vẻ đã lưu ngày …" → **Xem bản đã lưu** / **Vẫn lưu**. "Vẫn lưu" gửi lại với `allowDuplicate=true`. Thêm giao dịch tay **không** kiểm tra trùng, vì mua 2 ly cà phê giống nhau là chuyện bình thường.
+- Ghi nhớ đăng nhập: giữ nghĩa cũ (giữ phiên qua lần mở app), **thêm** nhớ **email**. Lần đăng nhập thành công có tick "Ghi nhớ" thì lưu email vào SharedPreferences; sau khi đăng xuất, màn login điền sẵn email đó. Bỏ tick thì xóa email đã lưu. **Không lưu mật khẩu trong app.** Bọc form login bằng `AutofillGroup` + `autofillHints` (email, password) và gọi `TextInput.finishAutofillContext()` khi đăng nhập thành công, để Google Password Manager / iCloud Keychain đề nghị lưu rồi tự điền, đúng kiểu "giống Google" mà bạn muốn.
+- Thông báo (`notifications/notification_destination.dart`):
+  - Hiện chỉ ngân sách và giao dịch có `transactionId` là mở được, còn lại `null`. Thông báo trong danh sách là **thật** (từ backend), chỉ là bấm vào không đi đâu. → Mọi loại đều có đích:
+    - `receiptProcessed` / `transactionAlert` không có id thì mở Ledger;
+    - `unknown` thì mở sheet xem toàn bộ nội dung.
+  - Bấm vào luôn đánh dấu đã đọc.
+  - Kiểm khi làm: seeder có tạo thông báo thiếu id hay không.
+- Mã PIN: **xóa** mục "Tạo / Đổi mã PIN" khỏi Hồ sơ, cùng các key ARB `pin*` và chỗ ghi `app_pin`. Khóa app bằng PIN thật cần lưu trữ bảo mật (dependency mới) và màn khóa khi app quay lại foreground, nằm ngoài phạm vi hạn 06/11; ghi vào Chương 6.
+- Dịch vụ liên kết: giữ màn hình, thêm nhãn **"Bản demo"** rõ ràng trên trang và trên dòng menu, để hội đồng không hiểu nhầm là liên kết thật.
+
+Cho mỗi đợt T10:
+- 🤖 sửa code + viết/cập nhật test (widget test cho UI mới, `@WebMvcTest`/service test cho backend), chạy `gen-l10n` sau khi sửa ARB.
+- 👤 `flutter test` (+ `mvn test` cho T10c, T10d), thử tay trên máy, commit.
+- Thứ tự: **T10b → (T10a ‖ T10c ‖ T10d)**. T10c và T10d đều đụng backend nhưng khác file; không chạy `mvn` cùng lúc.
+- **Câu mở đầu:** `Làm task T10a (…T10d) trong docs/superpowers/specs/2026-10-20-hoan-thien-khoa-luan-design.md`
+
+### T11. Quét nhiều hóa đơn một lúc, xử lý nền (kiểu Expensify)
+
+**Mục đích.** Người dùng không phải đứng chờ từng hóa đơn. Họ chọn "Quét 1 hóa đơn" hoặc "Quét nhiều hóa đơn", chụp hoặc chọn bao nhiêu ảnh tùy ý, rồi đi sang tab khác. DONUT đọc lần lượt ở nền. Đọc xong hóa đơn nào thì hóa đơn đó vào danh sách **"Chờ xác nhận"**, người dùng mở từng cái ra review như T10d.
+
+**Thiết kế.**
+- Mobile:
+  - `services/receipt_scan_queue.dart` là singleton, giữ hàng đợi trong SQLite (bảng mới, nâng version DB): ảnh, trạng thái `queued/reading/ready/failed`, kết quả `/donut/scan`. Gửi **tuần tự, mỗi lần một ảnh**.
+  - Đóng app thì hàng đợi vẫn còn; mở lại thì chạy tiếp các mục `queued` và `reading`.
+  - Không cần chạy khi app đã tắt hẳn: không có background service, không thêm dependency.
+- Sheet quét trong `main_scaffold` có 2 lựa chọn:
+  - **1 hóa đơn**: giữ luồng hiện tại.
+  - **Nhiều hóa đơn**: ML Kit document scanner cho chụp nhiều trang, hoặc chọn nhiều ảnh từ thư viện.
+- Thanh tab (hoặc trang chủ) có huy hiệu "đang đọc n / chờ xác nhận m". Thêm màn **Chờ xác nhận**: mỗi dòng là ảnh thu nhỏ + 4 trường + nút Xem/Xác nhận/Bỏ. Mục `failed` có nút "Đọc lại".
+- Xác nhận đi qua đúng luồng lưu của T10d: `clientId` + kiểm tra trùng.
+- ai-service: kiểm khi làm. `/donut/scan` phải chạy inference ngoài event loop (handler `def` hoặc `run_in_threadpool`) để `/health` và người dùng khác không bị chặn. Giới hạn 1 inference đồng thời, vì RAM 3G đủ cho đúng 1 model. Không đổi hợp đồng API.
+- Không làm: đọc song song nhiều ảnh trên server, đẩy thông báo hệ điều hành khi đọc xong.
+
+- 🤖 mobile + ai-service + test (queue: thứ tự, khôi phục sau khi mở lại app, lỗi mạng → `failed`).
+- 👤 `flutter test`, pytest, thử quét 5 hóa đơn rồi chuyển tab, commit.
+- Làm **sau T10**. Nếu không kịp trước 06/11 thì làm trước buổi bảo vệ, cùng đợt với T9, và Chương 6 ghi là hướng phát triển.
+- **Câu mở đầu:** `Làm task T11 trong docs/superpowers/specs/2026-10-20-hoan-thien-khoa-luan-design.md`
+
 ---
 
 ## 5. Chạy song song: 3 luồng
@@ -387,6 +477,7 @@ Mỗi luồng là 1 terminal. Trong một luồng, mỗi task là 1 phiên: xong
 | **B – Backend/hạ tầng** | T1 → T2b → T6 | T3a và T3c (luồng A) có sửa backend: không chạy cùng lúc với T2b nếu đụng cùng file. |
 | **C – Khóa luận** | T7.0 → T7.1 → T7.2a → T7.2b → T7.2c → T7.3a → T7.3b | Chỉ đụng `docs/thesis/` và file Word. Review kỹ từng phiên trước khi sang phiên sau. |
 | **Giai đoạn cuối** (khi A, B, C xong) | T7.4 → T8 → T7.5 → T7.9 → T9 | T7.4 cần T5 và số liệu train; T7.5 cần report T6 và kết quả deploy T8. |
+| **Góp ý dùng thử** (từ 26/10) | T10b → T10a ‖ T10c ‖ T10d → T11 | Chạy song song với T7.5 (chỉ đụng `docs/thesis/`). Chụp ảnh khóa luận sau T10. |
 
 **Quy tắc khi chạy song song:**
 - Commit theo đường dẫn của luồng mình (`git add mobile-app/ …`), **không** dùng `git add .`.
@@ -401,7 +492,8 @@ Mỗi luồng là 1 terminal. Trong một luồng, mỗi task là 1 phiên: xong
 | 22–25/10 | T3a–c; song song T7.0, T7.1, T7.2a–c |
 | 26–29/10 | T4a–d; song song T7.3a–b |
 | 30/10 | T5 (nếu model V5 đã xong), T6 |
-| 31/10–02/11 | T7.4, T8, T7.5 |
+| 27–30/10 | T10b → T10a, T10c, T10d; deploy T8 (👤) |
+| 31/10–02/11 | T7.5; chụp ảnh màn hình sau T10; T11 nếu kịp |
 | 03–04/11 | T7.9 rà soát toàn quyển |
 | 05/11 | Rà soát quyển, chạy toàn bộ test, đóng gói nộp |
 | sau 06/11 (nếu kịp trước bảo vệ) | T9 redesign + làm slide |
@@ -423,3 +515,10 @@ Mỗi luồng là 1 terminal. Trong một luồng, mỗi task là 1 phiên: xong
 - T5: phần hiển thị cờ `valid` trên mobile (tô đỏ trường cần sửa ở `review_form_page`) làm **trong T5**, T5 được sửa file đó.
 - T1: nếu Mongo trùng vai với `receipt_processing_attempts`: Postgres là nguồn sự thật cho quy trình duyệt hóa đơn; Mongo thu hẹp còn log thô + feedback phục vụ phân tích. Giữ mục polyglot persistence.
 - T7 Ch.6: nếu V5 chưa xong trước 31/10 thì viết bằng số liệu phiên bản tốt nhất đang có, để sẵn bảng so sánh, cập nhật số V5 sau.
+- T10a: lưới tiện ích gồm Thêm giao dịch · Quét hóa đơn · Ngân sách · Sổ tiết kiệm; bỏ "Báo cáo" và "Tất cả tính năng". Số dư che mặc định, không lưu lựa chọn.
+- T10b: toast nổi phía trên, tự viết, không thêm package.
+- T10c: "Góp tiền" tạo một giao dịch chi danh mục "Tiết kiệm" (tiền rời ví sang mục tiêu); chưa có "Rút tiền".
+- T10d: kiểm tra trùng chỉ áp cho luồng lưu hóa đơn, khóa = loại + số tiền + thời điểm đến phút + người bán; có lối "Vẫn lưu".
+- T10d: ghi nhớ đăng nhập chỉ nhớ email; mật khẩu để trình quản lý mật khẩu của hệ điều hành lo (AutofillGroup). Không lưu mật khẩu trong app.
+- T10d: xóa mã PIN, vì nó chưa bao giờ được kiểm tra; dịch vụ liên kết giữ lại với nhãn "Bản demo".
+- T11: hàng đợi nằm ở mobile, ai-service xử lý từng ảnh một; có thể rơi sau 06/11.
