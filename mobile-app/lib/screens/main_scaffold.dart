@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
+import 'package:sqflite/sqflite.dart' show DatabaseException;
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -17,9 +19,15 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
+import 'package:finance_ai_app/widgets/receipt/scan_queue_banner.dart';
 
 /// What the ML Kit document scanner throws when the user closes it without scanning: not an error to show.
 const String _scannerCancelledMessage = 'Operation cancelled';
+
+/// The size and quality the picked photos are scaled to before DONUT reads them, as for a single photo.
+const int _pickedImageQuality = 50;
+const double _pickedImageMaxSide = 1280;
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -140,6 +148,24 @@ class _MainScaffoldState extends State<MainScaffold>
                 ],
               ),
               const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildScanOptionBtn(
+                    colors,
+                    Icons.burst_mode_rounded,
+                    loc.scanBatchCamera,
+                    () => _startBatchScanner(context),
+                  ),
+                  _buildScanOptionBtn(
+                    colors,
+                    Icons.collections_rounded,
+                    loc.scanBatchGallery,
+                    () => _pickImagesForQueue(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         );
@@ -198,9 +224,9 @@ class _MainScaffoldState extends State<MainScaffold>
     try {
       image = await picker.pickImage(
         source: source,
-        imageQuality: 50,
-        maxWidth: 1280,
-        maxHeight: 1280,
+        imageQuality: _pickedImageQuality,
+        maxWidth: _pickedImageMaxSide,
+        maxHeight: _pickedImageMaxSide,
       );
     } catch (e) {
       debugPrint('Lỗi chọn ảnh hóa đơn: $e');
@@ -227,6 +253,90 @@ class _MainScaffoldState extends State<MainScaffold>
         setState(() => _currentIndex = 1);
       }
     }
+  }
+
+  /// Scans up to [ReceiptScanQueue.maxBatch] receipts in one go and queues them; DONUT reads them in the background.
+  Future<void> _startBatchScanner(BuildContext context) async {
+    final DocumentScanner documentScanner = DocumentScanner(
+      options: DocumentScannerOptions(
+        documentFormats: {DocumentFormat.jpeg},
+        mode: ScannerMode.base,
+        pageLimit: ReceiptScanQueue.maxBatch,
+        isGalleryImport: true,
+      ),
+    );
+    try {
+      final result = await documentScanner.scanDocument();
+      final images = result.images;
+      if (images != null && images.isNotEmpty && context.mounted) {
+        Navigator.pop(context);
+        await _enqueueBatch(images);
+      }
+    } catch (e) {
+      if (e is PlatformException && e.message == _scannerCancelledMessage) {
+        return;
+      }
+      debugPrint('Lỗi quét nhiều hóa đơn bằng ML Kit: $e');
+      await _showScanError(
+        (loc) => loc.scanScannerFailedTitle,
+        (loc) => loc.scanScannerFailedMessage,
+      );
+    } finally {
+      documentScanner.close();
+    }
+  }
+
+  /// Picks up to [ReceiptScanQueue.maxBatch] photos from the gallery and queues them.
+  Future<void> _pickImagesForQueue(BuildContext context) async {
+    final List<XFile> images;
+    try {
+      images = await ImagePicker().pickMultiImage(
+        limit: ReceiptScanQueue.maxBatch,
+        imageQuality: _pickedImageQuality,
+        maxWidth: _pickedImageMaxSide,
+        maxHeight: _pickedImageMaxSide,
+      );
+    } catch (e) {
+      debugPrint('Lỗi chọn nhiều ảnh hóa đơn: $e');
+      await _showScanError(
+        (loc) => loc.scanGalleryFailedTitle,
+        (loc) => loc.scanGalleryFailedMessage,
+      );
+      return;
+    }
+    if (images.isEmpty || !context.mounted) return;
+    Navigator.pop(context);
+    await _enqueueBatch([for (final image in images) image.path]);
+  }
+
+  /// Hands [imagePaths] to the scan queue and tells how many it took, and how many it left out over the limit.
+  Future<void> _enqueueBatch(List<String> imagePaths) async {
+    final int accepted;
+    try {
+      accepted = await ReceiptScanQueue.instance.enqueue(imagePaths);
+    } on DatabaseException catch (e) {
+      debugPrint('Lỗi lưu hàng đợi quét: $e');
+      return _showQueueStorageError();
+    } on FileSystemException catch (e) {
+      debugPrint('Lỗi chép ảnh vào hàng đợi quét: $e');
+      return _showQueueStorageError();
+    }
+    if (!mounted) return;
+    final loc = context.loc;
+    final skipped = imagePaths.length - accepted;
+    if (skipped == 0) {
+      AppToast.success(context, loc.scanQueueAdded(accepted));
+    } else {
+      AppToast.info(
+        context,
+        loc.scanQueueOverLimit(accepted, skipped, ReceiptScanQueue.maxBatch),
+      );
+    }
+  }
+
+  void _showQueueStorageError() {
+    if (!mounted) return;
+    AppToast.error(context, context.loc.scanQueueStorageFailed);
   }
 
   /// The options sheet stays open behind the dialog, so the user can pick the other way at once.
@@ -271,7 +381,15 @@ class _MainScaffoldState extends State<MainScaffold>
     final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: Column(
+        children: [
+          Expanded(
+            child: IndexedStack(index: _currentIndex, children: _pages),
+          ),
+          // Above the tab bar on every tab; it takes no room while the scan queue is empty.
+          ScanQueueBanner(onOpenTransaction: _openTransaction),
+        ],
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Container(
         margin: const EdgeInsets.only(top: 30),

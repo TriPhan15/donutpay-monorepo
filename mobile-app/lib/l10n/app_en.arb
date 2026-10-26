@@ -2544,5 +2544,152 @@
         "type": "String"
       }
     }
+  },
+  "scanBatchCamera": "Scan several",
+  "@scanBatchCamera": {
+    "description": "Scan sheet option: scan up to 20 receipts in one go with the document scanner."
+  },
+  "scanBatchGallery": "Pick several",
+  "@scanBatchGallery": {
+    "description": "Scan sheet option: pick up to 20 receipt photos from the gallery."
+  },
+  "scanQueueAdded": "{count, plural, =1{1 receipt added to the queue} other{{count} receipts added to the queue}}",
+  "@scanQueueAdded": {
+    "description": "Toast after receipts were queued for reading.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanQueueOverLimit": "{count, plural, =1{1 receipt added to the queue} other{{count} receipts added to the queue}} ({skipped} skipped, over {limit})",
+  "@scanQueueOverLimit": {
+    "description": "Toast after queueing when some images were left out because the queue holds at most limit receipts.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "scanQueueReading": "Reading receipt {current}/{total}",
+  "@scanQueueReading": {
+    "description": "Banner above the tab bar while the queue reads receipts.",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "scanQueueReady": "{count, plural, =1{1 receipt to confirm} other{{count} receipts to confirm}}",
+  "@scanQueueReady": {
+    "description": "Banner above the tab bar when read receipts wait for a confirmation.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanQueueFailed": "{count, plural, =1{1 receipt could not be read} other{{count} receipts could not be read}}",
+  "@scanQueueFailed": {
+    "description": "Banner above the tab bar when only failed receipts are left in the queue.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanQueueStorageFailed": "Couldn't update the receipt queue on this device. Please try again.",
+  "@scanQueueStorageFailed": {
+    "description": "Toast when the scan queue could not be read or written on the device."
+  },
+  "pendingReceiptsTitle": "Receipts to confirm",
+  "@pendingReceiptsTitle": {
+    "description": "Title of the screen listing the queued receipts."
+  },
+  "pendingReceiptsEmpty": "No receipts waiting.",
+  "@pendingReceiptsEmpty": {
+    "description": "Shown when the scan queue is empty."
+  },
+  "pendingStatusQueued": "Waiting",
+  "@pendingStatusQueued": {
+    "description": "Status chip: the receipt waits to be read."
+  },
+  "pendingStatusReading": "Reading",
+  "@pendingStatusReading": {
+    "description": "Status chip: the receipt is being read."
+  },
+  "pendingStatusReady": "Ready",
+  "@pendingStatusReady": {
+    "description": "Status chip: the receipt is read and waits for a confirmation."
+  },
+  "pendingStatusFailed": "Failed",
+  "@pendingStatusFailed": {
+    "description": "Status chip: the receipt could not be read."
+  },
+  "pendingRetry": "Read again",
+  "@pendingRetry": {
+    "description": "Button that queues a failed receipt again."
+  },
+  "pendingDiscard": "Discard",
+  "@pendingDiscard": {
+    "description": "Button that removes a receipt from the queue."
+  },
+  "pendingDiscardConfirm": "Remove this receipt from the list?",
+  "@pendingDiscardConfirm": {
+    "description": "Question before a receipt is removed from the queue."
+  },
+  "pendingConfirmAll": "Confirm all valid ({count})",
+  "@pendingConfirmAll": {
+    "description": "Bottom button that saves every receipt needing no review.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingConfirmAllAsk": "{count, plural, =1{Save 1 valid receipt as a transaction?} other{Save {count} valid receipts as transactions?}}",
+  "@pendingConfirmAllAsk": {
+    "description": "Question before the valid receipts are saved.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingConfirmAllResult": "Saved {saved}, duplicates {duplicates}, not saved {notSaved}",
+  "@pendingConfirmAllResult": {
+    "description": "Toast after confirming all valid receipts.",
+    "placeholders": {
+      "saved": {
+        "type": "int"
+      },
+      "duplicates": {
+        "type": "int"
+      },
+      "notSaved": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingErrorNetwork": "Couldn't reach the AI service.",
+  "@pendingErrorNetwork": {
+    "description": "Why a receipt failed: no network or timeout."
+  },
+  "pendingErrorServer": "The AI service couldn't read this receipt.",
+  "@pendingErrorServer": {
+    "description": "Why a receipt failed: the AI service answered with an error."
+  },
+  "pendingErrorMissingImage": "The photo is no longer on this device.",
+  "@pendingErrorMissingImage": {
+    "description": "Why a receipt failed: the image copy is gone."
   }
 }

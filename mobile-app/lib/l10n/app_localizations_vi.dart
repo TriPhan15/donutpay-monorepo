@@ -1870,4 +1870,90 @@ class AppLocalizationsVi extends AppLocalizations {
   String savingsGoalReached(String title) {
     return 'Chúc mừng! Bạn đã đạt mục tiêu \"$title\"';
   }
+
+  @override
+  String get scanBatchCamera => 'Quét nhiều';
+
+  @override
+  String get scanBatchGallery => 'Chọn nhiều ảnh';
+
+  @override
+  String scanQueueAdded(int count) {
+    return 'Đã thêm $count hóa đơn vào hàng chờ';
+  }
+
+  @override
+  String scanQueueOverLimit(int count, int skipped, int limit) {
+    return 'Đã thêm $count hóa đơn vào hàng chờ (bỏ $skipped ảnh vì quá $limit)';
+  }
+
+  @override
+  String scanQueueReading(int current, int total) {
+    return 'Đang đọc hóa đơn $current/$total';
+  }
+
+  @override
+  String scanQueueReady(int count) {
+    return '$count hóa đơn chờ xác nhận';
+  }
+
+  @override
+  String scanQueueFailed(int count) {
+    return '$count hóa đơn đọc lỗi';
+  }
+
+  @override
+  String get scanQueueStorageFailed =>
+      'Không cập nhật được hàng chờ hóa đơn trên máy. Vui lòng thử lại.';
+
+  @override
+  String get pendingReceiptsTitle => 'Chờ xác nhận';
+
+  @override
+  String get pendingReceiptsEmpty => 'Không có hóa đơn nào đang chờ.';
+
+  @override
+  String get pendingStatusQueued => 'Đang chờ';
+
+  @override
+  String get pendingStatusReading => 'Đang đọc';
+
+  @override
+  String get pendingStatusReady => 'Sẵn sàng';
+
+  @override
+  String get pendingStatusFailed => 'Lỗi';
+
+  @override
+  String get pendingRetry => 'Đọc lại';
+
+  @override
+  String get pendingDiscard => 'Bỏ';
+
+  @override
+  String get pendingDiscardConfirm => 'Bỏ hóa đơn này khỏi danh sách?';
+
+  @override
+  String pendingConfirmAll(int count) {
+    return 'Xác nhận tất cả hợp lệ ($count)';
+  }
+
+  @override
+  String pendingConfirmAllAsk(int count) {
+    return 'Lưu $count hóa đơn hợp lệ thành giao dịch?';
+  }
+
+  @override
+  String pendingConfirmAllResult(int saved, int duplicates, int notSaved) {
+    return 'Đã lưu $saved, trùng $duplicates, chưa lưu $notSaved';
+  }
+
+  @override
+  String get pendingErrorNetwork => 'Không kết nối được dịch vụ AI.';
+
+  @override
+  String get pendingErrorServer => 'Dịch vụ AI không đọc được hóa đơn này.';
+
+  @override
+  String get pendingErrorMissingImage => 'Ảnh không còn trên máy.';
 }

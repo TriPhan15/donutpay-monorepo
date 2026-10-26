@@ -11,13 +11,17 @@ import 'package:finance_ai_app/main.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/repositories/settings_repository_impl.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
+import 'package:finance_ai_app/screens/receipt_scanner/pending_receipts_screen.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
+import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
+import 'package:finance_ai_app/widgets/receipt/scan_queue_banner.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_local_store.dart';
+import '../helpers/fake_scan_queue.dart';
 
 /// The tabs in the order of the bottom bar.
 const List<(String, IconData)> _tabs = [
@@ -74,12 +78,15 @@ Color _spinnerColor(WidgetTester tester) {
 
 void main() {
   final backend = FakeBackend();
+  final scanQueue = FakeScanQueue();
 
   setUpAll(() async {
     await initializeDateFormatting('vi_VN');
     RemoteApiHelper.instance.init(httpClientAdapter: backend);
     // The tabs also read the transactions waiting to be sent; the fake keeps the test away from a real database.
     AppRepository.instance.localStore = FakeLocalStore();
+    // MainScaffold resumes the scan queue and its banner listens to it; the fake keeps the database out of the test.
+    ReceiptScanQueue.instanceForTesting = scanQueue;
   });
 
   tearDown(() async {
@@ -99,6 +106,7 @@ void main() {
     await SessionService.setTokens('access-token', 'refresh-token');
     BudgetAlertTracker.instance.resetMemory();
     BudgetAlertPresenter.resetQueue();
+    scanQueue.reset();
 
     backend.reset();
     backend.on('GET', '/api/categories', (_) => okResponse([]));
@@ -357,5 +365,107 @@ void main() {
         );
       },
     );
+  });
+
+  group('batch receipt scan', () {
+    setUp(() => signInWithSavedTheme(ThemeMode.light));
+
+    Finder inBanner(Finder finder) =>
+        find.descendant(of: find.byType(ScanQueueBanner), matching: finder);
+
+    testWidgets(
+      'the scan sheet adds "Quét nhiều" and "Chọn nhiều ảnh" to the single scan',
+      (tester) async {
+        await openMainScaffold(tester);
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pumpAndSettle();
+
+        final sheet = find.byType(BottomSheet);
+        for (final text in [
+          'Quét AI',
+          'Từ thư viện',
+          'Quét nhiều',
+          'Chọn nhiều ảnh',
+        ]) {
+          expect(
+            find.descendant(of: sheet, matching: find.text(text)),
+            findsOneWidget,
+            reason: text,
+          );
+        }
+        for (final icon in [
+          Icons.burst_mode_rounded,
+          Icons.collections_rounded,
+        ]) {
+          expect(
+            find.descendant(of: sheet, matching: find.byIcon(icon)),
+            findsOneWidget,
+          );
+        }
+      },
+    );
+
+    testWidgets(
+      'the queue is resumed and the banner takes no room while it is empty',
+      (tester) async {
+        await openMainScaffold(tester);
+
+        expect(scanQueue.resumeCalls, 1);
+        expect(find.byType(ScanQueueBanner), findsOneWidget);
+        expect(inBanner(find.byType(SizedBox)), findsOneWidget);
+        expect(tester.getSize(find.byType(ScanQueueBanner)), Size.zero);
+        expect(inBanner(find.byType(InkWell)), findsNothing);
+        expect(inBanner(find.byType(LinearProgressIndicator)), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'the banner shows the receipt being read, then how many wait, and opens the pending list',
+      (tester) async {
+        await openMainScaffold(tester);
+
+        scanQueue.progressNotifier.value = const ScanQueueProgress(total: 3);
+        await tester.pump();
+        expect(inBanner(find.text('Đang đọc hóa đơn 1/3')), findsOneWidget);
+        final bar = tester.widget<LinearProgressIndicator>(
+          inBanner(find.byType(LinearProgressIndicator)),
+        );
+        expect(bar.value, 0);
+
+        scanQueue.progressNotifier.value = const ScanQueueProgress(
+          done: 1,
+          total: 3,
+          ready: 1,
+        );
+        await tester.pump();
+        expect(inBanner(find.text('Đang đọc hóa đơn 2/3')), findsOneWidget);
+
+        scanQueue.progressNotifier.value = const ScanQueueProgress(ready: 2);
+        await tester.pump();
+        expect(inBanner(find.text('2 hóa đơn chờ xác nhận')), findsOneWidget);
+        expect(inBanner(find.byType(LinearProgressIndicator)), findsNothing);
+
+        await tester.tap(inBanner(find.text('2 hóa đơn chờ xác nhận')));
+        await tester.pumpAndSettle();
+        expect(find.byType(PendingReceiptsScreen), findsOneWidget);
+        expect(find.text('Chờ xác nhận'), findsOneWidget);
+      },
+    );
+
+    testWidgets('switching tabs keeps the banner', (tester) async {
+      await openMainScaffold(tester);
+      scanQueue.progressNotifier.value = const ScanQueueProgress(total: 3);
+      await tester.pump();
+
+      for (final (label, _) in _tabs.reversed) {
+        await tester.tap(_inBottomBar(find.text(label)));
+        await tester.pumpAndSettle();
+        expect(
+          inBanner(find.text('Đang đọc hóa đơn 1/3')),
+          findsOneWidget,
+          reason: label,
+        );
+      }
+    });
   });
 }

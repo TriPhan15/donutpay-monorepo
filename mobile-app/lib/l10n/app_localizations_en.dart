@@ -1902,4 +1902,122 @@ class AppLocalizationsEn extends AppLocalizations {
   String savingsGoalReached(String title) {
     return 'Congratulations! You reached your goal \"$title\"';
   }
+
+  @override
+  String get scanBatchCamera => 'Scan several';
+
+  @override
+  String get scanBatchGallery => 'Pick several';
+
+  @override
+  String scanQueueAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count receipts added to the queue',
+      one: '1 receipt added to the queue',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String scanQueueOverLimit(int count, int skipped, int limit) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count receipts added to the queue',
+      one: '1 receipt added to the queue',
+    );
+    return '$_temp0 ($skipped skipped, over $limit)';
+  }
+
+  @override
+  String scanQueueReading(int current, int total) {
+    return 'Reading receipt $current/$total';
+  }
+
+  @override
+  String scanQueueReady(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count receipts to confirm',
+      one: '1 receipt to confirm',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String scanQueueFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count receipts could not be read',
+      one: '1 receipt could not be read',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scanQueueStorageFailed =>
+      'Couldn\'t update the receipt queue on this device. Please try again.';
+
+  @override
+  String get pendingReceiptsTitle => 'Receipts to confirm';
+
+  @override
+  String get pendingReceiptsEmpty => 'No receipts waiting.';
+
+  @override
+  String get pendingStatusQueued => 'Waiting';
+
+  @override
+  String get pendingStatusReading => 'Reading';
+
+  @override
+  String get pendingStatusReady => 'Ready';
+
+  @override
+  String get pendingStatusFailed => 'Failed';
+
+  @override
+  String get pendingRetry => 'Read again';
+
+  @override
+  String get pendingDiscard => 'Discard';
+
+  @override
+  String get pendingDiscardConfirm => 'Remove this receipt from the list?';
+
+  @override
+  String pendingConfirmAll(int count) {
+    return 'Confirm all valid ($count)';
+  }
+
+  @override
+  String pendingConfirmAllAsk(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Save $count valid receipts as transactions?',
+      one: 'Save 1 valid receipt as a transaction?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String pendingConfirmAllResult(int saved, int duplicates, int notSaved) {
+    return 'Saved $saved, duplicates $duplicates, not saved $notSaved';
+  }
+
+  @override
+  String get pendingErrorNetwork => 'Couldn\'t reach the AI service.';
+
+  @override
+  String get pendingErrorServer =>
+      'The AI service couldn\'t read this receipt.';
+
+  @override
+  String get pendingErrorMissingImage =>
+      'The photo is no longer on this device.';
 }

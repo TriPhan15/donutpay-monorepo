@@ -3383,6 +3383,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Congratulations! You reached your goal \"{title}\"'**
   String savingsGoalReached(String title);
+
+  /// Scan sheet option: scan up to 20 receipts in one go with the document scanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan several'**
+  String get scanBatchCamera;
+
+  /// Scan sheet option: pick up to 20 receipt photos from the gallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick several'**
+  String get scanBatchGallery;
+
+  /// Toast after receipts were queued for reading.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 receipt added to the queue} other{{count} receipts added to the queue}}'**
+  String scanQueueAdded(int count);
+
+  /// Toast after queueing when some images were left out because the queue holds at most limit receipts.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 receipt added to the queue} other{{count} receipts added to the queue}} ({skipped} skipped, over {limit})'**
+  String scanQueueOverLimit(int count, int skipped, int limit);
+
+  /// Banner above the tab bar while the queue reads receipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading receipt {current}/{total}'**
+  String scanQueueReading(int current, int total);
+
+  /// Banner above the tab bar when read receipts wait for a confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 receipt to confirm} other{{count} receipts to confirm}}'**
+  String scanQueueReady(int count);
+
+  /// Banner above the tab bar when only failed receipts are left in the queue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 receipt could not be read} other{{count} receipts could not be read}}'**
+  String scanQueueFailed(int count);
+
+  /// Toast when the scan queue could not be read or written on the device.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the receipt queue on this device. Please try again.'**
+  String get scanQueueStorageFailed;
+
+  /// Title of the screen listing the queued receipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts to confirm'**
+  String get pendingReceiptsTitle;
+
+  /// Shown when the scan queue is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No receipts waiting.'**
+  String get pendingReceiptsEmpty;
+
+  /// Status chip: the receipt waits to be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get pendingStatusQueued;
+
+  /// Status chip: the receipt is being read.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get pendingStatusReading;
+
+  /// Status chip: the receipt is read and waits for a confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get pendingStatusReady;
+
+  /// Status chip: the receipt could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get pendingStatusFailed;
+
+  /// Button that queues a failed receipt again.
+  ///
+  /// In en, this message translates to:
+  /// **'Read again'**
+  String get pendingRetry;
+
+  /// Button that removes a receipt from the queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get pendingDiscard;
+
+  /// Question before a receipt is removed from the queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this receipt from the list?'**
+  String get pendingDiscardConfirm;
+
+  /// Bottom button that saves every receipt needing no review.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm all valid ({count})'**
+  String pendingConfirmAll(int count);
+
+  /// Question before the valid receipts are saved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Save 1 valid receipt as a transaction?} other{Save {count} valid receipts as transactions?}}'**
+  String pendingConfirmAllAsk(int count);
+
+  /// Toast after confirming all valid receipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved {saved}, duplicates {duplicates}, not saved {notSaved}'**
+  String pendingConfirmAllResult(int saved, int duplicates, int notSaved);
+
+  /// Why a receipt failed: no network or timeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the AI service.'**
+  String get pendingErrorNetwork;
+
+  /// Why a receipt failed: the AI service answered with an error.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI service couldn\'t read this receipt.'**
+  String get pendingErrorServer;
+
+  /// Why a receipt failed: the image copy is gone.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo is no longer on this device.'**
+  String get pendingErrorMissingImage;
 }
 
 class _AppLocalizationsDelegate

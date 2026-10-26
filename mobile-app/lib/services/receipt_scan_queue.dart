@@ -95,10 +95,17 @@ class ReceiptScanQueue {
 
   static const Uuid _uuid = Uuid();
 
-  static final ReceiptScanQueue instance = ReceiptScanQueue._(
+  static ReceiptScanQueue _instance = ReceiptScanQueue._(
     SqfliteHelper.instance,
     getApplicationDocumentsDirectory,
   );
+
+  /// The queue of the app.
+  static ReceiptScanQueue get instance => _instance;
+
+  /// Puts [queue] (a fake of a widget test) in place of the queue of the app, so the screens never open a database.
+  @visibleForTesting
+  static set instanceForTesting(ReceiptScanQueue queue) => _instance = queue;
 
   ReceiptScanQueue._(this._store, this._baseDirectory);
 
