@@ -273,6 +273,48 @@
 
 ---
 
+### Bổ sung ở phiên T7.4 (kiểm chứng ngày 26/10/2026)
+
+[61] S. Bai, J. Lin và cộng sự (Qwen Team), Qwen2.5-VL Technical Report, arXiv:2502.13923, 2025. https://arxiv.org/abs/2502.13923
+- Kiểm chứng (T7.4): trang arXiv trả về HTTP 200; tác giả đầu Shuai Bai, nộp 19/02/2025.
+- Dùng cho: 4.3.2 (Qwen2.5-VL-7B-Instruct đọc lại nhãn, relabel_qwen.py).
+
+[62] Anthropic, Vision – Claude Documentation, https://platform.claude.com/docs/en/build-with-claude/vision, truy cập ngày 26/10/2026.
+- Kiểm chứng (T7.4): HTTP 200.
+- Dùng cho: 4.3.2 (Claude đọc ảnh hóa đơn khi gán nhãn lại).
+
+[63] A. Buslaev, V. I. Iglovikov, E. Khvedchenya, A. Parinov, M. Druzhinin, A. A. Kalinin, Albumentations: Fast and Flexible Image Augmentations, Information (vol. 11, no. 2, art. 125), 2020. DOI: 10.3390/info11020125
+- Kiểm chứng (T7.4): DOAJ/MDPI, DOI khớp.
+- Dùng cho: 4.3.3 (tăng cường ảnh, build_augment).
+
+[64] I. Loshchilov, F. Hutter, SGDR: Stochastic Gradient Descent with Warm Restarts, International Conference on Learning Representations (ICLR), 2017. arXiv:1608.03983
+- Kiểm chứng (T7.4): arXiv + MLAnthology ICLR 2017.
+- Dùng cho: 4.4.2 (lịch learning rate cosine).
+
+[65] P. Micikevicius, S. Narang, J. Alben, G. Diamos, E. Elsen, D. Garcia, B. Ginsburg, M. Houston, O. Kuchaiev, G. Venkatesh, H. Wu, Mixed Precision Training, International Conference on Learning Representations (ICLR), 2018. arXiv:1710.03740
+- Kiểm chứng (T7.4): arXiv ghi "Published as a conference paper at ICLR 2018".
+- Dùng cho: 4.4.2 (fp16).
+
+[66] T. Chen, B. Xu, C. Zhang, C. Guestrin, Training Deep Nets with Sublinear Memory Cost, arXiv:1604.06174, 2016.
+- Kiểm chứng (T7.4): trang arXiv.
+- Dùng cho: 4.4.2 (gradient checkpointing).
+
+[67] Kaggle Notebooks Documentation, https://www.kaggle.com/docs/notebooks, truy cập ngày 26/10/2026.
+- Kiểm chứng (T7.4): HTTP 200.
+- Dùng cho: 4.2.1, 4.4.1.
+
+[68] Python Documentation – re: Regular expression operations, https://docs.python.org/3/library/re.html, truy cập ngày 26/10/2026.
+- Kiểm chứng (T7.4): HTTP 200.
+- Dùng cho: 4.5.2.
+
+[69] S. Chacon, B. Straub, Pro Git, 2nd ed., Apress, 2014. https://git-scm.com/book/en/v2
+- Kiểm chứng (T7.4): HTTP 200 (bản trực tuyến của sách).
+- Dùng cho: 4.2.2.
+
+[70] Conventional Commits 1.0.0, https://www.conventionalcommits.org/en/v1.0.0/, truy cập ngày 26/10/2026.
+- Kiểm chứng (T7.4): HTTP 200.
+- Dùng cho: 4.2.2.
+
 ## Đã loại
 
 | Ứng viên | Lý do |

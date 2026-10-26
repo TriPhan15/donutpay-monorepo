@@ -1,0 +1,20 @@
+@startuml
+!include _style.iuml
+start
+:init_labels.py: sao chép nhãn gốc data1/<split>/metadata.jsonl\nvào Version5/data1 (không sửa bản gốc);
+fork
+  :relabel_qwen.py: Qwen2.5-VL-7B-Instruct\nđọc ảnh trên GPU Kaggle;
+fork again
+  :Claude đọc ảnh theo lô\n(relabel_cache/<split>.claude*.jsonl);
+end fork
+:Kiểm tra JSON đủ 4 khóa bằng Pydantic\n(ReceiptFields), lưu cache, chạy tiếp được;
+:apply_claude_labels.py / finish_relabel.py:\nchuẩn hóa theo quy ước nhãn, ghi giá trị đọc chắc chắn;
+if (Trường còn nghi ngờ hoặc hai nguồn lệch nhau?) then (có)
+  :review_labels.py: người duyệt chọn giá trị,\nđánh dấu "không có" hoặc giữ nhãn cũ;
+else (không)
+endif
+:Ô rỗng chưa ai kiểm tra -> unverified_fields\n(bị che khi tính loss);
+:find_v3_seen.py: liệt kê ảnh test trùng địa chỉ\nvới nhãn train cũ của V3 (v3_seen_test.txt);
+:check_data.py: đối chiếu nhãn với ảnh từng tập;
+stop
+@enduml
