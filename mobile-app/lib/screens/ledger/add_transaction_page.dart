@@ -14,7 +14,10 @@ import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 /// Always opens on the current moment, whatever period the screen that opened it shows: a new transaction is most
 /// often about today, and the date field gets to another day in one tap.
 class AddTransactionPage extends StatefulWidget {
-  const AddTransactionPage({super.key});
+  /// Told the date of the transaction once it is saved (on the server or in the outbox), before the form closes.
+  final ValueChanged<DateTime>? onSaved;
+
+  const AddTransactionPage({super.key, this.onSaved});
 
   @override
   State<AddTransactionPage> createState() => _AddTransactionPageState();
@@ -187,6 +190,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       );
       return;
     }
+    widget.onSaved?.call(transaction.date);
     // The transaction is on the device in either case; when the server does not have it yet, the Ledger shows it flagged
     // and offers to send it again, so the form closes instead of inviting a second, different save of the same thing.
     if (status == SyncStatus.synced) {

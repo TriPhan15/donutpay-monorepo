@@ -101,6 +101,12 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(app);
     await tester.pumpAndSettle();
+    // The balance is hidden when the home screen opens: the eye shows it.
+    final eye = find.byIcon(Icons.visibility_off_rounded);
+    if (eye.evaluate().isNotEmpty) {
+      await tester.tap(eye.first);
+      await tester.pumpAndSettle();
+    }
   }
 
   /// A write made elsewhere in the app (the Ledger, the receipt form ...): the server has [after] once it is done.

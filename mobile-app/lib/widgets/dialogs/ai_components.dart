@@ -101,9 +101,15 @@ class AiComponents {
       children: [
         Row(
           children: [
-            Text(
-              loc.aiSpadeTitle,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // The title wraps on a narrow phone; the badge keeps its size.
+            Flexible(
+              child: Text(
+                loc.aiSpadeTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             const SizedBox(width: 8),
             Container(
@@ -283,9 +289,15 @@ class AiComponents {
       children: [
         Row(
           children: [
-            Text(
-              loc.aiAdviceTitle,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // The title wraps on a narrow phone; the badge keeps its size.
+            Flexible(
+              child: Text(
+                loc.aiAdviceTitle,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             const SizedBox(width: 8),
             Container(

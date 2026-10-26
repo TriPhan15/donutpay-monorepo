@@ -17,6 +17,8 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/inputs/date_field.dart';
+import 'package:finance_ai_app/widgets/receipt/receipt_image_viewer.dart';
 
 import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
@@ -28,9 +30,24 @@ const String _scan = '/donut/scan';
 const String _upload = '/api/upload';
 const String _checkout = '/api/transactions/checkout';
 const String _photoUrl = 'https://example.com/receipt.png';
-const String _save = 'Xác nhận & Lưu CSDL';
+const String _save = 'Xác nhận và lưu';
 const String _dateFallbackHint =
     'Không đọc được ngày trên hóa đơn, đang dùng thời điểm hiện tại. Chạm để chọn lại.';
+
+const String _duplicateMessage = 'Hóa đơn này có vẻ đã được lưu trước đó';
+const String _duplicateTitle = 'Hóa đơn này có vẻ đã lưu ngày 27/05/2026 10:30';
+const String _viewSaved = 'Xem bản đã lưu';
+const String _saveAnyway = 'Vẫn lưu';
+
+/// What core-backend answers when the scanned receipt looks like transaction 123 of the user (T10-BE).
+ResponseBody _duplicateAnswer() => jsonResponse(409, {
+  'code': 409,
+  'message': _duplicateMessage,
+  'data': {
+    'existingTransactionId': 123,
+    'existingTransactionDate': '2026-05-27T10:30:00',
+  },
+});
 
 const String _needsCheck =
     'AI chưa chắc chắn ở trường này, vui lòng kiểm tra lại.';
@@ -125,7 +142,11 @@ void main() {
   }
 
   /// Opens the review form from a page of its own, like MainScaffold does; [result] gets what the form closes with.
-  Future<List<bool?>> openForm(WidgetTester tester) async {
+  /// [onOpenTransaction] is what MainScaffold hands over to show a transaction in the Ledger.
+  Future<List<bool?>> openForm(
+    WidgetTester tester, {
+    ValueChanged<int>? onOpenTransaction,
+  }) async {
     tester.view.physicalSize = const Size(600, 2200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -138,7 +159,10 @@ void main() {
               await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const ReviewFormPage(imagePath: _photo),
+                  builder: (_) => ReviewFormPage(
+                    imagePath: _photo,
+                    onOpenTransaction: onOpenTransaction,
+                  ),
                 ),
               ),
             ),
@@ -171,7 +195,7 @@ void main() {
       expect(
         find.descendant(
           of: field('Tổng tiền (đ)'),
-          matching: find.text('45000'),
+          matching: find.text('45.000'),
         ),
         findsOneWidget,
       );
@@ -184,6 +208,14 @@ void main() {
 
       await tester.enterText(field('Tổng tiền (đ)'), '50000');
       await tester.pump();
+      expect(
+        find.descendant(
+          of: field('Tổng tiền (đ)'),
+          matching: find.text('50.000'),
+        ),
+        findsOneWidget,
+        reason: 'the amount is grouped while it is typed',
+      );
       expect(
         find.text(
           CurrencyHelper.formatVND(
@@ -260,22 +292,127 @@ void main() {
     },
   );
 
-  testWidgets('the date field opens a date picker instead of the keyboard', (
+  testWidgets('the date is the shared date field, which opens a date picker', (
     tester,
   ) async {
     await openForm(tester);
 
-    final date = tester.widget<EditableText>(
-      find.descendant(
-        of: field('Ngày giao dịch'),
-        matching: find.byType(EditableText),
-      ),
-    );
-    expect(date.readOnly, isTrue);
+    final date = find.byType(DateField);
+    expect(date, findsOneWidget);
+    expect(tester.widget<DateField>(date).value, DateTime(2026, 9, 20, 8, 30));
 
-    await tester.tap(field('Ngày giao dịch'));
+    await tester.tap(find.byIcon(Icons.calendar_today_rounded));
     await tester.pumpAndSettle();
     expect(find.byType(DatePickerDialog), findsOneWidget);
+  });
+
+  testWidgets(
+    'a receipt of another month says it still counts in the current balance',
+    (tester) async {
+      await openForm(tester);
+      expect(
+        find.text('Giao dịch ngày 20/09 vẫn được tính vào số dư hiện tại'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('a receipt of this month shows no such note', (tester) async {
+    backend.on(
+      'POST',
+      _scan,
+      (_) => _scanned(
+        timestamp: DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
+      ),
+    );
+    await openForm(tester);
+    expect(find.textContaining('vẫn được tính vào số dư'), findsNothing);
+  });
+
+  group('the photo', () {
+    testWidgets('a tap on it opens it over the whole screen, zoomable', (
+      tester,
+    ) async {
+      await openForm(tester);
+
+      await tester.tap(find.bySemanticsLabel('Xem ảnh hóa đơn'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReceiptImageViewerPage), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ReceiptImageViewerPage),
+          matching: find.byType(InteractiveViewer),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byType(CloseButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(ReceiptImageViewerPage), findsNothing);
+      expect(find.text(_save), findsOneWidget);
+    });
+
+    testWidgets('a double tap zooms in, and a second one zooms back out', (
+      tester,
+    ) async {
+      await openForm(tester);
+      await tester.tap(find.bySemanticsLabel('Xem ảnh hóa đơn'));
+      await tester.pumpAndSettle();
+
+      double scale() => tester
+          .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+          .transformationController!
+          .value
+          .getMaxScaleOnAxis();
+      final photo = find.byType(ZoomableReceiptImage);
+
+      expect(scale(), 1);
+      await tester.tap(photo);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(photo);
+      await tester.pumpAndSettle();
+      expect(scale(), ZoomableReceiptImage.doubleTapScale);
+
+      await tester.tap(photo);
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(photo);
+      await tester.pumpAndSettle();
+      expect(scale(), 1);
+    });
+
+    testWidgets(
+      'compare mode: the photo on top, the fields under it, still marked and editable',
+      (tester) async {
+        backend.on(
+          'POST',
+          _scan,
+          (_) => _scanned(normalized: _normalized(sellerValid: false)),
+        );
+        await openForm(tester);
+
+        await tester.tap(find.byTooltip('Đối chiếu với ảnh'));
+        await tester.pumpAndSettle();
+
+        final photo = find.byType(ZoomableReceiptImage);
+        expect(photo, findsOneWidget);
+        expect(field('Tên cửa hàng'), findsOneWidget);
+        expect(
+          tester.getTopLeft(photo).dy,
+          lessThan(tester.getTopLeft(field('Tên cửa hàng')).dy),
+        );
+        expect(find.text(_needsCheck), findsOneWidget);
+
+        await tester.enterText(field('Tên cửa hàng'), 'Highlands Coffee');
+        await tester.pump();
+        expect(find.text(_needsCheck), findsNothing);
+
+        await tester.tap(find.byTooltip('Thoát chế độ đối chiếu'));
+        await tester.pumpAndSettle();
+        expect(photo, findsNothing);
+        expect(find.text('Highlands Coffee'), findsOneWidget);
+      },
+    );
   });
 
   testWidgets(
@@ -358,6 +495,133 @@ void main() {
       expect(result, isEmpty);
     },
   );
+  group('a receipt the server takes for one already saved (409)', () {
+    testWidgets(
+      'nothing waits on the device, and "Xem bản đã lưu" opens the saved transaction',
+      (tester) async {
+        backend.on('POST', _checkout, (_) => _duplicateAnswer());
+        final opened = <int>[];
+        final result = await openForm(tester, onOpenTransaction: opened.add);
+
+        await tapSave(tester);
+
+        expect(find.text(_duplicateTitle), findsOneWidget);
+        expect(find.text(_viewSaved), findsOneWidget);
+        expect(find.text(_saveAnyway), findsOneWidget);
+        expect(store.rows, isEmpty, reason: 'a 409 is never queued');
+        expect(sentBodies().single.containsKey('allowDuplicate'), isFalse);
+
+        await tester.tap(find.text(_viewSaved));
+        await tester.pumpAndSettle();
+
+        expect(opened, [123]);
+        expect(result, [false]);
+        expect(find.byType(ReviewFormPage), findsNothing);
+        expect(sentBodies(), hasLength(1));
+      },
+    );
+
+    testWidgets(
+      '"Vẫn lưu" sends the same receipt again with allowDuplicate and saves it',
+      (tester) async {
+        var sends = 0;
+        backend.on(
+          'POST',
+          _checkout,
+          (_) => ++sends == 1
+              ? _duplicateAnswer()
+              : okResponse({'transactionId': 6, 'finalAmount': 45000}),
+        );
+        final result = await openForm(tester, onOpenTransaction: (_) {});
+
+        await tapSave(tester);
+        await tester.tap(find.text(_saveAnyway));
+        await tester.pump();
+        await settle(
+          tester,
+          () => find.text('Thành công').evaluate().isNotEmpty,
+        );
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+
+        final bodies = sentBodies();
+        expect(bodies, hasLength(2));
+        expect(bodies.first.containsKey('allowDuplicate'), isFalse);
+        expect(bodies.last['allowDuplicate'], isTrue);
+        expect(bodies.last['clientId'], bodies.first['clientId']);
+        expect(uploads(), 1, reason: 'the photo is not uploaded again');
+        expect(store.rows.single.syncStatus, SyncStatus.synced);
+        expect(result, [true]);
+      },
+    );
+
+    testWidgets(
+      'without a way to open the saved one, the form stays open and says where to find it',
+      (tester) async {
+        backend.on('POST', _checkout, (_) => _duplicateAnswer());
+        final result = await openForm(tester);
+
+        await tapSave(tester);
+        await tester.tap(find.text(_viewSaved));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ReviewFormPage), findsOneWidget);
+        expect(
+          find.textContaining('Không mở được bản đã lưu từ đây'),
+          findsOneWidget,
+        );
+        expect(result, isEmpty);
+        expect(store.rows, isEmpty);
+      },
+    );
+
+    testWidgets('a 409 without the id of a transaction is a plain refusal', (
+      tester,
+    ) async {
+      backend.on(
+        'POST',
+        _checkout,
+        (_) => jsonResponse(409, {'code': 409, 'message': 'Xung đột dữ liệu'}),
+      );
+      await openForm(tester);
+
+      await tapSave(tester);
+
+      expect(find.text('Lưu thất bại'), findsOneWidget);
+      expect(find.text('Xung đột dữ liệu'), findsOneWidget);
+      expect(find.text(_saveAnyway), findsNothing);
+      expect(store.rows, isEmpty);
+    });
+  });
+
+  testWidgets('the save button is disabled while the request is in flight', (
+    tester,
+  ) async {
+    final answer = Completer<ResponseBody>();
+    backend.on('POST', _checkout, (_) => answer.future);
+    await openForm(tester);
+
+    await tester.tap(find.text(_save));
+    await tester.pump();
+    for (var i = 0; i < 40 && sentBodies().isEmpty; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(sentBodies(), hasLength(1));
+    final button = find.byType(ElevatedButton);
+    expect(tester.widget<ElevatedButton>(button).onPressed, isNull);
+    await tester.tap(button, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(sentBodies(), hasLength(1));
+
+    answer.complete(okResponse({'transactionId': 5, 'finalAmount': 45000}));
+    await settle(tester, () => find.text('Thành công').evaluate().isNotEmpty);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+  });
+
   group('fields the post-processing marked as not valid', () {
     Color? outline(WidgetTester tester, String label) {
       final decorator = tester.widget<InputDecorator>(
@@ -397,7 +661,10 @@ void main() {
         expect(find.text(_needsCheck), findsNWidgets(2));
         expect(outline(tester, 'Tên cửa hàng'), error);
         expect(outline(tester, 'Tổng tiền (đ)'), error);
-        expect(outline(tester, 'Ngày giao dịch'), isNot(error));
+        expect(
+          tester.widget<DateField>(find.byType(DateField)).errorText,
+          isNull,
+        );
 
         await tester.enterText(field('Tên cửa hàng'), 'Highlands Coffee');
         await tester.pump();
@@ -454,7 +721,7 @@ void main() {
         );
         await openForm(tester);
         expect(find.text('Highlands'), findsOneWidget);
-        expect(find.text('20/09/2026 08:30'), findsOneWidget);
+        expect(find.text('20/09/2026'), findsOneWidget);
         expect(find.text(_dateFallbackHint), findsNothing);
         expect(find.text(_needsCheck), findsNothing);
       },

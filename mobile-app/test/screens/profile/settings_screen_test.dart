@@ -94,7 +94,9 @@ void main() {
         expect(tileOf(tester, 'Tối').selected, isTrue);
         expect(tileOf(tester, 'Theo hệ thống').selected, isFalse);
         expect(sl<SettingsRepository>().themeMode, ThemeMode.dark);
+        // The login screen read the preferences before the choice was saved: read the store again.
         final prefs = await SharedPreferences.getInstance();
+        await prefs.reload();
         expect(prefs.getString(SettingsRepositoryImpl.themeModeKey), 'dark');
         expect(find.byType(SettingsScreen), findsOneWidget);
       },
@@ -118,7 +120,9 @@ void main() {
 
         expect(screenBrightness(tester), Brightness.light);
         expect(tileOf(tester, 'Sáng').selected, isTrue);
+        // The login screen read the preferences before the choice was saved: read the store again.
         final prefs = await SharedPreferences.getInstance();
+        await prefs.reload();
         expect(prefs.getString(SettingsRepositoryImpl.themeModeKey), 'light');
       },
     );
@@ -186,7 +190,9 @@ void main() {
         expect(materialApp(tester).locale, const Locale('en'));
         expect(Intl.defaultLocale, 'en_US');
         expect(sl<SettingsRepository>().localeTag, 'en-US');
+        // The login screen read the preferences before the choice was saved: read the store again.
         final prefs = await SharedPreferences.getInstance();
+        await prefs.reload();
         expect(prefs.getString(SettingsRepositoryImpl.languageKey), 'en');
         expect(find.byType(SettingsScreen), findsOneWidget);
       },

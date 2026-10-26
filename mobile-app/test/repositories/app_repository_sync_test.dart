@@ -699,4 +699,103 @@ void main() {
       expect(states, [null], reason: 'once, after the row is gone');
     });
   });
+
+  // T10d: core-backend answers a scanned receipt that looks already saved with 409 and the id of that transaction.
+  group('a duplicate receipt (409)', () {
+    ResponseBody duplicate() => jsonResponse(409, {
+      'code': 409,
+      'message': 'Hóa đơn này có vẻ đã được lưu trước đó',
+      'data': {
+        'existingTransactionId': 123,
+        'existingTransactionDate': '2026-05-27T10:30:00',
+      },
+    });
+
+    test(
+      'create throws DuplicateReceiptException with the saved transaction and keeps nothing on the device',
+      () {
+        return withCapturedLogs((logs) async {
+          backend.on('POST', _checkout, (_) => duplicate());
+
+          await expectLater(
+            AppRepository.instance.createTransaction(_userId, _draft()),
+            throwsA(
+              isA<DuplicateReceiptException>()
+                  .having((e) => e.existingTransactionId, 'id', 123)
+                  .having(
+                    (e) => e.existingTransactionDate,
+                    'date',
+                    DateTime(2026, 5, 27, 10, 30),
+                  )
+                  .having(
+                    (e) => e.message,
+                    'message',
+                    'Hóa đơn này có vẻ đã được lưu trước đó',
+                  ),
+            ),
+          );
+          expect(store.rows, isEmpty, reason: 'a 409 is not queued');
+          expect(sentBodies().single.containsKey('allowDuplicate'), isFalse);
+        });
+      },
+    );
+
+    test('allowDuplicate is sent only when asked for, and saves', () async {
+      backend.on('POST', _checkout, (_) => _created());
+      final draft = _draft();
+
+      final status = await AppRepository.instance.createTransaction(
+        _userId,
+        draft,
+        allowDuplicate: true,
+      );
+
+      expect(status, SyncStatus.synced);
+      expect(sentBodies().single['allowDuplicate'], isTrue);
+      expect(sentBodies().single['clientId'], draft.clientId);
+      expect(store.rows.single.syncStatus, SyncStatus.synced);
+    });
+
+    test(
+      'a resend from the outbox that is taken for a duplicate stays flagged error',
+      () {
+        return withCapturedLogs((logs) async {
+          final draft = _draft();
+          await store.insertTransaction(
+            draft.withSyncStatus(SyncStatus.error),
+            _userId,
+          );
+          backend.on('POST', _checkout, (_) => duplicate());
+
+          await expectLater(
+            AppRepository.instance.resendTransaction(_userId, draft),
+            throwsA(isA<DuplicateReceiptException>()),
+          );
+          expect(store.rows.single.syncStatus, SyncStatus.error);
+        });
+      },
+    );
+
+    test('a 409 without a transaction id is a plain refusal', () {
+      return withCapturedLogs((logs) async {
+        backend.on(
+          'POST',
+          _checkout,
+          (_) => jsonResponse(409, {'code': 409, 'message': 'Xung đột'}),
+        );
+
+        await expectLater(
+          AppRepository.instance.createTransaction(_userId, _draft()),
+          throwsA(
+            isA<TransactionRefusedException>().having(
+              (e) => e is DuplicateReceiptException,
+              'is a duplicate',
+              isFalse,
+            ),
+          ),
+        );
+        expect(store.rows, isEmpty);
+      });
+    });
+  });
 }

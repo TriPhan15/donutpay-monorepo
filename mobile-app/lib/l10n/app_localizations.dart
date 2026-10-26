@@ -206,12 +206,6 @@ abstract class AppLocalizations {
   /// **'Couldn\'t mark your notifications as read. Please try again.'**
   String get notificationsMarkAllReadFailed;
 
-  /// Snackbar shown when the tapped notification has no screen to open in the app yet.
-  ///
-  /// In en, this message translates to:
-  /// **'This notification can\'t be opened yet.'**
-  String get notificationsDetailUnavailable;
-
   /// Snackbar on the Ledger when a tapped notification points to a transaction that is not in the user's list (for example deleted).
   ///
   /// In en, this message translates to:
@@ -1496,48 +1490,6 @@ abstract class AppLocalizations {
   /// **'Activity history ({count})'**
   String activityLogTitleCount(int count);
 
-  /// Security menu row and title of the PIN dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Create / change PIN'**
-  String get pinSetupTitle;
-
-  /// Subtitle of the PIN row.
-  ///
-  /// In en, this message translates to:
-  /// **'Protect the app with a 4-digit code'**
-  String get pinSetupSubtitle;
-
-  /// Label of the new PIN field.
-  ///
-  /// In en, this message translates to:
-  /// **'New PIN'**
-  String get pinNewLabel;
-
-  /// Label of the PIN confirmation field.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm PIN'**
-  String get pinConfirmLabel;
-
-  /// Shown when the PIN is not 4 digits.
-  ///
-  /// In en, this message translates to:
-  /// **'The PIN must be exactly 4 digits.'**
-  String get pinLengthInvalid;
-
-  /// Shown when the PIN confirmation differs.
-  ///
-  /// In en, this message translates to:
-  /// **'The PINs do not match.'**
-  String get pinMismatch;
-
-  /// Snackbar after the PIN is saved.
-  ///
-  /// In en, this message translates to:
-  /// **'PIN saved.'**
-  String get pinSaved;
-
   /// User guide topic.
   ///
   /// In en, this message translates to:
@@ -1700,12 +1652,6 @@ abstract class AppLocalizations {
   /// **'Saved so far (₫)'**
   String get savingsSavedAmount;
 
-  /// Field of the add goal dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Deadline (dd/mm/yyyy)'**
-  String get savingsDeadlineField;
-
   /// Title of the update goal dialog.
   ///
   /// In en, this message translates to:
@@ -1759,12 +1705,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap \"+\" to create a savings goal.'**
   String get savingsEmptyHint;
-
-  /// Deadline of a goal.
-  ///
-  /// In en, this message translates to:
-  /// **'Due: {date}'**
-  String savingsDeadline(String date);
 
   /// Button that opens the update goal dialog.
   ///
@@ -2862,18 +2802,6 @@ abstract class AppLocalizations {
   /// **'vs. last month'**
   String get dashboardVsLastMonth;
 
-  /// Shortcut to the AI tab.
-  ///
-  /// In en, this message translates to:
-  /// **'Reports'**
-  String get dashboardReports;
-
-  /// Shortcut that opens every feature.
-  ///
-  /// In en, this message translates to:
-  /// **'All'**
-  String get dashboardAllFeatures;
-
   /// The recent transaction list is empty.
   ///
   /// In en, this message translates to:
@@ -3239,6 +3167,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a date'**
   String get dateFieldPick;
+
+  /// Home screen shortcut that opens the receipt scan options (same sheet as the scan button).
+  ///
+  /// In en, this message translates to:
+  /// **'Scan receipt'**
+  String get dashboardScanReceipt;
+
+  /// Accessibility label of the receipt thumbnail on the review form, and title of the full-screen photo viewer it opens.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photo'**
+  String get reviewOpenImage;
+
+  /// Tooltip of the review form button that shows the photo above the fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with the photo'**
+  String get reviewCompareOn;
+
+  /// Tooltip of the review form button that goes back to the normal layout.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave compare mode'**
+  String get reviewCompareOff;
+
+  /// Note under the date of a receipt that is not from the current month; day is dd/MM.
+  ///
+  /// In en, this message translates to:
+  /// **'A transaction dated {day} still counts toward your current balance'**
+  String reviewOtherMonthBalanceNote(String day);
+
+  /// Title of the dialog shown when the server takes a scanned receipt for one already saved; date is dd/MM/yyyy HH:mm of the saved transaction.
+  ///
+  /// In en, this message translates to:
+  /// **'This receipt seems to have been saved on {date}'**
+  String reviewDuplicateTitle(String date);
+
+  /// Title of the duplicate receipt dialog when the server sent no date.
+  ///
+  /// In en, this message translates to:
+  /// **'This receipt seems to have been saved before'**
+  String get reviewDuplicateTitleNoDate;
+
+  /// Body of the duplicate receipt dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the saved one to check it, or save anyway if this is another purchase.'**
+  String get reviewDuplicateMessage;
+
+  /// Duplicate receipt dialog button that opens the transaction already saved.
+  ///
+  /// In en, this message translates to:
+  /// **'View saved one'**
+  String get reviewDuplicateView;
+
+  /// Duplicate receipt dialog button that saves the receipt again.
+  ///
+  /// In en, this message translates to:
+  /// **'Save anyway'**
+  String get reviewDuplicateSaveAnyway;
+
+  /// Toast when the review form has no way to open the saved transaction.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved one can\'t be opened from here. You can find it in the Statistics tab.'**
+  String get reviewDuplicateCannotOpen;
+
+  /// Badge on the linked services page and its profile row: the wallets are simulated.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo'**
+  String get linkedDemoBadge;
+
+  /// Notice at the top of the linked services page.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a demo: the wallets and synced payments are simulated, with no real bank or e-wallet connection.'**
+  String get linkedDemoNotice;
+
+  /// Yearly budget period; also the year mode of the Ledger.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get budgetPeriodYear;
+
+  /// The current calendar year.
+  ///
+  /// In en, this message translates to:
+  /// **'This year'**
+  String get periodThisYear;
+
+  /// Label of the day whose week, month or year the budget covers.
+  ///
+  /// In en, this message translates to:
+  /// **'Period that contains'**
+  String get budgetPeriodDayLabel;
+
+  /// Field shown when the budget category is 'Other'.
+  ///
+  /// In en, this message translates to:
+  /// **'Category name'**
+  String get budgetCustomCategoryLabel;
+
+  /// Helper under the custom category name field.
+  ///
+  /// In en, this message translates to:
+  /// **'Type it as you name it in your transactions'**
+  String get budgetCustomCategoryHelper;
+
+  /// Error when the custom category name is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the category name'**
+  String get budgetCustomCategoryRequired;
+
+  /// Error when the custom category name is too long.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {max} characters'**
+  String budgetCustomCategoryTooLong(int max);
+
+  /// Error when the typed category does not exist on the server.
+  ///
+  /// In en, this message translates to:
+  /// **'No transaction uses the category \"{name}\" yet. Record one with this category first, then set its budget.'**
+  String budgetCustomCategoryUnknown(String name);
+
+  /// Period label of the Ledger in year mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Year {year}'**
+  String ledgerYearLabel(String year);
+
+  /// Default expense category 'savings': money moved into a savings goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings'**
+  String get categorySavings;
+
+  /// Helper under the optional saved amount when creating a goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty if there is none yet or you don\'t remember; you can change it later'**
+  String get savingsSavedAmountHint;
+
+  /// Label of the optional target date of a goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Target date'**
+  String get savingsTargetDateField;
+
+  /// Button that adds the optional target date.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a target date (optional)'**
+  String get savingsTargetDateAdd;
+
+  /// Tooltip of the button that removes the target date.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the target date'**
+  String get savingsTargetDateClear;
+
+  /// Target date under a goal's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Target date: {date}'**
+  String savingsTargetDateShown(String date);
+
+  /// Button of a goal that moves money from the wallet into it.
+  ///
+  /// In en, this message translates to:
+  /// **'Add money'**
+  String get savingsContribute;
+
+  /// Title of the add money sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add money: {title}'**
+  String savingsContributeTitle(String title);
+
+  /// Amount field of the add money sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (₫)'**
+  String get savingsContributeAmount;
+
+  /// Helper of the add money amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken from your wallet and recorded as a \"Savings\" expense'**
+  String get savingsContributeHelper;
+
+  /// Toast when the add money amount is empty or zero.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount greater than 0'**
+  String get savingsContributeInvalidAmount;
+
+  /// Toast when a contribution fails; reason is the error text.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add the money. {reason}'**
+  String savingsContributeFailed(String reason);
+
+  /// Reason shown when the server refuses a contribution and its message cannot be shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the amount and your wallet balance.'**
+  String get savingsContributeRejected;
+
+  /// Toast after a contribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Money added to \"{title}\"'**
+  String savingsContributed(String title);
+
+  /// Toast when a contribution completes the goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Congratulations! You reached your goal \"{title}\"'**
+  String savingsGoalReached(String title);
 }
 
 class _AppLocalizationsDelegate

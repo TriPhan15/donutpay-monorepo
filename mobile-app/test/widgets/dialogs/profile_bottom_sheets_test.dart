@@ -174,7 +174,7 @@ void main() {
       );
 
       testWidgets(
-        'security menu: primary-container tiles, subtitles, chevrons and divider follow the theme',
+        'security menu: primary-container tile, subtitle and chevron follow the theme',
         (tester) async {
           final host = await _host(tester, mode);
           final colors = Theme.of(host).colorScheme;
@@ -187,70 +187,26 @@ void main() {
             paintedColor(tester, find.text('Bảo mật & Quyền riêng tư')),
             colors.onSurface,
           );
-          for (final icon in [Icons.pin_rounded, Icons.history_rounded]) {
-            expect(
-              boxColor(tester, find.byIcon(icon)),
-              colors.primaryContainer,
-            );
-            expect(
-              paintedColor(tester, find.byIcon(icon)),
-              colors.onPrimaryContainer,
-            );
-          }
           expect(
-            paintedColor(tester, find.text('Tạo / Đổi mã PIN')),
+            boxColor(tester, find.byIcon(Icons.history_rounded)),
+            colors.primaryContainer,
+          );
+          expect(
+            paintedColor(tester, find.byIcon(Icons.history_rounded)),
+            colors.onPrimaryContainer,
+          );
+          expect(
+            paintedColor(tester, find.text('Lịch sử hoạt động')),
             colors.onSurface,
           );
           expect(
-            paintedColor(tester, find.text('Bảo vệ ứng dụng bằng mã 4 số')),
+            paintedColor(tester, find.text('Xem các giao dịch gần đây')),
             colors.onSurfaceVariant,
           );
           expect(
-            paintedColor(
-              tester,
-              find.byIcon(Icons.chevron_right_rounded).first,
-            ),
+            paintedColor(tester, find.byIcon(Icons.chevron_right_rounded)),
             colors.onSurfaceVariant.withValues(alpha: 0.5),
           );
-          expect(
-            tester.widget<Divider>(find.byType(Divider)).color,
-            colors.onSurfaceVariant.withValues(alpha: 0.1),
-          );
-        },
-      );
-
-      testWidgets(
-        'PIN dialog: surface dialog, outlined fields from the theme, cancel and save buttons',
-        (tester) async {
-          final host = await _host(tester, mode);
-          final colors = Theme.of(host).colorScheme;
-
-          ProfileBottomSheets.showPinSetup(host);
-          await tester.pumpAndSettle();
-
-          expect(_dialogColor(tester), colors.surface);
-          expect(
-            paintedColor(tester, find.text('Tạo / Đổi mã PIN')),
-            colors.onSurface,
-          );
-          expect(
-            paintedColor(tester, find.text('Mã PIN mới')),
-            colors.onSurfaceVariant,
-          );
-          final field = _fieldDecoration(tester, find.byType(TextField).first);
-          expect(field.fillColor, colors.surface);
-          expect(
-            field.enabledBorder?.borderSide.color,
-            colors.outlineVariant,
-            reason: 'the outline sets the field apart from the dialog',
-          );
-          expect(
-            paintedColor(tester, find.text('Hủy')),
-            colors.onSurfaceVariant,
-          );
-          final save = find.widgetWithText(ElevatedButton, 'Lưu');
-          expect(materialColor(tester, save), colors.primary);
-          expect(paintedColor(tester, find.text('Lưu')), colors.onPrimary);
         },
       );
 
@@ -354,30 +310,29 @@ void main() {
       ProfileBottomSheets.showSecurityMenu(host, _transactions);
       await tester.pumpAndSettle();
       expect(
-        paintedColor(tester, find.byIcon(Icons.pin_rounded)),
+        paintedColor(tester, find.byIcon(Icons.history_rounded)),
         AppTheme.primary,
       );
       expect(
-        boxColor(tester, find.byIcon(Icons.pin_rounded)),
+        boxColor(tester, find.byIcon(Icons.history_rounded)),
         AppTheme.mintLight,
         reason: 'the tile is now the primary container (was primary at 12%)',
       );
-      Navigator.pop(host);
-      await tester.pumpAndSettle();
-
-      ProfileBottomSheets.showPinSetup(host);
-      await tester.pumpAndSettle();
-      expect(_dialogColor(tester), AppTheme.navyLight);
-      expect(paintedColor(tester, find.text('Mã PIN mới')), AppTheme.textGray);
-      expect(
-        _fieldDecoration(tester, find.byType(TextField).first).fillColor,
-        AppTheme.navyDark,
-      );
-      expect(
-        materialColor(tester, find.widgetWithText(ElevatedButton, 'Lưu')),
-        AppTheme.mintAccent,
-      );
-      expect(paintedColor(tester, find.text('Lưu')), AppTheme.navyDark);
     },
   );
+
+  // T10d: the PIN was stored and never checked, so the entry is gone with its dialog.
+  testWidgets('security menu no longer offers to create or change a PIN', (
+    tester,
+  ) async {
+    final host = await _host(tester, ThemeMode.light);
+
+    ProfileBottomSheets.showSecurityMenu(host, _transactions);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lịch sử hoạt động'), findsOneWidget);
+    expect(find.text('Tạo / Đổi mã PIN'), findsNothing);
+    expect(find.byIcon(Icons.pin_rounded), findsNothing);
+    expect(find.byType(ListTile), findsOneWidget);
+  });
 }

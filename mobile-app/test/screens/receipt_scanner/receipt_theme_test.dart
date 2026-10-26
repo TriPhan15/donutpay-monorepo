@@ -228,12 +228,12 @@ void main() {
           );
 
           final save = find.ancestor(
-            of: find.text('Xác nhận & Lưu CSDL'),
+            of: find.text('Xác nhận và lưu'),
             matching: find.byType(ElevatedButton),
           );
           expect(materialColor(tester, save), colors.primary);
           expect(
-            paintedColor(tester, find.text('Xác nhận & Lưu CSDL')),
+            paintedColor(tester, find.text('Xác nhận và lưu')),
             colors.onPrimary,
           );
         },

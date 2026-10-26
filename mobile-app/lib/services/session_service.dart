@@ -23,6 +23,10 @@ class SessionService {
   static const String _fieldRefreshToken = 'refreshToken';
   static const String _fieldRemember = 'remember';
 
+  /// The email of the last sign-in made with "remember me", kept apart from the session so that signing out leaves it:
+  /// the login screen fills it in. Only the email: the password is left to the password manager of the system.
+  static const String _keyRememberedEmail = 'remembered_email';
+
   // The format before the JSON session: one key per value. Read once to migrate, removed once the JSON session is stored.
   static const String _legacyKeyUserId = 'current_user_id';
   static const String _legacyKeyToken = 'auth_token';
@@ -130,6 +134,29 @@ class SessionService {
     final prefs = await _preferences();
     await prefs.remove(_keySession);
     await _removeLegacyKeys(prefs);
+  }
+
+  /// The email to fill in on the login screen, or null when none is remembered.
+  static Future<String?> rememberedEmail() async {
+    final prefs = await _preferences();
+    final email = prefs.getString(_keyRememberedEmail)?.trim();
+    return email == null || email.isEmpty ? null : email;
+  }
+
+  /// After a successful sign-in: keeps [email] when "remember me" was ticked, forgets the one kept before when [email]
+  /// is null. Best effort: a failed write only means the field is not filled in next time, so it never fails a sign-in.
+  static Future<void> rememberEmail(String? email) async {
+    try {
+      final prefs = await _preferences();
+      final trimmed = email?.trim();
+      if (trimmed == null || trimmed.isEmpty) {
+        await prefs.remove(_keyRememberedEmail);
+      } else {
+        await prefs.setString(_keyRememberedEmail, trimmed);
+      }
+    } on Exception catch (e) {
+      debugPrint('SessionService: the remembered email could not be saved: $e');
+    }
   }
 
   static Future<bool> isLoggedIn() async {

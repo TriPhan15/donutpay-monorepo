@@ -9,28 +9,28 @@ import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
-import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
+import 'package:finance_ai_app/screens/ledger/add_transaction_page.dart';
 import 'package:finance_ai_app/screens/notifications/notification_screen.dart';
 import 'package:finance_ai_app/screens/profile/savings_page.dart';
-import 'package:finance_ai_app/screens/linked/linked_services_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 import 'package:finance_ai_app/widgets/budget/budget_section.dart';
 import 'package:finance_ai_app/widgets/notifications/notification_bell.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
-import 'package:finance_ai_app/widgets/dialogs/dashboard_bottom_sheets.dart';
 
 class DashboardPage extends StatefulWidget {
-  final VoidCallback? onNavigateToAI;
-
-  /// Shows a transaction (by its server id) on the Ledger tab: where a transaction notification leads.
+  /// Shows a transaction (by its server id) on the Ledger tab: where a transaction notification and a tapped recent
+  /// transaction lead.
   final ValueChanged<int>? onOpenTransaction;
-  const DashboardPage({super.key, this.onNavigateToAI, this.onOpenTransaction});
+
+  /// Opens the receipt scan options of MainScaffold (the same sheet as its scan button).
+  final VoidCallback? onScanReceipt;
+  const DashboardPage({super.key, this.onOpenTransaction, this.onScanReceipt});
   @override
   State<DashboardPage> createState() => DashboardPageState();
 }
@@ -55,9 +55,10 @@ class DashboardPageState extends State<DashboardPage>
   int _loadRequest = 0;
 
   bool _isLoading = true;
-  bool _balanceHidden = false;
+
+  /// Hidden each time the home screen is created (sign-in, app start); the eye icon shows it. Never saved.
+  bool _balanceHidden = true;
   UserModel? _user;
-  List<WalletModel> _wallets = [];
   List<BudgetProgress> _budgetProgress = [];
   bool _budgetsFailed = false;
 
@@ -151,7 +152,6 @@ class DashboardPageState extends State<DashboardPage>
 
       setState(() {
         _user = summary['user'];
-        _wallets = summary['wallets'];
         _budgetProgress = budgetProgress;
         _budgetsFailed = budgets == null;
 
@@ -243,12 +243,17 @@ class DashboardPageState extends State<DashboardPage>
                       if (_budgetProgress.isNotEmpty || _budgetsFailed)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                          child: BudgetSection(
-                            progresses: _budgetProgress,
-                            loadFailed: _budgetsFailed,
-                            maxItems: _maxBudgetCards,
-                            titleSize: 18,
-                            onManage: _openBudgetScreen,
+                          // The whole block, any of its bars included, leads to the budget screen.
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _openBudgetScreen,
+                            child: BudgetSection(
+                              progresses: _budgetProgress,
+                              loadFailed: _budgetsFailed,
+                              maxItems: _maxBudgetCards,
+                              titleSize: 18,
+                              onManage: _openBudgetScreen,
+                            ),
                           ),
                         ),
                       const SizedBox(height: 24),
@@ -636,62 +641,46 @@ class DashboardPageState extends State<DashboardPage>
     });
   }
 
+  /// Four shortcuts of the same width: add a transaction, scan a receipt, budgets, savings.
   Widget _buildUtilityGrid(ColorScheme colors) {
+    final loc = context.loc;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            context.loc.profileUtilities,
+            loc.profileUtilities,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildUtilityIcon(
                 colors,
-                Icons.pie_chart_rounded,
-                context.loc.dashboardReports,
-                () {
-                  if (widget.onNavigateToAI != null) {
-                    widget.onNavigateToAI!();
-                  }
-                },
+                Icons.add_circle_outline_rounded,
+                loc.addTransactionTitle,
+                // The list refreshes through dataChangedNotifier once the transaction is saved, as from the Ledger.
+                () => _navigateTo(const AddTransactionPage()),
+              ),
+              _buildUtilityIcon(
+                colors,
+                Icons.receipt_long_rounded,
+                loc.dashboardScanReceipt,
+                widget.onScanReceipt,
+              ),
+              _buildUtilityIcon(
+                colors,
+                Icons.account_balance_wallet_rounded,
+                loc.budgetTitle,
+                _openBudgetScreen,
               ),
               _buildUtilityIcon(
                 colors,
                 Icons.savings_rounded,
-                context.loc.savingsTitle,
+                loc.savingsTitle,
                 () => _navigateTo(const SavingsPage()),
-              ),
-              _buildUtilityIcon(
-                colors,
-                Icons.grid_view_rounded,
-                context.loc.dashboardAllFeatures,
-                () {
-                  DashboardBottomSheets.showAllFeatures(
-                    context,
-                    onSavings: () {
-                      Navigator.pop(context);
-                      _navigateTo(const SavingsPage());
-                    },
-                    onBankSources: () {
-                      Navigator.pop(context);
-                      DashboardBottomSheets.showBankSources(context, _wallets);
-                    },
-                    onLinkedServices: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const LinkedServicesPage(),
-                        ),
-                      );
-                    },
-                  );
-                },
               ),
             ],
           ),
@@ -700,36 +689,45 @@ class DashboardPageState extends State<DashboardPage>
     );
   }
 
+  /// One shortcut: a round tinted icon over a label of at most two lines.
   Widget _buildUtilityIcon(
     ColorScheme colors,
     IconData icon,
     String label,
-    VoidCallback onTap,
+    VoidCallback? onTap,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: colors.primary, size: 28),
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+          child: Column(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: colors.primary, size: 28),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 12,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colors.onSurfaceVariant,
-              fontSize: 12,
-              height: 1.2,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -771,61 +769,72 @@ class DashboardPageState extends State<DashboardPage>
     );
   }
 
+  /// A transaction the server has opens in the Ledger's detail sheet, the way a notification does. One still waiting
+  /// to be sent has no server id yet, so it does not open.
   Widget _buildTxItem(ColorScheme colors, TransactionModel tx) {
+    final serverId = int.tryParse(tx.id ?? '');
+    final openTransaction = widget.onOpenTransaction;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: tx.color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(tx.icon, color: tx.color),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  // A transaction without a note is titled with its category, shown in the app language.
-                  TransactionCategories.displayName(context.loc, tx.title),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatTime(tx.date),
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                ),
-                if (tx.receiptStatus != null) ...[
-                  const SizedBox(height: 6),
-                  ReceiptStatusBadge(status: tx.receiptStatus!),
-                ],
-                if (tx.isUnsynced) ...[
-                  const SizedBox(height: 6),
-                  SyncStatusBadge(status: tx.syncStatus),
-                ],
-              ],
-            ),
-          ),
-          Text(
-            '${tx.isExpense ? "- " : "+ "}${_formatCurrency(tx.amount)}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-        ],
+      child: InkWell(
+        onTap: serverId == null || openTransaction == null
+            ? null
+            : () => openTransaction(serverId),
+        borderRadius: BorderRadius.circular(16),
+        child: _buildTxRow(colors, tx),
       ),
+    );
+  }
+
+  Widget _buildTxRow(ColorScheme colors, TransactionModel tx) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: tx.color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(tx.icon, color: tx.color),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                // A transaction without a note is titled with its category, shown in the app language.
+                TransactionCategories.displayName(context.loc, tx.title),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _formatTime(tx.date),
+                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+              ),
+              if (tx.receiptStatus != null) ...[
+                const SizedBox(height: 6),
+                ReceiptStatusBadge(status: tx.receiptStatus!),
+              ],
+              if (tx.isUnsynced) ...[
+                const SizedBox(height: 6),
+                SyncStatusBadge(status: tx.syncStatus),
+              ],
+            ],
+          ),
+        ),
+        Text(
+          '${tx.isExpense ? "- " : "+ "}${_formatCurrency(tx.amount)}',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+      ],
     );
   }
 

@@ -9,6 +9,7 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
@@ -38,12 +39,9 @@ class _MainScaffoldState extends State<MainScaffold>
   late final List<Widget> _pages = [
     DashboardPage(
       key: _dashboardKey,
-      onNavigateToAI: () {
-        setState(() {
-          _currentIndex = 2;
-        });
-      },
       onOpenTransaction: _openTransaction,
+      // The home shortcut opens the same scan options as the scan button.
+      onScanReceipt: () => _showScannerOptions(context),
     ),
     LedgerPage(key: _ledgerKey),
     const AITabPage(),
@@ -56,15 +54,22 @@ class _MainScaffoldState extends State<MainScaffold>
     _ledgerKey.currentState?.showTransaction(id);
   }
 
+  /// Brings [tab] to the front for a page pushed over this one (see [MainTabs]).
+  void _showTab(MainTab tab) {
+    if (mounted) setState(() => _currentIndex = tab.index);
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    MainTabs.attach(_showTab);
     _resendOutbox();
   }
 
   @override
   void dispose() {
+    MainTabs.detach(_showTab);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -156,7 +161,10 @@ class _MainScaffoldState extends State<MainScaffold>
         final saved = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (_) => ReviewFormPage(imagePath: images.first),
+            builder: (_) => ReviewFormPage(
+              imagePath: images.first,
+              onOpenTransaction: _openTransaction,
+            ),
           ),
         );
         if (saved == true && mounted) {
@@ -205,7 +213,12 @@ class _MainScaffoldState extends State<MainScaffold>
       Navigator.pop(context);
       final saved = await Navigator.push<bool>(
         context,
-        MaterialPageRoute(builder: (_) => ReviewFormPage(imagePath: imagePath)),
+        MaterialPageRoute(
+          builder: (_) => ReviewFormPage(
+            imagePath: imagePath,
+            onOpenTransaction: _openTransaction,
+          ),
+        ),
       );
       if (saved == true && mounted) {
         setState(() => _currentIndex = 1);

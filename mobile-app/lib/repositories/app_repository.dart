@@ -31,6 +31,45 @@ class TransactionRefusedException implements Exception {
   String toString() => 'TransactionRefusedException: $message';
 }
 
+/// The server took a scanned receipt for one the user already saved (409 with the id of that transaction) and wrote
+/// nothing. Sending it again with allowDuplicate saves it anyway; a manual transaction is never checked.
+class DuplicateReceiptException extends TransactionRefusedException {
+  const DuplicateReceiptException(
+    super.message, {
+    required this.existingTransactionId,
+    this.existingTransactionDate,
+  });
+
+  /// The server id of the transaction already saved, and its date when the server sent one.
+  final int existingTransactionId;
+  final DateTime? existingTransactionDate;
+
+  static const String _fieldExistingId = 'existingTransactionId';
+  static const String _fieldExistingDate = 'existingTransactionDate';
+
+  /// The duplicate that [e] reports, or null when it is another answer (a 409 without the id of a transaction is a
+  /// plain refusal).
+  static DuplicateReceiptException? from(DioException e) {
+    final response = e.response;
+    if (response?.statusCode != HttpStatus.conflict) return null;
+    final body = response?.data;
+    final data = body is Map ? body['data'] : null;
+    if (data is! Map) return null;
+    final id = data[_fieldExistingId];
+    if (id is! num) return null;
+    final date = data[_fieldExistingDate];
+    return DuplicateReceiptException(
+      UserFacingError.serverMessageOf(body),
+      existingTransactionId: id.toInt(),
+      existingTransactionDate: date is String ? DateTime.tryParse(date) : null,
+    );
+  }
+
+  @override
+  String toString() =>
+      'DuplicateReceiptException: $message (transaction $existingTransactionId)';
+}
+
 class AppRepository {
   static final AppRepository instance = AppRepository._();
   AppRepository._();
@@ -152,18 +191,21 @@ class AppRepository {
   /// and then sent to the server together with its clientId. The result is [SyncStatus.synced] once the server has it, or
   /// [SyncStatus.error] when it could not be sent for a reason that sending again can fix (no network, timeout, server
   /// error): it stays on the device, flagged, until the user resends it. Throws [TransactionRefusedException] when the
-  /// server refuses it, and keeps nothing then, because the user still has the form to correct.
+  /// server refuses it, and keeps nothing then, because the user still has the form to correct. A scanned receipt the
+  /// server takes for one already saved is such a refusal too ([DuplicateReceiptException]): nothing waits on the
+  /// device, and the user decides whether to create it again with [allowDuplicate].
   Future<SyncStatus> createTransaction(
     int userId,
-    TransactionModel draft,
-  ) async {
+    TransactionModel draft, {
+    bool allowDuplicate = false,
+  }) async {
     final clientId = _clientIdOf(draft);
     await _localStore.insertTransaction(
       draft.withSyncStatus(SyncStatus.pending),
       userId,
     );
     try {
-      return await _send(userId, draft);
+      return await _send(userId, draft, allowDuplicate: allowDuplicate);
     } on TransactionRefusedException {
       await _localStore.deleteTransactionByClientId(userId, clientId);
       rethrow;
@@ -228,12 +270,17 @@ class AppRepository {
   }
 
   /// One attempt to send a transaction that is already in the local table, after which its flag says how it went. Only a
-  /// refusal is thrown; any other failure of the request is an outcome ([SyncStatus.error]), not an exception.
-  Future<SyncStatus> _send(int userId, TransactionModel transaction) async {
+  /// refusal is thrown (a duplicate receipt as [DuplicateReceiptException]); any other failure of the request is an
+  /// outcome ([SyncStatus.error]), not an exception.
+  Future<SyncStatus> _send(
+    int userId,
+    TransactionModel transaction, {
+    bool allowDuplicate = false,
+  }) async {
     final clientId = _clientIdOf(transaction);
     try {
       await RemoteApiHelper.instance.addTransaction(
-        transaction.toCheckoutJson(),
+        transaction.toCheckoutJson(allowDuplicate: allowDuplicate),
       );
     } on DioException catch (e) {
       debugPrint('Lỗi gửi giao dịch $clientId: $e');
@@ -242,6 +289,8 @@ class AppRepository {
         clientId,
         SyncStatus.error,
       );
+      final duplicate = DuplicateReceiptException.from(e);
+      if (duplicate != null) throw duplicate;
       if (_isRefusal(e)) throw TransactionRefusedException(_refusalMessage(e));
       _notifyOutboxChanged();
       return SyncStatus.error;

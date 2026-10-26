@@ -6,6 +6,9 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 /// The day of a form: a box that opens the date picker, a "Today" and a "Yesterday" chip, and a button back to today
 /// while another day is picked. Only the day changes: the value given to [onChanged] keeps the time of [value], so a
 /// form that stores a moment (a transaction) keeps its hour.
+///
+/// [errorText] outlines the box in the error colour and is shown under it, like the error of a text field;
+/// [helperText] is shown there otherwise, in [helperColor].
 class DateField extends StatelessWidget {
   const DateField({
     super.key,
@@ -13,6 +16,9 @@ class DateField extends StatelessWidget {
     required this.onChanged,
     this.firstDate,
     this.lastDate,
+    this.errorText,
+    this.helperText,
+    this.helperColor,
   });
 
   static const String displayPattern = 'dd/MM/yyyy';
@@ -25,6 +31,10 @@ class DateField extends StatelessWidget {
   /// The earliest and latest days the picker offers; [defaultFirstDate] and [defaultLastDate] when left out.
   final DateTime? firstDate;
   final DateTime? lastDate;
+
+  final String? errorText;
+  final String? helperText;
+  final Color? helperColor;
 
   static final DateTime defaultFirstDate = DateTime(2000);
   static final DateTime defaultLastDate = DateTime(2100);
@@ -92,6 +102,9 @@ class DateField extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(_radius),
+                border: errorText == null
+                    ? null
+                    : Border.all(color: colors.error),
               ),
               child: Row(
                 children: [
@@ -122,6 +135,19 @@ class DateField extends StatelessWidget {
             ),
           ),
         ),
+        if ((errorText ?? helperText) case final String note) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              note,
+              style: TextStyle(
+                color: errorText != null ? colors.error : helperColor,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,

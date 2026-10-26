@@ -3,11 +3,13 @@ import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 
 /// Bottom sheet to create a budget or edit one. It only collects and checks the input: the screen that opens it
 /// sends the request and reports a failure by returning its message from [onSubmit]. Pops with true once saved.
@@ -32,8 +34,21 @@ class BudgetFormSheet extends StatefulWidget {
 }
 
 class _BudgetFormSheetState extends State<BudgetFormSheet> {
+  /// The longest category name a user may type under "Khác" (core-backend's categories.name holds it).
+  static const int customCategoryMaxLength = 50;
+
   final _amountController = TextEditingController();
+  final _customCategoryController = TextEditingController();
   late String _periodType;
+
+  /// The period is the week, month or year that contains this day.
+  late DateTime _referenceDay;
+
+  /// Whether the user picked [_referenceDay]: until then, changing the period type of an edited budget moves it to
+  /// the current period.
+  bool _dayPicked = false;
+  bool _amountShown = false;
+  String? _customCategoryError;
 
   /// Null means the budget covers every category.
   BudgetCategory? _category;
@@ -43,36 +58,80 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
 
   bool get _isEditing => widget.budget != null;
 
-  /// An edited budget keeps its dates while its period type is unchanged; otherwise the current week or month.
-  bool get _keepsDates => widget.budget?.periodType == _periodType;
+  /// An edited budget keeps its dates while its period type is unchanged and the chosen day is inside them; otherwise
+  /// the week, month or year that contains the chosen day.
+  bool get _keepsDates {
+    final existing = widget.budget;
+    return existing != null &&
+        existing.periodType == _periodType &&
+        existing.coversDay(_referenceDay);
+  }
 
   ({DateTime start, DateTime end}) get _range {
     final existing = widget.budget;
     if (existing != null && _keepsDates) {
       return (start: existing.start, end: existing.end);
     }
-    return BudgetPeriodType.rangeContaining(_periodType, DateTime.now());
+    return BudgetPeriodType.rangeContaining(_periodType, _referenceDay);
   }
+
+  /// "Khác" is chosen: the budget is for a category the user names.
+  bool get _isCustomCategory =>
+      _category?.name == TransactionCategories.otherExpense;
 
   @override
   void initState() {
     super.initState();
     final existing = widget.budget;
     _periodType = existing?.periodType ?? BudgetPeriodType.month;
+    _referenceDay = existing?.start ?? DateTime.now();
     if (existing != null) {
-      _amountController.text = existing.amount.toStringAsFixed(0);
       final categoryId = existing.categoryId;
       if (categoryId != null) {
         _category = (id: categoryId, name: existing.categoryName ?? '');
+        if (_isCustomCategory) _customCategoryController.text = _category!.name;
       }
     }
     _loadCategories();
   }
 
+  /// The amount of an edited budget is grouped in the language of the app, which the context only knows from here on.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final existing = widget.budget;
+    if (_amountShown || existing == null) return;
+    _amountShown = true;
+    _amountController.text = MoneyInputFormatter.format(
+      existing.amount,
+      context.loc.localeName,
+    );
+  }
+
   @override
   void dispose() {
     _amountController.dispose();
+    _customCategoryController.dispose();
     super.dispose();
+  }
+
+  void _selectPeriodType(String type) {
+    setState(() {
+      _periodType = type;
+      if (!_dayPicked) {
+        final existing = widget.budget;
+        _referenceDay = existing != null && existing.periodType == type
+            ? existing.start
+            : DateTime.now();
+      }
+    });
+  }
+
+  void _selectDay(DateTime day) {
+    setState(() {
+      _referenceDay = day;
+      _dayPicked = true;
+    });
   }
 
   Future<void> _loadCategories() async {
@@ -110,20 +169,57 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
     return [selected, ...loaded];
   }
 
-  double? _parseAmount(String input) {
-    final digitsOnly = input.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.isEmpty) return null;
-    final value = double.tryParse(digitsOnly);
-    if (value == null || value <= 0) return null;
-    return value;
+  static String _normalise(String name) => name.trim().toLowerCase();
+
+  /// The category a name typed under "Khác" stands for. core-backend limits a budget to a category id, and a
+  /// transaction whose category is typed creates (or reuses) the category of exactly that name; the Ledger and the
+  /// Dashboard then measure a budget by the category's name, trimmed and ignoring case. So the name is looked up in
+  /// the categories of the server: the same spelling first, then ignoring case, then as the app shows a default one.
+  /// Null when no transaction has used that name yet.
+  BudgetCategory? _categoryNamed(String typed, AppLocalizations loc) {
+    final wanted = _normalise(typed);
+    for (final category in _categories) {
+      if (category.name.trim() == typed.trim()) return category;
+    }
+    for (final category in _categories) {
+      if (_normalise(category.name) == wanted) return category;
+    }
+    for (final category in _categories) {
+      if (_normalise(TransactionCategories.displayName(loc, category.name)) ==
+          wanted) {
+        return category;
+      }
+    }
+    return null;
   }
 
-  BudgetModel _buildBudget(double amount) {
+  /// The category the budget is sent with: the chosen chip, or the one named under "Khác". Null with
+  /// [_customCategoryError] set when the typed name cannot be used.
+  ({BudgetCategory? category, bool valid}) _resolveCategory(
+    AppLocalizations loc,
+  ) {
+    if (!_isCustomCategory) return (category: _category, valid: true);
+    final typed = _customCategoryController.text.trim();
+    String? error;
+    BudgetCategory? found;
+    if (typed.isEmpty) {
+      error = loc.budgetCustomCategoryRequired;
+    } else if (typed.length > customCategoryMaxLength) {
+      error = loc.budgetCustomCategoryTooLong(customCategoryMaxLength);
+    } else {
+      found = _categoryNamed(typed, loc);
+      if (found == null) error = loc.budgetCustomCategoryUnknown(typed);
+    }
+    setState(() => _customCategoryError = error);
+    return (category: found, valid: error == null);
+  }
+
+  BudgetModel _buildBudget(double amount, BudgetCategory? category) {
     final range = _range;
     return BudgetModel(
       id: widget.budget?.id,
-      categoryId: _category?.id,
-      categoryName: _category?.name,
+      categoryId: category?.id,
+      categoryName: category?.name,
       amount: amount,
       periodType: _periodType,
       startDate: BudgetModel.formatApiDate(range.start),
@@ -133,18 +229,23 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
   }
 
   Future<void> _save() async {
-    final amount = _parseAmount(_amountController.text);
+    final loc = context.loc;
+    final amount = MoneyInputFormatter.parse(_amountController.text);
     if (amount == null) {
       await AppDialog.error(
         context,
-        title: context.loc.commonInvalidAmountTitle,
-        message: context.loc.budgetAmountPositive,
+        title: loc.commonInvalidAmountTitle,
+        message: loc.budgetAmountPositive,
       );
       return;
     }
+    final resolved = _resolveCategory(loc);
+    if (!resolved.valid) return;
 
     setState(() => _isSaving = true);
-    final error = await widget.onSubmit(_buildBudget(amount));
+    final error = await widget.onSubmit(
+      _buildBudget(amount, resolved.category),
+    );
     if (!mounted) return;
     setState(() => _isSaving = false);
 
@@ -187,6 +288,7 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
               controller: _amountController,
               label: loc.budgetAmountLabel,
               keyboardType: TextInputType.number,
+              inputFormatters: [MoneyInputFormatter(loc.localeName)],
             ),
             const SizedBox(height: 20),
             _SectionLabel(loc.budgetPeriodLabel),
@@ -198,23 +300,40 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
                   _OptionChip(
                     label: BudgetPeriodType.label(loc, type),
                     selected: _periodType == type,
-                    onSelected: () => setState(() => _periodType = type),
+                    onSelected: () => _selectPeriodType(type),
                   ),
               ],
             ),
             const SizedBox(height: 12),
-            _PeriodPreview(
-              label: _keepsDates && _isEditing
-                  ? loc.budgetAppliedPeriod
-                  : _periodType == BudgetPeriodType.week
-                  ? loc.periodThisWeek
-                  : loc.periodThisMonth,
-              range: _range,
-            ),
+            _SectionLabel(loc.budgetPeriodDayLabel),
+            const SizedBox(height: 8),
+            DateField(value: _referenceDay, onChanged: _selectDay),
+            const SizedBox(height: 12),
+            _PeriodPreview(label: _previewLabel(loc), range: _range),
             const SizedBox(height: 20),
             _SectionLabel(loc.transactionCategoryLabel),
             const SizedBox(height: 8),
             _buildCategories(loc),
+            if (_isCustomCategory) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _customCategoryController,
+                maxLength: customCategoryMaxLength,
+                textCapitalization: TextCapitalization.sentences,
+                onChanged: (_) {
+                  if (_customCategoryError != null) {
+                    setState(() => _customCategoryError = null);
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: loc.budgetCustomCategoryLabel,
+                  helperText: loc.budgetCustomCategoryHelper,
+                  helperMaxLines: 2,
+                  errorText: _customCategoryError,
+                  errorMaxLines: 3,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             PrimaryButton(
               text: _isSaving ? loc.commonSaving : loc.budgetSave,
@@ -224,6 +343,19 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
         ),
       ),
     );
+  }
+
+  /// "Applied period" for the kept dates of an edited budget or a period without today, else "this week" (month, year).
+  String _previewLabel(AppLocalizations loc) {
+    if (_keepsDates) return loc.budgetAppliedPeriod;
+    final range = _range;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final containsToday =
+        !today.isBefore(range.start) && !today.isAfter(range.end);
+    return containsToday
+        ? BudgetPeriodType.currentLabel(loc, _periodType)
+        : loc.budgetAppliedPeriod;
   }
 
   Widget _buildCategories(AppLocalizations loc) {

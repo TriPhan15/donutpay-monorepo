@@ -8,6 +8,7 @@ import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
+import 'package:finance_ai_app/widgets/common/demo_badge.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 class LinkedServicesPage extends StatefulWidget {
@@ -187,9 +188,18 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
       // The icons take the app bar theme (onSurface).
       appBar: AppBar(
         backgroundColor: colors.surface,
-        title: Text(
-          loc.profileLinkedServices,
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                loc.profileLinkedServices,
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const DemoBadge(),
+          ],
         ),
         actions: [
           IconButton(
@@ -216,6 +226,8 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
               loc.linkedWalletsDescription,
               style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
             ),
+            const SizedBox(height: 12),
+            _demoNotice(colors, loc),
             const SizedBox(height: 16),
             ..._wallets.map(
               (w) =>
@@ -241,6 +253,34 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  /// The wallets here are simulated (provider MOCK): said in full, so nobody takes them for a real bank connection.
+  Widget _demoNotice(ColorScheme colors, AppLocalizations loc) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.tertiaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.science_outlined,
+            size: 18,
+            color: colors.onTertiaryContainer,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              loc.linkedDemoNotice,
+              style: TextStyle(color: colors.onTertiaryContainer, fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
   }

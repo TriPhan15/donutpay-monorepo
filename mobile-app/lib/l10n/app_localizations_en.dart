@@ -67,10 +67,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t mark your notifications as read. Please try again.';
 
   @override
-  String get notificationsDetailUnavailable =>
-      'This notification can\'t be opened yet.';
-
-  @override
   String get notificationsTransactionNotFound =>
       'The transaction of this notification wasn\'t found; it may have been deleted.';
 
@@ -768,27 +764,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get pinSetupTitle => 'Create / change PIN';
-
-  @override
-  String get pinSetupSubtitle => 'Protect the app with a 4-digit code';
-
-  @override
-  String get pinNewLabel => 'New PIN';
-
-  @override
-  String get pinConfirmLabel => 'Confirm PIN';
-
-  @override
-  String get pinLengthInvalid => 'The PIN must be exactly 4 digits.';
-
-  @override
-  String get pinMismatch => 'The PINs do not match.';
-
-  @override
-  String get pinSaved => 'PIN saved.';
-
-  @override
   String get helpDashboardTitle => 'Dashboard';
 
   @override
@@ -884,9 +859,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get savingsSavedAmount => 'Saved so far (₫)';
 
   @override
-  String get savingsDeadlineField => 'Deadline (dd/mm/yyyy)';
-
-  @override
   String savingsUpdateTitle(String title) {
     return 'Update: $title';
   }
@@ -924,11 +896,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get savingsEmptyHint => 'Tap \"+\" to create a savings goal.';
-
-  @override
-  String savingsDeadline(String date) {
-    return 'Due: $date';
-  }
 
   @override
   String get savingsUpdate => 'Update';
@@ -1574,12 +1541,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardVsLastMonth => 'vs. last month';
 
   @override
-  String get dashboardReports => 'Reports';
-
-  @override
-  String get dashboardAllFeatures => 'All';
-
-  @override
   String get dashboardNoTransactions => 'No transactions yet.';
 
   @override
@@ -1807,4 +1768,143 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dateFieldPick => 'Choose a date';
+
+  @override
+  String get dashboardScanReceipt => 'Scan receipt';
+
+  @override
+  String get reviewOpenImage => 'Receipt photo';
+
+  @override
+  String get reviewCompareOn => 'Compare with the photo';
+
+  @override
+  String get reviewCompareOff => 'Leave compare mode';
+
+  @override
+  String reviewOtherMonthBalanceNote(String day) {
+    return 'A transaction dated $day still counts toward your current balance';
+  }
+
+  @override
+  String reviewDuplicateTitle(String date) {
+    return 'This receipt seems to have been saved on $date';
+  }
+
+  @override
+  String get reviewDuplicateTitleNoDate =>
+      'This receipt seems to have been saved before';
+
+  @override
+  String get reviewDuplicateMessage =>
+      'Open the saved one to check it, or save anyway if this is another purchase.';
+
+  @override
+  String get reviewDuplicateView => 'View saved one';
+
+  @override
+  String get reviewDuplicateSaveAnyway => 'Save anyway';
+
+  @override
+  String get reviewDuplicateCannotOpen =>
+      'The saved one can\'t be opened from here. You can find it in the Statistics tab.';
+
+  @override
+  String get linkedDemoBadge => 'Demo';
+
+  @override
+  String get linkedDemoNotice =>
+      'This is a demo: the wallets and synced payments are simulated, with no real bank or e-wallet connection.';
+
+  @override
+  String get budgetPeriodYear => 'Year';
+
+  @override
+  String get periodThisYear => 'This year';
+
+  @override
+  String get budgetPeriodDayLabel => 'Period that contains';
+
+  @override
+  String get budgetCustomCategoryLabel => 'Category name';
+
+  @override
+  String get budgetCustomCategoryHelper =>
+      'Type it as you name it in your transactions';
+
+  @override
+  String get budgetCustomCategoryRequired => 'Enter the category name';
+
+  @override
+  String budgetCustomCategoryTooLong(int max) {
+    return 'At most $max characters';
+  }
+
+  @override
+  String budgetCustomCategoryUnknown(String name) {
+    return 'No transaction uses the category \"$name\" yet. Record one with this category first, then set its budget.';
+  }
+
+  @override
+  String ledgerYearLabel(String year) {
+    return 'Year $year';
+  }
+
+  @override
+  String get categorySavings => 'Savings';
+
+  @override
+  String get savingsSavedAmountHint =>
+      'Leave empty if there is none yet or you don\'t remember; you can change it later';
+
+  @override
+  String get savingsTargetDateField => 'Target date';
+
+  @override
+  String get savingsTargetDateAdd => 'Add a target date (optional)';
+
+  @override
+  String get savingsTargetDateClear => 'Remove the target date';
+
+  @override
+  String savingsTargetDateShown(String date) {
+    return 'Target date: $date';
+  }
+
+  @override
+  String get savingsContribute => 'Add money';
+
+  @override
+  String savingsContributeTitle(String title) {
+    return 'Add money: $title';
+  }
+
+  @override
+  String get savingsContributeAmount => 'Amount (₫)';
+
+  @override
+  String get savingsContributeHelper =>
+      'Taken from your wallet and recorded as a \"Savings\" expense';
+
+  @override
+  String get savingsContributeInvalidAmount => 'Enter an amount greater than 0';
+
+  @override
+  String savingsContributeFailed(String reason) {
+    return 'Could not add the money. $reason';
+  }
+
+  @override
+  String get savingsContributeRejected =>
+      'Check the amount and your wallet balance.';
+
+  @override
+  String savingsContributed(String title) {
+    return 'Money added to \"$title\"';
+  }
+
+  @override
+  String savingsGoalReached(String title) {
+    return 'Congratulations! You reached your goal \"$title\"';
+  }
 }

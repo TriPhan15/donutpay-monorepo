@@ -28,7 +28,7 @@ import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
 
 import 'add_transaction_page.dart';
 
-enum LedgerPeriod { week, month }
+enum LedgerPeriod { week, month, year }
 
 class LedgerPage extends StatefulWidget {
   const LedgerPage({super.key});
@@ -38,6 +38,11 @@ class LedgerPage extends StatefulWidget {
 }
 
 class LedgerPageState extends State<LedgerPage> {
+  static const int _monthsPerYear = 12;
+
+  /// The month chart shows the selected month and this many before it.
+  static const int _monthsBeforeSelected = 5;
+
   bool _isLoading = true;
 
   /// True when the list of the server could not be loaded: [_transactions] then holds only the transactions of this
@@ -184,19 +189,31 @@ class LedgerPageState extends State<LedgerPage> {
   /// The budgets that overlap the period on screen, each measured over its own dates. It is kept in state because a
   /// keystroke in the search box rebuilds the page, and that must not recompute it.
   void _refreshBudgetProgress() {
-    final from = _period == LedgerPeriod.week
-        ? _weekStart
-        : DateTime(_selectedDate.year, _selectedDate.month, 1);
-    final to = _period == LedgerPeriod.week
-        ? _weekEnd.subtract(const Duration(days: 1))
-        : DateTime(_selectedDate.year, _selectedDate.month + 1, 0);
     _budgetProgress = BudgetProgress.overlapping(
-      from,
-      to,
+      _periodStart,
+      _periodLastDay,
       _budgets,
       _transactions,
     );
   }
+
+  /// The first day of the week, month or year on screen.
+  DateTime get _periodStart => switch (_period) {
+    LedgerPeriod.week => _weekStart,
+    LedgerPeriod.month => DateTime(_selectedDate.year, _selectedDate.month, 1),
+    LedgerPeriod.year => DateTime(_selectedDate.year, 1, 1),
+  };
+
+  /// The last day of the week, month or year on screen (the whole day belongs to the period).
+  DateTime get _periodLastDay => switch (_period) {
+    LedgerPeriod.week => _weekEnd.subtract(const Duration(days: 1)),
+    LedgerPeriod.month => DateTime(
+      _selectedDate.year,
+      _selectedDate.month + 1,
+      0,
+    ),
+    LedgerPeriod.year => DateTime(_selectedDate.year, 12, 31),
+  };
 
   DateTime get _weekStart {
     final d = _selectedDate;
@@ -206,19 +223,26 @@ class LedgerPageState extends State<LedgerPage> {
 
   DateTime get _weekEnd => _weekStart.add(const Duration(days: 7));
 
-  bool _inSelectedPeriod(DateTime date) {
-    if (_period == LedgerPeriod.week) {
-      return !date.isBefore(_weekStart) && date.isBefore(_weekEnd);
-    }
-    return date.year == _selectedDate.year && date.month == _selectedDate.month;
-  }
+  bool _inSelectedPeriod(DateTime date) => switch (_period) {
+    LedgerPeriod.week => !date.isBefore(_weekStart) && date.isBefore(_weekEnd),
+    LedgerPeriod.month =>
+      date.year == _selectedDate.year && date.month == _selectedDate.month,
+    LedgerPeriod.year => date.year == _selectedDate.year,
+  };
+
+  /// Whether the period on screen is the one of today: the "Today" button is offered only when it is not.
+  bool get _showsToday => _inSelectedPeriod(DateTime.now());
 
   String _periodLabel(AppLocalizations loc) {
-    if (_period == LedgerPeriod.week) {
-      final e = _weekEnd.subtract(const Duration(days: 1));
-      return '${DateFormat('dd/MM').format(_weekStart)} - ${DateFormat('dd/MM/yyyy').format(e)}';
+    switch (_period) {
+      case LedgerPeriod.week:
+        final e = _weekEnd.subtract(const Duration(days: 1));
+        return '${DateFormat('dd/MM').format(_weekStart)} - ${DateFormat('dd/MM/yyyy').format(e)}';
+      case LedgerPeriod.month:
+        return _monthLabel(loc);
+      case LedgerPeriod.year:
+        return loc.ledgerYearLabel('${_selectedDate.year}');
     }
-    return _monthLabel(loc);
   }
 
   /// The selected month as the language of [loc] names it, e.g. "October 2026".
@@ -262,18 +286,38 @@ class LedgerPageState extends State<LedgerPage> {
       .fold(0.0, (s, tx) => s + tx.amount);
 
   void _shiftPeriod(int dir) {
+    _showPeriodOf(switch (_period) {
+      LedgerPeriod.week => _selectedDate.add(Duration(days: 7 * dir)),
+      LedgerPeriod.month => DateTime(
+        _selectedDate.year,
+        _selectedDate.month + dir,
+        1,
+      ),
+      LedgerPeriod.year => DateTime(
+        _selectedDate.year + dir,
+        _selectedDate.month,
+        1,
+      ),
+    });
+  }
+
+  /// Moves the page to the week, month or year (whichever is on screen) that contains [day].
+  void _showPeriodOf(DateTime day) {
+    if (!mounted) return;
     setState(() {
-      if (_period == LedgerPeriod.week) {
-        _selectedDate = _selectedDate.add(Duration(days: 7 * dir));
-      } else {
-        _selectedDate = DateTime(
-          _selectedDate.year,
-          _selectedDate.month + dir,
-          1,
-        );
-      }
+      _selectedDate = day;
       _refreshBudgetProgress();
     });
+  }
+
+  /// The add form tells the date of what it saved: the page moves to its period, so the new transaction is in sight.
+  void _openAddTransaction() {
+    Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddTransactionPage(onSaved: _showPeriodOf),
+      ),
+    );
   }
 
   @override
@@ -323,12 +367,7 @@ class LedgerPageState extends State<LedgerPage> {
           ),
           IconButton(
             icon: Icon(Icons.add_box_rounded, color: colors.primary),
-            onPressed: () {
-              Navigator.push<bool>(
-                context,
-                MaterialPageRoute(builder: (_) => const AddTransactionPage()),
-              );
-            },
+            onPressed: _openAddTransaction,
           ),
         ],
       ),
@@ -450,14 +489,34 @@ class LedgerPageState extends State<LedgerPage> {
         _circleBtn(colors, Icons.chevron_left_rounded, () => _shiftPeriod(-1)),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            _periodLabel(loc),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colors.onSurfaceVariant,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _periodLabel(loc),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (!_showsToday)
+                TextButton.icon(
+                  key: const ValueKey('ledger-today'),
+                  onPressed: () => _showPeriodOf(DateTime.now()),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  icon: const Icon(Icons.today_rounded, size: 16),
+                  label: Text(loc.dateFieldToday),
+                ),
+            ],
           ),
         ),
         const SizedBox(width: 12),
@@ -492,6 +551,10 @@ class LedgerPageState extends State<LedgerPage> {
                 DropdownMenuItem(
                   value: LedgerPeriod.month,
                   child: Text(loc.budgetPeriodMonth),
+                ),
+                DropdownMenuItem(
+                  value: LedgerPeriod.year,
+                  child: Text(loc.budgetPeriodYear),
                 ),
               ],
               onChanged: (v) {
@@ -560,13 +623,26 @@ class LedgerPageState extends State<LedgerPage> {
         labels.add(_wdShort(day, loc));
       }
     } else {
-      for (int i = 5; i >= 0; i--) {
-        final m = DateTime(_selectedDate.year, _selectedDate.month - i);
+      // A month shows it and the 5 before it; a year shows its 12 months.
+      final months = _period == LedgerPeriod.year
+          ? [
+              for (var month = 1; month <= _monthsPerYear; month++)
+                DateTime(_selectedDate.year, month),
+            ]
+          : [
+              for (var i = _monthsBeforeSelected; i >= 0; i--)
+                DateTime(_selectedDate.year, _selectedDate.month - i),
+            ];
+      for (final m in months) {
         income.add(_sumOn(m, false, isDay: false));
         expense.add(_sumOn(m, true, isDay: false));
         labels.add(loc.ledgerChartMonth('${m.month}'));
       }
     }
+    // 12 groups must fit a phone: narrower bars and labels for the year.
+    final isYear = _period == LedgerPeriod.year;
+    final barWidth = isYear ? 4.0 : 7.0;
+    final barsSpace = isYear ? 2.0 : 4.0;
 
     double maxV = 1;
     for (final v in [...income, ...expense]) {
@@ -577,7 +653,10 @@ class LedgerPageState extends State<LedgerPage> {
       color: colors.onSurfaceVariant.withValues(alpha: 0.15),
       strokeWidth: 1,
     );
-    final labelStyle = TextStyle(color: colors.onSurfaceVariant, fontSize: 11);
+    final labelStyle = TextStyle(
+      color: colors.onSurfaceVariant,
+      fontSize: isYear ? 9 : 11,
+    );
 
     return BarChart(
       BarChartData(
@@ -609,7 +688,12 @@ class LedgerPageState extends State<LedgerPage> {
                 if (i < 0 || i >= labels.length) return const SizedBox();
                 return Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(labels[i], style: labelStyle),
+                  child: Text(
+                    labels[i],
+                    style: labelStyle,
+                    maxLines: 1,
+                    softWrap: false,
+                  ),
                 );
               },
             ),
@@ -619,18 +703,18 @@ class LedgerPageState extends State<LedgerPage> {
           labels.length,
           (i) => BarChartGroupData(
             x: i,
-            barsSpace: 4,
+            barsSpace: barsSpace,
             barRods: [
               BarChartRodData(
                 toY: income[i],
                 color: semantic.incomeColor,
-                width: 7,
+                width: barWidth,
                 borderRadius: BorderRadius.circular(4),
               ),
               BarChartRodData(
                 toY: expense[i],
                 color: semantic.expenseColor,
-                width: 7,
+                width: barWidth,
                 borderRadius: BorderRadius.circular(4),
               ),
             ],

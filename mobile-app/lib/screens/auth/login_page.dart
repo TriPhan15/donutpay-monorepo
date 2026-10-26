@@ -1,6 +1,7 @@
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
@@ -17,6 +18,11 @@ import 'register_page.dart';
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
+  /// The page a successful sign-in opens, in place of every route. Only tests replace it, so that a sign-in can be
+  /// checked without the whole app behind it.
+  @visibleForTesting
+  static WidgetBuilder home = (_) => const MainScaffold();
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -29,6 +35,21 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _isLoginLoading = false;
   bool _isSocialLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fillRememberedEmail();
+  }
+
+  /// The email of the last sign-in made with "remember me", after a sign-out or a restart. Never over what the user has
+  /// already started to type.
+  Future<void> _fillRememberedEmail() async {
+    final email = await SessionService.rememberedEmail();
+    if (!mounted || email == null || _emailController.text.isNotEmpty) return;
+    _emailController.text = email;
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -88,6 +109,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       await SessionService.setCurrentUserId(userId);
+      await SessionService.rememberEmail(_rememberMe ? normalizedEmail : null);
+      // Tells the password manager of the system that the sign-in worked, so it offers to save the email and password.
+      TextInput.finishAutofillContext();
 
       AppRepository.instance
           .getHomeSummary(userId)
@@ -95,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainScaffold()),
+        MaterialPageRoute(builder: LoginScreen.home),
         (route) => false,
       );
     } catch (e) {
@@ -157,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainScaffold()),
+        MaterialPageRoute(builder: LoginScreen.home),
         (route) => false,
       );
     } on SocialSignInCancelled {
@@ -211,27 +235,37 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
               ),
               const SizedBox(height: 36),
-              _label(loc.authEmailLabel),
-              _input(
-                controller: _emailController,
-                hint: loc.authEmailHint,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 18),
-              _label(loc.authPasswordLabel),
-              _input(
-                controller: _passwordController,
-                hint: loc.authPasswordHint,
-                obscure: _obscure,
-                suffix: IconButton(
-                  icon: Icon(
-                    _obscure
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: colors.onSurfaceVariant,
-                    size: 20,
-                  ),
-                  onPressed: () => setState(() => _obscure = !_obscure),
+              // One autofill group, so the password manager of the system fills in and saves both fields together.
+              AutofillGroup(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _label(loc.authEmailLabel),
+                    _input(
+                      controller: _emailController,
+                      hint: loc.authEmailHint,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
+                    ),
+                    const SizedBox(height: 18),
+                    _label(loc.authPasswordLabel),
+                    _input(
+                      controller: _passwordController,
+                      hint: loc.authPasswordHint,
+                      obscure: _obscure,
+                      autofillHints: const [AutofillHints.password],
+                      suffix: IconButton(
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: colors.onSurfaceVariant,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -387,11 +421,13 @@ class _LoginScreenState extends State<LoginScreen> {
     bool obscure = false,
     Widget? suffix,
     TextInputType? keyboardType,
+    Iterable<String>? autofillHints,
   }) {
     return TextField(
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
+      autofillHints: autofillHints,
       decoration: InputDecoration(hintText: hint, suffixIcon: suffix),
     );
   }

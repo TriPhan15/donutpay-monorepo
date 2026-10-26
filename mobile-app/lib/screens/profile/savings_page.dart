@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
+import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 
 class SavingsPage extends StatefulWidget {
   const SavingsPage({super.key});
@@ -56,8 +59,15 @@ class _SavingsPageState extends State<SavingsPage> {
   double get _totalTarget =>
       _goals.fold(0.0, (s, g) => s + ((g['target'] as num?) ?? 0).toDouble());
 
-  static double _amountOf(String text) =>
-      double.tryParse(text.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+  /// The goals store the target date as text in this pattern (the demo data of core-backend writes it the same way).
+  static final DateFormat _targetDateFormat = DateFormat(
+    DateField.displayPattern,
+  );
+
+  /// An amount typed in a money field; 0 when it is left empty.
+  static double _amountOf(String text) => MoneyInputFormatter.parse(text) ?? 0;
+
+  static double _numberOf(Object? value) => ((value as num?) ?? 0).toDouble();
 
   /// After a write on the server: the AI tab and this list read the savings again.
   void _afterWrite() {
@@ -73,20 +83,28 @@ class _SavingsPageState extends State<SavingsPage> {
         title: loc.savingsAddTitle,
         submitLabel: loc.savingsAdd,
         fields: [
-          _SavingField(loc.savingsGoalName, TextInputType.text),
-          _SavingField(loc.savingsTargetAmount, TextInputType.number),
-          _SavingField(loc.savingsSavedAmount, TextInputType.number),
-          _SavingField(loc.savingsDeadlineField, TextInputType.text),
+          _SavingField(loc.savingsGoalName),
+          _SavingField(loc.savingsTargetAmount, isMoney: true),
+          _SavingField(
+            loc.savingsSavedAmount,
+            isMoney: true,
+            helperText: loc.savingsSavedAmountHint,
+          ),
         ],
-        onSubmit: (values) async {
+        offersTargetDate: true,
+        onSubmit: (values, targetDate) async {
           final title = values[0].trim();
           final target = _amountOf(values[1]);
           if (title.isEmpty || target <= 0) return false;
+          final deadline = targetDate == null
+              ? null
+              : _targetDateFormat.format(targetDate);
           await RemoteApiHelper.instance.addSaving({
             'title': title,
             'target': target,
+            // Optional: an empty field is a goal that starts from nothing.
             'current': _amountOf(values[2]),
-            'deadline': values[3].trim(),
+            'deadline': ?deadline,
           });
           _afterWrite();
           return true;
@@ -106,11 +124,14 @@ class _SavingsPageState extends State<SavingsPage> {
         fields: [
           _SavingField(
             loc.savingsCurrentAmount,
-            TextInputType.number,
-            initialText: ((goal['current'] as num?) ?? 0).toInt().toString(),
+            isMoney: true,
+            initialText: MoneyInputFormatter.format(
+              _numberOf(goal['current']),
+              loc.localeName,
+            ),
           ),
         ],
-        onSubmit: (values) async {
+        onSubmit: (values, _) async {
           await RemoteApiHelper.instance.updateSavingCurrent(
             goal['id'].toString(),
             _amountOf(values[0]),
@@ -120,6 +141,38 @@ class _SavingsPageState extends State<SavingsPage> {
         },
       ),
     );
+  }
+
+  /// Opens the amount sheet of [goal]; once the money is moved, the list shows the goal as the server now has it and
+  /// the user is told, with congratulations when the goal is reached.
+  Future<void> _contribute(Map<String, dynamic> goal) async {
+    final goalId = goal['id'].toString();
+    final updated = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _ContributeSheet(
+        goalTitle: '${goal['title']}',
+        onSubmit: (amount) =>
+            RemoteApiHelper.instance.contributeToSaving(goalId, amount),
+      ),
+    );
+    if (updated == null || !mounted) return;
+    final index = _goals.indexWhere((g) => g['id'].toString() == goalId);
+    setState(() {
+      if (index >= 0) _goals[index] = updated;
+    });
+    _afterWrite();
+
+    final loc = context.loc;
+    final title = '${updated['title'] ?? goal['title']}';
+    final target = _numberOf(updated['target']);
+    final current = _numberOf(updated['current']);
+    if (target > 0 && current >= target) {
+      AppToast.success(context, loc.savingsGoalReached(title));
+    } else {
+      AppToast.success(context, loc.savingsContributed(title));
+    }
   }
 
   /// Removes the goal at once; when the server refuses or cannot be reached, it comes back where it was.
@@ -469,7 +522,7 @@ class _SavingsPageState extends State<SavingsPage> {
                                     if ((g['deadline']?.toString() ?? '')
                                         .isNotEmpty)
                                       Text(
-                                        context.loc.savingsDeadline(
+                                        context.loc.savingsTargetDateShown(
                                           '${g['deadline']}',
                                         ),
                                         style: smallStyle,
@@ -543,6 +596,22 @@ class _SavingsPageState extends State<SavingsPage> {
                               Text(_money(current), style: smallStyle),
                               Text('/ ${_money(target)}', style: smallStyle),
                             ],
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: FilledButton.tonalIcon(
+                              key: ValueKey('savings-contribute-$goalId'),
+                              onPressed: () => _contribute(g),
+                              style: FilledButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              icon: const Icon(
+                                Icons.add_card_rounded,
+                                size: 18,
+                              ),
+                              label: Text(context.loc.savingsContribute),
+                            ),
                           ),
                         ],
                       ),
@@ -649,13 +718,19 @@ class _SavingsPageState extends State<SavingsPage> {
   }
 }
 
-/// One text field of a [_SavingFormDialog].
+/// One text field of a [_SavingFormDialog]. A money field groups the digits as they are typed.
 class _SavingField {
   final String label;
-  final TextInputType keyboardType;
+  final bool isMoney;
   final String initialText;
+  final String? helperText;
 
-  const _SavingField(this.label, this.keyboardType, {this.initialText = ''});
+  const _SavingField(
+    this.label, {
+    this.isMoney = false,
+    this.initialText = '',
+    this.helperText,
+  });
 }
 
 /// The add and update dialogs of the savings. It owns its controllers (disposed with it, after the route is gone) and
@@ -665,14 +740,19 @@ class _SavingFormDialog extends StatefulWidget {
   final String submitLabel;
   final List<_SavingField> fields;
 
+  /// Adds the optional target date under the fields; [onSubmit] gets it (null when none was picked).
+  final bool offersTargetDate;
+
   /// Returns false when the values are not acceptable (the dialog stays open), throws when the request fails.
-  final Future<bool> Function(List<String> values) onSubmit;
+  final Future<bool> Function(List<String> values, DateTime? targetDate)
+  onSubmit;
 
   const _SavingFormDialog({
     required this.title,
     required this.submitLabel,
     required this.fields,
     required this.onSubmit,
+    this.offersTargetDate = false,
   });
 
   @override
@@ -686,6 +766,7 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
   ];
   bool _isSaving = false;
   String? _error;
+  DateTime? _targetDate;
 
   @override
   void dispose() {
@@ -704,6 +785,7 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
     try {
       final accepted = await widget.onSubmit(
         _controllers.map((c) => c.text).toList(),
+        _targetDate,
       );
       if (!mounted) return;
       if (accepted) {
@@ -726,9 +808,14 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
     final field = widget.fields[index];
     return TextField(
       controller: _controllers[index],
-      keyboardType: field.keyboardType,
+      keyboardType: field.isMoney ? TextInputType.number : TextInputType.text,
+      inputFormatters: field.isMoney
+          ? [MoneyInputFormatter(context.loc.localeName)]
+          : null,
       decoration: InputDecoration(
         labelText: field.label,
+        helperText: field.helperText,
+        helperMaxLines: 3,
         labelStyle: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
         filled: true,
         border: OutlineInputBorder(
@@ -736,6 +823,47 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
           borderSide: BorderSide.none,
         ),
       ),
+    );
+  }
+
+  /// Optional: a button until a day is picked, then the day with a way to remove it again.
+  Widget _buildTargetDate(ColorScheme colors) {
+    final loc = context.loc;
+    final targetDate = _targetDate;
+    if (targetDate == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => setState(() => _targetDate = DateTime.now()),
+          icon: const Icon(Icons.event_rounded, size: 18),
+          label: Text(loc.savingsTargetDateAdd),
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                loc.savingsTargetDateField,
+                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+              ),
+            ),
+            IconButton(
+              tooltip: loc.savingsTargetDateClear,
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close_rounded, color: colors.onSurfaceVariant),
+              onPressed: () => setState(() => _targetDate = null),
+            ),
+          ],
+        ),
+        DateField(
+          value: targetDate,
+          onChanged: (day) => setState(() => _targetDate = day),
+        ),
+      ],
     );
   }
 
@@ -756,6 +884,10 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
             for (var i = 0; i < widget.fields.length; i++) ...[
               if (i > 0) const SizedBox(height: 10),
               _field(colors, i),
+            ],
+            if (widget.offersTargetDate) ...[
+              const SizedBox(height: 12),
+              _buildTargetDate(colors),
             ],
             if (error != null) ...[
               const SizedBox(height: 10),
@@ -782,6 +914,119 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
           child: Text(widget.submitLabel),
         ),
       ],
+    );
+  }
+}
+
+/// The amount sheet of "Add money". It sends once (the button is disabled while the request runs, and a second tap is
+/// ignored), pops with the goal the server returns, and stays open with a toast when the transfer is refused.
+class _ContributeSheet extends StatefulWidget {
+  final String goalTitle;
+
+  /// Moves the amount into the goal and returns the goal as it is now; throws when it is refused.
+  final Future<Map<String, dynamic>> Function(double amount) onSubmit;
+
+  const _ContributeSheet({required this.goalTitle, required this.onSubmit});
+
+  @override
+  State<_ContributeSheet> createState() => _ContributeSheetState();
+}
+
+class _ContributeSheetState extends State<_ContributeSheet> {
+  final _amountController = TextEditingController();
+  bool _isSending = false;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isSending) return;
+    final loc = context.loc;
+    final amount = MoneyInputFormatter.parse(_amountController.text);
+    if (amount == null) {
+      AppToast.error(context, loc.savingsContributeInvalidAmount);
+      return;
+    }
+    setState(() => _isSending = true);
+    final Map<String, dynamic> updated;
+    try {
+      updated = await widget.onSubmit(amount);
+    } catch (e) {
+      UserFacingError.log('Savings contribution', e);
+      if (!mounted) return;
+      setState(() => _isSending = false);
+      AppToast.error(
+        context,
+        loc.savingsContributeFailed(
+          UserFacingError.messageOf(
+            e,
+            loc,
+            rejectedMessage: loc.savingsContributeRejected,
+          ),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    Navigator.pop(context, updated);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              loc.savingsContributeTitle(widget.goalTitle),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _amountController,
+              autofocus: true,
+              enabled: !_isSending,
+              keyboardType: TextInputType.number,
+              inputFormatters: [MoneyInputFormatter(loc.localeName)],
+              decoration: InputDecoration(
+                labelText: loc.savingsContributeAmount,
+                helperText: loc.savingsContributeHelper,
+                helperMaxLines: 3,
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _isSending ? null : _submit,
+              child: _isSending
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    )
+                  : Text(loc.savingsContribute),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

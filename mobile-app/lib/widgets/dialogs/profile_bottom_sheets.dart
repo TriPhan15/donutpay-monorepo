@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
@@ -233,42 +232,6 @@ class ProfileBottomSheets {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      Icons.pin_rounded,
-                      color: colors.onPrimaryContainer,
-                      size: 20,
-                    ),
-                  ),
-                  title: Text(
-                    ctx.loc.pinSetupTitle,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  subtitle: Text(
-                    ctx.loc.pinSetupSubtitle,
-                    style: subtitleStyle,
-                  ),
-                  trailing: Icon(
-                    Icons.chevron_right_rounded,
-                    color: chevronColor,
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    showPinSetup(context);
-                  },
-                ),
-                Divider(
-                  height: 1,
-                  indent: 60,
-                  endIndent: 16,
-                  color: colors.onSurfaceVariant.withValues(alpha: 0.1),
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
                       Icons.history_rounded,
                       color: colors.onPrimaryContainer,
                       size: 20,
@@ -294,103 +257,6 @@ class ProfileBottomSheets {
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-
-  static void showPinSetup(BuildContext context) {
-    final pinCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final colors = Theme.of(ctx).colorScheme;
-        final loc = ctx.loc;
-        // The fields take their fill and outline from the theme's inputDecorationTheme.
-        final secondaryStyle = TextStyle(color: colors.onSurfaceVariant);
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            loc.pinSetupTitle,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: pinCtrl,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 4,
-                style: const TextStyle(letterSpacing: 8),
-                decoration: InputDecoration(
-                  labelText: loc.pinNewLabel,
-                  labelStyle: secondaryStyle,
-                  filled: true,
-                  counterStyle: secondaryStyle,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: confirmCtrl,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 4,
-                style: const TextStyle(letterSpacing: 8),
-                decoration: InputDecoration(
-                  labelText: loc.pinConfirmLabel,
-                  labelStyle: secondaryStyle,
-                  filled: true,
-                  counterStyle: secondaryStyle,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                loc.dialogCancel,
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () async {
-                final pin = pinCtrl.text.trim();
-                final confirm = confirmCtrl.text.trim();
-                if (pin.length != 4) {
-                  AppToast.error(context, loc.pinLengthInvalid);
-                  return;
-                }
-                if (pin != confirm) {
-                  AppToast.error(context, loc.pinMismatch);
-                  return;
-                }
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('app_pin', pin);
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-                AppToast.success(context, loc.pinSaved);
-              },
-              child: Text(loc.commonSave),
-            ),
-          ],
         );
       },
     );

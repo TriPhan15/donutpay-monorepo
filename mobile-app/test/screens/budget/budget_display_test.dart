@@ -443,7 +443,8 @@ void main() {
 
         await pump(tester, app);
 
-        expect(find.text('Ngân sách'), findsNothing);
+        // Only the shortcut of the utility grid carries the word, there is no budget block.
+        expect(find.text('Ngân sách'), findsOneWidget);
         expect(find.byType(BudgetProgressCard), findsNothing);
         expect(find.byType(Dialog), findsNothing);
       },

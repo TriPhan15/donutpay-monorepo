@@ -734,4 +734,19 @@ class RemoteApiHelper {
     await _dio.delete('/api/savings/$id');
     dataChangedNotifier.value++;
   }
+
+  /// POST /api/savings/{id}/contributions: moves [amount] from the wallet into the goal [id]. The server records it as
+  /// an expense in the "Tiết kiệm" category, so the balance and the Ledger change too. Returns the goal as it is now
+  /// (`{id, title, target, current, deadline}`); throws when it is refused (e.g. 400 when the wallet is too low).
+  Future<Map<String, dynamic>> contributeToSaving(
+    String id,
+    double amount,
+  ) async {
+    final res = await _dio.post(
+      '/api/savings/$id/contributions',
+      data: {'amount': amount},
+    );
+    dataChangedNotifier.value++;
+    return Map<String, dynamic>.from(res.data['data'] as Map);
+  }
 }

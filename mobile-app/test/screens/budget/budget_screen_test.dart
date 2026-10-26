@@ -64,6 +64,10 @@ void main() {
   });
 
   Future<void> pumpScreen(WidgetTester tester) async {
+    // Tall enough for the whole form sheet (amount, period, day, categories, save) without scrolling.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(_app(const BudgetScreen()));
     await tester.pumpAndSettle();
   }
@@ -346,7 +350,7 @@ void main() {
         expect(find.text('Sửa ngân sách'), findsOneWidget);
         expect(
           tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          '2000000',
+          '2.000.000',
         );
 
         await tester.enterText(find.byType(TextField), '2500000');

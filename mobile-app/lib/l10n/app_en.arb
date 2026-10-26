@@ -72,10 +72,6 @@
   "@notificationsMarkAllReadFailed": {
     "description": "Snackbar shown when marking every notification as read failed; they show as unread again."
   },
-  "notificationsDetailUnavailable": "This notification can't be opened yet.",
-  "@notificationsDetailUnavailable": {
-    "description": "Snackbar shown when the tapped notification has no screen to open in the app yet."
-  },
   "notificationsTransactionNotFound": "The transaction of this notification wasn't found; it may have been deleted.",
   "@notificationsTransactionNotFound": {
     "description": "Snackbar on the Ledger when a tapped notification points to a transaction that is not in the user's list (for example deleted)."
@@ -999,34 +995,6 @@
       }
     }
   },
-  "pinSetupTitle": "Create / change PIN",
-  "@pinSetupTitle": {
-    "description": "Security menu row and title of the PIN dialog."
-  },
-  "pinSetupSubtitle": "Protect the app with a 4-digit code",
-  "@pinSetupSubtitle": {
-    "description": "Subtitle of the PIN row."
-  },
-  "pinNewLabel": "New PIN",
-  "@pinNewLabel": {
-    "description": "Label of the new PIN field."
-  },
-  "pinConfirmLabel": "Confirm PIN",
-  "@pinConfirmLabel": {
-    "description": "Label of the PIN confirmation field."
-  },
-  "pinLengthInvalid": "The PIN must be exactly 4 digits.",
-  "@pinLengthInvalid": {
-    "description": "Shown when the PIN is not 4 digits."
-  },
-  "pinMismatch": "The PINs do not match.",
-  "@pinMismatch": {
-    "description": "Shown when the PIN confirmation differs."
-  },
-  "pinSaved": "PIN saved.",
-  "@pinSaved": {
-    "description": "Snackbar after the PIN is saved."
-  },
   "helpDashboardTitle": "Dashboard",
   "@helpDashboardTitle": {
     "description": "User guide topic."
@@ -1150,10 +1118,6 @@
   "@savingsSavedAmount": {
     "description": "Field of the add goal dialog."
   },
-  "savingsDeadlineField": "Deadline (dd/mm/yyyy)",
-  "@savingsDeadlineField": {
-    "description": "Field of the add goal dialog."
-  },
   "savingsUpdateTitle": "Update: {title}",
   "@savingsUpdateTitle": {
     "description": "Title of the update goal dialog.",
@@ -1204,15 +1168,6 @@
   "savingsEmptyHint": "Tap \"+\" to create a savings goal.",
   "@savingsEmptyHint": {
     "description": "Hint under the empty goal list."
-  },
-  "savingsDeadline": "Due: {date}",
-  "@savingsDeadline": {
-    "description": "Deadline of a goal.",
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
   },
   "savingsUpdate": "Update",
   "@savingsUpdate": {
@@ -2069,14 +2024,6 @@
   "@dashboardVsLastMonth": {
     "description": "After the percentage change of the month."
   },
-  "dashboardReports": "Reports",
-  "@dashboardReports": {
-    "description": "Shortcut to the AI tab."
-  },
-  "dashboardAllFeatures": "All",
-  "@dashboardAllFeatures": {
-    "description": "Shortcut that opens every feature."
-  },
   "dashboardNoTransactions": "No transactions yet.",
   "@dashboardNoTransactions": {
     "description": "The recent transaction list is empty."
@@ -2408,5 +2355,203 @@
   "dateFieldPick": "Choose a date",
   "@dateFieldPick": {
     "description": "Accessibility label of the shared date field, which opens the date picker."
+  },
+  "dashboardScanReceipt": "Scan receipt",
+  "@dashboardScanReceipt": {
+    "description": "Home screen shortcut that opens the receipt scan options (same sheet as the scan button)."
+  },
+  "reviewOpenImage": "Receipt photo",
+  "@reviewOpenImage": {
+    "description": "Accessibility label of the receipt thumbnail on the review form, and title of the full-screen photo viewer it opens."
+  },
+  "reviewCompareOn": "Compare with the photo",
+  "@reviewCompareOn": {
+    "description": "Tooltip of the review form button that shows the photo above the fields."
+  },
+  "reviewCompareOff": "Leave compare mode",
+  "@reviewCompareOff": {
+    "description": "Tooltip of the review form button that goes back to the normal layout."
+  },
+  "reviewOtherMonthBalanceNote": "A transaction dated {day} still counts toward your current balance",
+  "@reviewOtherMonthBalanceNote": {
+    "description": "Note under the date of a receipt that is not from the current month; day is dd/MM.",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewDuplicateTitle": "This receipt seems to have been saved on {date}",
+  "@reviewDuplicateTitle": {
+    "description": "Title of the dialog shown when the server takes a scanned receipt for one already saved; date is dd/MM/yyyy HH:mm of the saved transaction.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewDuplicateTitleNoDate": "This receipt seems to have been saved before",
+  "@reviewDuplicateTitleNoDate": {
+    "description": "Title of the duplicate receipt dialog when the server sent no date."
+  },
+  "reviewDuplicateMessage": "Open the saved one to check it, or save anyway if this is another purchase.",
+  "@reviewDuplicateMessage": {
+    "description": "Body of the duplicate receipt dialog."
+  },
+  "reviewDuplicateView": "View saved one",
+  "@reviewDuplicateView": {
+    "description": "Duplicate receipt dialog button that opens the transaction already saved."
+  },
+  "reviewDuplicateSaveAnyway": "Save anyway",
+  "@reviewDuplicateSaveAnyway": {
+    "description": "Duplicate receipt dialog button that saves the receipt again."
+  },
+  "reviewDuplicateCannotOpen": "The saved one can't be opened from here. You can find it in the Statistics tab.",
+  "@reviewDuplicateCannotOpen": {
+    "description": "Toast when the review form has no way to open the saved transaction."
+  },
+  "linkedDemoBadge": "Demo",
+  "@linkedDemoBadge": {
+    "description": "Badge on the linked services page and its profile row: the wallets are simulated."
+  },
+  "linkedDemoNotice": "This is a demo: the wallets and synced payments are simulated, with no real bank or e-wallet connection.",
+  "@linkedDemoNotice": {
+    "description": "Notice at the top of the linked services page."
+  },
+  "budgetPeriodYear": "Year",
+  "@budgetPeriodYear": {
+    "description": "Yearly budget period; also the year mode of the Ledger."
+  },
+  "periodThisYear": "This year",
+  "@periodThisYear": {
+    "description": "The current calendar year."
+  },
+  "budgetPeriodDayLabel": "Period that contains",
+  "@budgetPeriodDayLabel": {
+    "description": "Label of the day whose week, month or year the budget covers."
+  },
+  "budgetCustomCategoryLabel": "Category name",
+  "@budgetCustomCategoryLabel": {
+    "description": "Field shown when the budget category is 'Other'."
+  },
+  "budgetCustomCategoryHelper": "Type it as you name it in your transactions",
+  "@budgetCustomCategoryHelper": {
+    "description": "Helper under the custom category name field."
+  },
+  "budgetCustomCategoryRequired": "Enter the category name",
+  "@budgetCustomCategoryRequired": {
+    "description": "Error when the custom category name is empty."
+  },
+  "budgetCustomCategoryTooLong": "At most {max} characters",
+  "@budgetCustomCategoryTooLong": {
+    "description": "Error when the custom category name is too long.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "budgetCustomCategoryUnknown": "No transaction uses the category \"{name}\" yet. Record one with this category first, then set its budget.",
+  "@budgetCustomCategoryUnknown": {
+    "description": "Error when the typed category does not exist on the server.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "ledgerYearLabel": "Year {year}",
+  "@ledgerYearLabel": {
+    "description": "Period label of the Ledger in year mode.",
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "categorySavings": "Savings",
+  "@categorySavings": {
+    "description": "Default expense category 'savings': money moved into a savings goal."
+  },
+  "savingsSavedAmountHint": "Leave empty if there is none yet or you don't remember; you can change it later",
+  "@savingsSavedAmountHint": {
+    "description": "Helper under the optional saved amount when creating a goal."
+  },
+  "savingsTargetDateField": "Target date",
+  "@savingsTargetDateField": {
+    "description": "Label of the optional target date of a goal."
+  },
+  "savingsTargetDateAdd": "Add a target date (optional)",
+  "@savingsTargetDateAdd": {
+    "description": "Button that adds the optional target date."
+  },
+  "savingsTargetDateClear": "Remove the target date",
+  "@savingsTargetDateClear": {
+    "description": "Tooltip of the button that removes the target date."
+  },
+  "savingsTargetDateShown": "Target date: {date}",
+  "@savingsTargetDateShown": {
+    "description": "Target date under a goal's name.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsContribute": "Add money",
+  "@savingsContribute": {
+    "description": "Button of a goal that moves money from the wallet into it."
+  },
+  "savingsContributeTitle": "Add money: {title}",
+  "@savingsContributeTitle": {
+    "description": "Title of the add money sheet.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsContributeAmount": "Amount (₫)",
+  "@savingsContributeAmount": {
+    "description": "Amount field of the add money sheet."
+  },
+  "savingsContributeHelper": "Taken from your wallet and recorded as a \"Savings\" expense",
+  "@savingsContributeHelper": {
+    "description": "Helper of the add money amount."
+  },
+  "savingsContributeInvalidAmount": "Enter an amount greater than 0",
+  "@savingsContributeInvalidAmount": {
+    "description": "Toast when the add money amount is empty or zero."
+  },
+  "savingsContributeFailed": "Could not add the money. {reason}",
+  "@savingsContributeFailed": {
+    "description": "Toast when a contribution fails; reason is the error text.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsContributeRejected": "Check the amount and your wallet balance.",
+  "@savingsContributeRejected": {
+    "description": "Reason shown when the server refuses a contribution and its message cannot be shown."
+  },
+  "savingsContributed": "Money added to \"{title}\"",
+  "@savingsContributed": {
+    "description": "Toast after a contribution.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsGoalReached": "Congratulations! You reached your goal \"{title}\"",
+  "@savingsGoalReached": {
+    "description": "Toast when a contribution completes the goal.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   }
 }

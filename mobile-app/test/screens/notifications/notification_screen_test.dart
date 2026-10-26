@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
 import 'package:finance_ai_app/screens/notifications/notification_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -23,7 +24,6 @@ const String _list = '/api/notifications';
 const String _readAll = '/api/notifications/read-all';
 const String _markAll = 'Đọc tất cả';
 const String _unreadLabel = 'Chưa đọc';
-const String _noDetail = 'Chưa thể mở chi tiết của thông báo này.';
 const String _markReadFailed =
     'Không đánh dấu được thông báo là đã đọc. Vui lòng thử lại.';
 const String _markAllFailed =
@@ -438,7 +438,8 @@ void main() {
 
         await tester.tap(find.text(_message(7)));
         await letTheRequestGo(tester);
-        await tester.tap(find.text(_message(7)));
+        // The first tap also opened the content of the notification on top of the list: tap the list row again.
+        await tester.tap(find.text(_message(7)).first, warnIfMissed: false);
         await letTheRequestGo(tester);
 
         expect(
@@ -553,46 +554,50 @@ void main() {
       });
     }
 
-    // BLOCKER: no transaction detail or stored-receipt review screen exists yet, and neither does an unknown type's.
-    for (final type in [
-      'TRANSACTION_ALERT',
-      'RECEIPT_PROCESSED',
-      'SAVING_GOAL_REACHED',
-    ]) {
-      testWidgets(
-        '$type has no screen to open: the user stays on the list, is told so, and it is still marked read',
-        (tester) async {
-          // Nothing points anywhere: every id of the payload is null.
-          notifications = [
+    testWidgets(
+      'a type the app does not know shows its whole content in a sheet, and is marked read',
+      (tester) async {
+        notifications = [
+          _notification(
+            7,
+            type: 'SAVING_GOAL_REACHED',
+            transactionId: null,
+            budgetId: null,
+          ),
+        ];
+        backend.on(
+          'PATCH',
+          '$_list/7/read',
+          (_) => okResponse(
             _notification(
               7,
-              type: type,
-              transactionId: null,
+              type: 'SAVING_GOAL_REACHED',
+              isRead: true,
               budgetId: null,
-              receiptId: null,
             ),
-          ];
-          backend.on(
-            'PATCH',
-            '$_list/7/read',
-            (_) => okResponse(
-              _notification(7, type: type, isRead: true, budgetId: null),
-            ),
-          );
-          await open(tester);
+          ),
+        );
+        await open(tester);
 
-          await tester.tap(find.text(_message(7)));
-          await tester.pumpAndSettle();
+        await tester.tap(find.text(_message(7)));
+        await tester.pumpAndSettle();
 
-          expect(tester.takeException(), isNull);
-          expect(find.byType(NotificationScreen), findsOneWidget);
-          expect(find.byType(BudgetScreen), findsNothing);
-          expect(find.text(_noDetail), findsOneWidget);
-          expect(_unreadDot(7), findsNothing);
-          expect(backend.calls, contains('PATCH $_list/7/read'));
-        },
-      );
-    }
+        expect(tester.takeException(), isNull);
+        final sheet = find.byType(BottomSheet);
+        expect(sheet, findsOneWidget);
+        expect(
+          find.descendant(of: sheet, matching: find.text(_message(7))),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: sheet, matching: find.text('Thông báo')),
+          findsOneWidget,
+        );
+        expect(find.byType(NotificationScreen), findsOneWidget);
+        expect(_unreadDot(7), findsNothing);
+        expect(backend.calls, contains('PATCH $_list/7/read'));
+      },
+    );
   });
 
   group('opening a transaction', () {
@@ -631,41 +636,154 @@ void main() {
 
           expect(opened, [500]);
           expect(find.byType(NotificationScreen), findsNothing);
-          expect(find.text(_noDetail), findsNothing);
+          expect(find.byType(BottomSheet), findsNothing);
+          expect(backend.calls, contains('PATCH $_list/7/read'));
+        },
+      );
+    }
+
+    for (final type in ['TRANSACTION_ALERT', 'RECEIPT_PROCESSED']) {
+      testWidgets(
+        '$type without a transaction id closes the screen and opens the Ledger',
+        (tester) async {
+          final opened = <int>[];
+          var ledgerOpened = 0;
+          notifications = [
+            _notification(
+              7,
+              type: type,
+              transactionId: null,
+              budgetId: null,
+              receiptId: 3,
+            ),
+          ];
+          backend.on(
+            'PATCH',
+            '$_list/7/read',
+            (_) => okResponse(
+              _notification(7, type: type, isRead: true, transactionId: null),
+            ),
+          );
+          await tester.pumpWidget(
+            withAppSettings(
+              Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NotificationScreen(
+                        onOpenTransaction: opened.add,
+                        onOpenLedger: () => ledgerOpened++,
+                      ),
+                    ),
+                  ),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          );
+          await tester.tap(find.text('open'));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text(_message(7)));
+          await tester.pumpAndSettle();
+
+          expect(ledgerOpened, 1);
+          expect(opened, isEmpty);
+          expect(find.byType(NotificationScreen), findsNothing);
           expect(backend.calls, contains('PATCH $_list/7/read'));
         },
       );
     }
 
     testWidgets(
-      'a receipt notification without a transaction id still opens nothing',
+      'without a callback, the Ledger tab of MainScaffold is brought to the front',
       (tester) async {
-        final opened = <int>[];
+        final shown = <MainTab>[];
+        void show(MainTab tab) => shown.add(tab);
+        MainTabs.attach(show);
+        addTearDown(() => MainTabs.detach(show));
         notifications = [
           _notification(
             7,
             type: 'RECEIPT_PROCESSED',
             transactionId: null,
-            receiptId: 3,
+            budgetId: null,
           ),
         ];
         backend.on(
           'PATCH',
           '$_list/7/read',
           (_) => okResponse(
-            _notification(7, type: 'RECEIPT_PROCESSED', isRead: true),
+            _notification(
+              7,
+              type: 'RECEIPT_PROCESSED',
+              isRead: true,
+              transactionId: null,
+            ),
           ),
         );
         await tester.pumpWidget(
-          withAppSettings(NotificationScreen(onOpenTransaction: opened.add)),
+          withAppSettings(
+            Builder(
+              builder: (context) => TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
         );
+        await tester.tap(find.text('open'));
         await tester.pumpAndSettle();
 
         await tester.tap(find.text(_message(7)));
         await tester.pumpAndSettle();
 
-        expect(opened, isEmpty);
-        expect(find.text(_noDetail), findsOneWidget);
+        expect(shown, [MainTab.ledger]);
+        expect(find.byType(NotificationScreen), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'with nowhere to open the Ledger, a receipt notification shows its content instead',
+      (tester) async {
+        notifications = [
+          _notification(
+            7,
+            type: 'RECEIPT_PROCESSED',
+            transactionId: null,
+            budgetId: null,
+          ),
+        ];
+        backend.on(
+          'PATCH',
+          '$_list/7/read',
+          (_) => okResponse(
+            _notification(
+              7,
+              type: 'RECEIPT_PROCESSED',
+              isRead: true,
+              transactionId: null,
+            ),
+          ),
+        );
+        await open(tester);
+
+        await tester.tap(find.text(_message(7)));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(NotificationScreen), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(BottomSheet),
+            matching: find.text(_message(7)),
+          ),
+          findsOneWidget,
+        );
+        expect(_unreadDot(7), findsNothing);
       },
     );
   });

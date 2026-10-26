@@ -23,6 +23,10 @@ Future<void> _openSheet(
   void Function(bool? result)? onClosed,
   bool settle = true,
 }) async {
+  // Tall enough for the whole sheet (amount, period, day, categories, save) without scrolling.
+  tester.view.physicalSize = const Size(800, 1600);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -89,6 +93,7 @@ void main() {
       expect(find.text('Thiết lập ngân sách'), findsOneWidget);
       expect(_chip(tester, 'Tháng').selected, isTrue);
       expect(_chip(tester, 'Tuần').selected, isFalse);
+      expect(_chip(tester, 'Năm').selected, isFalse);
       expect(
         _chip(tester, BudgetModel.allCategoriesLabel(_vi)).selected,
         isTrue,
@@ -113,6 +118,177 @@ void main() {
     expect(
       find.text('Tuần này: ${_range(BudgetPeriodType.week)}'),
       findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'the year period covers the whole calendar year and is sent as YEAR',
+    (tester) async {
+      BudgetModel? sent;
+      await _openSheet(
+        tester,
+        onSubmit: (budget) async {
+          sent = budget;
+          return null;
+        },
+      );
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Năm'));
+      await tester.pumpAndSettle();
+      final year = DateTime.now().year;
+      expect(find.text('Năm nay: 01/01/$year – 31/12/$year'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '24000000');
+      await _tapSave(tester);
+
+      expect(sent!.periodType, BudgetPeriodType.year);
+      expect(sent!.startDate, '$year-01-01');
+      expect(sent!.endDate, '$year-12-31');
+      expect(sent!.toJson()['periodType'], 'YEAR');
+    },
+  );
+
+  testWidgets('the amount is grouped as it is typed', (tester) async {
+    await _openSheet(tester, onSubmit: (_) async => null);
+
+    await tester.enterText(find.byType(TextField), '1500000');
+    await tester.pump();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '1.500.000',
+    );
+  });
+
+  testWidgets('a day picked in another month moves the period to that month', (
+    tester,
+  ) async {
+    BudgetModel? sent;
+    await _openSheet(
+      tester,
+      onSubmit: (budget) async {
+        sent = budget;
+        return null;
+      },
+    );
+
+    // The "Yesterday" chip of the DateField: on the 1st of a month it is in the previous month.
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Hôm qua'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '2000000');
+    await _tapSave(tester);
+
+    final now = DateTime.now();
+    final month = BudgetPeriodType.rangeContaining(
+      BudgetPeriodType.month,
+      DateTime(now.year, now.month, now.day - 1),
+    );
+    expect(sent!.startDate, BudgetModel.formatApiDate(month.start));
+    expect(sent!.endDate, BudgetModel.formatApiDate(month.end));
+  });
+
+  group('"Khác" with a typed category name', () {
+    const withOther = <BudgetCategory>[
+      (id: 10, name: 'Ăn uống'),
+      (id: 16, name: 'Khác'),
+      (id: 31, name: 'Cà phê'),
+    ];
+
+    /// Opens the sheet on [withOther] with an amount typed and "Khác" chosen; [onSubmit] counts what is sent.
+    Future<void> openWithOther(
+      WidgetTester tester,
+      Future<String?> Function(BudgetModel budget) onSubmit,
+    ) async {
+      await _openSheet(
+        tester,
+        loadCategories: () async => withOther,
+        onSubmit: onSubmit,
+      );
+      await tester.enterText(find.byType(TextField), '500000');
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Khác'));
+      await tester.pumpAndSettle();
+    }
+
+    Finder nameField() => find.widgetWithText(TextField, 'Tên danh mục');
+
+    testWidgets('the name field shows only once "Khác" is chosen', (
+      tester,
+    ) async {
+      await _openSheet(
+        tester,
+        loadCategories: () async => withOther,
+        onSubmit: (_) async => null,
+      );
+      expect(nameField(), findsNothing);
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Khác'));
+      await tester.pumpAndSettle();
+      expect(nameField(), findsOneWidget);
+      expect(
+        tester.widget<TextField>(nameField()).maxLength,
+        50,
+        reason: 'at most 50 characters',
+      );
+
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Ăn uống'));
+      await tester.pumpAndSettle();
+      expect(nameField(), findsNothing);
+    });
+
+    testWidgets('an empty name is refused and nothing is sent', (tester) async {
+      var sent = 0;
+      await openWithOther(tester, (_) async {
+        sent++;
+        return null;
+      });
+
+      await _tapSave(tester);
+
+      expect(find.text('Nhập tên danh mục'), findsOneWidget);
+      expect(sent, 0);
+    });
+
+    testWidgets(
+      'a typed name is sent as the server category of that name, ignoring case and spaces',
+      (tester) async {
+        BudgetModel? sent;
+        await openWithOther(tester, (budget) async {
+          sent = budget;
+          return null;
+        });
+        await tester.enterText(nameField(), '  cà PHÊ ');
+        await _tapSave(tester);
+
+        expect(sent, isNotNull);
+        expect(sent!.categoryId, 31);
+        expect(
+          sent!.categoryName,
+          'Cà phê',
+          reason:
+              'the Ledger and the Dashboard match transactions by this name',
+        );
+        expect(sent!.toJson()['categoryId'], 31);
+      },
+    );
+
+    testWidgets(
+      'a name no transaction has used yet is refused with an explanation and nothing is sent',
+      (tester) async {
+        var sent = 0;
+        await openWithOther(tester, (_) async {
+          sent++;
+          return null;
+        });
+        await tester.enterText(nameField(), 'Thú cưng');
+        await _tapSave(tester);
+
+        expect(
+          find.textContaining('Chưa có giao dịch nào dùng danh mục "Thú cưng"'),
+          findsOneWidget,
+        );
+        expect(sent, 0);
+        expect(find.text('Lưu ngân sách'), findsOneWidget);
+      },
     );
   });
 
@@ -294,7 +470,8 @@ void main() {
         expect(find.text('Sửa ngân sách'), findsOneWidget);
         expect(
           tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          '2000000',
+          '2.000.000',
+          reason: 'the amount is grouped like every money field',
         );
         expect(_chip(tester, 'Di chuyển').selected, isTrue);
         expect(

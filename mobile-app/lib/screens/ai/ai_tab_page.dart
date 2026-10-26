@@ -578,11 +578,14 @@ class _AITabPageState extends State<AITabPage> {
                 size: 22,
               ),
               const SizedBox(width: 8),
-              Text(
-                loc.aiSafeToSpendTitle,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+              // Wraps on a narrow phone instead of running past the card.
+              Expanded(
+                child: Text(
+                  loc.aiSafeToSpendTitle,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],

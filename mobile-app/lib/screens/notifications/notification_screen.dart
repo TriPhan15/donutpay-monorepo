@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/app_notification.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
 import 'package:finance_ai_app/screens/notifications/notification_destination.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
@@ -23,14 +24,22 @@ extension NotificationTypeLabels on AppLocalizations {
 
 /// The user's notifications, newest first. Pull down to reload; the next page is asked for near the end of the list;
 /// a tap shows the notification as read at once, tells the server in the background (and shows it unread again if that
-/// fails), then opens its screen when the app has one ([NotificationDestination]).
+/// fails), then opens where it leads ([NotificationDestination]); what cannot be opened shows its content in a sheet.
 /// Notifications live on the server only: without a backend (demo mode) the screen is empty and requests nothing.
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({super.key, this.onOpenTransaction});
+  const NotificationScreen({
+    super.key,
+    this.onOpenTransaction,
+    this.onOpenLedger,
+  });
 
   /// Shows a transaction (by its server id) in the Ledger; the screen closes itself first. Without it, a transaction
-  /// notification opens nothing.
+  /// notification shows its content instead.
   final ValueChanged<int>? onOpenTransaction;
+
+  /// Shows the Ledger tab, for a transaction or receipt notification without a transaction id; the screen closes itself
+  /// first. Left out, the Ledger tab of MainScaffold ([MainTabs]); without that either, the content is shown.
+  final VoidCallback? onOpenLedger;
 
   /// How many notifications one request asks for; the server accepts 1 to 50.
   static const int pageSize = 20;
@@ -189,21 +198,45 @@ class _NotificationScreenState extends State<NotificationScreen> {
     });
   }
 
+  /// Every tap marks the notification read, wherever it then leads.
   void _open(AppNotification notification) {
     if (!notification.isRead) unawaited(_markAsRead(notification));
-    final destination = NotificationDestination.of(notification);
-    if (destination != null) {
-      Navigator.push(context, MaterialPageRoute(builder: destination));
-      return;
+    switch (NotificationDestination.of(notification)) {
+      case PageTarget(:final builder):
+        Navigator.push(context, MaterialPageRoute(builder: builder));
+      case TransactionTarget(:final transactionId):
+        final openTransaction = widget.onOpenTransaction;
+        _leaveFor(
+          notification,
+          openTransaction == null ? null : () => openTransaction(transactionId),
+        );
+      case LedgerTarget():
+        _leaveFor(
+          notification,
+          widget.onOpenLedger ?? MainTabs.opener(MainTab.ledger),
+        );
+      case ContentTarget():
+        _showContent(notification);
     }
-    final transactionId = NotificationDestination.transactionIdOf(notification);
-    final openTransaction = widget.onOpenTransaction;
-    if (transactionId == null || openTransaction == null) {
-      AppToast.info(context, context.loc.notificationsDetailUnavailable);
+  }
+
+  /// Closes the screen and runs [open], which shows something under it; without one, shows the content instead.
+  void _leaveFor(AppNotification notification, VoidCallback? open) {
+    if (open == null) {
+      _showContent(notification);
       return;
     }
     Navigator.pop(context);
-    openTransaction(transactionId);
+    open();
+  }
+
+  void _showContent(AppNotification notification) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _NotificationContentSheet(notification: notification),
+    );
   }
 
   /// Optimistic: [notification] shows as read at once and goes back to unread if the server does not confirm.
@@ -342,6 +375,50 @@ class _NotificationScreenState extends State<NotificationScreen> {
 }
 
 enum _FooterState { idle, loading, failed }
+
+/// The whole of a notification the app has no screen for: its type, its time and its full message, which can be
+/// selected and copied.
+class _NotificationContentSheet extends StatelessWidget {
+  const _NotificationContentSheet({required this.notification});
+
+  final AppNotification notification;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
+    final createdAt = notification.createdAt;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              loc.notificationTypeLabel(notification.type),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (createdAt != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                DateFormat.yMd(
+                  Localizations.localeOf(context).toLanguageTag(),
+                ).add_Hm().format(createdAt),
+                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 16),
+            SelectableText(
+              notification.message,
+              style: const TextStyle(fontSize: 15, height: 1.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _NotificationList extends StatelessWidget {
   const _NotificationList({

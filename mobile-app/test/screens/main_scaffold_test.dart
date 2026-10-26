@@ -274,6 +274,58 @@ void main() {
     });
   }
 
+  group('home tab shortcuts', () {
+    setUp(() => signInWithSavedTheme(ThemeMode.light));
+
+    testWidgets(
+      'a recent transaction opens the Ledger tab and its detail sheet, as a transaction notification does',
+      (tester) async {
+        backend.on(
+          'GET',
+          '/api/transactions/mine',
+          (_) => okResponse([
+            {
+              'id': 3,
+              'title': 'Cà phê',
+              'amount': 45000,
+              'date': DateTime.now().toIso8601String(),
+              'category': 'Ăn uống',
+              'isExpense': true,
+            },
+          ]),
+        );
+        final colors = (await openMainScaffold(tester)).colorScheme;
+        expect(find.text('Sửa giao dịch'), findsNothing);
+
+        await tester.tap(find.text('Cà phê'));
+        await tester.pumpAndSettle();
+
+        expectSelectedTab(tester, colors, 1);
+        expect(find.byType(BottomSheet), findsOneWidget);
+        expect(find.text('Sửa giao dịch'), findsOneWidget);
+      },
+    );
+
+    testWidgets('"Quét hóa đơn" opens the scan sheet of the scan button', (
+      tester,
+    ) async {
+      await openMainScaffold(tester);
+
+      await tester.tap(find.byIcon(Icons.receipt_long_rounded));
+      await tester.pumpAndSettle();
+
+      final sheet = find.byType(BottomSheet);
+      expect(sheet, findsOneWidget);
+      for (final text in ['Quét hóa đơn bằng AI', 'Quét AI', 'Từ thư viện']) {
+        expect(
+          find.descendant(of: sheet, matching: find.text(text)),
+          findsOneWidget,
+          reason: text,
+        );
+      }
+    });
+  });
+
   group('light mode', () {
     setUp(() => signInWithSavedTheme(ThemeMode.light));
 

@@ -66,10 +66,6 @@ class AppLocalizationsVi extends AppLocalizations {
       'Không đánh dấu được các thông báo là đã đọc. Vui lòng thử lại.';
 
   @override
-  String get notificationsDetailUnavailable =>
-      'Chưa thể mở chi tiết của thông báo này.';
-
-  @override
   String get notificationsTransactionNotFound =>
       'Không tìm thấy giao dịch của thông báo này, có thể nó đã bị xóa.';
 
@@ -762,27 +758,6 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get pinSetupTitle => 'Tạo / Đổi mã PIN';
-
-  @override
-  String get pinSetupSubtitle => 'Bảo vệ ứng dụng bằng mã 4 số';
-
-  @override
-  String get pinNewLabel => 'Mã PIN mới';
-
-  @override
-  String get pinConfirmLabel => 'Xác nhận mã PIN';
-
-  @override
-  String get pinLengthInvalid => 'Mã PIN phải đúng 4 số.';
-
-  @override
-  String get pinMismatch => 'Mã PIN không khớp.';
-
-  @override
-  String get pinSaved => 'Đã lưu mã PIN thành công!';
-
-  @override
   String get helpDashboardTitle => 'Dashboard';
 
   @override
@@ -877,9 +852,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get savingsSavedAmount => 'Đã tiết kiệm (₫)';
 
   @override
-  String get savingsDeadlineField => 'Hạn chót (dd/mm/yyyy)';
-
-  @override
   String savingsUpdateTitle(String title) {
     return 'Cập nhật: $title';
   }
@@ -911,11 +883,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get savingsEmptyHint => 'Nhấn \"+\" để tạo mục tiêu tiết kiệm.';
-
-  @override
-  String savingsDeadline(String date) {
-    return 'Hạn: $date';
-  }
 
   @override
   String get savingsUpdate => 'Cập nhật';
@@ -1283,7 +1250,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reviewGrandTotal => 'TỔNG TIỀN:';
 
   @override
-  String get reviewSubmit => 'Xác nhận & Lưu CSDL';
+  String get reviewSubmit => 'Xác nhận và lưu';
 
   @override
   String get paymentHistoryTitle => 'Lịch sử nạp/rút';
@@ -1544,12 +1511,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get dashboardVsLastMonth => 'so với tháng trước';
 
   @override
-  String get dashboardReports => 'Báo cáo';
-
-  @override
-  String get dashboardAllFeatures => 'Tất cả';
-
-  @override
   String get dashboardNoTransactions => 'Chưa có giao dịch nào.';
 
   @override
@@ -1776,4 +1737,142 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get dateFieldPick => 'Chọn ngày';
+
+  @override
+  String get dashboardScanReceipt => 'Quét hóa đơn';
+
+  @override
+  String get reviewOpenImage => 'Xem ảnh hóa đơn';
+
+  @override
+  String get reviewCompareOn => 'Đối chiếu với ảnh';
+
+  @override
+  String get reviewCompareOff => 'Thoát chế độ đối chiếu';
+
+  @override
+  String reviewOtherMonthBalanceNote(String day) {
+    return 'Giao dịch ngày $day vẫn được tính vào số dư hiện tại';
+  }
+
+  @override
+  String reviewDuplicateTitle(String date) {
+    return 'Hóa đơn này có vẻ đã lưu ngày $date';
+  }
+
+  @override
+  String get reviewDuplicateTitleNoDate =>
+      'Hóa đơn này có vẻ đã được lưu trước đó';
+
+  @override
+  String get reviewDuplicateMessage =>
+      'Mở bản đã lưu để kiểm tra, hoặc vẫn lưu nếu đây là một lần mua khác.';
+
+  @override
+  String get reviewDuplicateView => 'Xem bản đã lưu';
+
+  @override
+  String get reviewDuplicateSaveAnyway => 'Vẫn lưu';
+
+  @override
+  String get reviewDuplicateCannotOpen =>
+      'Không mở được bản đã lưu từ đây. Bạn có thể tìm nó ở tab Thống kê.';
+
+  @override
+  String get linkedDemoBadge => 'Bản demo';
+
+  @override
+  String get linkedDemoNotice =>
+      'Đây là bản demo: ví và giao dịch đồng bộ là dữ liệu giả lập, không kết nối ngân hàng hay ví điện tử thật.';
+
+  @override
+  String get budgetPeriodYear => 'Năm';
+
+  @override
+  String get periodThisYear => 'Năm nay';
+
+  @override
+  String get budgetPeriodDayLabel => 'Kỳ chứa ngày';
+
+  @override
+  String get budgetCustomCategoryLabel => 'Tên danh mục';
+
+  @override
+  String get budgetCustomCategoryHelper =>
+      'Gõ đúng tên danh mục bạn dùng khi ghi giao dịch';
+
+  @override
+  String get budgetCustomCategoryRequired => 'Nhập tên danh mục';
+
+  @override
+  String budgetCustomCategoryTooLong(int max) {
+    return 'Tối đa $max ký tự';
+  }
+
+  @override
+  String budgetCustomCategoryUnknown(String name) {
+    return 'Chưa có giao dịch nào dùng danh mục \"$name\". Hãy ghi một giao dịch với danh mục này trước, rồi đặt ngân sách cho nó.';
+  }
+
+  @override
+  String ledgerYearLabel(String year) {
+    return 'Năm $year';
+  }
+
+  @override
+  String get categorySavings => 'Tiết kiệm';
+
+  @override
+  String get savingsSavedAmountHint =>
+      'Bỏ trống nếu chưa có hoặc không nhớ, sửa được sau';
+
+  @override
+  String get savingsTargetDateField => 'Ngày đạt mục tiêu';
+
+  @override
+  String get savingsTargetDateAdd => 'Thêm ngày đạt mục tiêu (không bắt buộc)';
+
+  @override
+  String get savingsTargetDateClear => 'Bỏ ngày đạt mục tiêu';
+
+  @override
+  String savingsTargetDateShown(String date) {
+    return 'Ngày đạt mục tiêu: $date';
+  }
+
+  @override
+  String get savingsContribute => 'Góp tiền';
+
+  @override
+  String savingsContributeTitle(String title) {
+    return 'Góp tiền: $title';
+  }
+
+  @override
+  String get savingsContributeAmount => 'Số tiền góp (₫)';
+
+  @override
+  String get savingsContributeHelper =>
+      'Trừ vào số dư ví và ghi thành khoản chi \"Tiết kiệm\"';
+
+  @override
+  String get savingsContributeInvalidAmount => 'Nhập số tiền lớn hơn 0';
+
+  @override
+  String savingsContributeFailed(String reason) {
+    return 'Không góp được tiền. $reason';
+  }
+
+  @override
+  String get savingsContributeRejected => 'Kiểm tra lại số tiền và số dư ví.';
+
+  @override
+  String savingsContributed(String title) {
+    return 'Đã góp tiền vào \"$title\"';
+  }
+
+  @override
+  String savingsGoalReached(String title) {
+    return 'Chúc mừng! Bạn đã đạt mục tiêu \"$title\"';
+  }
 }

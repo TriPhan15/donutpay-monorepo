@@ -18,6 +18,7 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/services/social_auth_service.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/widgets/common/demo_badge.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/dialogs/profile_bottom_sheets.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
@@ -208,6 +209,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         _SectionItem(
                           icon: Icons.link_rounded,
                           label: loc.profileLinkedServices,
+                          // The wallets are simulated: the row says so before it is opened.
+                          badge: const DemoBadge(),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -417,9 +420,19 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     // Without a colour of its own, the title and the subtitle take the ListTile defaults of the
                     // theme: onSurface and onSurfaceVariant.
-                    title: Text(
-                      item.label,
-                      style: TextStyle(color: item.color, fontSize: 14),
+                    title: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.label,
+                            style: TextStyle(color: item.color, fontSize: 14),
+                          ),
+                        ),
+                        if (item.badge case final Widget badge) ...[
+                          const SizedBox(width: 8),
+                          badge,
+                        ],
+                      ],
                     ),
                     subtitle: item.subtitle != null
                         ? Text(
@@ -508,6 +521,9 @@ class _SectionItem {
   final String label;
   final String? subtitle;
   final Color? color;
+
+  /// Shown right after the label, e.g. [DemoBadge].
+  final Widget? badge;
   final VoidCallback onTap;
   const _SectionItem({
     required this.icon,
@@ -515,5 +531,6 @@ class _SectionItem {
     required this.onTap,
     this.subtitle,
     this.color,
+    this.badge,
   });
 }

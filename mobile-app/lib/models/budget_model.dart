@@ -2,16 +2,29 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 
 /// Values of the backend's BudgetPeriodType (core-backend/.../Entity/BudgetPeriodType.java) and the date ranges the
-/// app derives from them. The backend accepts a range of at most 7 days for WEEK and 31 days for MONTH.
+/// app derives from them. The backend accepts a range of at most 7 days for WEEK, 31 for MONTH and 366 for YEAR.
 class BudgetPeriodType {
   static const String week = 'WEEK';
   static const String month = 'MONTH';
-  static const List<String> values = [week, month];
+  static const String year = 'YEAR';
+  static const List<String> values = [week, month, year];
 
   static String label(AppLocalizations loc, String periodType) =>
-      periodType == week ? loc.budgetPeriodWeek : loc.budgetPeriodMonth;
+      switch (periodType) {
+        week => loc.budgetPeriodWeek,
+        year => loc.budgetPeriodYear,
+        _ => loc.budgetPeriodMonth,
+      };
 
-  /// The calendar week (Monday to Sunday) or month that contains [day].
+  /// What the period that contains today is called: "this week", "this month" or "this year".
+  static String currentLabel(AppLocalizations loc, String periodType) =>
+      switch (periodType) {
+        week => loc.periodThisWeek,
+        year => loc.periodThisYear,
+        _ => loc.periodThisMonth,
+      };
+
+  /// The calendar week (Monday to Sunday), month or year that contains [day].
   static ({DateTime start, DateTime end}) rangeContaining(
     String periodType,
     DateTime day,
@@ -26,6 +39,9 @@ class BudgetPeriodType {
         start: monday,
         end: DateTime(monday.year, monday.month, monday.day + 6),
       );
+    }
+    if (periodType == year) {
+      return (start: DateTime(day.year, 1, 1), end: DateTime(day.year, 12, 31));
     }
     return (
       start: DateTime(day.year, day.month, 1),
@@ -80,7 +96,7 @@ class BudgetModel {
     this.userId,
   });
 
-  /// A budget for the week or month of [periodType] that contains [day]; the dates are computed, never typed.
+  /// A budget for the week, month or year of [periodType] that contains [day]; the dates are computed, never typed.
   factory BudgetModel.forPeriod({
     int? id,
     int? categoryId,

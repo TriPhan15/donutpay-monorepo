@@ -14,6 +14,9 @@ class TransactionModel {
   static const String columnImageUrl = 'image_url';
   static const String columnRawReceiptData = 'raw_receipt_data';
 
+  /// The checkout field that saves a scanned receipt even when the server thinks it is already saved.
+  static const String checkoutAllowDuplicate = 'allowDuplicate';
+
   /// Values of the body of POST /api/transactions/checkout that every transaction of the app sends the same way.
   static const String paymentMethodWallet = 'WALLET';
 
@@ -121,8 +124,9 @@ class TransactionModel {
 
   /// The body of POST /api/transactions/checkout. It is built only from the fields that are stored locally, so a resend
   /// sends exactly what the first send did; the server answers a repeated [clientId] with the first transaction and
-  /// ignores any difference in the rest.
-  Map<String, dynamic> toCheckoutJson() {
+  /// ignores any difference in the rest. [allowDuplicate] is the user's "save anyway" after the server took a scanned
+  /// receipt for one already saved (409): only that one send carries it, it is not stored.
+  Map<String, dynamic> toCheckoutJson({bool allowDuplicate = false}) {
     return {
       'amount': amount,
       'note': title,
@@ -134,6 +138,7 @@ class TransactionModel {
       if (clientId != null) 'clientId': clientId,
       if (rawReceiptData != null) 'rawReceiptData': rawReceiptData,
       if (imageUrl != null) 'imageUrl': imageUrl,
+      if (allowDuplicate) checkoutAllowDuplicate: true,
     };
   }
 

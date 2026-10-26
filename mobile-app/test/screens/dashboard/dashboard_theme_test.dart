@@ -127,9 +127,12 @@ void main() {
             colors.onSurfaceVariant,
           );
 
-          // Shortcut: a surface tile with a primary icon and a secondary label.
+          // Shortcut: a round primary-tinted tile with a primary icon and a secondary label.
           final savings = find.byIcon(Icons.savings_rounded);
-          expect(boxColor(tester, savings), colors.surface);
+          expect(
+            boxColor(tester, savings),
+            colors.primary.withValues(alpha: 0.10),
+          );
           expect(paintedColor(tester, savings), colors.primary);
           expect(
             paintedColor(tester, find.text('Sổ tiết kiệm')),
@@ -166,6 +169,9 @@ void main() {
         tester,
       ) async {
         await showDashboard(tester, mode);
+        await tester.pumpAndSettle();
+        // The balance is hidden when the home screen opens: the eye shows it.
+        await tester.tap(find.byIcon(Icons.visibility_off_rounded));
         await tester.pumpAndSettle();
 
         final card = boxDecoration(tester, find.text('Số dư hiện tại'));
@@ -248,7 +254,7 @@ void main() {
       expect(paintedColor(tester, find.text('Xin chào,')), AppTheme.textGray);
       expect(
         boxColor(tester, find.byIcon(Icons.savings_rounded)),
-        AppTheme.navyLight,
+        AppTheme.primary.withValues(alpha: 0.10),
       );
       expect(
         paintedColor(tester, find.byIcon(Icons.savings_rounded)),

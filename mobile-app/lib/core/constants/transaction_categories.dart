@@ -21,6 +21,9 @@ class TransactionCategories {
   static const String family = 'Gia đình & Con cái'; // family
   static const String insurance = 'Bảo hiểm'; // insurance
 
+  /// Money moved from the wallet into a savings goal (POST /api/savings/{id}/contributions records it).
+  static const String savings = 'Tiết kiệm'; // savings
+
   /// The default expense categories that are needs (the "50" of the 50/30/20 rule): food, home, bills, getting around,
   /// health, schooling, children and insurance. Shopping, entertainment, travel, gifts and "Khác" are wants.
   static const Set<String> essentialExpenses = {
@@ -54,6 +57,7 @@ class TransactionCategories {
     family: (loc) => loc.categoryFamily, // family
     'Hiếu hỉ': (loc) => loc.categorySocial, // social
     insurance: (loc) => loc.categoryInsurance, // insurance
+    savings: (loc) => loc.categorySavings, // savings
     otherExpense: (loc) => loc.categoryOtherExpense, // other_expense
     'Lương': (loc) => loc.categorySalary, // salary
     'Thưởng': (loc) => loc.categoryBonus, // bonus
@@ -147,6 +151,7 @@ class TransactionCategories {
     }
     if (c.contains('du lịch')) return Icons.flight_takeoff_rounded;
     if (c.contains('làm đẹp')) return Icons.face_retouching_natural_rounded;
+    if (c.contains('tiết kiệm')) return Icons.savings_rounded;
 
     if (c.contains('lương') || c.contains('thu nhập')) {
       return Icons.monetization_on_rounded;

@@ -238,7 +238,7 @@ void main() {
           expect(boxColor(tester, find.text('Du lịch')), colors.surface);
           expect(paintedColor(tester, find.text('Du lịch')), colors.onSurface);
           expect(
-            paintedColor(tester, find.text('Hạn: 31/12/2026')),
+            paintedColor(tester, find.text('Ngày đạt mục tiêu: 31/12/2026')),
             colors.onSurfaceVariant,
           );
           final saved = find.descendant(
