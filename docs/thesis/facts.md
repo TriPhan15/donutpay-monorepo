@@ -577,3 +577,23 @@ Cảnh báo: tập 172 ảnh này **không** trùng kích thước với `data1/
 9. **Phần MongoDB** (2 collection, `OcrMongoController`, `spring-boot-starter-data-mongodb`) chưa commit: cần xác nhận có đưa vào khóa luận không.
 10. **Endpoint mobile gọi nhưng backend không có**: `RemoteApiHelper` gọi `/api/wallets/transfer`, `/api/wallets/user/{userId}`, `GET /api/transactions?userId=...` – không có mapping nào trong §3.3 (`grep -nE "'/(api\|spade)" lib/services/remote_api_helper.dart`). Cần xác nhận đây là code chết hay tính năng thiếu.
 11. **CHECK constraint do Hibernate sinh cho cột enum** (Hibernate 6 + `ddl-auto: update`): không có trong file SQL; cần đọc schema DB thật nếu muốn liệt kê.
+
+---
+
+## 9. Bổ sung T10/T11 (26/10/2026, HEAD c29c071)
+
+| Dữ kiện | Giá trị | Bằng chứng |
+|---|---|---|
+| Tệp Java của Core Backend | 216 | `find core-backend/src/main/java -name '*.java' \| wc -l` |
+| Tệp .dart trong mobile-app/lib | 90 | `find mobile-app/lib -name '*.dart' \| wc -l` |
+| Khóa ARB (vi = en) | 569 | đếm khóa không bắt đầu bằng `@` trong `lib/l10n/app_vi.arb`, `app_en.arb` |
+| SQLite trên thiết bị | phiên bản 8, bảng mới `receipt_scan_queue` (id, user_id, image_path, status, result_json, error, created_at) | `lib/services/sqflite_helper.dart` (`_dbVersion = 8`, `if (oldVersion < 8)`) |
+| Hàng đợi quét | tối đa 20 mục queued + reading (`ReceiptScanQueue.maxBatch`), đọc tuần tự, trạng thái queued/reading/ready/failed, lỗi network/server/missing_image, ảnh chép vào `receipt_queue/<uuid>` | `lib/services/receipt_scan_queue.dart`, `lib/models/scan_queue_item.dart` |
+| Inference AI Service | `_run_donut()` qua `run_in_threadpool`, `threading.Lock` `_donut_lock` (1 lượt mỗi lúc) | `ai-service/ai_service.py`; test `test_scans_run_one_at_a_time_and_health_stays_responsive` |
+| Chống lưu trùng hóa đơn | 409, message "Hóa đơn này có vẻ đã được lưu trước đó", data existingTransactionId/existingTransactionDate; khóa: chiều thu chi + số tiền + phút + người bán chuẩn hóa; `allowDuplicate=true` bỏ qua | `TransactionService.refuseDuplicateReceipt`, `GlobalExceptionHandler.handleDuplicateReceipt`, `DuplicateReceiptResponseDto` |
+| Góp tiền tiết kiệm | `POST /api/savings/{id}/contributions {amount}`, 200 "Góp tiền vào mục tiêu thành công"; khoản chi "Tiết kiệm", phương thức WALLET; khóa dòng mục tiêu PESSIMISTIC_WRITE | `SavingGoalController`, `SavingGoalService.contributeToMySaving`, `SavingGoalRepository.findLockedById` |
+| Ngân sách năm | `BudgetPeriodType.YEAR(366)`; migration tay `core-backend/src/main/resources/db/budget-period-year-migration.sql` (chưa chạy trên CSDL triển khai) | `Entity/BudgetPeriodType.java` |
+| Danh mục theo tên | `BudgetRequestDto.categoryName` (≤ 50 ký tự), `CategoryService.resolveOrCreate` + `findFirstByNameIgnoreCaseOrderByIdAsc` | commit 76b96e4 |
+| Đăng nhập | nhớ email (`remembered_email`), `AutofillGroup` + `TextInput.finishAutofillContext()`, không lưu mật khẩu | `lib/services/session_service.dart`, `lib/screens/auth/login_page.dart` |
+| Đã gỡ / demo | mã PIN (`app_pin`) đã xóa; Dịch vụ liên kết gắn `DemoBadge` "Bản demo" | commit f3da29c |
+| Xuất Excel | luôn theo tháng chứa ngày đang chọn, kể cả khi Sổ sách đang lọc tuần/năm | `ledger_page.dart` `_exportToExcel` |

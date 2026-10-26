@@ -1,0 +1,26 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam defaultFontSize 14
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+left to right direction
+actor "Người dùng" as ND
+boundary "SavingsPage\n(bảng Góp tiền)" as B0
+boundary "RemoteApiHelper" as B1
+boundary "SavingGoalController" as B2
+control "SavingGoalService" as C0
+control "TransactionService" as C1
+entity "SavingGoal" as E0
+entity "Transaction" as E1
+entity "User\n(walletBalance)" as E2
+ND -- B0
+B0 -- B1
+B1 -- B2
+B2 -- C0
+C0 -- C1
+C0 -- E0
+C1 -- E1
+C1 -- E2
+@enduml

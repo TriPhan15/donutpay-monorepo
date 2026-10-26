@@ -1,0 +1,27 @@
+@startuml ch2_uc_bo_sung
+' Sơ đồ use case bổ sung sau đợt dùng thử 26/10/2026 (mục 2.3.2)
+!include _style.iuml
+!pragma layout smetana
+left to right direction
+actor "Người dùng" as ND
+actor "AI Service\n<<hệ thống>>" as AI
+rectangle "LedgerMind – các use case bổ sung (ứng dụng di động)" {
+  usecase "UC23 Quét nhiều\nhóa đơn" as UC23
+  usecase "UC24 Xác nhận\nhóa đơn chờ" as UC24
+  usecase "UC08 Quét hóa đơn" as UC08
+  usecase "UC09 Đối soát và\nlưu hóa đơn" as UC09
+  usecase "UC26 Xử lý hóa đơn\ncó thể trùng" as UC26
+  usecase "UC14 Quản lý mục tiêu\ntiết kiệm" as UC14
+  usecase "UC25 Góp tiền vào\nmục tiêu tiết kiệm" as UC25
+}
+ND -- UC08
+ND -- UC23
+ND -- UC24
+ND -- UC14
+UC08 -- AI
+UC23 -- AI
+UC08 ..> UC09 : <<include>>
+UC24 ..> UC09 : <<include>>
+UC26 ..> UC09 : <<extend>>
+UC25 ..> UC14 : <<extend>>
+@enduml

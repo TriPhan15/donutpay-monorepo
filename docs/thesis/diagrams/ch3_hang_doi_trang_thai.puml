@@ -1,0 +1,16 @@
+@startuml ch3_hang_doi_trang_thai
+!include _style.iuml
+!pragma layout smetana
+skinparam defaultFontSize 14
+skinparam StateBackgroundColor white
+hide empty description
+[*] --> queued : enqueue()\n(ảnh đã chép vào receipt_queue/)
+queued --> reading : vòng đọc lấy mục\ncũ nhất của người dùng
+reading --> ready : /donut/scan trả kết quả
+reading --> failed : network / server /\nmissing_image
+reading --> queued : phiên kết thúc (401, 403,\nđăng xuất) hoặc app bị tắt\nrồi mở lại (resume)
+failed --> queued : retry() ("Đọc lại")
+ready --> [*] : lưu thành giao dịch\n(markConfirmed / confirmAllValid)
+ready --> [*] : remove() ("Bỏ")
+failed --> [*] : remove() ("Bỏ")
+@enduml

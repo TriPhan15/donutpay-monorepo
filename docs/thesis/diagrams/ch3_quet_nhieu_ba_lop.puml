@@ -1,0 +1,30 @@
+@startuml
+!pragma layout smetana
+!include _style.iuml
+skinparam defaultFontSize 14
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+left to right direction
+actor "Người dùng" as ND
+boundary "MainScaffold\n(Quét nhiều)" as B0
+boundary "ScanQueueBanner" as B1
+boundary "PendingReceiptsScreen" as B2
+boundary "RemoteApiHelper" as B3
+control "ReceiptScanQueue" as C0
+control "AI Service\n/donut/scan" as C1
+control "AppRepository" as C2
+entity "ScanQueueItem\n(bảng receipt_scan_queue)" as E0
+entity "ReceiptScanResult" as E1
+ND -- B0
+ND -- B1
+ND -- B2
+B0 -- C0
+B1 -- C0
+B2 -- C0
+C0 -- B3
+B3 -- C1
+C0 -- C2
+C0 -- E0
+C0 -- E1
+@enduml

@@ -315,6 +315,28 @@
 - Kiểm chứng (T7.4): HTTP 200.
 - Dùng cho: 4.2.2.
 
+[71] SePay Webhooks – SePay Developer, https://developer.sepay.vn/en/sepay-webhooks, truy cập ngày 26/10/2026.
+- Kiểm chứng (cập nhật T10/T11): HTTP 200; trang mô tả webhook gửi HTTP POST chứa dữ liệu giao dịch tới URL cấu hình, xác thực HMAC-SHA256/API Key/OAuth 2.0, thử lại khi lỗi mạng và khuyến nghị chống nhận trùng.
+- Dùng cho: Kết luận › Hướng phát triển (liên kết ngân hàng qua webhook biến động số dư).
+
+[72] Casso – Thiết lập Webhook thủ công, https://developer.casso.vn/webhook/thiet-lap-webhook-thu-cong, truy cập ngày 26/10/2026.
+- Kiểm chứng (cập nhật T10/T11): HTTP 200; Casso gọi Webhook URL khi tài khoản ngân hàng đã liên kết có giao dịch mới, khóa bảo mật dùng để ký dữ liệu.
+- Dùng cho: Kết luận › Hướng phát triển.
+
+[73] Android Developers – Android Keystore system, https://developer.android.com/privacy-and-security/keystore, truy cập ngày 26/10/2026.
+- Kiểm chứng (cập nhật T10/T11): HTTP 200.
+- Dùng cho: Kết luận › Hướng phát triển (khóa ứng dụng, lưu bí mật trong kho khóa của hệ điều hành).
+
+[74] Apple Developer Documentation – Keychain services, https://developer.apple.com/documentation/security/keychain-services, truy cập ngày 26/10/2026.
+- Kiểm chứng (cập nhật T10/T11): HTTP 200.
+- Dùng cho: Kết luận › Hướng phát triển.
+
+[75] Flutter API – AutofillGroup class, https://api.flutter.dev/flutter/widgets/AutofillGroup-class.html, truy cập ngày 26/10/2026.
+- Kiểm chứng (cập nhật T10/T11): HTTP 200.
+- Dùng cho: 4.7.2 (điền sẵn email, trình quản lý mật khẩu của hệ điều hành).
+
+---
+
 ## Đã loại
 
 | Ứng viên | Lý do |

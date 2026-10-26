@@ -1,0 +1,43 @@
+@startuml ch3_quet_nhieu_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Người dùng" as ND
+boundary ":MainScaffold" as UI
+boundary ":PendingReceipts\nScreen" as PR
+control ":ReceiptScan\nQueue" as Q
+entity ":SqfliteHelper" as DB
+boundary ":RemoteApi\nHelper" as API
+control ":AI Service" as AI
+control ":App\nRepository" as REPO
+ND -> UI ++ : Chọn "Quét nhiều" hoặc\n"Chọn nhiều ảnh" (≤ 20)
+UI -> Q ++ : enqueue(imagePaths)
+Q -> DB : chép ảnh, insert các dòng\nqueued (user_id hiện tại)
+return số ảnh đã nhận
+UI --> ND -- : Toast "Đã thêm n hóa đơn\nvào hàng chờ"
+loop mỗi mục queued, cũ trước, từng mục một
+  Q -> DB ++ : nextQueuedScan(userId)
+  return mục kế tiếp
+  Q -> DB : đổi trạng thái reading
+  Q -> API ++ : scanReceipt(imagePath)
+  API -> AI ++ : POST /donut/scan
+  return JSON 4 trường + normalized
+  return Map kết quả
+  Q -> Q : ReceiptScanResult.fromResponse()
+  Q -> DB : đổi trạng thái ready,\nlưu result_json
+end
+ND -> PR ++ : Bấm banner, chọn\n"Xác nhận tất cả hợp lệ"
+PR -> Q ++ : confirmAllValid()
+loop mỗi mục ready có allValid
+  Q -> API : uploadImage(imagePath)
+  Q -> REPO ++ : createTransaction(draft,\nallowDuplicate: false)
+  return SyncStatus
+  Q -> DB : xóa mục đã lưu
+end
+return BulkConfirmResult
+PR --> ND -- : Toast "Đã lưu x, trùng y,\nchưa lưu z"
+@enduml

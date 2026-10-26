@@ -1,0 +1,35 @@
+@startuml ch3_chong_trung_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Người dùng" as ND
+boundary ":ReviewForm\nPage" as UI
+control ":App\nRepository" as REPO
+control ":Transaction\nService" as TS
+control ":ReceiptProcessing\nService" as RP
+entity ":Transaction\nRepository" as TR
+control ":GlobalException\nHandler" as GH
+ND -> UI ++ : Bấm "Xác nhận và lưu"
+UI -> REPO ++ : createTransaction(draft,\nallowDuplicate: false)
+REPO -> TS ++ : POST /api/transactions/checkout\n(rawReceiptData, imageUrl)
+TS -> TS : lockWallet(userId),\nmoveWallet()
+TS -> RP : attachReceipt(tx, rawReceiptData,\nimageUrl)
+TS -> TR ++ : findPossibleReceiptDuplicates(userId,\nisExpense, amount, phút bắt đầu,\nphút kết thúc)
+return các giao dịch cùng loại,\ncùng số tiền, cùng phút
+TS -> TS : so normalizedSeller()
+TS -> GH ++ : DuplicateReceiptException
+return 409 + existingTransactionId,\nexistingTransactionDate
+return DuplicateReceiptException
+return
+UI --> ND -- : Hộp thoại "Hóa đơn này có vẻ\nđã lưu ngày …": "Xem bản đã lưu" /\n"Vẫn lưu"
+ND -> UI ++ : Chọn "Vẫn lưu"
+UI -> REPO ++ : createTransaction(draft,\nallowDuplicate: true)
+REPO -> TS ++ : POST /api/transactions/checkout\n(allowDuplicate=true)
+return giao dịch đã lưu
+return SyncStatus.synced
+UI --> ND -- : Báo lưu thành công
+@enduml

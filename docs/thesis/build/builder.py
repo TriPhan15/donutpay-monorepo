@@ -10,6 +10,17 @@ Inline: **đậm**, *nghiêng*.
 Tùy chọn (từ T7.2b): COUNTER_START {("Hình"|"Bảng", chương): số đã dùng} để đánh số tiếp;
 REPLACE {tiêu đề Heading3: (counter_start, [block, ...])} viết lại toàn bộ thân một mục đã có nội dung;
 PARA_REPLACE [(đầu đoạn cũ, block)] thay một đoạn đã có.
+Tùy chọn (từ phiên T10/T11, chèn vào giữa quyển):
+  SESSION_TAG = None nếu phiên không thay dòng giữ chỗ nào theo tag;
+  block ("h2", text) | ("h3", text); fig/table có thể thêm phần tử cuối là khóa (key) để văn bản tham chiếu
+  bằng [[key]] ("Hình c.n") hoặc [[#key]] ("c.n");
+  INSERT_BEFORE / INSERT_AFTER [(đầu đoạn hoặc chữ của bảng, [block, ...])] chèn cạnh đúng một phần tử;
+  HEADING_PLACEHOLDERS {tiêu đề: [block, ...]} thay dòng giữ chỗ [T7.x] ngay sau tiêu đề đó (mọi tag);
+  PARA_LINES_AFTER [(đầu đoạn, [dòng, ...])] chèn đoạn cùng style ngay sau một đoạn (kể cả đoạn trong ô bảng);
+  TABLE_ROWS [(đầu chú thích bảng, chữ của dòng đứng trước hoặc None = cuối bảng, [[ô, ...], ...])];
+  TEXT_REPLACE [(chuỗi cũ, chuỗi mới, số lần)] thay trong từng <w:t>;
+  RENUMBER = True: đánh số lại mọi chú thích Hình/Bảng theo thứ tự trong quyển, cập nhật mọi tham chiếu
+  "Hình c.n"/"Bảng c.n" trong văn bản theo số mới và thay [[key]].
 """
 import html
 import importlib.util
@@ -163,18 +174,18 @@ class Doc:
             return para("GachDau1", block[1])
         if kind == "b2":
             return para("GachDau2", block[1])
-        if kind == "h4":
-            return para("Heading4", block[1])
+        if kind in ("h2", "h3", "h4"):
+            return para("Heading" + kind[1], block[1])
         if kind == "y":
             return para("noidung", block[1], base_rpr='<w:i/><w:highlight w:val="yellow"/>')
         if kind == "table":
-            _, caption, chapter, widths, header, rows, source = block
-            n = self.number("Bảng", chapter)
+            _, caption, chapter, widths, header, rows, source = block[:7]
+            n = f"@{block[7]}@" if len(block) > 7 else self.number("Bảng", chapter)
             out = seq_caption("ChuThichBang", "Bảng", chapter, n, caption) + table(widths, header, rows)
             return out + (source_line(source) if source else "")
         if kind == "fig":
-            _, caption, chapter, png, width_cm, source, note = block
-            n = self.number("Hình", chapter)
+            _, caption, chapter, png, width_cm, source, note = block[:7]
+            n = f"@{block[7]}@" if len(block) > 7 else self.number("Hình", chapter)
             if png:
                 body = f'<w:p><w:pPr><w:pStyle w:val="Hinh"/></w:pPr>{self.drawing(png, width_cm)}</w:p>'
             else:
@@ -203,9 +214,17 @@ def main(root, content_path):
     replace = getattr(content, "REPLACE", {})
     para_replace = list(getattr(content, "PARA_REPLACE", []))
     replaced, para_done, skipping = set(), set(), False
+    insert_before = list(getattr(content, "INSERT_BEFORE", []))
+    insert_after = list(getattr(content, "INSERT_AFTER", []))
+    heading_ph = dict(getattr(content, "HEADING_PLACEHOLDERS", {}))
+    hits_before, hits_after, ph_done = [0] * len(insert_before), [0] * len(insert_after), set()
+    pending_after = ""
     out, pos, last_heading = [], 0, None
     for m in re.finditer(r"<w:p[ >].*?</w:p>|<w:tbl>.*?</w:tbl>", xml, flags=re.S):
         p = m.group(0)
+        if pending_after:
+            out.append(pending_after)
+            pending_after = ""
         out.append(xml[pos:m.start()])
         pos = m.end()
         style = re.search(r'<w:pStyle w:val="([^"]+)"', p)
@@ -216,6 +235,19 @@ def main(root, content_path):
         if style in ("Heading1", "Heading2", "Heading3"):
             skipping = False
         if skipping:
+            continue
+        for i, (prefix, blocks) in enumerate(insert_before):
+            if txt.startswith(prefix):
+                hits_before[i] += 1
+                out.append("".join(doc.render(b) for b in blocks))
+        for i, (prefix, blocks) in enumerate(insert_after):
+            if txt.startswith(prefix):
+                hits_after[i] += 1
+                pending_after += "".join(doc.render(b) for b in blocks)
+        if p.startswith("<w:p") and re.match(r"\[T7\.\w+\]", txt) and last_heading in heading_ph \
+                and last_heading not in ph_done:
+            out.append("".join(doc.render(b) for b in heading_ph[last_heading]))
+            ph_done.add(last_heading)
             continue
         if style == "Heading3" and txt in replace:
             start, blocks = replace[txt]
@@ -231,7 +263,7 @@ def main(root, content_path):
             out.append(doc.render(para_replace[hit][1]))
             para_done.add(hit)
             continue
-        if p.startswith("<w:p") and txt.startswith(f"[{tag}]"):
+        if tag and p.startswith("<w:p") and txt.startswith(f"[{tag}]"):
             key = last_heading
             if key not in content.SECTIONS:
                 raise SystemExit(f"Chưa có nội dung cho mục: {key!r}")
@@ -239,6 +271,7 @@ def main(root, content_path):
             out.append("".join(doc.render(b) for b in content.SECTIONS[key]))
         else:
             out.append(p)
+    out.append(pending_after)
     out.append(xml[pos:])
     xml = "".join(out)
     missing = set(content.SECTIONS) - used
@@ -247,12 +280,127 @@ def main(root, content_path):
     if set(replace) - replaced or len(para_done) != len(para_replace):
         raise SystemExit(f"Không tìm thấy mục/đoạn cần thay: {set(replace) - replaced}, đoạn {len(para_done)}/{len(para_replace)}")
 
+    bad = [x for x, n in zip(insert_before, hits_before) if n != 1] + [x for x, n in zip(insert_after, hits_after) if n != 1]
+    if bad or set(heading_ph) - ph_done:
+        raise SystemExit(f"Điểm chèn không khớp đúng một lần: {[b[0] for b in bad]}, {set(heading_ph) - ph_done}")
+    for anchor, lines in getattr(content, "PARA_LINES_AFTER", []):
+        xml = para_lines_after(xml, anchor, lines)
+    for caption, after_row, rows in getattr(content, "TABLE_ROWS", []):
+        xml = table_rows(xml, caption, after_row, rows)
+    for old, new, count in getattr(content, "TEXT_REPLACE", []):
+        xml = text_replace(xml, old, new, count)
+    if getattr(content, "RENUMBER", False):
+        xml = renumber(xml)
+
     for abbr in getattr(content, "ABBREVIATIONS", []):
         xml = add_abbreviation(xml, *abbr)
 
     xml_path.write_text(xml, encoding="utf8")
     doc.rels_path.write_text(doc.rels, encoding="utf8")
     print("sections:", len(used), "counters:", doc.counters)
+
+
+P_RE = re.compile(r"<w:p[ >](?:(?!<w:p[ >]).)*?</w:p>", re.S)
+
+
+def para_lines_after(xml, anchor, lines):
+    found = [m for m in P_RE.finditer(xml) if text_of(m.group(0)).startswith(anchor)]
+    if len(found) != 1:
+        raise SystemExit(f"PARA_LINES_AFTER: {anchor!r} khớp {len(found)} đoạn")
+    m = found[0]
+    ppr = re.search(r"<w:pPr>.*?</w:pPr>", m.group(0), re.S)
+    ppr = ppr.group(0) if ppr else ""
+    new = "".join(f"<w:p>{ppr}{runs(line)}</w:p>" for line in lines)
+    return xml[:m.end()] + new + xml[m.end():]
+
+
+def table_rows(xml, caption, after_row, rows):
+    caps = [m for m in P_RE.finditer(xml) if "ChuThichBang" in m.group(0) and caption in text_of(m.group(0))]
+    if len(caps) != 1:
+        raise SystemExit(f"TABLE_ROWS: chú thích {caption!r} khớp {len(caps)} lần")
+    t0 = xml.index("<w:tbl>", caps[0].end())
+    t1 = xml.index("</w:tbl>", t0)
+    tbl = xml[t0:t1]
+    widths = [int(w) for w in re.findall(r'<w:gridCol w:w="(\d+)"/>', tbl)]
+    new = "".join('<w:tr><w:trPr><w:cantSplit/></w:trPr>' + "".join(cell(w, c) for w, c in zip(widths, r)) + "</w:tr>"
+                  for r in rows)
+    if after_row is None:
+        tbl = tbl + new
+    else:
+        trs = [m for m in re.finditer(r"<w:tr[ >].*?</w:tr>", tbl, re.S) if after_row in text_of(m.group(0))]
+        if len(trs) != 1:
+            raise SystemExit(f"TABLE_ROWS: dòng {after_row!r} khớp {len(trs)} lần")
+        tbl = tbl[:trs[0].end()] + new + tbl[trs[0].end():]
+    return xml[:t0] + tbl + xml[t1:]
+
+
+def text_replace(xml, old, new, count):
+    e_old, e_new = esc(old), esc(new)
+    n = xml.count(e_old)
+    if n != count:
+        raise SystemExit(f"TEXT_REPLACE: {old!r} xuất hiện {n} lần, cần {count}")
+    return xml.replace(e_old, e_new)
+
+
+CAP_RE = re.compile(r'(<w:p><w:pPr><w:pStyle w:val="(?:Caption|ChuThichBang)"/></w:pPr>'
+                    r'<w:r><w:t xml:space="preserve">(Hình|Bảng) (\d+)\.</w:t></w:r>'
+                    r'(?:(?!</w:p>).)*?<w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>)([^<]+)(</w:t>)', re.S)
+REF_RE = re.compile(r"(Hình|Bảng|hình|bảng) (\d+)\.(\d+)((?: đến | và | tới )(?:(?:Hình|Bảng|hình|bảng) )?)?(\d+\.\d+)?")
+
+
+def renumber(xml):
+    """Đánh số lại chú thích theo thứ tự xuất hiện; ánh xạ số cũ sang số mới cho mọi tham chiếu trong văn bản."""
+    counters, old_new, keys = {}, {}, {}
+
+    def cap(m):
+        label, ch, num = m.group(2), m.group(3), m.group(4)
+        counters[(label, ch)] = counters.get((label, ch), 0) + 1
+        n = counters[(label, ch)]
+        if num.startswith("@"):
+            keys[num.strip("@")] = (label, ch, n)
+        else:
+            old_new[(label, ch, int(num))] = n
+        return m.group(1) + str(n) + m.group(5)
+
+    xml = CAP_RE.sub(cap, xml)
+    caption_spans = [(m.start(), m.end()) for m in P_RE.finditer(xml)
+                     if re.search(r'<w:pStyle w:val="(?:Caption|ChuThichBang)"/>', m.group(0)[:120])]
+
+    def map_ref(label, ch, n):
+        key = ("Hình" if label.lower() == "hình" else "Bảng", ch, int(n))
+        return old_new.get(key, int(n))
+
+    def ref(m):
+        label, ch, n, sep, second = m.groups()
+        out = f"{label} {ch}.{map_ref(label, ch, n)}"
+        if sep:
+            out += sep
+            if second:
+                l2 = re.search(r"(Hình|Bảng|hình|bảng) $", sep)
+                c2, n2 = second.split(".")
+                out += f"{c2}.{map_ref(l2.group(1) if l2 else label, c2, n2)}"
+        return out
+
+    def fix_text(t):
+        t = REF_RE.sub(ref, t)
+        t = re.sub(r"\[\[(#?)([\w-]+)\]\]",
+                   lambda m: (f"{keys[m.group(2)][1]}.{keys[m.group(2)][2]}" if m.group(1)
+                              else f"{keys[m.group(2)][0]} {keys[m.group(2)][1]}.{keys[m.group(2)][2]}"), t)
+        return t
+
+    out, pos = [], 0
+    for m in re.finditer(r"(<w:t(?: [^>]*)?>)([^<]*)(</w:t>)", xml):
+        if any(a <= m.start() < b for a, b in caption_spans):
+            continue
+        out.append(xml[pos:m.start()])
+        out.append(m.group(1) + fix_text(m.group(2)) + m.group(3))
+        pos = m.end()
+    out.append(xml[pos:])
+    xml = "".join(out)
+    if "[[" in re.sub(r"<[^>]+>", "", xml):
+        raise SystemExit("Còn tham chiếu [[key]] chưa giải được")
+    print("renumber:", {k: v for k, v in counters.items()}, "keys:", keys)
+    return xml
 
 
 def add_abbreviation(xml, short, en, vi):

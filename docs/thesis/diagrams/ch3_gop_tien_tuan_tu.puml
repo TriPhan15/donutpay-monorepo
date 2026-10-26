@@ -1,0 +1,29 @@
+@startuml ch3_gop_tien_tuan_tu
+!include _style.iuml
+hide footbox
+autonumber
+skinparam defaultFontSize 13
+skinparam BoundaryBackgroundColor white
+skinparam ControlBackgroundColor white
+skinparam EntityBackgroundColor white
+actor "Người dùng" as ND
+boundary ":SavingsPage" as UI
+boundary ":RemoteApi\nHelper" as API
+control ":SavingGoal\nService" as SG
+entity ":SavingGoal\nRepository" as GR
+control ":Transaction\nService" as TS
+ND -> UI ++ : Bấm "Góp tiền", nhập số tiền
+UI -> API ++ : POST /api/savings/{id}/contributions\n{amount}
+API -> SG ++ : contributeToMySaving(id, amount)
+SG -> GR ++ : findLockedById(id)\n(PESSIMISTIC_WRITE)
+return SavingGoal
+SG -> SG : requireOwned(goal, caller)
+SG -> TS ++ : createMyTransaction(khoản chi\n"Tiết kiệm", ghi chú = tên mục tiêu)
+TS -> TS : lockWallet(), moveWallet(),\nlưu Transaction
+return transactionId
+SG -> GR : save(goal: currentAmount + amount)
+SG -> SG : ghi nhật ký SAVING_UPDATED
+return SavingGoalDto
+return 200 "Góp tiền vào mục tiêu\nthành công"
+UI --> ND -- : Toast "Đã góp tiền vào …"\n(chúc mừng khi đạt 100%)
+@enduml
