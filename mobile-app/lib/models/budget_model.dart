@@ -151,10 +151,14 @@ class BudgetModel {
     );
   }
 
-  /// The body of POST and PUT /api/budgets. It carries no user: the backend always uses the caller.
+  /// The body of POST and PUT /api/budgets. It carries no user: the backend always uses the caller. Without a
+  /// category id, a [categoryName] is sent instead: the backend reuses the category of that name (ignoring case) or
+  /// creates it. Without either, the budget covers every category.
   Map<String, dynamic> toJson() {
+    final name = categoryName;
     return {
       'categoryId': categoryId,
+      if (categoryId == null && name != null) 'categoryName': name,
       'amount': amount,
       'periodType': periodType,
       'startDate': startDate,

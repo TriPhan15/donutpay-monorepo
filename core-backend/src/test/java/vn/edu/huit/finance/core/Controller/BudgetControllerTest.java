@@ -47,6 +47,8 @@ import java.util.stream.Stream;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
@@ -89,6 +91,10 @@ class BudgetControllerTest {
     @MockBean private UserRepository userRepository;
     @MockBean private LoginAttemptService loginAttemptService;
     @MockBean private TokenBlacklistService tokenBlacklistService;
+
+    private static String categoryName(String name) {
+        return "\"categoryName\":\"" + name + "\"";
+    }
 
     private static String json(String... fields) {
         return "{" + String.join(",", fields) + "}";
@@ -218,6 +224,49 @@ class BudgetControllerTest {
     }
 
     @Test
+    void create_passesACategoryNameTrimmed_withoutACategoryId() throws Exception {
+        when(budgetService.createBudget(any())).thenReturn(sampleBudget());
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL,
+                        json(categoryName("  Thú cưng "), AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST))))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<BudgetRequestDto> sent = ArgumentCaptor.forClass(BudgetRequestDto.class);
+        verify(budgetService).createBudget(sent.capture());
+        assertNull(sent.getValue().getCategoryId());
+        assertEquals("Thú cưng", sent.getValue().getCategoryName());
+    }
+
+    @Test
+    void create_passesABlankCategoryNameAsAbsent_soTheBudgetCoversEveryCategory() throws Exception {
+        when(budgetService.createBudget(any())).thenReturn(sampleBudget());
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL,
+                        json(categoryName("   "), AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST))))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<BudgetRequestDto> sent = ArgumentCaptor.forClass(BudgetRequestDto.class);
+        verify(budgetService).createBudget(sent.capture());
+        assertNull(sent.getValue().getCategoryId());
+        assertNull(sent.getValue().getCategoryName());
+        assertFalse(sent.getValue().hasCategory());
+    }
+
+    @Test
+    void update_passesBothTheIdAndTheName_soTheServiceCanLetTheIdWin() throws Exception {
+        when(budgetService.updateBudget(eq(7L), any())).thenReturn(sampleBudget());
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.PUT, URL + "/7",
+                        json(CATEGORY, categoryName("Thú cưng"), AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST))))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<BudgetRequestDto> sent = ArgumentCaptor.forClass(BudgetRequestDto.class);
+        verify(budgetService).updateBudget(eq(7L), sent.capture());
+        assertEquals(10L, sent.getValue().getCategoryId());
+        assertEquals("Thú cưng", sent.getValue().getCategoryName());
+    }
+
+    @Test
     void update_returns200WithTheUpdatedBudget() throws Exception {
         when(budgetService.updateBudget(eq(7L), any())).thenReturn(sampleBudget());
 
@@ -250,6 +299,9 @@ class BudgetControllerTest {
                 Arguments.of("a calendar year of 365 days", json(CATEGORY, AMOUNT, YEAR, "\"startDate\":\"2026-01-01\"", "\"endDate\":\"2026-12-31\"")),
                 Arguments.of("a leap year of exactly 366 days", json(CATEGORY, AMOUNT, YEAR, "\"startDate\":\"2028-01-01\"", "\"endDate\":\"2028-12-31\"")),
                 Arguments.of("a yearly budget for every category", json(AMOUNT, YEAR, "\"startDate\":\"2026-01-01\"", "\"endDate\":\"2026-12-31\"")),
+                Arguments.of("a category name of 50 characters, padded with spaces",
+                        json(categoryName("  " + "a".repeat(BudgetRequestDto.CATEGORY_NAME_MAX_LENGTH) + " "), AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST)),
+                Arguments.of("a blank category name (every category)", json(categoryName("   "), AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST)),
                 Arguments.of("an amount with two decimals", json(CATEGORY, "\"amount\":1234.56", MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST)));
     }
 
@@ -311,6 +363,12 @@ class BudgetControllerTest {
                         "vượt quá độ dài của kỳ hạn"),
                 Arguments.of("category id 0", json("\"categoryId\":0", AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST),
                         "Mã danh mục không hợp lệ"),
+                Arguments.of("a category name over 50 characters",
+                        json(categoryName("a".repeat(BudgetRequestDto.CATEGORY_NAME_MAX_LENGTH + 1)), AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST),
+                        "Tên danh mục tối đa 50 ký tự"),
+                Arguments.of("a blank category name does not excuse a missing amount",
+                        json(categoryName("  "), MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST),
+                        "Số tiền ngân sách không được để trống"),
                 Arguments.of("negative category id", json("\"categoryId\":-3", AMOUNT, MONTH, SEPTEMBER_FIRST, SEPTEMBER_LAST),
                         "Mã danh mục không hợp lệ"));
     }

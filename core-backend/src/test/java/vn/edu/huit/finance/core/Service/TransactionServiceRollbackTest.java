@@ -68,7 +68,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.generate_statistics=true"})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({TransactionService.class, ReceiptProcessingService.class, OcrService.class, UserStatisticsService.class})
+@Import({TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class, UserStatisticsService.class})
 class TransactionServiceRollbackTest {
 
     private static final BigDecimal WALLET = new BigDecimal("1000000.00");
@@ -218,7 +218,7 @@ class TransactionServiceRollbackTest {
 
         assertThrows(IllegalStateException.class, () -> service.updateTransaction(expense.getId(), request));
 
-        assertTrue(categoryRepository.findByName("Freelance").isEmpty(), "the new category must not survive the failed edit");
+        assertTrue(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Freelance").isEmpty(), "the new category must not survive the failed edit");
         assertMoney("1000000", walletInDatabase());
     }
 

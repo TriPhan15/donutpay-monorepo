@@ -1,5 +1,6 @@
 package vn.edu.huit.finance.core.Service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -7,6 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.BudgetRequestDto;
 import vn.edu.huit.finance.core.Dto.BudgetResponseDto;
@@ -53,6 +55,21 @@ class BudgetServiceTest {
 
     private final User alice = user(ALICE_ID);
     private final Category food = category(FOOD_ID, "Ăn uống");
+
+    /** The shared category resolver runs for real over the mocked repository and audit log. */
+    @BeforeEach
+    void realCategoryResolverOverTheMocks() {
+        CategoryService categoryService = new CategoryService();
+        ReflectionTestUtils.setField(categoryService, "categoryRepository", categoryRepository);
+        ReflectionTestUtils.setField(categoryService, "auditLogService", auditLogService);
+        ReflectionTestUtils.setField(service, "categoryService", categoryService);
+    }
+
+    private static BudgetRequestDto requestNamed(String categoryName) {
+        BudgetRequestDto request = request(null);
+        request.setCategoryName(categoryName);
+        return request;
+    }
 
     private static User user(Long id) {
         User user = new User();
@@ -211,6 +228,111 @@ class BudgetServiceTest {
         assertThrows(InvalidCategoryException.class, () -> service.createBudget(request(FOOD_ID)));
 
         verifyNoInteractions(budgetRepository);
+    }
+
+    // ---- create: a category given by name ----
+
+    @Test
+    void createBudget_withANewCategoryName_createsAnExpenseCategory_recordedWithTheCaller_andUsesItsId() {
+        signedInAsAlice();
+        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Thú cưng")).thenReturn(Optional.empty());
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> {
+            Category saved = invocation.getArgument(0);
+            saved.setId(30L);
+            return saved;
+        });
+        when(budgetRepository.existsDuplicate(ALICE_ID, 30L, BudgetPeriodType.MONTH, START)).thenReturn(false);
+        when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> {
+            Budget saved = invocation.getArgument(0);
+            saved.setId(BUDGET_ID);
+            return saved;
+        });
+
+        BudgetResponseDto result = service.createBudget(requestNamed("  Thú cưng "));
+
+        ArgumentCaptor<Category> created = ArgumentCaptor.forClass(Category.class);
+        verify(categoryRepository).save(created.capture());
+        assertEquals("Thú cưng", created.getValue().getName());
+        assertEquals(CategoryService.TYPE_EXPENSE, created.getValue().getType());
+        assertEquals(30L, result.getCategoryId());
+        assertEquals("Thú cưng", result.getCategoryName());
+
+        ArgumentCaptor<AuditEntry> entries = ArgumentCaptor.forClass(AuditEntry.class);
+        verify(auditLogService, times(2)).record(entries.capture());
+        assertEquals(AuditAction.CATEGORY_CREATED, entries.getAllValues().get(0).action());
+        assertEquals(AuditActor.of(alice), entries.getAllValues().get(0).actor());
+        assertEquals(AuditAction.BUDGET_CREATED, entries.getAllValues().get(1).action());
+        assertEquals("Tạo ngân sách kỳ MONTH từ 2026-09-01, danh mục #30", entries.getAllValues().get(1).description());
+    }
+
+    @Test
+    void createBudget_withAnExistingNameInAnotherCase_reusesThatCategory_andCreatesNone() {
+        signedInAsAlice();
+        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("ăn UỐNG")).thenReturn(Optional.of(food));
+        when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(false);
+        when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BudgetResponseDto result = service.createBudget(requestNamed("ăn UỐNG"));
+
+        assertEquals(FOOD_ID, result.getCategoryId());
+        assertEquals("Ăn uống", result.getCategoryName());
+        verify(categoryRepository, never()).save(any());
+    }
+
+    @Test
+    void createBudget_withBothAnIdAndAName_usesTheId() {
+        signedInAsAlice();
+        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(false);
+        when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        BudgetRequestDto request = request(FOOD_ID);
+        request.setCategoryName("Thú cưng");
+
+        BudgetResponseDto result = service.createBudget(request);
+
+        assertEquals(FOOD_ID, result.getCategoryId());
+        verify(categoryRepository, never()).findFirstByNameIgnoreCaseOrderByIdAsc(any());
+        verify(categoryRepository, never()).save(any());
+    }
+
+    @Test
+    void createBudget_withABlankNameAndNoId_coversEveryCategory_asBefore() {
+        signedInAsAlice();
+        when(budgetRepository.existsDuplicate(ALICE_ID, Budget.ALL_CATEGORIES_KEY, BudgetPeriodType.MONTH, START))
+                .thenReturn(false);
+        when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BudgetResponseDto result = service.createBudget(requestNamed("   "));
+
+        assertNull(result.getCategoryId());
+        verifyNoInteractions(categoryRepository);
+    }
+
+    @Test
+    void createBudget_byName_throwsDuplicate_whenTheCallerAlreadyHasABudgetForThatCategoryAndPeriod() {
+        signedInAsAlice();
+        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Ăn uống")).thenReturn(Optional.of(food));
+        when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(true);
+
+        assertThrows(DuplicateBudgetException.class, () -> service.createBudget(requestNamed("Ăn uống")));
+
+        verify(budgetRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void updateBudget_withACategoryName_movesTheBudgetToThatCategory() {
+        signedInAsAlice();
+        Budget existing = budget(BUDGET_ID, alice, null);
+        when(budgetRepository.findWithCategoryByIdAndUserId(BUDGET_ID, ALICE_ID)).thenReturn(Optional.of(existing));
+        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("ăn uống")).thenReturn(Optional.of(food));
+        when(budgetRepository.existsDuplicateExcluding(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START, BUDGET_ID))
+                .thenReturn(false);
+        when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BudgetResponseDto result = service.updateBudget(BUDGET_ID, requestNamed("ăn uống"));
+
+        assertSame(food, existing.getCategory());
+        assertEquals(FOOD_ID, result.getCategoryId());
     }
 
     // ---- update ----

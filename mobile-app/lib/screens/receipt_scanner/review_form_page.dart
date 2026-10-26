@@ -384,6 +384,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   }
 
   /// "Save anyway" sends the same draft again with allowDuplicate; "View the saved one" opens that transaction.
+  /// Dismissing the question (Back, or a tap outside it) only closes it: the form stays, and nothing is sent.
   Future<void> _askAboutDuplicate(
     int userId,
     TransactionModel draft,
@@ -391,7 +392,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   ) async {
     final loc = context.loc;
     final savedAt = duplicate.existingTransactionDate;
-    final saveAnyway = await AppDialog.confirm(
+    final saveAnyway = await AppDialog.choose(
       context,
       title: savedAt == null
           ? loc.reviewDuplicateTitleNoDate
@@ -402,7 +403,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       confirmText: loc.reviewDuplicateSaveAnyway,
       cancelText: loc.reviewDuplicateView,
     );
-    if (!mounted) return;
+    if (!mounted || saveAnyway == null) return;
     if (!saveAnyway) {
       _openSavedTransaction(duplicate.existingTransactionId);
       return;

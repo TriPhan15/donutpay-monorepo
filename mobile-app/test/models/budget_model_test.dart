@@ -174,6 +174,32 @@ void main() {
       });
     });
 
+    test(
+      'toJson sends the category name only when there is no category id',
+      () {
+        const byName = BudgetModel(
+          categoryName: 'Thú cưng',
+          amount: 1,
+          periodType: BudgetPeriodType.month,
+          startDate: '2026-09-01',
+          endDate: '2026-09-30',
+        );
+        const byId = BudgetModel(
+          categoryId: 10,
+          categoryName: 'Ăn uống',
+          amount: 1,
+          periodType: BudgetPeriodType.month,
+          startDate: '2026-09-01',
+          endDate: '2026-09-30',
+        );
+
+        expect(byName.toJson()['categoryId'], isNull);
+        expect(byName.toJson()['categoryName'], 'Thú cưng');
+        expect(byId.toJson()['categoryId'], 10);
+        expect(byId.toJson().containsKey('categoryName'), isFalse);
+      },
+    );
+
     test('forPeriod computes both dates from the period type', () {
       final week = BudgetModel.forPeriod(
         amount: 1,

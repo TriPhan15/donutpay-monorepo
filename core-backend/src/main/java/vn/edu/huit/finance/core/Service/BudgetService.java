@@ -12,9 +12,7 @@ import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.BudgetNotFoundException;
 import vn.edu.huit.finance.core.Exception.DuplicateBudgetException;
-import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Repository.BudgetRepository;
-import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
@@ -33,7 +31,6 @@ public class BudgetService {
 
     private static final String MSG_BUDGET_NOT_FOUND = "Không tìm thấy ngân sách";
     private static final String MSG_DUPLICATE_BUDGET = "Ngân sách cho danh mục và kỳ hạn này đã tồn tại";
-    private static final String MSG_CATEGORY_NOT_FOUND = "Danh mục không tồn tại";
     private static final String AUDIT_BUDGET = "%s ngân sách kỳ %s từ %s, %s";
     private static final String AUDIT_CREATED = "Tạo";
     private static final String AUDIT_UPDATED = "Sửa";
@@ -45,7 +42,7 @@ public class BudgetService {
     private BudgetRepository budgetRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository;
+    private CategoryService categoryService;
 
     @Autowired
     private CurrentUserProvider currentUserProvider;
@@ -70,11 +67,11 @@ public class BudgetService {
     @Transactional
     public BudgetResponseDto createBudget(BudgetRequestDto request) {
         User user = currentUserProvider.getCurrentUser();
-        Category category = findCategory(request.getCategoryId());
+        Category category = resolveCategory(request, user);
         if (budgetRepository.existsDuplicate(
-                user.getId(), Budget.categoryKeyOf(request.getCategoryId()),
+                user.getId(), Budget.categoryKeyOf(idOf(category)),
                 request.getPeriodType(), request.getStartDate())) {
-            throw duplicateBudget(user.getId(), request);
+            throw duplicateBudget(user.getId(), category, request);
         }
 
         Budget budget = new Budget();
@@ -92,11 +89,11 @@ public class BudgetService {
         User caller = currentUserProvider.getCurrentUser();
         Long userId = caller.getId();
         Budget budget = findOwnedBudget(budgetId, userId);
-        Category category = findCategory(request.getCategoryId());
+        Category category = resolveCategory(request, caller);
         if (budgetRepository.existsDuplicateExcluding(
-                userId, Budget.categoryKeyOf(request.getCategoryId()),
+                userId, Budget.categoryKeyOf(idOf(category)),
                 request.getPeriodType(), request.getStartDate(), budgetId)) {
-            throw duplicateBudget(userId, request);
+            throw duplicateBudget(userId, category, request);
         }
 
         applyRequest(budget, request, category);
@@ -134,15 +131,20 @@ public class BudgetService {
         });
     }
 
-    /** Null when the budget applies to every category. */
-    private Category findCategory(Long categoryId) {
-        if (categoryId == null) {
+    /**
+     * Null when the budget applies to every category. Otherwise by id, or by name (the id wins), through the resolver
+     * transactions use: a new name creates an expense category, in this transaction, recorded with the caller.
+     */
+    private Category resolveCategory(BudgetRequestDto request, User caller) {
+        if (!request.hasCategory()) {
             return null;
         }
-        return categoryRepository.findById(categoryId).orElseThrow(() -> {
-            log.warn("Budget rejected: category {} does not exist", categoryId);
-            return new InvalidCategoryException(MSG_CATEGORY_NOT_FOUND);
-        });
+        return categoryService.resolveOrCreate(request.getCategoryId(), request.getCategoryName(),
+                CategoryService.TYPE_EXPENSE, AuditActor.of(caller));
+    }
+
+    private static Long idOf(Category category) {
+        return category == null ? null : category.getId();
     }
 
     private void applyRequest(Budget budget, BudgetRequestDto request, Category category) {
@@ -153,9 +155,9 @@ public class BudgetService {
         budget.setEndDate(request.getEndDate());
     }
 
-    private DuplicateBudgetException duplicateBudget(Long userId, BudgetRequestDto request) {
+    private DuplicateBudgetException duplicateBudget(Long userId, Category category, BudgetRequestDto request) {
         log.warn("Budget rejected: duplicate, userId={}, categoryId={}, periodType={}, startDate={}",
-                userId, request.getCategoryId(), request.getPeriodType(), request.getStartDate());
+                userId, idOf(category), request.getPeriodType(), request.getStartDate());
         return new DuplicateBudgetException(MSG_DUPLICATE_BUDGET);
     }
 }

@@ -130,7 +130,7 @@ abstract class AuditLogTransactionPolicyContract {
     }
 
     private boolean categoryNamed(String name) {
-        return categoryRepository.findByName(name).isPresent();
+        return categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc(name).isPresent();
     }
 
     // ---------------------------------------------------------------------------------------- a change and its row

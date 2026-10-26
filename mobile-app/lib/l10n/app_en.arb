@@ -2434,7 +2434,7 @@
   "@budgetCustomCategoryLabel": {
     "description": "Field shown when the budget category is 'Other'."
   },
-  "budgetCustomCategoryHelper": "Type it as you name it in your transactions",
+  "budgetCustomCategoryHelper": "A new category is created if needed. Use this exact name in your transactions so they count",
   "@budgetCustomCategoryHelper": {
     "description": "Helper under the custom category name field."
   },
@@ -2448,15 +2448,6 @@
     "placeholders": {
       "max": {
         "type": "int"
-      }
-    }
-  },
-  "budgetCustomCategoryUnknown": "No transaction uses the category \"{name}\" yet. Record one with this category first, then set its budget.",
-  "@budgetCustomCategoryUnknown": {
-    "description": "Error when the typed category does not exist on the server.",
-    "placeholders": {
-      "name": {
-        "type": "String"
       }
     }
   },

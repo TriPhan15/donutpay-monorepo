@@ -110,12 +110,72 @@ class CategoryServiceTest {
         verifyNoInteractions(auditLogService);
     }
 
+    // ------------------------------------------------------------------------- resolveOrCreate (transactions, budgets)
+
+    @Test
+    void resolveOrCreate_reusesAnExistingNameIgnoringCaseAndSurroundingSpaces_andRecordsNothing() {
+        Category coffee = category(12L, "Cà phê");
+        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("cà PHÊ")).thenReturn(Optional.of(coffee));
+
+        Category resolved = service.resolveOrCreate(null, "  cà PHÊ ", CategoryService.TYPE_EXPENSE, AuditActor.system());
+
+        assertSame(coffee, resolved);
+        verify(categoryRepository, never()).save(any());
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void resolveOrCreate_createsAnUnknownNameTrimmedWithTheGivenType_andRecordsItWithTheActor() {
+        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Thú cưng")).thenReturn(Optional.empty());
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> {
+            Category saved = invocation.getArgument(0);
+            saved.setId(30L);
+            return saved;
+        });
+
+        Category created = service.resolveOrCreate(null, " Thú cưng ", CategoryService.TYPE_EXPENSE, AuditActor.system());
+
+        assertEquals("Thú cưng", created.getName());
+        assertEquals("EXPENSE", created.getType());
+        AuditEntry entry = recorded();
+        assertEquals(AuditAction.CATEGORY_CREATED, entry.action());
+        assertEquals(AuditActor.system(), entry.actor());
+        assertEquals(30L, entry.targetId());
+    }
+
+    @Test
+    void resolveOrCreate_prefersTheIdOverTheName() {
+        Category food = category(12L, "Ăn uống");
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(food));
+
+        assertSame(food, service.resolveOrCreate(12L, "Khác hẳn", CategoryService.TYPE_EXPENSE, AuditActor.system()));
+
+        verify(categoryRepository, never()).findFirstByNameIgnoreCaseOrderByIdAsc(any());
+        verify(categoryRepository, never()).save(any());
+    }
+
+    @Test
+    void resolveOrCreate_refusesAnUnknownId_andABlankNameWithoutId() {
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(InvalidCategoryException.class,
+                () -> service.resolveOrCreate(99L, null, CategoryService.TYPE_EXPENSE, AuditActor.system()));
+        InvalidCategoryException blank = assertThrows(InvalidCategoryException.class,
+                () -> service.resolveOrCreate(null, "   ", CategoryService.TYPE_EXPENSE, AuditActor.system()));
+
+        assertEquals("Thiếu danh mục (categoryId hoặc categoryName)", blank.getMessage());
+        verify(categoryRepository, never()).save(any());
+        verifyNoInteractions(auditLogService);
+    }
+
     @Test
     void everyChangeRunsInATransaction_soTheChangeAndItsRowCommitTogether() throws NoSuchMethodException {
         for (Method method : new Method[] {
                 CategoryService.class.getMethod("createCategory", String.class, String.class),
                 CategoryService.class.getMethod("renameCategory", Long.class, String.class),
-                CategoryService.class.getMethod("deleteCategory", Long.class)}) {
+                CategoryService.class.getMethod("deleteCategory", Long.class),
+                CategoryService.class.getMethod("resolveOrCreate", Long.class, String.class, String.class,
+                        AuditActor.class)}) {
             assertTrue(AnnotatedElementUtils.hasAnnotation(method, Transactional.class), method.getName());
         }
     }

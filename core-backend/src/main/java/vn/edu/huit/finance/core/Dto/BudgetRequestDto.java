@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import vn.edu.huit.finance.core.Entity.Budget;
@@ -19,9 +20,28 @@ import java.time.LocalDate;
 @Setter
 public class BudgetRequestDto {
 
-    /** Null means the budget applies to every category. */
+    public static final int CATEGORY_NAME_MAX_LENGTH = 50;
+
+    /** Null, together with a blank {@link #categoryName}, means the budget applies to every category. */
     @Positive(message = "Mã danh mục không hợp lệ")
     private Long categoryId;
+
+    /**
+     * Used only when categoryId is null: a category with this name (ignoring case) is reused, or created as an expense
+     * category. Stored trimmed; blank counts as absent.
+     */
+    @Size(max = CATEGORY_NAME_MAX_LENGTH, message = "Tên danh mục tối đa {max} ký tự")
+    private String categoryName;
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName == null || categoryName.isBlank() ? null : categoryName.trim();
+    }
+
+    /** True when the request names a category, by id or by a non-blank name. */
+    @JsonIgnore
+    public boolean hasCategory() {
+        return categoryId != null || categoryName != null;
+    }
 
     @NotNull(message = "Số tiền ngân sách không được để trống")
     @DecimalMin(value = "0", inclusive = false, message = "Số tiền ngân sách phải lớn hơn 0")

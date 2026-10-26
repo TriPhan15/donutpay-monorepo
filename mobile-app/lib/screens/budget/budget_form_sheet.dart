@@ -75,7 +75,8 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
     return BudgetPeriodType.rangeContaining(_periodType, _referenceDay);
   }
 
-  /// "Khác" is chosen: the budget is for a category the user names.
+  /// "Khác" is chosen: the budget is for a category the user names. It is sent by name, and core-backend reuses the
+  /// category of that name (trimmed, ignoring case) or creates it.
   bool get _isCustomCategory =>
       _category?.name == TransactionCategories.otherExpense;
 
@@ -169,57 +170,30 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
     return [selected, ...loaded];
   }
 
-  static String _normalise(String name) => name.trim().toLowerCase();
-
-  /// The category a name typed under "Khác" stands for. core-backend limits a budget to a category id, and a
-  /// transaction whose category is typed creates (or reuses) the category of exactly that name; the Ledger and the
-  /// Dashboard then measure a budget by the category's name, trimmed and ignoring case. So the name is looked up in
-  /// the categories of the server: the same spelling first, then ignoring case, then as the app shows a default one.
-  /// Null when no transaction has used that name yet.
-  BudgetCategory? _categoryNamed(String typed, AppLocalizations loc) {
-    final wanted = _normalise(typed);
-    for (final category in _categories) {
-      if (category.name.trim() == typed.trim()) return category;
-    }
-    for (final category in _categories) {
-      if (_normalise(category.name) == wanted) return category;
-    }
-    for (final category in _categories) {
-      if (_normalise(TransactionCategories.displayName(loc, category.name)) ==
-          wanted) {
-        return category;
-      }
-    }
-    return null;
-  }
-
-  /// The category the budget is sent with: the chosen chip, or the one named under "Khác". Null with
-  /// [_customCategoryError] set when the typed name cannot be used.
-  ({BudgetCategory? category, bool valid}) _resolveCategory(
-    AppLocalizations loc,
-  ) {
-    if (!_isCustomCategory) return (category: _category, valid: true);
+  /// The name typed under "Khác", trimmed. Null, with [_customCategoryError] set, when it is empty or too long.
+  String? _validCustomCategoryName(AppLocalizations loc) {
     final typed = _customCategoryController.text.trim();
-    String? error;
-    BudgetCategory? found;
+    final String? error;
     if (typed.isEmpty) {
       error = loc.budgetCustomCategoryRequired;
     } else if (typed.length > customCategoryMaxLength) {
       error = loc.budgetCustomCategoryTooLong(customCategoryMaxLength);
     } else {
-      found = _categoryNamed(typed, loc);
-      if (found == null) error = loc.budgetCustomCategoryUnknown(typed);
+      error = null;
     }
     setState(() => _customCategoryError = error);
-    return (category: found, valid: error == null);
+    return error == null ? typed : null;
   }
 
-  BudgetModel _buildBudget(double amount, BudgetCategory? category) {
+  /// With a [customCategoryName] the budget is sent by that name and without a category id; otherwise with the
+  /// chosen chip (none for every category).
+  BudgetModel _buildBudget(double amount, String? customCategoryName) {
     final range = _range;
+    final category = customCategoryName == null ? _category : null;
     return BudgetModel(
       id: widget.budget?.id,
       categoryId: category?.id,
-      categoryName: category?.name,
+      categoryName: customCategoryName ?? category?.name,
       amount: amount,
       periodType: _periodType,
       startDate: BudgetModel.formatApiDate(range.start),
@@ -239,12 +213,15 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
       );
       return;
     }
-    final resolved = _resolveCategory(loc);
-    if (!resolved.valid) return;
+    String? customCategoryName;
+    if (_isCustomCategory) {
+      customCategoryName = _validCustomCategoryName(loc);
+      if (customCategoryName == null) return;
+    }
 
     setState(() => _isSaving = true);
     final error = await widget.onSubmit(
-      _buildBudget(amount, resolved.category),
+      _buildBudget(amount, customCategoryName),
     );
     if (!mounted) return;
     setState(() => _isSaving = false);

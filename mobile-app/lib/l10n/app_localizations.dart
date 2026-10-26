@@ -3273,7 +3273,7 @@ abstract class AppLocalizations {
   /// Helper under the custom category name field.
   ///
   /// In en, this message translates to:
-  /// **'Type it as you name it in your transactions'**
+  /// **'A new category is created if needed. Use this exact name in your transactions so they count'**
   String get budgetCustomCategoryHelper;
 
   /// Error when the custom category name is empty.
@@ -3287,12 +3287,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'At most {max} characters'**
   String budgetCustomCategoryTooLong(int max);
-
-  /// Error when the typed category does not exist on the server.
-  ///
-  /// In en, this message translates to:
-  /// **'No transaction uses the category \"{name}\" yet. Record one with this category first, then set its budget.'**
-  String budgetCustomCategoryUnknown(String name);
 
   /// Period label of the Ledger in year mode.
   ///

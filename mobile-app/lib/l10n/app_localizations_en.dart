@@ -1830,7 +1830,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get budgetCustomCategoryHelper =>
-      'Type it as you name it in your transactions';
+      'A new category is created if needed. Use this exact name in your transactions so they count';
 
   @override
   String get budgetCustomCategoryRequired => 'Enter the category name';
@@ -1838,11 +1838,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String budgetCustomCategoryTooLong(int max) {
     return 'At most $max characters';
-  }
-
-  @override
-  String budgetCustomCategoryUnknown(String name) {
-    return 'No transaction uses the category \"$name\" yet. Record one with this category first, then set its budget.';
   }
 
   @override

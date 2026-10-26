@@ -249,7 +249,7 @@ void main() {
     });
 
     testWidgets(
-      'a typed name is sent as the server category of that name, ignoring case and spaces',
+      'a typed name is sent trimmed by name, without a category id, for the server to reuse or create',
       (tester) async {
         BudgetModel? sent;
         await openWithOther(tester, (budget) async {
@@ -260,36 +260,34 @@ void main() {
         await _tapSave(tester);
 
         expect(sent, isNotNull);
-        expect(sent!.categoryId, 31);
         expect(
-          sent!.categoryName,
-          'Cà phê',
-          reason:
-              'the Ledger and the Dashboard match transactions by this name',
+          sent!.categoryId,
+          isNull,
+          reason: 'the server matches the name ignoring case',
         );
-        expect(sent!.toJson()['categoryId'], 31);
+        expect(sent!.categoryName, 'cà PHÊ');
+        expect(sent!.toJson()['categoryId'], isNull);
+        expect(sent!.toJson()['categoryName'], 'cà PHÊ');
       },
     );
 
-    testWidgets(
-      'a name no transaction has used yet is refused with an explanation and nothing is sent',
-      (tester) async {
-        var sent = 0;
-        await openWithOther(tester, (_) async {
-          sent++;
-          return null;
-        });
-        await tester.enterText(nameField(), 'Thú cưng');
-        await _tapSave(tester);
+    testWidgets('a name no transaction has used yet is sent too, not refused', (
+      tester,
+    ) async {
+      BudgetModel? sent;
+      await openWithOther(tester, (budget) async {
+        sent = budget;
+        return null;
+      });
+      await tester.enterText(nameField(), 'Thú cưng');
+      await _tapSave(tester);
 
-        expect(
-          find.textContaining('Chưa có giao dịch nào dùng danh mục "Thú cưng"'),
-          findsOneWidget,
-        );
-        expect(sent, 0);
-        expect(find.text('Lưu ngân sách'), findsOneWidget);
-      },
-    );
+      expect(sent, isNotNull);
+      expect(sent!.categoryId, isNull);
+      expect(sent!.toJson()['categoryName'], 'Thú cưng');
+      expect(find.textContaining('Chưa có giao dịch nào'), findsNothing);
+      expect(find.text('Đã lưu ngân sách'), findsOneWidget);
+    });
   });
 
   testWidgets(

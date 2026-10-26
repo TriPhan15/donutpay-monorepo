@@ -102,6 +102,11 @@ class TransactionServiceTest {
     @BeforeEach
     void realStatisticsOverTheMockedRepository() {
         ReflectionTestUtils.setField(service, "userStatisticsService", new UserStatisticsService(transactionRepo));
+        // The shared category resolver runs for real over the mocked repository and audit log.
+        CategoryService categoryService = new CategoryService();
+        ReflectionTestUtils.setField(categoryService, "categoryRepository", categoryRepo);
+        ReflectionTestUtils.setField(categoryService, "auditLogService", auditLogService);
+        ReflectionTestUtils.setField(service, "categoryService", categoryService);
         // Every checkout locks the wallet (with or without a client id); unless a test says otherwise the locked row
         // holds what the copy read earlier holds.
         lenient().when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(alice);
@@ -553,7 +558,7 @@ class TransactionServiceTest {
     void aCategoryGivenByNameIsReusedWhenItExists() {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         Category coffee = category(12L, "Cà phê", "EXPENSE");
-        when(categoryRepo.findByName("Cà phê")).thenReturn(Optional.of(coffee));
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("Cà phê")).thenReturn(Optional.of(coffee));
         TransactionUpdateRequestDto request = update();
         request.setCategoryName("  Cà phê ");
 
@@ -563,11 +568,26 @@ class TransactionServiceTest {
         verify(categoryRepo, never()).save(any());
     }
 
+    @Test
+    void aCategoryNameInAnotherCaseReusesTheExistingCategory() {
+        Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        Category coffee = category(12L, "Cà phê", "EXPENSE");
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("cà phê")).thenReturn(Optional.of(coffee));
+        TransactionUpdateRequestDto request = update();
+        request.setCategoryName(" cà phê  ");
+
+        service.updateTransaction(TX_ID, request);
+
+        assertSame(coffee, transaction.getCategory());
+        assertEquals("Cà phê", transaction.getCategoryName());
+        verify(categoryRepo, never()).save(any());
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void aNewCategoryNameCreatesACategoryTypedAfterTheTransactionAsItWillBe(boolean expenseAfterwards) {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, !expenseAfterwards);
-        when(categoryRepo.findByName("Freelance")).thenReturn(Optional.empty());
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("Freelance")).thenReturn(Optional.empty());
         when(categoryRepo.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
         TransactionUpdateRequestDto request = update();
         request.setCategoryName("Freelance");
@@ -592,7 +612,7 @@ class TransactionServiceTest {
 
         service.updateTransaction(TX_ID, request);
 
-        verify(categoryRepo, never()).findByName(any());
+        verify(categoryRepo, never()).findFirstByNameIgnoreCaseOrderByIdAsc(any());
     }
 
     @Test
@@ -1022,7 +1042,7 @@ class TransactionServiceTest {
     @Test
     void aScannedCheckoutHandsTheAiJsonToTheReceiptServiceBeforeTheTransactionIsSaved() {
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
-        when(categoryRepo.findByName(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
 
         service.createTransaction(checkout("{\"seller\": {}}"), ALICE_ID);
 
@@ -1039,7 +1059,7 @@ class TransactionServiceTest {
     @ValueSource(strings = "   ")
     void aCheckoutWithoutAiDataHasNoReceipt(String rawReceiptData) {
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
-        when(categoryRepo.findByName(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
 
         service.createTransaction(checkout(rawReceiptData), ALICE_ID);
 
@@ -1050,7 +1070,7 @@ class TransactionServiceTest {
     @Test
     void whenTheReceiptCannotBeBuiltNothingIsSavedAndTheFailureIsNotSwallowed() {
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
-        when(categoryRepo.findByName(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
         doThrow(new IllegalStateException("cannot build")).when(receiptProcessingService).attachReceipt(any(), any(), any());
 
         assertThrows(IllegalStateException.class, () -> service.createTransaction(checkout("{\"seller\": {}}"), ALICE_ID));
@@ -1096,7 +1116,7 @@ class TransactionServiceTest {
 
     private void aliceScansFoodAs(String seller) {
         checkoutAsAlice();
-        when(categoryRepo.findByName(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
         theScanReads(seller);
     }
 
@@ -1195,7 +1215,7 @@ class TransactionServiceTest {
     @Test
     void aManualCheckoutIsNeverCheckedForDuplicates() {
         checkoutAsAlice();
-        when(categoryRepo.findByName(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
 
         service.createMyTransaction(checkout((String) null));
 
@@ -1497,7 +1517,7 @@ class TransactionServiceTest {
     @ValueSource(booleans = {true, false})
     void checkoutWithANewCategoryNameCreatesTheCategoryTypedAfterTheTransaction(boolean isExpense) {
         checkoutAsAlice();
-        when(categoryRepo.findByName("Freelance")).thenReturn(Optional.empty());
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("Freelance")).thenReturn(Optional.empty());
         when(categoryRepo.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
         TransactionRequestDto request = checkout(isExpense, "10000");
         request.setCategoryName(" Freelance ");

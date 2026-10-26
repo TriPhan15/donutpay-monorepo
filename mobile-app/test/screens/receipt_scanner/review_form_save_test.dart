@@ -555,6 +555,45 @@ void main() {
       },
     );
 
+    /// Back, or a tap on the barrier outside the dialog, answers neither "Vẫn lưu" nor "Xem bản đã lưu".
+    final dismissals = <String, Future<void> Function(WidgetTester)>{
+      'Back': (tester) async {
+        await tester.binding.handlePopRoute();
+      },
+      'a tap outside the dialog': (tester) async {
+        await tester.tapAt(const Offset(5, 5));
+      },
+    };
+    for (final dismissal in dismissals.entries) {
+      testWidgets(
+        '${dismissal.key} only closes the question: the form stays and nothing is sent or opened',
+        (tester) async {
+          backend.on('POST', _checkout, (_) => _duplicateAnswer());
+          final opened = <int>[];
+          final result = await openForm(tester, onOpenTransaction: opened.add);
+
+          await tapSave(tester);
+          expect(find.text(_duplicateTitle), findsOneWidget);
+
+          await dismissal.value(tester);
+          await tester.pumpAndSettle();
+
+          expect(find.text(_duplicateTitle), findsNothing);
+          expect(find.byType(Dialog), findsNothing);
+          expect(find.byType(ReviewFormPage), findsOneWidget);
+          expect(find.text(_save), findsOneWidget);
+          expect(opened, isEmpty, reason: 'not "Xem bản đã lưu"');
+          expect(result, isEmpty, reason: 'the form did not close');
+          expect(sentBodies(), hasLength(1), reason: 'not "Vẫn lưu"');
+          expect(store.rows, isEmpty);
+          expect(
+            find.textContaining('Không mở được bản đã lưu từ đây'),
+            findsNothing,
+          );
+        },
+      );
+    }
+
     testWidgets(
       'without a way to open the saved one, the form stays open and says where to find it',
       (tester) async {

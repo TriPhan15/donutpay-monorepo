@@ -84,6 +84,27 @@ class AppDialog {
     return r == true;
   }
 
+  /// A question with two answers that the user may also leave unanswered, by Back or a tap outside the dialog:
+  /// true for [confirmText], false for [cancelText], null when the dialog was dismissed.
+  static Future<bool?> choose(
+    BuildContext context, {
+    required String title,
+    String? message,
+    required String confirmText,
+    required String cancelText,
+  }) {
+    return _show(
+      context,
+      icon: Icons.help_outline_rounded,
+      tone: _Tone.info,
+      title: title,
+      message: message,
+      confirmText: confirmText,
+      cancelText: cancelText,
+      dismissible: true,
+    );
+  }
+
   static Color _accentOf(_Tone tone, ThemeData theme) => switch (tone) {
     _Tone.success => theme.semanticColors.successColor,
     _Tone.error => theme.colorScheme.error,
@@ -99,10 +120,11 @@ class AppDialog {
     String? message,
     required String confirmText,
     String? cancelText,
+    bool dismissible = false,
   }) {
     return showGeneralDialog<bool>(
       context: context,
-      barrierDismissible: cancelText == null,
+      barrierDismissible: dismissible || cancelText == null,
       barrierLabel: 'dialog',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 240),

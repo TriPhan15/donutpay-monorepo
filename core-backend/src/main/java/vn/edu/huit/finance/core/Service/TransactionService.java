@@ -26,7 +26,6 @@ import vn.edu.huit.finance.core.Entity.TransactionSortField;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
-import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Exception.TransactionNotFoundException;
@@ -69,8 +68,6 @@ import java.util.regex.Pattern;
 @Service
 public class TransactionService {
 
-    private static final String CATEGORY_TYPE_EXPENSE = "EXPENSE";
-    private static final String CATEGORY_TYPE_INCOME = "INCOME";
     /** Below this a wallet runs low: a checkout warns its owner, and the admin dashboard lists the user. */
     public static final BigDecimal LOW_BALANCE_THRESHOLD = new BigDecimal("50000");
 
@@ -82,8 +79,6 @@ public class TransactionService {
     private static final String MSG_LOW_BALANCE = "CẢNH BÁO: Số dư ví của bạn sắp cạn kiệt (Dưới 50,000 VNĐ)!";
     private static final String MSG_INSUFFICIENT_BALANCE = "GIAO DỊCH THẤT BẠI: Số dư ví không đủ!";
     private static final String MSG_DELETE_WOULD_OVERDRAW = "Không thể xóa khoản thu này: số dư ví hiện tại không đủ để hoàn lại số tiền đã cộng.";
-    private static final String MSG_CATEGORY_NOT_FOUND = "Không tìm thấy danh mục";
-    private static final String MSG_CATEGORY_REQUIRED = "Thiếu danh mục (categoryId hoặc categoryName)";
     private static final String MSG_TRANSACTION_NOT_FOUND = "Không tìm thấy giao dịch";
     private static final String MSG_TRANSACTION_FORBIDDEN = "Bạn không có quyền thao tác trên giao dịch này";
     private static final String MSG_RECEIPT_NOT_FOUND = "Không tìm thấy hóa đơn";
@@ -119,7 +114,6 @@ public class TransactionService {
     private static final String AUDIT_RECEIPT_CANCELED = "Hủy hóa đơn: %s → %s";
     private static final String AUDIT_RECEIPT_APPROVED = "Duyệt hóa đơn của giao dịch #%d (người dùng #%d): %s → %s, tổng tiền %s VNĐ";
     private static final String AUDIT_RECONCILED = "Đối soát theo hóa đơn #%d đã duyệt: số tiền %s → %s VNĐ; ví %s%s VNĐ";
-    private static final String AUDIT_CATEGORY_CREATED = "Tạo danh mục \"%s\" (%s) theo tên khi ghi giao dịch";
     private static final String PLUS = "+";
 
     @Autowired
@@ -129,7 +123,7 @@ public class TransactionService {
     @Autowired
     private UserRepository userRepo;
     @Autowired
-    private CategoryRepository categoryRepo;
+    private CategoryService categoryService;
     @Autowired
     private vn.edu.huit.finance.core.Service.AuditLogService auditLogService;
     @Autowired
@@ -575,28 +569,9 @@ public class TransactionService {
                 || (request.getCategoryName() != null && !request.getCategoryName().isBlank());
     }
 
-    /**
-     * By id, or by name; a name that does not exist yet creates the category, typed after the transaction. A category is
-     * shared by every user, so its creation is recorded (CATEGORY_CREATED) with whoever caused it.
-     */
+    /** By id or by name (see {@link CategoryService#resolveOrCreate}); a new one is typed after the transaction. */
     private Category resolveCategory(Long categoryId, String categoryName, boolean isExpense, AuditActor actor) {
-        if (categoryId != null) {
-            return categoryRepo.findById(categoryId)
-                    .orElseThrow(() -> new InvalidCategoryException(MSG_CATEGORY_NOT_FOUND));
-        }
-        if (categoryName != null && !categoryName.isBlank()) {
-            String name = categoryName.trim();
-            return categoryRepo.findByName(name).orElseGet(() -> {
-                Category created = new Category();
-                created.setName(name);
-                created.setType(isExpense ? CATEGORY_TYPE_EXPENSE : CATEGORY_TYPE_INCOME);
-                Category saved = categoryRepo.save(created);
-                auditLogService.record(AuditEntry.of(AuditAction.CATEGORY_CREATED, actor, saved.getId(),
-                        String.format(AUDIT_CATEGORY_CREATED, saved.getName(), saved.getType())));
-                return saved;
-            });
-        }
-        throw new InvalidCategoryException(MSG_CATEGORY_REQUIRED);
+        return categoryService.resolveOrCreate(categoryId, categoryName, CategoryService.typeOf(isExpense), actor);
     }
 
     /** What an edit changes, field by field: the amount, the direction and the category with their values, the rest by name. */

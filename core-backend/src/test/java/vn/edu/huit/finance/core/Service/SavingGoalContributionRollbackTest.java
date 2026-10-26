@@ -41,7 +41,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.jpa.hibernate.ddl-auto=create-drop"})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({SavingGoalService.class, TransactionService.class, ReceiptProcessingService.class, OcrService.class,
+@Import({SavingGoalService.class, TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class,
         UserStatisticsService.class})
 class SavingGoalContributionRollbackTest {
 
@@ -138,7 +138,7 @@ class SavingGoalContributionRollbackTest {
         service.contributeToMySaving(alicesGoalId, new BigDecimal("100000"));
         service.contributeToMySaving(alicesGoalId, new BigDecimal("200000"));
 
-        Category savings = categoryRepository.findByName(SAVINGS).orElseThrow();
+        Category savings = categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc(SAVINGS).orElseThrow();
         assertEquals(DefaultCategory.TYPE_EXPENSE, savings.getType());
         assertEquals(1, categoryRepository.count());
         assertMoney("1300000", goalInDatabase(alicesGoalId));

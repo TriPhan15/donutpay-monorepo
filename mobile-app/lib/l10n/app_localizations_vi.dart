@@ -1799,7 +1799,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get budgetCustomCategoryHelper =>
-      'Gõ đúng tên danh mục bạn dùng khi ghi giao dịch';
+      'Danh mục chưa có sẽ được tạo mới. Ghi giao dịch với đúng tên này để tính vào ngân sách';
 
   @override
   String get budgetCustomCategoryRequired => 'Nhập tên danh mục';
@@ -1807,11 +1807,6 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String budgetCustomCategoryTooLong(int max) {
     return 'Tối đa $max ký tự';
-  }
-
-  @override
-  String budgetCustomCategoryUnknown(String name) {
-    return 'Chưa có giao dịch nào dùng danh mục \"$name\". Hãy ghi một giao dịch với danh mục này trước, rồi đặt ngân sách cho nó.';
   }
 
   @override
