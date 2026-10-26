@@ -135,6 +135,52 @@ tạo mật khẩu mới cho server, đừng dùng lại mật khẩu máy dev.
 
 Tạo mật khẩu ngẫu nhiên chỉ có chữ và số (dùng được cho mọi ô trên): `openssl rand -hex 24`.
 
+### Chép model AI lên server (bắt buộc, làm một lần trước mục 6)
+
+Git chỉ chứa phần cấu hình của model DONUT V5 (`ai-service/Version5/donut_result/*.json`). File trọng số
+`model.safetensors` (~806 MB) bị `.gitignore` chặn, nên `git clone` không có nó. Thiếu file này, ai-service dừng ngay lúc
+khởi động với lỗi "Không tìm thấy weights", và core-api (phụ thuộc ai-service healthy) cũng không lên.
+
+Image ai-service được build bằng `COPY . .` từ thư mục `ai-service/` trên server, nên chỉ cần đặt file vào đúng chỗ
+trước khi build. Từ **máy của bạn** (nơi đã giải nén `donut_result.zip`):
+
+```bash
+# 1. Kiểm tra file gốc (khoảng 806 MB)
+ls -lh ai-service/Version5/donut_result/model.safetensors
+sha256sum ai-service/Version5/donut_result/model.safetensors     # ghi lại chuỗi này
+
+# 2. Chép lên server (mất vài phút, tùy mạng)
+scp -i [ĐIỀN đường dẫn khóa SSH] \
+    ai-service/Version5/donut_result/model.safetensors \
+    [ĐIỀN user SSH]@[ĐIỀN IP máy]:~/Deploy_Project/ai-service/Version5/donut_result/
+```
+
+Mạng chập chờn thì dùng `rsync`, bị ngắt giữa chừng chạy lại sẽ tiếp tục phần còn thiếu:
+
+```bash
+rsync -avP -e "ssh -i [ĐIỀN đường dẫn khóa SSH]" \
+    ai-service/Version5/donut_result/model.safetensors \
+    [ĐIỀN user SSH]@[ĐIỀN IP máy]:~/Deploy_Project/ai-service/Version5/donut_result/
+```
+
+Trên **server**, kiểm tra file đủ và không hỏng:
+
+```bash
+cd ~/Deploy_Project/ai-service/Version5/donut_result
+ls -lh model.safetensors          # ~806 MB
+sha256sum model.safetensors       # phải trùng chuỗi đã ghi ở bước 1
+ls                                # có cả config.json, tokenizer.json, processor_config.json... (từ git)
+```
+
+Lưu ý:
+
+- Chỉ chép **một lần**. CI deploy bằng `git reset --hard`, lệnh này không xóa file bị ignore, nên model vẫn nằm đó qua
+  các lần deploy sau. **Đừng** chạy `git clean -fdx` trong `~/Deploy_Project`: lệnh đó xóa luôn model (và `.env`).
+- Khi train lại model mới: chép đè `model.safetensors`, commit các file `*.json` mới của `donut_result/`, rồi deploy
+  (`docker compose build data-mining-api` sẽ đóng gói lại model).
+- `training_args.bin` không cần chép: file này chỉ dùng lúc train.
+- Model chiếm thêm ~800 MB trong image và ~1,5–2,5 GB RAM khi chạy; `docker-compose.yml` giới hạn ai-service ở 3 GB.
+
 ## 6. Khởi động lần đầu
 
 ```bash
@@ -262,6 +308,8 @@ Không bao giờ chạy `docker compose down -v` trên server: `-v` xóa volume 
 | App trên điện thoại báo lỗi mạng | `APP_API_BASE` sai hoặc không phải `https://`, hoặc build APK trước khi đặt variable |
 | Job `release-apk` dừng ở "Check release secrets" | Thiếu một secret/variable ở mục 7 (tên được in trong log) |
 | Build trên EC2 bị kill | Hết RAM: thêm swap (mục 4) hoặc dùng máy lớn hơn |
+| data-mining-api dừng ngay, log "Không tìm thấy weights" hoặc lỗi đọc safetensors | Chưa chép `model.safetensors` hoặc file chép thiếu (so `sha256sum`), xem "Chép model AI lên server" ở mục 5; chép xong chạy `sudo docker compose build data-mining-api && sudo docker compose up -d --wait` |
+| data-mining-api bị khởi động lại khi quét hóa đơn (`docker compose ps` báo restart, `dmesg` có "Out of memory") | Máy thiếu RAM cho model: thêm swap hoặc dùng máy ≥ 4 GB RAM |
 
 ## 13. Máy dev (docker compose tại máy)
 
