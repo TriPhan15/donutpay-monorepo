@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ public class GlobalExceptionHandler {
 
     private static final String MSG_CONCURRENT_CHANGE =
             "Dữ liệu vừa được thay đổi bởi một yêu cầu khác, vui lòng tải lại rồi thử lại";
+    private static final String MSG_SYSTEM_ERROR = "Hệ thống đang gặp sự cố, vui lòng thử lại sau";
     private static final String REASON_NOT_OWNER = "Dữ liệu thuộc về người dùng khác";
     private static final String REASON_ROLE = "Phân quyền theo vai trò";
 
@@ -199,16 +201,18 @@ public class GlobalExceptionHandler {
         return new ModelAndView("error").addObject("errorMessage", "Lỗi ràng buộc dữ liệu cơ sở dữ liệu.");
     }
 
+    // 500 with a fixed text: a JDBC/Hibernate message carries the SQL and table/column names, so it stays in the log.
+    // The more specific subclasses (DataIntegrityViolation, OptimisticLockingFailure) still reach their own handlers.
+    @ExceptionHandler(DataAccessException.class)
+    public Object handleDataAccess(DataAccessException ex, HttpServletRequest request) {
+        log.error("Database error, uri={}", request.getRequestURI(), ex);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, MSG_SYSTEM_ERROR, request);
+    }
+
+    // 500 with a fixed text: an unexpected error's message may expose internals, so it stays in the log.
     @ExceptionHandler(Exception.class)
     public Object handleAllExceptions(Exception ex, HttpServletRequest request) {
-        ex.printStackTrace();
-
-        if (isJsonRequest(request)) {
-            return ResponseEntity.status(500).body(ApiResponse.<String>builder()
-                    .code(500)
-                    .message("Hệ thống sự cố: " + ex.getMessage())
-                    .build());
-        }
-        return new ModelAndView("error").addObject("errorMessage", "Đã xảy ra lỗi hệ thống: " + ex.getMessage());
+        log.error("Unhandled error, uri={}", request.getRequestURI(), ex);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, MSG_SYSTEM_ERROR, request);
     }
 }

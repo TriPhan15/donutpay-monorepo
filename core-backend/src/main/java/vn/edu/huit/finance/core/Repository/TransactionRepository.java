@@ -37,7 +37,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:categoryId IS NULL OR t.category.id = :categoryId) " +
            "AND (:minPrice IS NULL OR t.amount >= :minPrice) " +
            "AND (:maxPrice IS NULL OR t.amount <= :maxPrice) " +
-           "AND (:vendorName IS NULL OR LOWER(r.vendorName) LIKE LOWER(CONCAT('%', :vendorName, '%')))")
+           "AND (CAST(:vendorName AS String) IS NULL OR LOWER(r.vendorName) LIKE LOWER(CONCAT('%', CAST(:vendorName AS String), '%')))")
     List<Transaction> filterTransactions(
             @Param("userId") Long userId,
             @Param("categoryId") Long categoryId,
@@ -66,7 +66,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "AND (:categoryId IS NULL OR t.category.id = :categoryId) " +
            "AND (:minPrice IS NULL OR t.amount >= :minPrice) " +
            "AND (:maxPrice IS NULL OR t.amount <= :maxPrice) " +
-           "AND (:vendorName IS NULL OR LOWER(r.vendorName) LIKE LOWER(CONCAT('%', :vendorName, '%'))) " +
+           "AND (CAST(:vendorName AS String) IS NULL OR LOWER(r.vendorName) LIKE LOWER(CONCAT('%', CAST(:vendorName AS String), '%'))) " +
            "AND (CAST(:startDate AS date) IS NULL OR t.transactionDate >= :startDate) " +
            "AND (CAST(:endDate AS date) IS NULL OR t.transactionDate <= :endDate)")
     List<Transaction> filterTransactions(

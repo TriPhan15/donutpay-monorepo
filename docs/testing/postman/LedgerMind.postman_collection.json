@@ -164,11 +164,11 @@
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"ApiResponse.code = 200\", () => pm.expect(pm.response.json().code).to.eql(200));",
-                  "const data = pm.response.json().data;",
-                  "pm.test(\"Có access token và refresh token\", () => { pm.expect(data.token).to.be.a(\"string\"); pm.expect(data.refreshToken).to.be.a(\"string\"); });",
-                  "pm.collectionVariables.set('token', data.token);",
-                  "pm.collectionVariables.set('refreshToken', data.refreshToken);",
-                  "pm.collectionVariables.set('userId', data.user.id);"
+                  "const resData = pm.response.json().data;",
+                  "pm.test(\"Có access token và refresh token\", () => { pm.expect(resData.token).to.be.a(\"string\"); pm.expect(resData.refreshToken).to.be.a(\"string\"); });",
+                  "pm.collectionVariables.set('token', resData.token);",
+                  "pm.collectionVariables.set('refreshToken', resData.refreshToken);",
+                  "pm.collectionVariables.set('userId', resData.user.id);"
                 ]
               }
             }
@@ -369,9 +369,9 @@
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"ApiResponse.code = 200\", () => pm.expect(pm.response.json().code).to.eql(200));",
-                  "const data = pm.response.json().data;",
-                  "pm.test(\"Có transactionId\", () => pm.expect(data.transactionId).to.be.a(\"number\"));",
-                  "pm.collectionVariables.set('transactionId', data.transactionId);"
+                  "const resData = pm.response.json().data;",
+                  "pm.test(\"Có transactionId\", () => pm.expect(resData.transactionId).to.be.a(\"number\"));",
+                  "pm.collectionVariables.set('transactionId', resData.transactionId);"
                 ]
               }
             }
@@ -1536,9 +1536,9 @@
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"ApiResponse.code = 200\", () => pm.expect(pm.response.json().code).to.eql(200));",
-                  "const data = pm.response.json().data;",
-                  "pm.test(\"Vai trò ADMIN\", () => pm.expect(String(data.user.role)).to.include(\"ADMIN\"));",
-                  "pm.collectionVariables.set('adminToken', data.token);"
+                  "const resData = pm.response.json().data;",
+                  "pm.test(\"Vai trò ADMIN\", () => pm.expect(String(resData.user.role)).to.include(\"ADMIN\"));",
+                  "pm.collectionVariables.set('adminToken', resData.token);"
                 ]
               }
             }
@@ -1738,10 +1738,10 @@
                 "exec": [
                   "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"ApiResponse.code = 200\", () => pm.expect(pm.response.json().code).to.eql(200));",
-                  "const data = pm.response.json().data;",
+                  "const resData = pm.response.json().data;",
                   "pm.collectionVariables.set('usedRefreshToken', pm.collectionVariables.get('refreshToken'));",
-                  "pm.collectionVariables.set('token', data.token);",
-                  "pm.collectionVariables.set('refreshToken', data.refreshToken);"
+                  "pm.collectionVariables.set('token', resData.token);",
+                  "pm.collectionVariables.set('refreshToken', resData.refreshToken);"
                 ]
               }
             }
