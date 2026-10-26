@@ -9,6 +9,7 @@ import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/app_notification.dart';
 import 'package:finance_ai_app/screens/notifications/notification_destination.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 extension NotificationTypeLabels on AppLocalizations {
   String notificationTypeLabel(NotificationType type) => switch (type) {
@@ -109,8 +110,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
       _firstPageFailed = !keepsAList;
       _loadingMore = false;
     });
-    // A list is already on screen: it stays, and a short note says the reload failed.
-    if (keepsAList) _showSnackBar(context.loc.notificationsLoadFailed);
+    // A list is already on screen: it stays, and a short note says the reload failed and offers to try again.
+    if (keepsAList) {
+      final loc = context.loc;
+      AppToast.error(
+        context,
+        loc.notificationsLoadFailed,
+        actionLabel: loc.commonRetry,
+        onAction: _reload,
+      );
+    }
   }
 
   void _retryFirstPage() {
@@ -190,7 +199,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final transactionId = NotificationDestination.transactionIdOf(notification);
     final openTransaction = widget.onOpenTransaction;
     if (transactionId == null || openTransaction == null) {
-      _showSnackBar(context.loc.notificationsDetailUnavailable);
+      AppToast.info(context, context.loc.notificationsDetailUnavailable);
       return;
     }
     Navigator.pop(context);
@@ -213,7 +222,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       );
       if (!mounted) return;
       if (generation == _generation) _replace(notification);
-      _showSnackBar(context.loc.notificationsMarkReadFailed);
+      AppToast.error(context, context.loc.notificationsMarkReadFailed);
     } on FormatException catch (e) {
       // The server answered 2xx, so it did mark the notification: only its copy could not be read. It stays read.
       debugPrint(
@@ -249,7 +258,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       );
       if (mounted) {
         if (generation == _generation) _markUnreadAgain(wereUnread);
-        _showSnackBar(context.loc.notificationsMarkAllReadFailed);
+        AppToast.error(context, context.loc.notificationsMarkAllReadFailed);
       }
     } on FormatException catch (e) {
       // 2xx: the server marked them; only the count in its answer could not be read.
@@ -279,12 +288,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     setState(() {
       _items = List.of(_items)..[index] = notification;
     });
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   static String _describe(DioException e) =>

@@ -8,6 +8,7 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/receipt_item_model.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
@@ -16,6 +17,7 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// How the date of the transaction is shown in the form.
 const String _displayDateFormat = 'dd/MM/yyyy HH:mm';
@@ -166,7 +168,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       });
 
       if (total == 0 && mounted) {
-        _showSnack(context.loc.reviewNoTotal);
+        AppToast.info(context, context.loc.reviewNoTotal);
       }
     } catch (e) {
       debugPrint('Lỗi quét hóa đơn: $e');
@@ -175,12 +177,8 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
         _setDate(DateTime.now(), isFallback: true);
         _isProcessing = false;
       });
-      _showSnack(context.loc.reviewScanFailed);
+      AppToast.error(context, context.loc.reviewScanFailed);
     }
-  }
-
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   /// `normalized[field][key]` as text, or '' when the scan has no such value.
@@ -287,7 +285,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       return;
     }
 
-    final amount = CurrencyHelper.parseAmount(_amountController.text);
+    final amount = MoneyInputFormatter.parse(_amountController.text);
     if (amount == null) {
       await AppDialog.error(
         context,
@@ -604,7 +602,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
               colors,
               semantic,
               loc,
-              CurrencyHelper.parseAmount(value.text) ?? 0,
+              MoneyInputFormatter.parse(value.text) ?? 0,
             ),
           ),
 

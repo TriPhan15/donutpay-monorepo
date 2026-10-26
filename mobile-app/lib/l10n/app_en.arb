@@ -2392,5 +2392,21 @@
         "type": "String"
       }
     }
+  },
+  "dateFieldToday": "Today",
+  "@dateFieldToday": {
+    "description": "Chip of the shared date field that picks today."
+  },
+  "dateFieldYesterday": "Yesterday",
+  "@dateFieldYesterday": {
+    "description": "Chip of the shared date field that picks yesterday."
+  },
+  "dateFieldBackToToday": "Back to today",
+  "@dateFieldBackToToday": {
+    "description": "Tooltip of the button that puts the shared date field back on today; shown only when another day is picked."
+  },
+  "dateFieldPick": "Choose a date",
+  "@dateFieldPick": {
+    "description": "Accessibility label of the shared date field, which opens the date picker."
   }
 }

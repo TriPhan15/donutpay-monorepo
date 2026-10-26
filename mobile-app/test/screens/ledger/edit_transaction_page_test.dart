@@ -155,7 +155,7 @@ void main() {
         await openForm(tester, _tx());
 
         expect(find.text('Sửa giao dịch'), findsOneWidget);
-        expect(field(tester, 0).controller!.text, '45000');
+        expect(field(tester, 0).controller!.text, '45.000');
         expect(field(tester, 1).controller!.text, 'Cà phê Highlands');
         expect(chip(tester, 'Ăn uống').selected, isTrue);
         expect(chip(tester, 'Di chuyển').selected, isFalse);
@@ -195,7 +195,8 @@ void main() {
         await openForm(tester, _tx(category: 'Khác', title: 'Khác'));
 
         expect(chip(tester, 'Khác').selected, isTrue);
-        expect(find.byType(ChoiceChip), findsNWidgets(3));
+        // Khác, Ăn uống, Di chuyển, and the Hôm nay / Hôm qua chips of the date field.
+        expect(find.byType(ChoiceChip), findsNWidgets(5));
       },
     );
 
@@ -207,7 +208,8 @@ void main() {
 
           await openForm(tester, _tx());
 
-          expect(find.byType(ChoiceChip), findsOneWidget);
+          // The category, and the Hôm nay / Hôm qua chips of the date field.
+          expect(find.byType(ChoiceChip), findsNWidgets(3));
           expect(chip(tester, 'Ăn uống').selected, isTrue);
           expect(
             find.text(
@@ -327,6 +329,30 @@ void main() {
       });
     });
 
+    testWidgets(
+      'another day is PUT as transactionDate with the time of the transaction kept',
+      (tester) async {
+        backend.on('PUT', _putPath, (_) => okResponse({'id': 5}));
+        await openForm(tester, _tx());
+        expect(find.text('20/09/2026'), findsOneWidget);
+
+        await tapText(tester, 'Hôm nay');
+        await tapText(tester, _saveLabel);
+        await tapText(tester, 'OK');
+
+        final now = DateTime.now();
+        expect(puts().single.data, {
+          'transactionDate': DateTime(
+            now.year,
+            now.month,
+            now.day,
+            8,
+            30,
+          ).toIso8601String(),
+        });
+      },
+    );
+
     testWidgets('saving without a change says so and sends nothing', (
       tester,
     ) async {
@@ -358,7 +384,7 @@ void main() {
       (tester) async {
         await openForm(tester, _tx(amount: 45000.5));
 
-        expect(field(tester, 0).controller!.text, '45001');
+        expect(field(tester, 0).controller!.text, '45.001');
         await tapText(tester, _saveLabel);
 
         expect(find.text('Chưa có thay đổi'), findsOneWidget);

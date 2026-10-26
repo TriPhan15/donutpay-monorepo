@@ -14,6 +14,7 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// Second step of the password recovery: the OTP emailed to [email] and the new password. On success the user is sent
 /// to the login screen to sign in with it: nothing is signed in here, the server hands out no tokens for a reset.
@@ -195,9 +196,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (!mounted) return;
     setState(() => _isResending = false);
     _startResendCooldown();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(loc.resetPasswordOtpResent)));
+    AppToast.success(context, loc.resetPasswordOtpResent);
   }
 
   @override

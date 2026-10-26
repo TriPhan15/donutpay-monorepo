@@ -13,6 +13,7 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 enum _EditingField { email, password }
 
@@ -90,15 +91,11 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
 
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.loc.credentialsUsernameRequired)),
-      );
+      AppToast.error(context, context.loc.credentialsUsernameRequired);
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.loc.credentialsUsernameChangeUnsupported)),
-    );
+    AppToast.info(context, context.loc.credentialsUsernameChangeUnsupported);
   }
 
   Future<void> _changePassword({
@@ -109,35 +106,25 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
     if (_user == null) return;
 
     if (currentPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.loc.credentialsOldPasswordRequired)),
-      );
+      AppToast.error(context, context.loc.credentialsOldPasswordRequired);
       return;
     }
     if (newPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.loc.resetPasswordPasswordRequired)),
-      );
+      AppToast.error(context, context.loc.resetPasswordPasswordRequired);
       return;
     }
     if (confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.loc.resetPasswordConfirmRequired)),
-      );
+      AppToast.error(context, context.loc.resetPasswordConfirmRequired);
       return;
     }
     // The server never sends the password, so only the server can tell that the old one is wrong.
     final policyError = PasswordPolicy.validate(newPassword, context.loc);
     if (policyError != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(policyError)));
+      AppToast.error(context, policyError);
       return;
     }
     if (newPassword != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.loc.credentialsPasswordMismatch)),
-      );
+      AppToast.error(context, context.loc.credentialsPasswordMismatch);
       return;
     }
 

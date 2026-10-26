@@ -517,5 +517,9 @@
   "ai503020OnTrack": "Cơ cấu chi tiêu tháng này đạt chuẩn 50/30/20. Giữ nhịp này!",
   "ai503020NeedsHigh": "Nhóm thiết yếu đang chiếm {percent}% thu nhập (chuẩn ≤50%). Rà lại Sinh hoạt/Siêu thị xem có khoản nào dồn được.",
   "ai503020WantsHigh": "Nhóm mong muốn (Giải trí, Khác) chiếm {percent}% thu nhập (chuẩn ≤30%) — đây là chỗ dễ cắt nhất.",
-  "ai503020SavingsLow": "Bạn mới để dành được {percent}% thu nhập (chuẩn ≥20%). Tăng dần mỗi tháng một chút."
+  "ai503020SavingsLow": "Bạn mới để dành được {percent}% thu nhập (chuẩn ≥20%). Tăng dần mỗi tháng một chút.",
+  "dateFieldToday": "Hôm nay",
+  "dateFieldYesterday": "Hôm qua",
+  "dateFieldBackToToday": "Về hôm nay",
+  "dateFieldPick": "Chọn ngày"
 }

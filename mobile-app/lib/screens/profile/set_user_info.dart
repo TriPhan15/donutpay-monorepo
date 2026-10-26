@@ -7,6 +7,7 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// Edits the profile on the server: the display name (username) and the phone, the two fields of core-backend's
 /// UserUpdateDto a user may change. The server takes the user from the JWT and refuses any other id.
@@ -63,23 +64,17 @@ class _SetUserInfoScreenState extends State<SetUserInfoScreen> {
     }
   }
 
-  void _snack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
   Future<void> _save() async {
     if (_isSaving) return;
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
 
     if (name.isEmpty) {
-      _snack(context.loc.setUserInfoNameRequired);
+      AppToast.error(context, context.loc.setUserInfoNameRequired);
       return;
     }
     if (phone.isNotEmpty && !_phonePattern.hasMatch(phone)) {
-      _snack(context.loc.setUserInfoPhoneInvalid);
+      AppToast.error(context, context.loc.setUserInfoPhoneInvalid);
       return;
     }
 

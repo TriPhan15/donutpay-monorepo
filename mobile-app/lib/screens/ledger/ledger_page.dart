@@ -22,6 +22,7 @@ import 'package:finance_ai_app/screens/ledger/edit_transaction_page.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 import 'package:finance_ai_app/widgets/budget/budget_section.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
 
@@ -163,9 +164,7 @@ class LedgerPageState extends State<LedgerPage> {
     _pendingTransactionId = null;
     final tx = _transactionWithId(id);
     if (tx == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.loc.notificationsTransactionNotFound)),
-      );
+      AppToast.info(context, context.loc.notificationsTransactionNotFound);
       return;
     }
     setState(() => _selectedDate = tx.date);
@@ -327,10 +326,7 @@ class LedgerPageState extends State<LedgerPage> {
             onPressed: () {
               Navigator.push<bool>(
                 context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      AddTransactionPage(initialDate: _selectedDate),
-                ),
+                MaterialPageRoute(builder: (_) => const AddTransactionPage()),
               );
             },
           ),
@@ -1394,11 +1390,12 @@ class LedgerPageState extends State<LedgerPage> {
     final success = await RemoteApiHelper.instance.deleteTransaction(id);
     if (!mounted) return;
     final loc = context.loc;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? loc.ledgerDeleted : loc.ledgerDeleteFailed),
-      ),
-    );
+    // Deleted on the server for good (there is no restore endpoint), so the toast offers no undo.
+    if (success) {
+      AppToast.success(context, loc.ledgerDeleted);
+    } else {
+      AppToast.error(context, loc.ledgerDeleteFailed);
+    }
   }
 
   /// Sends a transaction that the server has not confirmed again. It carries the clientId it was created with, so when
@@ -1439,9 +1436,7 @@ class LedgerPageState extends State<LedgerPage> {
         message: failure,
       );
     } else if (outcome == SyncStatus.synced) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(loc.ledgerResent)));
+      AppToast.success(context, loc.ledgerResent);
     } else {
       await AppDialog.warning(
         context,
@@ -1471,9 +1466,7 @@ class LedgerPageState extends State<LedgerPage> {
 
     await AppRepository.instance.deleteUnsyncedTransaction(userId, clientId);
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.loc.ledgerDeletedUnsynced)));
+    AppToast.success(context, context.loc.ledgerDeletedUnsynced);
   }
 
   Widget _buildLoadFailedNotice(ColorScheme colors, SemanticColors semantic) {

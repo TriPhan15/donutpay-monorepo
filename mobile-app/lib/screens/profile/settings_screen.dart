@@ -6,6 +6,7 @@ import 'package:finance_ai_app/cubits/language_cubit.dart';
 import 'package:finance_ai_app/cubits/theme_cubit.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/app_language.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 extension SettingsLabels on AppLocalizations {
   String themeModeLabel(ThemeMode mode) => switch (mode) {
@@ -42,9 +43,7 @@ class SettingsScreen extends StatelessWidget {
 }
 
 void _showSaveFailed(BuildContext context) {
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(context.loc.settingsSaveFailed)));
+  AppToast.error(context, context.loc.settingsSaveFailed);
 }
 
 class _ThemeSection extends StatelessWidget {

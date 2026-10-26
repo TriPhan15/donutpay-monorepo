@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 
+/// Always opens on the current moment, whatever period the screen that opened it shows: a new transaction is most
+/// often about today, and the date field gets to another day in one tap.
 class AddTransactionPage extends StatefulWidget {
-  const AddTransactionPage({super.key, this.initialDate});
-
-  final DateTime? initialDate;
+  const AddTransactionPage({super.key});
 
   @override
   State<AddTransactionPage> createState() => _AddTransactionPageState();
@@ -23,29 +25,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
   String _selectedCategory = TransactionCategories.otherExpense;
-  late DateTime _selectedDate;
+  DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-
     _initCategories();
-
-    final initial = widget.initialDate;
-    if (initial == null) {
-      _selectedDate = DateTime.now();
-    } else {
-      final now = DateTime.now();
-      _selectedDate = DateTime(
-        initial.year,
-        initial.month,
-        initial.day,
-        now.hour,
-        now.minute,
-        now.second,
-      );
-    }
   }
 
   Future<void> _initCategories() async {
@@ -57,13 +43,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         _selectedCategory = TransactionCategories.expenseSelectable.first;
       });
     }
-  }
-
-  String _formatDate(DateTime date) {
-    final dd = date.day.toString().padLeft(2, '0');
-    final mm = date.month.toString().padLeft(2, '0');
-    final yyyy = date.year.toString();
-    return '$dd/$mm/$yyyy';
   }
 
   void _setIsExpense(bool isExpense) {
@@ -148,42 +127,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     });
   }
 
-  Future<void> _pickDate() async {
-    final initialDate = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-    );
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-
-    if (!mounted || picked == null) return;
-
-    setState(() {
-      _selectedDate = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        _selectedDate.hour,
-        _selectedDate.minute,
-        _selectedDate.second,
-      );
-    });
-  }
-
-  double? _parseAmount(String input) {
-    final digitsOnly = input.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.isEmpty) return null;
-    final value = double.tryParse(digitsOnly);
-    if (value == null || value <= 0) return null;
-    return value;
-  }
-
   Future<void> _saveTransaction() async {
     if (_isSaving || !mounted) return;
     final loc = context.loc;
@@ -197,7 +140,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       return;
     }
 
-    final amount = _parseAmount(_amountController.text.trim());
+    final amount = MoneyInputFormatter.parse(_amountController.text);
     if (amount == null) {
       await AppDialog.error(
         context,
@@ -299,6 +242,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
+              inputFormatters: [MoneyInputFormatter(loc.localeName)],
               style: TextStyle(
                 color: _isExpense ? semantic.expenseColor : colors.primary,
                 fontSize: 40,
@@ -359,45 +303,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(loc.transactionDateLabel, style: labelStyle),
-                      const SizedBox(height: 8),
-                      InkWell(
-                        onTap: _pickDate,
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colors.surface,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today_rounded,
-                                color: colors.onSurfaceVariant,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(_formatDate(_selectedDate)),
-                              const Spacer(),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(loc.transactionDateLabel, style: labelStyle),
+            const SizedBox(height: 8),
+            DateField(
+              value: _selectedDate,
+              onChanged: (date) => setState(() => _selectedDate = date),
             ),
             const SizedBox(height: 24),
             Text(loc.transactionNoteOptional, style: labelStyle),

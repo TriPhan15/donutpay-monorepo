@@ -1764,4 +1764,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String ai503020SavingsLow(String percent) {
     return 'Bạn mới để dành được $percent% thu nhập (chuẩn ≥20%). Tăng dần mỗi tháng một chút.';
   }
+
+  @override
+  String get dateFieldToday => 'Hôm nay';
+
+  @override
+  String get dateFieldYesterday => 'Hôm qua';
+
+  @override
+  String get dateFieldBackToToday => 'Về hôm nay';
+
+  @override
+  String get dateFieldPick => 'Chọn ngày';
 }

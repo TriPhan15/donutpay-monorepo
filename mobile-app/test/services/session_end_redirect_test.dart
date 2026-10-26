@@ -64,7 +64,6 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         navigatorKey: navigatorKey,
-        scaffoldMessengerKey: scaffoldMessengerKey,
         navigatorObservers: [observer],
         theme: AppTheme.lightTheme,
         locale: AppLanguage.english.locale,
@@ -101,7 +100,7 @@ void main() {
   );
 
   testWidgets(
-    'requests refused together while the session cannot be renewed: one refresh, one redirect to the login screen, one SnackBar',
+    'requests refused together while the session cannot be renewed: one refresh, one redirect to the login screen, one toast',
     (tester) async {
       final pushes = await pumpSignedInApp(tester);
       backend.on('GET', '/api/budgets', (_) => _unauthorized());
@@ -129,9 +128,10 @@ void main() {
       expect(SessionService.currentRefreshToken, isNull);
       expect(SessionService.currentUserId, isNull);
 
-      // Let the SnackBar time out, so nothing is left running.
+      // Let the toast time out, so nothing is left running.
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
+      expect(find.text(_sessionEndedText), findsNothing);
     },
   );
 

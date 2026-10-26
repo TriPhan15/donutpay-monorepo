@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
-import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -16,15 +16,18 @@ import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 
 /// Field names of the body of PUT /api/transactions/{id}; a field that is left out keeps its value on the server.
 const String _fieldAmount = 'amount';
 const String _fieldCategory = 'categoryName';
 const String _fieldNote = 'note';
+const String _fieldDate = 'transactionDate';
 
-/// Form to correct the amount, category and note of a transaction that the server has. It sends just what the user
-/// changed, which leaves the date, the type and the receipt alone, and pops with true once the server has saved it.
+/// Form to correct the amount, category, day and note of a transaction that the server has. It sends just what the user
+/// changed, which leaves the time of day, the type and the receipt alone, and pops with true once the server has saved
+/// it.
 class EditTransactionPage extends StatefulWidget {
   final TransactionModel transaction;
 
@@ -39,6 +42,8 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   final TextEditingController _noteController = TextEditingController();
 
   late String _category;
+  late DateTime _date;
+  bool _amountShown = false;
   List<String> _categories = const [];
   bool _isLoadingCategories = true;
   bool _categoriesUnavailable = false;
@@ -59,13 +64,25 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   @override
   void initState() {
     super.initState();
-    _amountController.text = _originalWholeAmount.toStringAsFixed(0);
     _noteController.text = _originalNote;
     _category = _original.category;
+    _date = _original.date;
     _categories = [_category];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadCategories();
     });
+  }
+
+  /// The amount is grouped the way the language groups it, which needs the localizations: not there in initState yet.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_amountShown) return;
+    _amountShown = true;
+    _amountController.text = MoneyInputFormatter.format(
+      _originalWholeAmount,
+      context.loc.localeName,
+    );
   }
 
   @override
@@ -101,6 +118,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
       if (amount != _originalWholeAmount) _fieldAmount: amount,
       if (_category != _original.category) _fieldCategory: _category,
       if (note != _originalNote) _fieldNote: note,
+      if (_date != _original.date) _fieldDate: _date.toIso8601String(),
     };
   }
 
@@ -150,7 +168,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
       );
       return;
     }
-    final amount = CurrencyHelper.parseAmount(_amountController.text);
+    final amount = MoneyInputFormatter.parse(_amountController.text);
     if (amount == null) {
       await AppDialog.error(
         context,
@@ -219,6 +237,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
               controller: _amountController,
               label: loc.editTransactionAmountLabel,
               keyboardType: TextInputType.number,
+              inputFormatters: [MoneyInputFormatter(loc.localeName)],
             ),
             const SizedBox(height: 20),
             _SectionLabel(loc.transactionCategoryLabel),
@@ -231,6 +250,13 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
             ),
             if (_categoriesUnavailable)
               _Hint(loc.editTransactionCategoriesUnavailable),
+            const SizedBox(height: 20),
+            _SectionLabel(loc.transactionDateLabel),
+            const SizedBox(height: 8),
+            DateField(
+              value: _date,
+              onChanged: (date) => setState(() => _date = date),
+            ),
             const SizedBox(height: 20),
             CustomTextField(
               controller: _noteController,
@@ -248,7 +274,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   }
 }
 
-/// What is being edited: the type, the date and the state of the receipt, none of which the form changes.
+/// What is being edited, as it was opened: the type, the moment and the state of the receipt.
 class _Summary extends StatelessWidget {
   static final DateFormat _displayDate = DateFormat('dd/MM/yyyy HH:mm');
 

@@ -7,6 +7,7 @@ import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// Order states core-backend sends for a deposit or withdrawal.
 const String paymentStatusSuccess = 'SUCCESS';
@@ -79,16 +80,16 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       UserFacingError.log('Cancel payment', e);
       if (!mounted) return;
       final loc = context.loc;
-      _snack(loc.paymentCancelFailed(UserFacingError.messageOf(e, loc)));
+      AppToast.error(
+        context,
+        loc.paymentCancelFailed(UserFacingError.messageOf(e, loc)),
+      );
       return;
     }
     if (!mounted) return;
-    _snack(context.loc.paymentCancelled(orderCode));
+    AppToast.success(context, context.loc.paymentCancelled(orderCode));
     await _load();
   }
-
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   String _fmt(dynamic v, AppLocalizations loc) {
     final n = (v is num) ? v.toDouble() : double.tryParse('$v') ?? 0;

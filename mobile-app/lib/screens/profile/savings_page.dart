@@ -5,6 +5,7 @@ import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 class SavingsPage extends StatefulWidget {
   const SavingsPage({super.key});
@@ -40,18 +41,14 @@ class _SavingsPageState extends State<SavingsPage> {
       UserFacingError.log('Savings load', e);
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _showSnack(
-        context.loc.savingsLoadFailed(
-          UserFacingError.messageOf(e, context.loc),
-        ),
+      final loc = context.loc;
+      AppToast.error(
+        context,
+        loc.savingsLoadFailed(UserFacingError.messageOf(e, loc)),
+        actionLabel: loc.commonRetry,
+        onAction: _load,
       );
     }
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   double get _totalSaved =>
@@ -135,7 +132,8 @@ class _SavingsPageState extends State<SavingsPage> {
       UserFacingError.log('Savings delete', e);
       if (!mounted) return;
       setState(() => _goals.insert(index.clamp(0, _goals.length), removed));
-      _showSnack(
+      AppToast.error(
+        context,
         context.loc.savingsDeleteFailed(
           UserFacingError.messageOf(e, context.loc),
         ),
@@ -144,7 +142,10 @@ class _SavingsPageState extends State<SavingsPage> {
     }
     SessionService.needRefreshAI.value = true;
     if (!mounted) return;
-    _showSnack(context.loc.savingsDeleted('${removed['title']}'));
+    AppToast.success(
+      context,
+      context.loc.savingsDeleted('${removed['title']}'),
+    );
   }
 
   @override

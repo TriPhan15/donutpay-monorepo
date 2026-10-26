@@ -16,6 +16,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:finance_ai_app/main.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// The two tokens of a login, refresh or change-password answer.
 typedef _TokenPair = ({String token, String refreshToken});
@@ -57,7 +58,7 @@ class RemoteApiHelper {
 
   bool _initialized = false;
   bool _languageInterceptorAttached = false;
-  // Also picks the language of the SnackBar shown when a session ends.
+  // Also picks the language of the toast shown when a session ends.
   SettingsRepository? _settings;
   // The renewal in flight: a 401 that arrives meanwhile waits for it instead of starting another refresh.
   Future<String?>? _renewal;
@@ -260,18 +261,20 @@ class RemoteApiHelper {
     return null;
   }
 
-  /// Ends a session that cannot be renewed: clears it, opens the login screen and says why in a SnackBar. It runs inside
-  /// the one shared renewal, so however many requests failed together there is one redirect and one SnackBar, and the
-  /// 401s that come later find no session and just pass their error on. No BuildContext: both go through global keys.
+  /// Ends a session that cannot be renewed: clears it, opens the login screen and says why in a toast. It runs inside
+  /// the one shared renewal, so however many requests failed together there is one redirect and one toast, and the
+  /// 401s that come later find no session and just pass their error on. No BuildContext: both go through the navigator
+  /// key, the toast through the navigator's overlay (inserted after the login route, so it shows above it).
   Future<void> _endSession() async {
     await SessionService.clearSession();
     navigatorKey.currentState?.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
-    scaffoldMessengerKey.currentState
-      ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(_sessionEndedMessage())));
+    final overlay = navigatorKey.currentState?.overlay;
+    if (overlay != null) {
+      AppToast.showOn(overlay, AppToastKind.info, _sessionEndedMessage());
+    }
   }
 
   String _sessionEndedMessage() {

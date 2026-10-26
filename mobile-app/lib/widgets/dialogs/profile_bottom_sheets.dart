@@ -7,6 +7,7 @@ import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// Sheets and dialogs take their surface colour from the theme, and so do switches, buttons and text fields; the rest
 /// reads the colour scheme once per sheet.
@@ -51,10 +52,9 @@ class ProfileBottomSheets {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(context.loc.notificationSettingsSaved),
-                        ),
+                      AppToast.success(
+                        context,
+                        context.loc.notificationSettingsSaved,
                       );
                     },
                     child: Text(ctx.loc.commonSave),
@@ -375,24 +375,18 @@ class ProfileBottomSheets {
                 final pin = pinCtrl.text.trim();
                 final confirm = confirmCtrl.text.trim();
                 if (pin.length != 4) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(loc.pinLengthInvalid)));
+                  AppToast.error(context, loc.pinLengthInvalid);
                   return;
                 }
                 if (pin != confirm) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(loc.pinMismatch)));
+                  AppToast.error(context, loc.pinMismatch);
                   return;
                 }
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('app_pin', pin);
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(loc.pinSaved)));
+                AppToast.success(context, loc.pinSaved);
               },
               child: Text(loc.commonSave),
             ),
@@ -554,15 +548,11 @@ class ProfileBottomSheets {
                             );
                         if (context.mounted) {
                           Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                success
-                                    ? loc.feedbackThanks
-                                    : loc.feedbackFailed,
-                              ),
-                            ),
-                          );
+                          if (success) {
+                            AppToast.success(context, loc.feedbackThanks);
+                          } else {
+                            AppToast.error(context, loc.feedbackFailed);
+                          }
                         }
                       },
                 child: isSubmitting

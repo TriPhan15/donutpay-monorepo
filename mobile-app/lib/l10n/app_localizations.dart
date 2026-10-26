@@ -3215,6 +3215,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You\'ve saved only {percent}% of your income (target ≥20%). Raise it a little each month.'**
   String ai503020SavingsLow(String percent);
+
+  /// Chip of the shared date field that picks today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get dateFieldToday;
+
+  /// Chip of the shared date field that picks yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get dateFieldYesterday;
+
+  /// Tooltip of the button that puts the shared date field back on today; shown only when another day is picked.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to today'**
+  String get dateFieldBackToToday;
+
+  /// Accessibility label of the shared date field, which opens the date picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date'**
+  String get dateFieldPick;
 }
 
 class _AppLocalizationsDelegate

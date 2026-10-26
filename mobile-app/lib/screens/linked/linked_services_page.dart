@@ -8,6 +8,7 @@ import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 class LinkedServicesPage extends StatefulWidget {
   const LinkedServicesPage({super.key});
@@ -42,9 +43,6 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
 
   String _fmt(double v) =>
       CurrencyHelper.formatVND(v, context.loc, showSign: false);
-
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   /// The provider logo is an image and keeps its own colours; only the fallback icon takes the theme.
   Widget _logo(ColorScheme colors, String provider, {double size = 32}) {
@@ -109,7 +107,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
     );
     if (amount == null || !mounted) return;
     if (amount < _minAmount) {
-      _snack(context.loc.linkedMinAmount(_fmt(_minAmount)));
+      AppToast.error(context, context.loc.linkedMinAmount(_fmt(_minAmount)));
       return;
     }
     await _runSync(provider, amount);
@@ -134,7 +132,10 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
       UserFacingError.log('Create sync order', e);
       if (mounted) {
         final loc = context.loc;
-        _snack(loc.linkedCreateOrderFailed(UserFacingError.messageOf(e, loc)));
+        AppToast.error(
+          context,
+          loc.linkedCreateOrderFailed(UserFacingError.messageOf(e, loc)),
+        );
         setState(() => _syncing = false);
       }
     }
@@ -155,10 +156,13 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
           final loc = context.loc;
           if (status == paymentStatusSuccess) {
             RemoteApiHelper.instance.dataChangedNotifier.value++;
-            _snack(loc.linkedSynced(_fmt(amount)));
+            AppToast.success(context, loc.linkedSynced(_fmt(amount)));
             if (mounted) Navigator.pop(context, true);
           } else {
-            _snack(loc.linkedSyncOutcome(paymentStatusLabel(loc, '$status')));
+            AppToast.info(
+              context,
+              loc.linkedSyncOutcome(paymentStatusLabel(loc, '$status')),
+            );
           }
         }
       } catch (e) {
@@ -169,7 +173,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
         t.cancel();
         if (!mounted) return;
         setState(() => _syncing = false);
-        _snack(context.loc.linkedPollTimedOut);
+        AppToast.error(context, context.loc.linkedPollTimedOut);
       }
     });
   }

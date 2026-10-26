@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
@@ -281,6 +282,55 @@ void main() {
         expect(sentBodies(), isEmpty);
       },
     );
+  });
+
+  group('amount and date fields', () {
+    testWidgets('the form opens on today and the amount is grouped as typed', (
+      tester,
+    ) async {
+      await openForm(tester);
+
+      final today = DateTime.now();
+      expect(find.text(DateFormat('dd/MM/yyyy').format(today)), findsOneWidget);
+      expect(
+        tester
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Hôm nay'))
+            .selected,
+        isTrue,
+      );
+      expect(find.byTooltip('Về hôm nay'), findsNothing);
+
+      await typeAmount(tester, '1250000');
+      expect(find.text('1.250.000'), findsOneWidget);
+    });
+
+    testWidgets(
+      'yesterday is sent with the amount read back from the grouped text',
+      (tester) async {
+        backend.on('POST', _checkout, (_) => okResponse({'transactionId': 5}));
+        await openForm(tester);
+
+        await typeAmount(tester, '45000');
+        await tapText(tester, 'Hôm qua');
+        expect(find.byTooltip('Về hôm nay'), findsOneWidget);
+        await tapText(tester, _saveLabel);
+        await tapText(tester, 'OK');
+
+        final body = sentBodies().single;
+        expect(body['amount'], 45000.0);
+        final sent = DateTime.parse(body['transactionDate'] as String);
+        final now = DateTime.now();
+        final yesterday = DateTime(now.year, now.month, now.day - 1);
+        expect(DateTime(sent.year, sent.month, sent.day), yesterday);
+      },
+    );
+
+    testWidgets('English groups the amount with commas', (tester) async {
+      await openForm(tester, locale: const Locale('en'));
+
+      await typeAmount(tester, '1250000');
+      expect(find.text('1,250,000'), findsOneWidget);
+    });
   });
 
   group('in English', () {

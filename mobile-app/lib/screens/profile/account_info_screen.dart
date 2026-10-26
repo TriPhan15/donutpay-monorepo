@@ -3,6 +3,7 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
 import 'package:finance_ai_app/screens/profile/user_info_screen.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 class AccountInfoScreen extends StatelessWidget {
   const AccountInfoScreen({super.key});
@@ -24,9 +25,7 @@ class AccountInfoScreen extends StatelessWidget {
             onTap: () {
               final userId = SessionService.currentUserId;
               if (userId == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(loc.accountInfoSignInAgain)),
-                );
+                AppToast.error(context, loc.accountInfoSignInAgain);
                 return;
               }
 
@@ -46,9 +45,7 @@ class AccountInfoScreen extends StatelessWidget {
             onTap: () {
               final userId = SessionService.currentUserId;
               if (userId == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(loc.accountInfoSignInAgain)),
-                );
+                AppToast.error(context, loc.accountInfoSignInAgain);
                 return;
               }
 

@@ -20,6 +20,7 @@ import 'package:finance_ai_app/services/social_auth_service.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/dialogs/profile_bottom_sheets.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -72,10 +73,14 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (e) {
       UserFacingError.log('Profile load', e);
       if (!mounted || request != _loadRequest) return;
-      // A reload the user did not ask for: a SnackBar, not a dialog, and the data shown so far stays.
+      // A reload the user did not ask for: a toast, not a dialog, and the data shown so far stays.
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(UserFacingError.messageOf(e, context.loc))),
+      final loc = context.loc;
+      AppToast.error(
+        context,
+        UserFacingError.messageOf(e, loc),
+        actionLabel: loc.commonRetry,
+        onAction: _load,
       );
       return;
     }

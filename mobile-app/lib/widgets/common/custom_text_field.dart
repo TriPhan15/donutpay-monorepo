@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -9,6 +10,7 @@ class CustomTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
   final bool obscureText;
+  final List<TextInputFormatter>? inputFormatters;
 
   const CustomTextField({
     super.key,
@@ -20,6 +22,7 @@ class CustomTextField extends StatelessWidget {
     this.keyboardType,
     this.suffixIcon,
     this.obscureText = false,
+    this.inputFormatters,
   }) : assert(obscuringCharacter.length == 1);
 
   /// The text, the fill, the cursor and the suffix icon come from the theme; the label keeps the secondary text colour
@@ -34,6 +37,7 @@ class CustomTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       obscureText: isPassword || obscureText,
       obscuringCharacter: obscuringCharacter,
       enableSuggestions: !isPassword,

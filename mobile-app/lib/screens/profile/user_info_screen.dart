@@ -6,6 +6,7 @@ import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/screens/profile/set_user_info.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 class UserInfoScreen extends StatefulWidget {
   const UserInfoScreen({super.key});
@@ -46,8 +47,12 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
       UserFacingError.log('User info load', e);
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(UserFacingError.messageOf(e, context.loc))),
+      final loc = context.loc;
+      AppToast.error(
+        context,
+        UserFacingError.messageOf(e, loc),
+        actionLabel: loc.commonRetry,
+        onAction: _load,
       );
     }
   }

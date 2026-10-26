@@ -1795,4 +1795,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String ai503020SavingsLow(String percent) {
     return 'You\'ve saved only $percent% of your income (target ≥20%). Raise it a little each month.';
   }
+
+  @override
+  String get dateFieldToday => 'Today';
+
+  @override
+  String get dateFieldYesterday => 'Yesterday';
+
+  @override
+  String get dateFieldBackToToday => 'Back to today';
+
+  @override
+  String get dateFieldPick => 'Choose a date';
 }
