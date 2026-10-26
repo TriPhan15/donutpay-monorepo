@@ -1221,6 +1221,10 @@ class AppLocalizationsVi extends AppLocalizations {
       'Không đọc được ngày trên hóa đơn, đang dùng thời điểm hiện tại. Chạm để chọn lại.';
 
   @override
+  String get reviewFieldNeedsCheck =>
+      'AI chưa chắc chắn ở trường này, vui lòng kiểm tra lại.';
+
+  @override
   String get reviewNoTotal =>
       'Donut chưa đọc được tổng tiền từ ảnh — vui lòng nhập tay.';
 

@@ -1249,6 +1249,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t read the date on the receipt, so the current time is used. Tap to choose another.';
 
   @override
+  String get reviewFieldNeedsCheck =>
+      'The AI isn\'t sure about this field. Please check it.';
+
+  @override
   String get reviewNoTotal =>
       'Donut couldn\'t read the total from the photo. Please enter it manually.';
 

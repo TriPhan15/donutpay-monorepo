@@ -1614,6 +1614,10 @@
   "@reviewDateFallback": {
     "description": "Shown under the date when the scan found no date."
   },
+  "reviewFieldNeedsCheck": "The AI isn't sure about this field. Please check it.",
+  "@reviewFieldNeedsCheck": {
+    "description": "Shown under a scanned field (store, total, date) that the AI post-processing marked as not valid."
+  },
   "reviewNoTotal": "Donut couldn't read the total from the photo. Please enter it manually.",
   "@reviewNoTotal": {
     "description": "The scan found no total."

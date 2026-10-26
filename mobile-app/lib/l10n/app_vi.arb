@@ -371,6 +371,7 @@
   "ledgerExcelShareText": "Báo cáo chi tiêu tháng {month}",
   "reviewTitle": "Xác nhận hóa đơn",
   "reviewDateFallback": "Không đọc được ngày trên hóa đơn, đang dùng thời điểm hiện tại. Chạm để chọn lại.",
+  "reviewFieldNeedsCheck": "AI chưa chắc chắn ở trường này, vui lòng kiểm tra lại.",
   "reviewNoTotal": "Donut chưa đọc được tổng tiền từ ảnh — vui lòng nhập tay.",
   "reviewScanFailed": "Quét hóa đơn thất bại (Kiểm tra AI service). Vui lòng nhập tay.",
   "reviewPhotoUploadFailedTitle": "Không tải được ảnh hóa đơn",

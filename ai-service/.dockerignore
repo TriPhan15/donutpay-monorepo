@@ -28,6 +28,9 @@ logs/
 
 # Training data, experiments & notebooks (not needed at runtime)
 data1/
-Version5/
+# Chỉ giữ weights V5 đang phục vụ; V3 không còn dùng lúc chạy
+Version3/
+Version5/*
+!Version5/donut_result/
 *.ipynb
 train_model.py

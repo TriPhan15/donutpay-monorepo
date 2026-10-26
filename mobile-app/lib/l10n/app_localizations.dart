@@ -2324,6 +2324,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t read the date on the receipt, so the current time is used. Tap to choose another.'**
   String get reviewDateFallback;
 
+  /// Shown under a scanned field (store, total, date) that the AI post-processing marked as not valid.
+  ///
+  /// In en, this message translates to:
+  /// **'The AI isn\'t sure about this field. Please check it.'**
+  String get reviewFieldNeedsCheck;
+
   /// The scan found no total.
   ///
   /// In en, this message translates to:

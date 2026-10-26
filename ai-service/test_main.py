@@ -6,13 +6,12 @@ from unittest.mock import patch
 from PIL import Image
 
 # --- Global Import Trap ---------------------------------------------------
-# CI khong co file weights that (Version3/donut_result), va ai_service.py
+# CI khong co file weights that (Version5/donut_result), va ai_service.py
 # tai model ngay o top-level khi import module (khong nam trong ham/lifespan).
 # Cac patch() nay PHAI chay va .start() truoc dong "from ai_service import app"
 # ben duoi de chan viec load model vat ly + khoi tao class that.
 patch("os.path.exists", return_value=True).start()
 patch("transformers.DonutProcessor.from_pretrained").start()
-patch("transformers.AutoTokenizer.from_pretrained").start()
 patch("transformers.VisionEncoderDecoderModel.from_pretrained").start()
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -77,6 +76,11 @@ def test_extract_receipt_info_success(mocker):
 
     assert response.status_code == 200
     assert response.json()["seller"]["total_cost_number"] == 100000
+    # Hau xu ly Regex: field cu giu nguyen, them "normalized" kem co valid
+    normalized = response.json()["normalized"]
+    assert normalized["total_cost"]["value"] == 100000
+    assert normalized["total_cost"]["valid"] is True
+    assert set(normalized["invalid_fields"]) == {"seller", "address", "timestamp"}
 
 
 def test_extract_receipt_info_missing_file():

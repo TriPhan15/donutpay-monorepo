@@ -1,11 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 import uvicorn
 import torch
 from PIL import Image, ImageOps
-from transformers import DonutProcessor, VisionEncoderDecoderModel, AutoTokenizer
+from transformers import DonutProcessor, VisionEncoderDecoderModel
 import re
 import io
 import os
@@ -13,58 +13,39 @@ import traceback
 
 from wcm_spade import WCMSpade
 import budget_advisor
+from receipt_postprocess import fields_from_sequence, normalize_receipt
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = FastAPI()
 
-MODEL_PATH = os.path.join(BASE_DIR, "Version3", "donut_result")
+MODEL_PATH = os.path.join(BASE_DIR, "Version5", "donut_result")
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-IMAGE_HEIGHT = 1280
-IMAGE_WIDTH = 960
+# Kích thước ảnh lúc train V5 (Version5/model_config.py DEFAULT_IMAGE_SIZE)
+IMAGE_HEIGHT = 1920
+IMAGE_WIDTH = 1440
 
 print(f"Đang khởi động AI DONUT Engine trên thiết bị: [{DEVICE.upper()}]...")
 if not os.path.exists(MODEL_PATH):
     raise RuntimeError(f"Không tìm thấy weights tại {MODEL_PATH}")
 
-processor = DonutProcessor.from_pretrained("naver-clova-ix/donut-base")
-try:
-    processor.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-except Exception:
-    pass
+# Processor + tokenizer (đã mở rộng ký tự tiếng Việt) được lưu cùng weights V5
+processor = DonutProcessor.from_pretrained(MODEL_PATH)
 
 model = VisionEncoderDecoderModel.from_pretrained(MODEL_PATH).to(DEVICE)
 model.eval()
 print("AI DONUT Engine đã tải xong!")
 
 
-def extract_final_cost(raw_cost_str: str) -> int:
-    clean_str = raw_cost_str.replace('.', '').replace(',', '')
-    numbers = re.findall(r'\d+', clean_str)
-    if numbers:
-        return max(int(num) for num in numbers)
-    return 0
-
-
-def clean_vietnamese_text(sequence: str) -> str:
-    sequence = re.sub(r'([,.;])([A-ZĐa-zà-ỹ])', r'\1 \2', sequence)
-    toned_vowels = "áắấéếíóốớúứýàằầèềìòồờùừỳảẳẩẻểỉỏổởủửỷãẵẫẽễĩõỗỡũữỹạặậẹệịọộợụựỵ"
-    toned_vowels += toned_vowels.upper()
-    sequence = re.sub(r'(["' + toned_vowels + r'])(["' + toned_vowels + r'])', r'\1 \2', sequence)
-
-    all_vowels = "aăâeêioôơuưyáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵĐđ"
-    all_vowels += all_vowels.upper()
-    tails = ["c", "ch", "m", "n", "ng", "nh", "p", "t", "i", "y", "a", "o", "u"]
-    tails += [t.upper() for t in tails]
-    tail_pattern = "|".join(tails)
-    pattern = r"([" + all_vowels + r"])\s+(" + tail_pattern + r")\b"
-
-    old_sequence = ""
-    while old_sequence != sequence:
-        old_sequence = sequence
-        sequence = re.sub(pattern, r"\1\2", sequence)
-
-    return sequence
+def _raw_fields(sequence: str, prediction: Dict[str, Any]) -> Dict[str, str]:
+    """Giá trị thô từng trường: đọc thẻ trong chuỗi (như lúc chấm V5), thiếu thì lấy từ token2json."""
+    fields = fields_from_sequence(sequence)
+    seller = prediction.get("seller")
+    if isinstance(seller, dict):
+        for key, value in fields.items():
+            if not value and seller.get(key) is not None:
+                fields[key] = str(seller[key])
+    return fields
 
 
 @app.get("/health")
@@ -113,17 +94,24 @@ async def extract_receipt_info(image: UploadFile = File(...)):
     sequence = processor.batch_decode(outputs)[0]
     sequence = sequence.replace(processor.tokenizer.eos_token, "").replace(processor.tokenizer.pad_token, "")
     sequence = re.sub(r"<pad>", "", sequence)
-    sequence = clean_vietnamese_text(sequence)
 
     try:
         prediction = processor.token2json(sequence)
-        if "seller" in prediction and "total_cost" in prediction["seller"]:
-            raw_cost = prediction["seller"]["total_cost"]
-            prediction["seller"]["total_cost_number"] = extract_final_cost(raw_cost)
     except Exception as e:
         print(f"Lỗi parse JSON từ Donut: {e}")
         prediction = {"raw_text": sequence}
-        
+    if not isinstance(prediction, dict):
+        prediction = {"raw_text": sequence}
+
+    # Hậu xử lý Regex (receipt_postprocess): giữ nguyên các field cũ, thêm "normalized" kèm cờ valid từng trường
+    normalized = normalize_receipt(_raw_fields(sequence, prediction))
+    seller = prediction.get("seller")
+    if isinstance(seller, dict) and "total_cost" in seller:
+        seller["total_cost_number"] = normalized.total_cost.value or 0
+    prediction["normalized"] = normalized.model_dump()
+    if normalized.invalid_fields:
+        print(f"Trường cần người dùng kiểm tra: {normalized.invalid_fields}")
+
     print(f"Bóc tách thành công: {prediction}")
     return prediction
 

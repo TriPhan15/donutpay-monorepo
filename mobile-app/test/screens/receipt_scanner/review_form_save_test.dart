@@ -32,17 +32,39 @@ const String _save = 'Xác nhận & Lưu CSDL';
 const String _dateFallbackHint =
     'Không đọc được ngày trên hóa đơn, đang dùng thời điểm hiện tại. Chạm để chọn lại.';
 
-/// What ai-service answers for a receipt of Highlands.
+const String _needsCheck =
+    'AI chưa chắc chắn ở trường này, vui lòng kiểm tra lại.';
+
+/// What ai-service answers for a receipt of Highlands; [normalized] is the block of its Regex post-processing.
 ResponseBody _scanned({
   Object total = 45000,
   String timestamp = '20/09/2026 08:30',
+  String sellerName = 'Highlands',
+  Map<String, dynamic>? normalized,
 }) => jsonResponse(200, {
   'seller': {
-    'seller_name': 'Highlands',
+    'seller_name': sellerName,
     'timestamp': timestamp,
     'total_cost_number': total,
   },
+  'normalized': ?normalized,
 });
+
+/// The "normalized" block of ai-service/receipt_postprocess.py.
+Map<String, dynamic> _normalized({
+  String seller = 'Highlands',
+  bool sellerValid = true,
+  String? iso = '2026-09-20T08:30:00',
+  bool timestampValid = true,
+  int? total = 45000,
+  bool totalValid = true,
+}) => {
+  'seller': {'raw': seller, 'value': seller, 'valid': sellerValid},
+  'address': {'raw': '', 'value': '', 'valid': false},
+  'timestamp': {'raw': '', 'value': '', 'iso': iso, 'valid': timestampValid},
+  'total_cost': {'raw': '$total', 'value': total, 'valid': totalValid},
+  'invalid_fields': <String>[],
+};
 
 void main() {
   final backend = FakeBackend();
@@ -336,4 +358,106 @@ void main() {
       expect(result, isEmpty);
     },
   );
+  group('fields the post-processing marked as not valid', () {
+    Color? outline(WidgetTester tester, String label) {
+      final decorator = tester.widget<InputDecorator>(
+        find.descendant(
+          of: field(label),
+          matching: find.byType(InputDecorator),
+        ),
+      );
+      final border = decorator.decoration.errorText == null
+          ? decorator.decoration.enabledBorder
+          : decorator.decoration.errorBorder;
+      return border?.borderSide.color;
+    }
+
+    testWidgets('an older ai-service without the block marks nothing', (
+      tester,
+    ) async {
+      await openForm(tester);
+      expect(find.text(_needsCheck), findsNothing);
+    });
+
+    testWidgets(
+      'store and total are marked in the error colour until the user changes them',
+      (tester) async {
+        backend.on(
+          'POST',
+          _scan,
+          (_) => _scanned(
+            normalized: _normalized(sellerValid: false, totalValid: false),
+          ),
+        );
+        await openForm(tester);
+        final error = Theme.of(
+          tester.element(field('Tên cửa hàng')),
+        ).colorScheme.error;
+
+        expect(find.text(_needsCheck), findsNWidgets(2));
+        expect(outline(tester, 'Tên cửa hàng'), error);
+        expect(outline(tester, 'Tổng tiền (đ)'), error);
+        expect(outline(tester, 'Ngày giao dịch'), isNot(error));
+
+        await tester.enterText(field('Tên cửa hàng'), 'Highlands Coffee');
+        await tester.pump();
+        expect(find.text(_needsCheck), findsOneWidget);
+        expect(outline(tester, 'Tên cửa hàng'), isNot(error));
+
+        await tester.enterText(field('Tổng tiền (đ)'), '46000');
+        await tester.pump();
+        expect(find.text(_needsCheck), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'a readable date the scan doubts is marked instead of the fallback warning',
+      (tester) async {
+        backend.on(
+          'POST',
+          _scan,
+          (_) => _scanned(normalized: _normalized(timestampValid: false)),
+        );
+        await openForm(tester);
+        expect(find.text(_needsCheck), findsOneWidget);
+        expect(find.text(_dateFallbackHint), findsNothing);
+      },
+    );
+
+    testWidgets('an unreadable date shows only the fallback warning', (
+      tester,
+    ) async {
+      backend.on(
+        'POST',
+        _scan,
+        (_) => _scanned(
+          timestamp: '15:29:03',
+          normalized: _normalized(iso: null, timestampValid: false),
+        ),
+      );
+      await openForm(tester);
+      expect(find.text(_dateFallbackHint), findsOneWidget);
+      expect(find.text(_needsCheck), findsNothing);
+    });
+
+    testWidgets(
+      'the cleaned store name and the ISO date of the block fill the form',
+      (tester) async {
+        backend.on(
+          'POST',
+          _scan,
+          (_) => _scanned(
+            sellerName: '**Highlands**',
+            timestamp: '20 / 09 / 2026 - 08 : 30',
+            normalized: _normalized(),
+          ),
+        );
+        await openForm(tester);
+        expect(find.text('Highlands'), findsOneWidget);
+        expect(find.text('20/09/2026 08:30'), findsOneWidget);
+        expect(find.text(_dateFallbackHint), findsNothing);
+        expect(find.text(_needsCheck), findsNothing);
+      },
+    );
+  });
 }

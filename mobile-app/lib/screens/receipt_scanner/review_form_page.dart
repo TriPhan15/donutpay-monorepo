@@ -34,6 +34,17 @@ const List<String> _scannedDateFormats = [
   'yyyy-MM-dd',
 ];
 
+/// Keys of the "normalized" block that ai-service adds to a scan (ai-service/receipt_postprocess.py).
+abstract final class _NormalizedScan {
+  static const String block = 'normalized';
+  static const String seller = 'seller';
+  static const String timestamp = 'timestamp';
+  static const String totalCost = 'total_cost';
+  static const String value = 'value';
+  static const String iso = 'iso';
+  static const String valid = 'valid';
+}
+
 class ReviewFormPage extends StatefulWidget {
   final String imagePath;
 
@@ -64,6 +75,12 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   );
   String _selectedCategory = TransactionCategories.food;
 
+  /// The fields the post-processing of the scan marked as not valid: they are shown in the error colour until the user
+  /// changes them. An older ai-service sends no "normalized" block, and then nothing is marked.
+  bool _storeNeedsCheck = false;
+  bool _totalNeedsCheck = false;
+  bool _dateNeedsCheck = false;
+
   @override
   void initState() {
     super.initState();
@@ -89,7 +106,17 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
           ? Map<String, dynamic>.from(result['seller'])
           : <String, dynamic>{};
 
-      final storeName = seller['seller_name']?.toString() ?? '';
+      final normalized = result[_NormalizedScan.block] is Map
+          ? Map<String, dynamic>.from(result[_NormalizedScan.block])
+          : null;
+      final normalizedStore = _normalizedString(
+        normalized,
+        _NormalizedScan.seller,
+        _NormalizedScan.value,
+      );
+      final storeName = normalizedStore.isNotEmpty
+          ? normalizedStore
+          : seller['seller_name']?.toString() ?? '';
       final timestamp = seller['timestamp']?.toString() ?? '';
       final n = seller['total_cost_number'];
       final total = n is num
@@ -101,7 +128,15 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
                   ),
                 ) ??
                 0.0);
-      final scannedDate = _parseScannedDate(timestamp);
+      final scannedDate =
+          DateTime.tryParse(
+            _normalizedString(
+              normalized,
+              _NormalizedScan.timestamp,
+              _NormalizedScan.iso,
+            ),
+          ) ??
+          _parseScannedDate(timestamp);
 
       if (!mounted) return;
       setState(() {
@@ -112,6 +147,15 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
           isFallback: scannedDate == null,
         );
         if (total > 0) _amountController.text = total.round().toString();
+        _storeNeedsCheck = _isMarkedInvalid(normalized, _NormalizedScan.seller);
+        _totalNeedsCheck = _isMarkedInvalid(
+          normalized,
+          _NormalizedScan.totalCost,
+        );
+        _dateNeedsCheck = _isMarkedInvalid(
+          normalized,
+          _NormalizedScan.timestamp,
+        );
         _receipt = ReceiptModel(
           storeName: storeName,
           date: timestamp,
@@ -139,6 +183,22 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  /// `normalized[field][key]` as text, or '' when the scan has no such value.
+  static String _normalizedString(
+    Map<String, dynamic>? normalized,
+    String field,
+    String key,
+  ) {
+    final entry = normalized?[field];
+    return entry is Map ? (entry[key]?.toString() ?? '') : '';
+  }
+
+  /// True only when the scan says outright that [field] is not valid.
+  static bool _isMarkedInvalid(Map<String, dynamic>? normalized, String field) {
+    final entry = normalized?[field];
+    return entry is Map && entry[_NormalizedScan.valid] == false;
+  }
+
   static String _formatDate(DateTime date) =>
       DateFormat(_displayDateFormat).format(date);
 
@@ -160,6 +220,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   void _setDate(DateTime date, {required bool isFallback}) {
     _selectedDate = date;
     _dateIsFallback = isFallback;
+    _dateNeedsCheck = false;
     _dateController.text = _formatDate(date);
   }
 
@@ -463,6 +524,10 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
             loc.reviewStoreName,
             _storeNameController,
             Icons.storefront,
+            error: _storeNeedsCheck ? loc.reviewFieldNeedsCheck : null,
+            onChanged: _storeNeedsCheck
+                ? (_) => setState(() => _storeNeedsCheck = false)
+                : null,
           ),
           const SizedBox(height: 16),
           _buildTextField(
@@ -472,6 +537,10 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
             Icons.payments_outlined,
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            error: _totalNeedsCheck ? loc.reviewFieldNeedsCheck : null,
+            onChanged: _totalNeedsCheck
+                ? (_) => setState(() => _totalNeedsCheck = false)
+                : null,
           ),
           const SizedBox(height: 16),
           _buildTextField(
@@ -482,6 +551,10 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
             onTap: _pickDate,
             warning: _dateIsFallback ? loc.reviewDateFallback : null,
             warningColor: semantic.warningColor,
+            // A date that is only the time of the scan already shows its own warning.
+            error: _dateNeedsCheck && !_dateIsFallback
+                ? loc.reviewFieldNeedsCheck
+                : null,
           ),
           const SizedBox(height: 16),
 
@@ -619,7 +692,8 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   }
 
   /// Text, fill, cursor and prefix icon come from the input theme; the label keeps the secondary text colour. With
-  /// [onTap] the field is not typed into: the tap opens a picker. [warning] is shown under it in [warningColor].
+  /// [onTap] the field is not typed into: the tap opens a picker. [warning] is shown under it in [warningColor]; an
+  /// [error] (a field the scan could not read for sure) wins over it and turns the outline to the error colour.
   Widget _buildTextField(
     ColorScheme colors,
     String label,
@@ -630,13 +704,20 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     VoidCallback? onTap,
     String? warning,
     Color? warningColor,
+    String? error,
+    ValueChanged<String>? onChanged,
   }) {
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: colors.outlineVariant),
     );
+    final errorBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: colors.error),
+    );
     return TextFormField(
       controller: controller,
+      onChanged: onChanged,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       readOnly: onTap != null,
@@ -647,6 +728,10 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
         helperText: warning,
         helperMaxLines: 3,
         helperStyle: TextStyle(color: warningColor),
+        errorText: error,
+        errorMaxLines: 3,
+        errorBorder: errorBorder,
+        focusedErrorBorder: errorBorder,
         prefixIcon: Icon(icon),
         filled: true,
         border: border,
