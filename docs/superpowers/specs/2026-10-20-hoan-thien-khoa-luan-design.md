@@ -440,8 +440,21 @@ Nguồn: lần bạn dùng thử app trên máy ngày 26/10. Các nhận định
 Cho mỗi đợt T10:
 - 🤖 sửa code + viết/cập nhật test (widget test cho UI mới, `@WebMvcTest`/service test cho backend), chạy `gen-l10n` sau khi sửa ARB.
 - 👤 `flutter test` (+ `mvn test` cho T10c, T10d), thử tay trên máy, commit.
-- Thứ tự: **T10b → (T10a ‖ T10c ‖ T10d)**. T10c và T10d đều đụng backend nhưng khác file; không chạy `mvn` cùng lúc.
-- **Câu mở đầu:** `Làm task T10a (…T10d) trong docs/superpowers/specs/2026-10-20-hoan-thien-khoa-luan-design.md`
+- Thứ tự và chia luồng (3 terminal):
+  - **Đợt 1, chạy song song:**
+    - **T10b**: chỉ mobile, gồm widget dùng chung và thay 15 file đang gọi `ScaffoldMessenger`.
+    - **T10a**: chỉ `screens/dashboard/`, `screens/ai/`, `widgets/` của dashboard/AI. **Không** sửa `ledger_page.dart` hay `main.dart`. Mở chi tiết giao dịch bằng đúng cơ chế mà thông báo đang dùng để mở chi tiết ở Ledger.
+    - **T10-BE**: chỉ `core-backend/`:
+      - `YEAR` cho ngân sách + SQL migration;
+      - `POST /api/savings/{id}/contributions`;
+      - kiểm tra trùng hóa đơn (409 + `allowDuplicate`) cho T10d;
+      - test `@WebMvcTest`/service.
+
+      Chỉ terminal này chạy `mvn`.
+  - **Đợt 2, sau khi T10b đã commit:** phần mobile của **T10c** và **T10d** chạy song song (T10c: ledger/budget/savings; T10d: review_form/login/notifications/profile). Cả hai dùng hợp đồng API mà T10-BE đã làm.
+  - ARB: mọi luồng thêm key **mới ở cuối** `app_en.arb`/`app_vi.arb`, đọc lại file ngay trước khi sửa, chạy `gen-l10n` lúc cuối phiên.
+  - Sau mỗi đợt: 👤 `flutter test` một lần cho cả đợt, `mvn test` cho T10-BE.
+- **Câu mở đầu:** `Làm task T10a (…T10d, T10-BE) trong docs/superpowers/specs/2026-10-20-hoan-thien-khoa-luan-design.md`
 
 ### T11. Quét nhiều hóa đơn một lúc, xử lý nền (kiểu Expensify)
 
