@@ -75,6 +75,30 @@ class BackupServiceBackupTest {
     }
 
     @Test
+    void theDumpConnectsToTheHostPortAndDatabaseOfTheDatasourceUrl() throws IOException {
+        ReflectionTestUtils.setField(service, "dbUrl", "jdbc:postgresql://db:5432/ledger_db?sslmode=disable");
+        pgDumpExitsWith(0);
+
+        assertTrue(service.backupDatabase(BackupType.FULL));
+
+        List<String> args = pgDumpArgs();
+        assertEquals("db", args.get(args.indexOf("-h") + 1));
+        assertEquals("5432", args.get(args.indexOf("-p") + 1));
+        assertEquals("finance", args.get(args.indexOf("-U") + 1));
+        assertEquals("ledger_db", args.get(args.size() - 1));
+    }
+
+    @Test
+    void aUrlWithoutPortGivesNoPortAndAMissingUrlKeepsTheLocalDefaults() {
+        ReflectionTestUtils.setField(service, "dbUrl", "jdbc:postgresql://localhost/finance_db");
+        assertEquals(List.of("-h", "localhost", "-U", "finance"), service.connectionOptions());
+
+        ReflectionTestUtils.setField(service, "dbUrl", "");
+        assertEquals(List.of("-U", "finance"), service.connectionOptions());
+        assertEquals("finance_db", service.databaseName());
+    }
+
+    @Test
     void aSchemaOnlyBackupDumpsNoRows() throws IOException {
         pgDumpExitsWith(0);
 

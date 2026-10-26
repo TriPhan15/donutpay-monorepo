@@ -11,11 +11,20 @@ RUN mvn clean package -DskipTests
 # STAGE 2: RUN
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-RUN apt-get update && apt-get install -y curl tini && rm -rf /var/lib/apt/lists/*
+# pg_dump/pg_restore for the admin backups: jammy ships client 14, which refuses the PostgreSQL 15 server, so the
+# client comes from the PostgreSQL apt repository at the server's major version.
+RUN apt-get update && apt-get install -y curl tini ca-certificates \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt jammy-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends postgresql-client-15 \
+    && rm -rf /var/lib/apt/lists/*
 ENV TZ="Asia/Ho_Chi_Minh"
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 ENV SPRING_PROFILES_ACTIVE="prod"
 RUN addgroup --system spring && adduser --system --ingroup spring spring
+# BackupService writes into <working dir>/backups; the volume mounted there must belong to the app user.
+RUN mkdir -p /app/backups && chown spring:spring /app/backups
 COPY --from=builder --chown=spring:spring /app/target/finance-api.jar app.jar
 USER spring:spring
 

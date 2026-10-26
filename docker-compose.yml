@@ -188,6 +188,9 @@ services:
       retries: 5
       start_period: 40s
     restart: unless-stopped
+    # Admin backups (pg_dump files) outlive rebuilds of the image.
+    volumes:
+      - core_backups:/app/backups
     depends_on:
       db:
         condition: service_healthy
@@ -247,5 +250,6 @@ volumes:
   # All database data lives here and survives rebuilds and restarts. Never run "docker compose down -v": it deletes it.
   postgres_data:
   mongodb_data:
+  core_backups:
   caddy_data:
   caddy_config:
