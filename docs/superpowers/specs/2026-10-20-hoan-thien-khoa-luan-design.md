@@ -472,6 +472,11 @@ Cho mỗi đợt T10:
 - Xác nhận đi qua đúng luồng lưu của T10d: `clientId` + kiểm tra trùng.
 - ai-service: kiểm khi làm. `/donut/scan` phải chạy inference ngoài event loop (handler `def` hoặc `run_in_threadpool`) để `/health` và người dùng khác không bị chặn. Giới hạn 1 inference đồng thời, vì RAM 3G đủ cho đúng 1 model. Không đổi hợp đồng API.
 - Không làm: đọc song song nhiều ảnh trên server, đẩy thông báo hệ điều hành khi đọc xong.
+- **Chốt ngày 26/10:**
+  - Làm hàng đợi ở điện thoại; phương án hàng đợi phía server đưa vào Chương 6.
+  - Tối đa **20 ảnh mỗi lượt**. Mỗi hóa đơn mất khoảng 10 giây, nên 20 ảnh mất khoảng 3–4 phút.
+  - Có banner "Đang đọc n/m" và nút **"Xác nhận tất cả hợp lệ"**, chỉ lưu hóa đơn không có trường nào bị cờ sai.
+  - Plan: `docs/superpowers/plans/2026-10-26-t11-batch-receipt-scan.md`.
 
 - 🤖 mobile + ai-service + test (queue: thứ tự, khôi phục sau khi mở lại app, lỗi mạng → `failed`).
 - 👤 `flutter test`, pytest, thử quét 5 hóa đơn rồi chuyển tab, commit.
