@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-28T04:52:15+0700",
+  "S-61_real_s": 0.604,
+  "restore_runs_real_s": [
+    0.554,
+    0.543,
+    0.5,
+    0.502,
+    0.897
+  ],
+  "counts_after": null,
+  "counts_note": "counts_after không lấy được trong lần chạy này (dấu $ của $exists bị shell mở rộng, lỗi của capture_tools đã sửa); số đếm sau lần khôi phục đầu xem ảnh S-61: ocr_logs 36, ocr_feedbacks 36, index 13, validator 2",
+  "archive_bytes": 4612,
+  "data": "finance_nosql_demo (mongodb_demo.js): 36 ocr_logs + 36 ocr_feedbacks"
+}

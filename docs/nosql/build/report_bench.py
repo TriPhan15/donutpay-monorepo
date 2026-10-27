@@ -432,8 +432,16 @@ def main():
         t, m_, v = nfr[k]
         w(f"| {k} | {t} | {m_} | {v} |")
     w("")
-    w("Chưa đo ở đây (thuộc Task 4): E6 độ trễ realtime (NFR-15), sao lưu/khôi phục (NFR-13), `docker stats` (NFR-14). "
-      "JMeter ở mức ứng dụng không được chạy trong task này (tùy chọn, do người dùng chạy).")
+    task4 = os.path.join(RAW, "task4.md")
+    if os.path.exists(task4):
+        w("E6 độ trễ realtime (NFR-15), sao lưu/khôi phục (NFR-13) và `docker stats` (NFR-14) do Task 4 đo, xem các mục ngay "
+          "sau (chép nguyên từ `bench_raw/task4.md`). JMeter ở mức ứng dụng không được chạy (tùy chọn, do người dùng chạy).")
+        w("")
+        with open(task4, encoding="utf-8") as fh:
+            w(fh.read().rstrip("\n"))
+    else:
+        w("Chưa đo ở đây (thuộc Task 4): E6 độ trễ realtime (NFR-15), sao lưu/khôi phục (NFR-13), `docker stats` (NFR-14). "
+          "JMeter ở mức ứng dụng không được chạy trong task này (tùy chọn, do người dùng chạy).")
     w("")
     w("## Giới hạn của phép đo (đọc trước khi trích số)")
     w("")

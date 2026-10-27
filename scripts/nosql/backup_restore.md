@@ -28,11 +28,11 @@ docker run --rm --network none -v "$PWD/scripts/nosql:/s:ro" mongo:6.0 bash -c '
 
 | Bước | ocr_logs | ocr_feedbacks | index | validator |
 |---|---|---|---|---|
-| 1. đếm trước | 36 | 36 | 12 | 2 |
+| 1. đếm trước | 36 | 36 | 13 | 2 |
 | 2. sau khi xóa database | 0 | 0 | 0 | 0 |
-| 3. đếm sau khi khôi phục | **36** | **36** | **12** | **2** |
+| 3. đếm sau khi khôi phục | **36** | **36** | **13** | **2** |
 
-(12 index = 5 của `ocr_logs` + 7 của `ocr_feedbacks`, tính cả `_id_`.)
+(13 index = 5 của `ocr_logs` + 8 của `ocr_feedbacks`, tính cả `_id_`.)
 
 ### 1b. `mongoexport` / `mongoimport` (JSON, từng collection)
 
@@ -51,9 +51,9 @@ mongoimport --db finance_nosql_demo --collection ocr_feedbacks --file /tmp/ocr_f
 
 | Bước | ocr_logs | ocr_feedbacks | index | validator |
 |---|---|---|---|---|
-| 1. đếm trước (file xuất: 36 + 36 dòng) | 36 | 36 | 12 | 2 |
+| 1. đếm trước (file xuất: 36 + 36 dòng) | 36 | 36 | 13 | 2 |
 | 2. sau khi xóa database | 0 | 0 | 0 | 0 |
-| 3. đếm sau khi nhập lại | **36** | **36** | **12** | **2** |
+| 3. đếm sau khi nhập lại | **36** | **36** | **13** | **2** |
 
 Sau khi nhập, `findOne({transactionId: NumberLong("1025")})` vẫn trả `transactionId: Long('1025')` và `createdAt` kiểu `ISODate`.
 

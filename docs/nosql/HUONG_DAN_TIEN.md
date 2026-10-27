@@ -68,7 +68,7 @@ docker rm -f nosql-demo-mongo nosql-demo-redis nosql-demo-es nosql-demo-kibana n
 docker network rm nosql-demo
 ```
 
-> Sau này Trí sẽ gửi script `scripts/nosql/demo-stack.sh`. Script này dựng toàn bộ phần trên bằng một lệnh, có bật bảo mật như bản thật. Khi có script thì dùng script.
+> Đã có script `scripts/nosql/demo-stack.sh` (hướng dẫn: `scripts/nosql/demo-stack.README.md`). Script dựng toàn bộ phần trên bằng một lệnh (`up`, xóa bằng `down`), có bật bảo mật như bản thật và nạp sẵn dữ liệu demo. Chụp ảnh thì dùng script thay cho các lệnh ở trên.
 
 ## 4. Phần việc của Tiến
 
