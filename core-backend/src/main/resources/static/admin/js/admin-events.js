@@ -4,7 +4,7 @@
  * - Hóa đơn chờ duyệt / phản hồi OCR mới: tăng badge ở thanh bên; nếu đang mở đúng trang đó thì hiện thanh
  *   "Có dữ liệu mới – tải lại" thay cho badge.
  * - Mất kết nối (mạng, máy chủ khởi động lại, tab ngủ): EventSource tự kết nối lại sau vài giây (máy chủ gửi retry).
- *   Phiên đăng nhập hết hạn: máy chủ đóng luồng, lần kết nối lại bị chuyển tới trang đăng nhập và EventSource dừng hẳn.
+ *   Phiên đăng nhập hết hạn hoặc nhàn rỗi quá hạn: máy chủ đóng luồng, lần kết nối lại nhận 204 (phiên đã kết thúc) và EventSource dừng hẳn.
  * Văn bản luôn được gán bằng textContent, không bao giờ bằng innerHTML.
  */
 (function () {

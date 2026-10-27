@@ -57,6 +57,42 @@ mongoimport --db finance_nosql_demo --collection ocr_feedbacks --file /tmp/ocr_f
 
 Sau khi nhập, `findOne({transactionId: NumberLong("1025")})` vẫn trả `transactionId: Long('1025')` và `createdAt` kiểu `ISODate`.
 
+### 1c. Sao lưu / khôi phục MongoDB từ trang quản trị (`/admin/backup`, thẻ "MongoDB")
+
+Cùng nhịp **đếm → sao lưu → xóa → khôi phục → đếm lại**, làm bằng giao diện web (không gõ `mongodump`). Đăng nhập
+`/admin/login` bằng tài khoản quản trị, mở `/admin/backup`, thẻ **MongoDB** có hai nút "Sao lưu" và "Khôi phục".
+
+| | Nội dung |
+|---|---|
+| Archive sao lưu chứa | **toàn bộ database `finance_nosql`** (mongodump 100.x không lọc được collection) |
+| Khôi phục thay thế | **chỉ `ocr_logs` và `ocr_feedbacks`** (`--nsInclude` + `--drop`); collection khác của database giữ nguyên |
+| Nơi lưu file | volume Docker `core_backups` (trong container `/app/backups`), tên `mongo_<thời gian>.archive.gz` |
+| Khôi phục dùng | file `mongo_*.archive.gz` **mới nhất** |
+| Đồng thời | mỗi lúc chỉ một lần sao lưu/khôi phục; lần thứ hai nhận "Đang sao lưu/khôi phục MongoDB, vui lòng đợi" |
+| Nhật ký | mỗi lần thành công ghi một dòng kiểm toán (`MONGO_BACKUP_CREATED`, `MONGO_RESTORED`); mật khẩu kết nối không bao giờ vào log |
+
+Các bước (đếm bằng `mongosh` trên stack thật, không in mật khẩu ra màn hình):
+
+```bash
+# 0. Đếm trước (lặp lại ở bước 3 và 5)
+docker compose exec mongodb sh -c 'mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+    --authenticationDatabase admin --quiet --eval "const d=db.getSiblingDB(\"finance_nosql\"); \
+    printjson({ocr_logs:d.ocr_logs.countDocuments(), ocr_feedbacks:d.ocr_feedbacks.countDocuments()})"'
+```
+
+1. Đếm trước bằng lệnh trên, ví dụ `ocr_logs = N1`, `ocr_feedbacks = N2`.
+2. Trên `/admin/backup` bấm **Sao lưu** của thẻ MongoDB: hiện "Đã sao lưu MongoDB (ocr_logs, ocr_feedbacks) thành công!".
+   Kiểm tra file: `docker compose exec core-api ls -l /app/backups | grep mongo_`.
+3. Xóa dữ liệu: ở `/admin/ocr-feedbacks` xóa vài phản hồi, hoặc trong `mongosh` chạy
+   `d.ocr_feedbacks.deleteMany({})` (và `d.ocr_logs.deleteMany({})`); đếm lại: số đếm giảm / về 0.
+4. Bấm **Khôi phục**: hiện "Đã phục hồi ocr_logs và ocr_feedbacks từ bản sao lưu MongoDB mới nhất!".
+5. Đếm lại: hai số **bằng `N1`, `N2`** của bước 1.
+
+Ghi chú trung thực: (a) khôi phục luôn lấy file **mới nhất**, nên sao lưu lại trước khi demo nếu có file cũ; (b) dữ liệu
+ghi sau lần sao lưu đó sẽ mất, phản hồi OCR vẫn còn ở PostgreSQL; (c) ES/Redis không nằm trong nút này, chúng dựng lại từ
+PostgreSQL (trang `/admin/nosql`). Request tương ứng trong Postman: folder 5 của `NoSQL_Postman_Collection.json` (dùng phiên
+đăng nhập web, không dùng JWT). Kết quả của 1c chưa chạy trong phiên viết tài liệu này: cần stack thật đang chạy.
+
 ### Trên stack thật
 
 ```bash

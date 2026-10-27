@@ -132,4 +132,18 @@ BGSAVE
 LASTSAVE
 INFO persistence
 DBSIZE
+ECHO '-- Q-41 [NÂNG CAO] Pub/Sub: kênh ledgermind:admin-events đưa sự kiện realtime tới trang quản trị (PUBLISH, PUBSUB) --'
+ECHO 'Access pattern: AdminEventPublisher.publish() gửi JSON {type,id,message,at} vào kênh; AdminEventRelay của MỌI instance API đang SUBSCRIBE và chuyển tiếp qua SSE (GET /admin/events) thành toast. Pub/Sub không lưu tin: không ai nghe thì tin mất (chấp nhận được, vì chỉ là thông báo).'
+ECHO 'Kiểm tra kênh nào đang có người nghe (mẫu glob, không phải KEYS) và số người nghe của kênh admin:'
+PUBSUB CHANNELS "ledgermind:*"
+PUBSUB NUMSUB "ledgermind:admin-events"
+ECHO 'PUBLISH trả về SỐ NGƯỜI NGHE đã nhận tin. Trong file này chưa có ai SUBSCRIBE nên là 0:'
+PUBLISH "ledgermind:admin-events" '{"type":"RECEIPT_WAITING_REVIEW","id":1025,"message":"Hóa đơn #1025 đang chờ duyệt","at":"2026-10-27T10:00:00Z"}'
+ECHO 'type là một trong RECEIPT_WAITING_REVIEW, OCR_FEEDBACK_REPORTED, SEARCH_REINDEXED, LEADERBOARD_REBUILT; id = mã hóa đơn (null nếu là thao tác toàn kho).'
+ECHO 'SUBSCRIBE là lệnh CHẶN (client chuyển sang chế độ nhận tin, không gõ lệnh khác được) nên không chạy được trong file này. Demo bằng HAI cửa sổ:'
+ECHO '  Cửa sổ 1 (người nghe): redis-cli SUBSCRIBE ledgermind:admin-events        (RedisInsight: mục Pub/Sub -> Subscribe)'
+ECHO '  Cửa sổ 2 (người gửi) : chạy lại đúng lệnh PUBLISH ở trên -> trả về (integer) 1, cửa sổ 1 hiện ngay tin vừa gửi, và toast hiện trên trang quản trị đang mở.'
+ECHO 'Nếu app đang chạy, PUBSUB NUMSUB ở trên trả 1 cho mỗi instance API (mỗi instance một subscriber).'
+
+ECHO ''
 ECHO 'HẾT DEMO REDIS'

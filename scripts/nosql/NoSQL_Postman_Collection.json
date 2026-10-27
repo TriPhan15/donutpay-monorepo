@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "ledgermind-nosql-collection-v2",
     "name": "LedgerMind - NoSQL API Collection",
-    "description": "Bộ API cho đồ án NoSQL: MongoDB (OCR), Redis (cache, OTP, bảng xếp hạng), Elasticsearch (tìm kiếm). Mỗi request ghi rõ truy vấn Q-xx tương ứng trong scripts/nosql.\n\nCách dùng:\n1. Điền các biến của collection: baseUrl, adminEmail, adminPassword, userEmail, userPassword.\n2. Chạy folder 1. Auth (token tự lưu vào jwtToken / userToken).\n3. Chạy các folder còn lại. Endpoint /api/admin/** dùng jwtToken (ROLE_ADMIN); tìm kiếm và cache của người dùng dùng userToken.",
+    "description": "Bộ API cho đồ án NoSQL: MongoDB (OCR), Redis (cache, OTP, bảng xếp hạng), Elasticsearch (tìm kiếm). Mỗi request ghi rõ truy vấn Q-xx tương ứng trong scripts/nosql.\n\nCách dùng:\n1. Điền các biến của collection: baseUrl, adminEmail, adminPassword, userEmail, userPassword.\n2. Chạy folder 1. Auth (token tự lưu vào jwtToken / userToken).\n3. Chạy các folder còn lại. Endpoint /api/admin/** dùng jwtToken (ROLE_ADMIN); tìm kiếm và cache của người dùng dùng userToken.\n4. Folder 5 (/admin/**: sao lưu MongoDB, SSE realtime, form NoSQL) dùng phiên form login chứ không dùng JWT: xem mô tả folder.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -822,6 +822,180 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "5. Trang quản trị web - phiên form login (không phải JWT)",
+      "description": "CÁC URL /admin/** KHÔNG nhận JWT: chúng dùng phiên đăng nhập của trang web quản trị (form login /admin/login, cookie JSESSIONID). Trong Postman: chạy 'Đăng nhập web quản trị' trước, cookie được giữ tự động. Các trang HTML (/admin/backup, /admin/nosql, /admin/ocr-feedbacks) nên mở bằng trình duyệt; ở đây chỉ có endpoint JSON/SSE/form. Khi demo, dùng trình duyệt là chính; folder này chỉ để kiểm tra nhanh.",
+      "item": [
+        {
+          "name": "Đăng nhập web quản trị -> cookie phiên",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
+            },
+            "description": "Gửi form (x-www-form-urlencoded) username/password như trang /admin/login. Thành công: 302 tới /admin/dashboard và Postman lưu cookie JSESSIONID (tắt 'Automatically follow redirects' để thấy 302). Sai mật khẩu: 302 tới /admin/login?error=true.",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('302 chuyển hướng', () => pm.response.to.have.status(302));",
+                  "pm.test('Vào dashboard', () => pm.expect(pm.response.headers.get('Location') || '').to.include('/admin/dashboard'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[MONGO] Sao lưu MongoDB (mongodump cả finance_nosql)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/backup/mongo/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "backup",
+                "mongo",
+                "execute"
+              ]
+            },
+            "description": "Nút 'Sao lưu MongoDB' ở /admin/backup. Archive chứa TOÀN BỘ database finance_nosql, lưu thành mongo_<thời gian>.archive.gz trong volume core_backups. Trả {success, message}; success=false nếu mongodump lỗi hoặc đang có một lần sao lưu/khôi phục khác chạy. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 và success=true', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[MONGO] Khôi phục ocr_logs + ocr_feedbacks từ bản mới nhất",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/backup/mongo/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "backup",
+                "mongo",
+                "restore"
+              ]
+            },
+            "description": "Nút 'Khôi phục' của thẻ MongoDB. Lấy mongo_*.archive.gz MỚI NHẤT và chỉ thay (--drop) hai collection ocr_logs, ocr_feedbacks; collection khác của finance_nosql giữ nguyên. Dữ liệu ghi sau thời điểm sao lưu sẽ mất. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 và success=true', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[REALTIME] Luồng SSE sự kiện quản trị (kênh Redis ledgermind:admin-events)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "events"
+              ]
+            },
+            "description": "Luồng Server-Sent Events (text/event-stream) của toast realtime; chỉ ROLE_ADMIN, dùng cookie phiên. Mỗi tin là 'event: admin' + data JSON {type,id,message,at}. Để thấy tin: chạy PUBLISH ở Q-41 (scripts/nosql/redis_demo.txt) hoặc bấm dựng lại index / bảng xếp hạng ở /admin/nosql. Phiên đã hết hạn: 204 và luồng kết thúc. Luồng không tự kết thúc: hủy request khi đã xem đủ (Postman có thể chỉ hiện nội dung sau khi hủy). Điều kiện cookie như trên."
+          }
+        },
+        {
+          "name": "[ADMIN WEB] Dựng lại index Elasticsearch (trang /admin/nosql)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/nosql/search/reindex",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "nosql",
+                "search",
+                "reindex"
+              ]
+            },
+            "description": "Form POST của trang /admin/nosql (trả 302 về trang kèm thông báo flash), cùng việc với /api/admin/search/reindex nhưng bằng phiên web. Phát sự kiện SEARCH_REINDEXED. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          }
+        },
+        {
+          "name": "[ADMIN WEB] Dựng lại bảng xếp hạng Redis (trang /admin/nosql)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/nosql/leaderboard/rebuild",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "nosql",
+                "leaderboard",
+                "rebuild"
+              ]
+            },
+            "description": "Form POST của trang /admin/nosql (302 về trang); tham số form month=yyyy-MM (bỏ trống = tháng hiện tại). Phát sự kiện LEADERBOARD_REBUILT. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          }
         }
       ]
     }
