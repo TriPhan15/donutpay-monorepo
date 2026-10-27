@@ -9,6 +9,8 @@ Thêm so với builder.py của khóa luận:
       IMAGE_REPLACE [("S-xx.png", đường dẫn, "fit")], chú thích và số hình giữ nguyên.
   add_image từ chối chép đè một ảnh khác cùng tên trong word/media.
   Inline ⟦chữ⟧ (Task 5): nghiêng + tô vàng, dùng cho ô bảng/cụm chữ người dùng phải điền (ví dụ ngày chưa biết).
+  (Task 7) ("lead", text): dòng dẫn nghiêng, căn trái, đặt trước một khối code. Tùy chọn CODE_FONT_HALF_POINTS (ví dụ 18 =
+      9 pt) và CODE_HANGING_DXA trong content module đổi cỡ chữ và thụt treo của style MaNguon cho cả quyển.
 Mọi content module của báo cáo NoSQL khai báo SESSION_TAG = None, SECTIONS = {}, RENUMBER = True và đưa nội dung vào
 bằng HEADING_PLACEHOLDERS (dòng giữ chỗ [T7.cN_x] ngay sau tiêu đề).
 
@@ -210,6 +212,9 @@ class Doc:
             return para("GachDau2", block[1])
         if kind in ("h2", "h3", "h4"):
             return para("Heading" + kind[1], block[1])
+        if kind == "lead":
+            # Dòng dẫn của một đoạn mã: nghiêng, căn trái (đường dẫn dài không làm giãn dòng như khi căn đều).
+            return para("noidung", block[1], extra_ppr='<w:jc w:val="left"/>', base_rpr="<w:i/>")
         if kind == "y":
             return para("noidung", block[1], base_rpr='<w:i/><w:highlight w:val="yellow"/>')
         if kind == "table":
@@ -366,8 +371,29 @@ def main(root, content_path):
         xml = image_replace(doc, xml, media_name, png, "fit" in opt)
 
     xml_path.write_text(xml, encoding="utf8")
+    code_style(Path(root), getattr(content, "CODE_FONT_HALF_POINTS", None), getattr(content, "CODE_HANGING_DXA", None))
     doc.rels_path.write_text(doc.rels, encoding="utf8")
     print("sections:", len(used), "counters:", doc.counters)
+
+
+def code_style(root, half_points, hanging_dxa):
+    """Đổi cỡ chữ (nửa point, ví dụ 18 = 9 pt) và thụt treo của style MaNguon trong styles.xml; None = giữ nguyên.
+    Thụt treo: dòng đầu ở lề, phần bị ngắt xuống dòng của một dòng mã dài thụt vào, không dồn về cột 0."""
+    if half_points is None and hanging_dxa is None:
+        return
+    path = root / "word/styles.xml"
+    styles = path.read_text(encoding="utf8")
+    m = re.search(r'<w:style [^>]*w:styleId="MaNguon".*?</w:style>', styles, re.S)
+    if not m:
+        raise SystemExit("styles.xml không có style MaNguon")
+    st = m.group(0)
+    if half_points is not None:
+        st = re.sub(r'<w:sz w:val="\d+"/><w:szCs w:val="\d+"/>',
+                    f'<w:sz w:val="{half_points}"/><w:szCs w:val="{half_points}"/>', st)
+    if hanging_dxa is not None:
+        st = re.sub(r'<w:ind [^>]*/>', f'<w:ind w:left="{hanging_dxa}" w:hanging="{hanging_dxa}"/>', st)
+    path.write_text(styles[:m.start()] + st + styles[m.end():], encoding="utf8")
+    print("MaNguon:", half_points, "half-points, hanging", hanging_dxa)
 
 
 P_RE = re.compile(r"<w:p[ >](?:(?!<w:p[ >]).)*?</w:p>", re.S)
