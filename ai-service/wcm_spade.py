@@ -1,118 +1,177 @@
+"""WCM-SPADE: khai phá mẫu tuần tự có trọng số trên chuỗi chi tiêu theo tuần.
+
+Thành phần:
+- CM-SPADE (Fournier-Viger et al. 2014): SPADE id-list dọc + CMAP (bản đồ đồng
+  xuất hiện) để tỉa ứng viên trước khi nối id-list. CMAP ở đây giữ cả cặp a→a và
+  so với ngưỡng support thô ``raw_bound``.
+- Weighted support kiểu WSpan (Yun & Leggett 2006): trọng số mẫu = trung bình
+  trọng số item; tỉa bằng cận trên ``support × maxW``. Công thức MaxW CHƯA KIỂM
+  CHỨNG trong bài gốc.
+- Lọc closed (BIDE, Wang & Han 2004): ẩn mẫu khi có mẫu cha được hiện với cùng
+  support thô.
+
+Mỗi chuỗi là một tuần ISO (danh sách itemset theo ngày). Đây là xấp xỉ WINEPI với
+cửa sổ tumbling 7 ngày (Mannila et al. 1997).
+
+Trọng số item: ``w(i) = m · total(i) / Σ total`` (tỷ trọng chi tiêu chia cho tỷ
+trọng trung bình, m = số item có mặt), nên trung bình trọng số bằng 1.
+"""
+
 from __future__ import annotations
+
+import logging
 import math
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Hashable, Optional
-Item = Hashable
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
+
+logger = logging.getLogger(__name__)
+
+Item = str
+Itemset = Tuple[Item, ...]
+Sequence_ = List[Itemset]
+PatternKey = Tuple[Itemset, ...]
 IDList = Dict[int, List[int]]
 
-@dataclass
+DEFAULT_MIN_SUP: float = 0.25
+DEFAULT_MAX_PATTERN_LENGTH: int = 4
+DEFAULT_MAX_PATTERNS: int = 50_000
+
+# Sai số dấu phẩy động khi so ngưỡng weighted support.
+FLOAT_TOLERANCE: float = 1e-9
+# Trọng số khi tổng chi bằng 0 (mọi item ngang nhau).
+NEUTRAL_WEIGHT: float = 1.0
+MIN_RAW_BOUND: int = 1
+
+
+@dataclass(frozen=True)
 class Pattern:
-    itemsets: List[List[Item]]
-    idlist: IDList
+    itemsets: PatternKey
+    sids: Tuple[int, ...]
     raw_sup: int
-    wsup: float = 0.0
+    weight: float
+    wsup: float
 
-    def last_item(self) -> Item:
-        return self.itemsets[-1][-1]
+    def item_count(self) -> int:
+        return sum(len(itemset) for itemset in self.itemsets)
 
-    def to_str(self) -> str:
-        return " → ".join("(" + ",".join(str(i) for i in it) + ")" for it in self.itemsets)
 
-    def flat_items(self) -> List[List[Item]]:
-        return self.itemsets
-
-@dataclass
+@dataclass(frozen=True)
 class WCMSpadeResult:
     patterns: List[Pattern]
+    explored: Dict[PatternKey, Pattern]
     n_sequences: int
-    min_sup_abs: int
-    effective_min_sup: int
-    mean_w: float
-    item_weights: Dict[Item, float] = field(default_factory=dict)
+    min_wsup: float
+    raw_bound: int
+    max_weight: float
+    item_weights: Dict[Item, float]
+
+
+def item_weights_from_totals(
+    items: Iterable[Item], spending_totals: Mapping[Item, float]
+) -> Dict[Item, float]:
+    """``w(i) = m · total(i) / Σ total`` trên các item có mặt; Σ = 0 thì mọi w = 1."""
+    unique_items = sorted(set(items))
+    totals = {item: max(0.0, float(spending_totals.get(item, 0.0))) for item in unique_items}
+    grand_total = sum(totals.values())
+    if grand_total <= 0.0:
+        return {item: NEUTRAL_WEIGHT for item in unique_items}
+    m = len(unique_items)
+    return {item: m * total / grand_total for item, total in totals.items()}
+
+
+def is_subpattern(sub: PatternKey, sup: PatternKey) -> bool:
+    """Mỗi itemset của ``sub`` là tập con của một itemset của ``sup``, đúng thứ tự."""
+    position = 0
+    for itemset in sub:
+        wanted = set(itemset)
+        while position < len(sup) and not wanted.issubset(sup[position]):
+            position += 1
+        if position == len(sup):
+            return False
+        position += 1
+    return True
+
+
+def _closed(patterns: List[Pattern]) -> List[Pattern]:
+    """Bỏ P khi có Q ≠ P cùng support thô mà P là mẫu con của Q."""
+    by_support: Dict[int, List[Pattern]] = defaultdict(list)
+    for pattern in patterns:
+        by_support[pattern.raw_sup].append(pattern)
+    kept: List[Pattern] = []
+    for group in by_support.values():
+        for pattern in group:
+            absorbed = any(
+                other.itemsets != pattern.itemsets and is_subpattern(pattern.itemsets, other.itemsets)
+                for other in group
+            )
+            if not absorbed:
+                kept.append(pattern)
+    return kept
+
 
 class WCMSpade:
     def __init__(
         self,
-        min_sup: float = 0.02,
-        alpha: float = 0.5,
-        max_pattern_length: int = 5,
-        max_items: Optional[int] = None,
-        max_patterns: int = 50000,
-    ): 
+        min_sup: float = DEFAULT_MIN_SUP,
+        max_pattern_length: int = DEFAULT_MAX_PATTERN_LENGTH,
+        max_patterns: int = DEFAULT_MAX_PATTERNS,
+        use_cmap: bool = True,
+    ) -> None:
         self.min_sup = min_sup
-        self.alpha = alpha
         self.max_pattern_length = max_pattern_length
-        self.max_items = max_items
         self.max_patterns = max_patterns
+        self.use_cmap = use_cmap
 
-        self.N = 0
-        self.min_sup_abs = 0
-        self.mean_w = 1.0
-        self.effective_min_sup = 0
-        self.item_weights: Dict[Item, float] = {}
-        self.cooc_after: Dict[Item, Dict[Item, int]] = defaultdict(lambda: defaultdict(int))
-        self.cooc_equals: Dict[Item, Dict[Item, int]] = defaultdict(lambda: defaultdict(int))
-        self.item_idlists: Dict[Item, IDList] = {}
+        self._n_sequences = 0
+        self._raw_bound = MIN_RAW_BOUND
+        self._min_wsup = 0.0
+        self._item_weights: Dict[Item, float] = {}
+        self._item_idlists: Dict[Item, IDList] = {}
+        self._cmap_s: Dict[Item, Dict[Item, int]] = {}
+        self._cmap_i: Dict[Item, Dict[Item, int]] = {}
+        self._explored: Dict[PatternKey, Pattern] = {}
 
-    def _build_item_idlists(
-        self, sequences: List[List[Tuple[Item, ...]]], item_prices: Dict[Item, float]
-    ):
+    # ---- chuẩn bị dữ liệu ----
+
+    @staticmethod
+    def _normalize(sequences: Sequence[Sequence_]) -> List[List[Itemset]]:
+        return [[tuple(sorted(set(itemset))) for itemset in seq] for seq in sequences]
+
+    @staticmethod
+    def _build_idlists(sequences: List[List[Itemset]]) -> Dict[Item, IDList]:
         idlists: Dict[Item, IDList] = defaultdict(lambda: defaultdict(list))
         for sid, seq in enumerate(sequences):
             for eid, itemset in enumerate(seq):
                 for item in itemset:
                     idlists[item][sid].append(eid)
+        return {item: dict(by_sid) for item, by_sid in idlists.items()}
 
-        support = {item: len(d) for item, d in idlists.items()}
-        frequent = {i: s for i, s in support.items() if s >= self.min_sup_abs}
-        if self.max_items is not None and len(frequent) > self.max_items:
-            top = sorted(frequent.items(), key=lambda kv: kv[1], reverse=True)[: self.max_items]
-            frequent = dict(top)
-
-        self.item_idlists = {i: dict(idlists[i]) for i in frequent}
-        return frequent, support
-
-    def _compute_weights(self, frequent: Dict[Item, int], item_prices: Dict[Item, float]):
-        max_sup = max(frequent.values())
-        mean_price = {i: item_prices.get(i, 0.0) for i in frequent}
-        max_mean_price = max(mean_price.values()) if mean_price else 0.0
-        if max_mean_price <= 0:
-            max_mean_price = 1.0
-
-        weights = {}
-        for i, sup in frequent.items():
-            w_freq = sup / max_sup
-            w_value = mean_price[i] / max_mean_price
-            weights[i] = self.alpha * w_freq + (1 - self.alpha) * w_value
-
-        self.item_weights = weights
-        min_w = min(weights.values())
-        max_w = max(weights.values())
-        self.mean_w = (max_w + min_w) / 2.0
-        self.effective_min_sup = max(1, math.ceil(self.min_sup_abs * self.mean_w))
-
-    def _build_cooc_maps(self, sequences: List[List[Tuple[Item, ...]]]):
-        valid = set(self.item_idlists.keys())
+    def _build_cmaps(self, sequences: List[List[Itemset]], frequent: Set[Item]) -> None:
+        """CMAP: số chuỗi có a đứng trước hẳn b (kể cả a == b) / có a, b chung itemset."""
+        cmap_s: Dict[Item, Dict[Item, int]] = defaultdict(lambda: defaultdict(int))
+        cmap_i: Dict[Item, Dict[Item, int]] = defaultdict(lambda: defaultdict(int))
         for seq in sequences:
-            seen_after: set = set()
-            counted_after: set = set()
-            counted_equals: set = set()
+            seen_before: Set[Item] = set()
+            pairs_after: Set[Tuple[Item, Item]] = set()
+            pairs_same: Set[Tuple[Item, Item]] = set()
             for itemset in seq:
-                items = [it for it in itemset if it in valid]
-
-                for a in items:
+                items = [item for item in itemset if item in frequent]
+                for a in seen_before:
                     for b in items:
-                        if a != b and (a, b) not in counted_equals:
-                            self.cooc_equals[a][b] += 1
-                            counted_equals.add((a, b))
+                        pairs_after.add((a, b))
+                for index, a in enumerate(items):
+                    for b in items[index + 1:]:
+                        pairs_same.add((a, b))
+                seen_before.update(items)
+            for a, b in pairs_after:
+                cmap_s[a][b] += 1
+            for a, b in pairs_same:
+                cmap_i[a][b] += 1
+        self._cmap_s = {a: dict(row) for a, row in cmap_s.items()}
+        self._cmap_i = {a: dict(row) for a, row in cmap_i.items()}
 
-                for a in seen_after:
-                    for b in items:
-                        if a != b and (a, b) not in counted_after:
-                            self.cooc_after[a][b] += 1
-                            counted_after.add((a, b))
-                seen_after.update(items)
+    # ---- phép nối id-list ----
 
     @staticmethod
     def _s_extend(p_idlist: IDList, x_idlist: IDList) -> IDList:
@@ -140,121 +199,110 @@ class WCMSpade:
                 res[sid] = kept
         return res
 
-    def _extend(self, pattern: Pattern, out: List[Pattern]):
-        if len(out) >= self.max_patterns:
-            return
-        if sum(len(it) for it in pattern.itemsets) >= self.max_pattern_length:
-            return
-        last = pattern.last_item()
-        last_itemset = pattern.itemsets[-1]
+    # ---- DFS ----
 
-        for y, y_idlist in self.item_idlists.items():
-            if self.cooc_after[last].get(y, 0) < self.effective_min_sup:
-                continue
-            new_idlist = self._s_extend(pattern.idlist, y_idlist)
-            sup = len(new_idlist)
-            if sup >= self.effective_min_sup:
-                child = Pattern(
-                    itemsets=[list(it) for it in pattern.itemsets] + [[y]],
-                    idlist=new_idlist,
-                    raw_sup=sup,
-                    wsup=sup * self.mean_w,
-                )
-                out.append(child)
-                self._extend(child, out)
-                if len(out) >= self.max_patterns:
-                    return
+    def _pattern_weight(self, itemsets: PatternKey) -> float:
+        weights = [self._item_weights[item] for itemset in itemsets for item in itemset]
+        return sum(weights) / len(weights)
 
-        for y, y_idlist in self.item_idlists.items():
-            if y <= last:
+    def _record(self, itemsets: PatternKey, idlist: IDList) -> Pattern:
+        raw_sup = len(idlist)
+        weight = self._pattern_weight(itemsets)
+        pattern = Pattern(
+            itemsets=itemsets,
+            sids=tuple(sorted(idlist)),
+            raw_sup=raw_sup,
+            weight=weight,
+            wsup=raw_sup * weight / self._n_sequences,
+        )
+        self._explored[itemsets] = pattern
+        return pattern
+
+    def _budget_left(self) -> bool:
+        return len(self._explored) < self.max_patterns
+
+    def _cmap_allows(self, cmap: Dict[Item, Dict[Item, int]], last: Item, y: Item) -> bool:
+        if not self.use_cmap:
+            return True
+        return cmap.get(last, {}).get(y, 0) >= self._raw_bound
+
+    def _extend(self, itemsets: PatternKey, idlist: IDList, item_count: int) -> None:
+        if item_count >= self.max_pattern_length:
+            return
+        last = itemsets[-1][-1]
+
+        # S-extension: thêm itemset mới {y} sau cùng.
+        for y, y_idlist in self._item_idlists.items():
+            if not self._budget_left():
+                return
+            if not self._cmap_allows(self._cmap_s, last, y):
                 continue
-            if self.cooc_equals[last].get(y, 0) < self.effective_min_sup:
+            new_idlist = self._s_extend(idlist, y_idlist)
+            if len(new_idlist) >= self._raw_bound:
+                child = itemsets + ((y,),)
+                self._record(child, new_idlist)
+                self._extend(child, new_idlist, item_count + 1)
+
+        # I-extension: thêm y > last vào itemset cuối.
+        for y, y_idlist in self._item_idlists.items():
+            if not self._budget_left():
+                return
+            if y <= last or not self._cmap_allows(self._cmap_i, last, y):
                 continue
-            new_idlist = self._i_extend(pattern.idlist, y_idlist)
-            sup = len(new_idlist)
-            if sup >= self.effective_min_sup:
-                new_itemsets = [list(it) for it in pattern.itemsets]
-                new_itemsets[-1] = new_itemsets[-1] + [y]
-                child = Pattern(
-                    itemsets=new_itemsets,
-                    idlist=new_idlist,
-                    raw_sup=sup,
-                    wsup=sup * self.mean_w,
-                )
-                out.append(child)
-                self._extend(child, out)
+            new_idlist = self._i_extend(idlist, y_idlist)
+            if len(new_idlist) >= self._raw_bound:
+                child = itemsets[:-1] + (itemsets[-1] + (y,),)
+                self._record(child, new_idlist)
+                self._extend(child, new_idlist, item_count + 1)
 
     def mine(
-        self,
-        sequences: List[List[Tuple[Item, ...]]],
-        item_prices: Optional[Dict[Item, float]] = None,
+        self, sequences: Sequence[Sequence_], spending_totals: Mapping[Item, float]
     ) -> WCMSpadeResult:
-        item_prices = item_prices or {}
-        self.N = len(sequences)
-        self.min_sup_abs = max(1, math.ceil(self.min_sup * self.N))
-        frequent, _ = self._build_item_idlists(sequences, item_prices)
-        if not frequent:
-            return WCMSpadeResult([], self.N, self.min_sup_abs, 0, 1.0, {})
-
-        self._compute_weights(frequent, item_prices)
-        self._build_cooc_maps(sequences)
-
-        results: List[Pattern] = []
-
-        for item, idlist in self.item_idlists.items():
-            sup = len(idlist)
-            p = Pattern([[item]], idlist, sup, sup * self.mean_w)
-            results.append(p)
-            self._extend(p, results)
-            if len(results) >= self.max_patterns:
-                print(f"  [WARN] đạt max_patterns={self.max_patterns}, dừng sớm")
-                break
-
-        results.sort(key=lambda p: p.wsup, reverse=True)
-        return WCMSpadeResult(
-            patterns=results,
-            n_sequences=self.N,
-            min_sup_abs=self.min_sup_abs,
-            effective_min_sup=self.effective_min_sup,
-            mean_w=self.mean_w,
-            item_weights=self.item_weights,
+        normalized = self._normalize(sequences)
+        self._n_sequences = len(normalized)
+        self._explored = {}
+        all_idlists = self._build_idlists(normalized)
+        self._item_weights = item_weights_from_totals(all_idlists.keys(), spending_totals)
+        max_weight = max(self._item_weights.values(), default=NEUTRAL_WEIGHT)
+        self._min_wsup = self.min_sup * self._n_sequences
+        self._raw_bound = max(
+            MIN_RAW_BOUND, math.ceil(self._min_wsup / max_weight - FLOAT_TOLERANCE)
         )
 
+        if self._n_sequences == 0:
+            return self._result([], max_weight)
 
-class NextBasketPredictor:
-    def __init__(self, patterns: List[Pattern],
-                 item_weights: Optional[Dict[Item, float]] = None):
-        self.item_weights = item_weights or {}
-        self.index: Dict[frozenset, List[Tuple[List[Item], float]]] = defaultdict(list)
-        self.global_top: List[Tuple[Item, float]] = []
-        self._build(patterns)
+        self._item_idlists = {
+            item: all_idlists[item]
+            for item in sorted(all_idlists)
+            if len(all_idlists[item]) >= self._raw_bound
+        }
+        self._build_cmaps(normalized, set(self._item_idlists))
 
-    def _w(self, item: Item) -> float:
-        return self.item_weights.get(item, 1.0) if self.item_weights else 1.0
-    def _build(self, patterns: List[Pattern]):
-        item_w: Dict[Item, float] = defaultdict(float)
-        for p in patterns:
-            if len(p.itemsets) >= 2:
-                last_ante = frozenset(p.itemsets[-2])
-                consequent = p.itemsets[-1]
-                self.index[last_ante].append((consequent, p.wsup))
-            for it in p.itemsets:
-                for item in it:
-                    item_w[item] += p.wsup * self._w(item)
-        self.global_top = sorted(item_w.items(), key=lambda kv: kv[1], reverse=True)
-
-    def predict(self, history: List[Tuple[Item, ...]], top_k: int = 5) -> List[Tuple[Item, float]]:
-        score: Dict[Item, float] = defaultdict(float)
-        for basket in reversed(history):
-            bset = frozenset(basket)
-            for last_ante, entries in self.index.items():
-                if last_ante.issubset(bset):
-                    for consequent, wsup in entries:
-                        for item in consequent:
-                            score[item] += wsup * self._w(item)
-            if len([s for s in score.values() if s > 0]) >= 3 * top_k:
+        for item, idlist in self._item_idlists.items():
+            if not self._budget_left():
                 break
-        if not score:
-            return [(i, w) for i, w in self.global_top[:top_k]]
-        ranked = sorted(score.items(), key=lambda kv: kv[1], reverse=True)
-        return ranked[:top_k]
+            root: PatternKey = ((item,),)
+            self._record(root, idlist)
+            self._extend(root, idlist, 1)
+
+        if not self._budget_left():
+            logger.warning("WCM-SPADE dừng sớm: đạt max_patterns=%d", self.max_patterns)
+
+        shown = [
+            p for p in self._explored.values()
+            if p.raw_sup * p.weight >= self._min_wsup - FLOAT_TOLERANCE
+        ]
+        ranked = sorted(_closed(shown), key=lambda p: (-p.wsup, -p.raw_sup, p.itemsets))
+        return self._result(ranked, max_weight)
+
+    def _result(self, patterns: List[Pattern], max_weight: float) -> WCMSpadeResult:
+        return WCMSpadeResult(
+            patterns=patterns,
+            explored=dict(self._explored),
+            n_sequences=self._n_sequences,
+            min_wsup=self._min_wsup,
+            raw_bound=self._raw_bound,
+            max_weight=max_weight,
+            item_weights=dict(self._item_weights),
+        )
