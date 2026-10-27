@@ -14,7 +14,7 @@ import traceback
 from starlette.concurrency import run_in_threadpool
 
 from spending_analysis import DEFAULT_TOP_N, SpadeAnalyzeResponse, analyze_spending
-from spending_data import MAX_TRANSACTIONS, TransactionIn, expenses_from
+from spending_data import MAX_AMOUNT, MAX_TRANSACTIONS, TransactionIn, expenses_from
 from wcm_spade import DEFAULT_MIN_SUP
 import budget_advisor
 from receipt_postprocess import fields_from_sequence, normalize_receipt
@@ -143,15 +143,13 @@ class SpadeRequest(BaseModel):
     min_sup_factor: float = Field(DEFAULT_MIN_SUP, gt=0, le=1)
 
 class RecommendRequest(BaseModel):
-    transactions: List[TransactionIn]
-    target: float = 0.0          
-    current: float = 0.0         
-    months_left: int = 0        
-    monthly_income: Optional[float] = None  
-    needed_monthly: Optional[float] = None  
-    alpha: float = 0.5
-    min_sup_factor: float = 0.4
-    max_cut_ratio: float = 0.30
+    # Old APK fields (alpha, min_sup_factor, max_cut_ratio) are ignored by Pydantic.
+    transactions: List[TransactionIn] = Field(max_length=MAX_TRANSACTIONS)
+    target: float = Field(0, ge=0, le=MAX_AMOUNT)
+    current: float = Field(0, ge=0, le=MAX_AMOUNT)
+    months_left: Optional[int] = Field(None, ge=1, le=600)
+    monthly_income: Optional[float] = Field(None, ge=0, le=MAX_AMOUNT)
+    needed_monthly: Optional[float] = Field(None, ge=0, le=MAX_AMOUNT)
 
 
 @app.post("/spade/analyze", response_model=SpadeAnalyzeResponse)
@@ -165,31 +163,18 @@ def analyze_patterns(req: SpadeRequest) -> SpadeAnalyzeResponse:
 @app.post("/spade/recommend")
 def recommend_budget(req: RecommendRequest):
     print(f"\nBudgetAdvisor nhận {len(req.transactions)} giao dịch")
-    txs = [
-        {"category": t.category, "amount": t.amount, "date": t.date, "isExpense": t.isExpense}
-        for t in req.transactions
-    ]
-    if not txs:
-        return {
-            "trends": [],
-            "tagStats": [],
-            "goal": {"neededMonthly": 0, "monthlyIncome": req.monthly_income or 0, "monthlyExpense": 0, "surplus": 0, "gap": 0},
-            "recommendations": [],
-            "summary": "Bạn chưa có giao dịch. Hãy nhập chi tiêu để AI tính toán nhé!"
-        }
+    try:
+        result = budget_advisor.advise(
+            req.transactions,
+            target=req.target,
+            current=req.current,
+            months_left=req.months_left,
+            monthly_income=req.monthly_income,
+            needed_monthly=req.needed_monthly,
+        )
+    except budget_advisor.AdviceError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
-    result = budget_advisor.advise(
-        txs,
-        target=req.target,
-        current=req.current,
-        months_left=req.months_left,
-        monthly_income=req.monthly_income,
-        needed_monthly=req.needed_monthly,
-        alpha=req.alpha,
-        min_sup_factor=req.min_sup_factor,
-        max_cut_ratio=req.max_cut_ratio,
-    )
-        
     print(f"BudgetAdvisor: {len(result.get('recommendations', []))} đề xuất")
     return result
 

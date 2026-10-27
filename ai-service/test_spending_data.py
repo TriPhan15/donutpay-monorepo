@@ -93,3 +93,9 @@ def test_category_is_nfc_normalised_so_spellings_merge():
     txs = [TransactionIn(category=composed, amount=1, date="2026-10-20"),
            TransactionIn(category=decomposed, amount=1, date="2026-10-21")]
     assert {e.category for e in expenses_from(txs)} == {composed}
+
+
+def test_whitespace_only_category_is_rejected():
+    with pytest.raises(ValidationError):
+        TransactionIn(category="   ", amount=1)
+    assert TransactionIn(category="  Ăn uống ", amount=1).category == "Ăn uống"

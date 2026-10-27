@@ -262,3 +262,53 @@ def test_recommend_budget(mocker):
 
     assert response.status_code == 200
     assert response.json()["summary"] == "Đề xuất ngân sách giả lập cho kiểm thử."
+
+
+def _prev_month_day(months_back: int, day: int = 1) -> str:
+    from local_time import local_today
+    t = local_today()
+    idx = t.year * 12 + (t.month - 1) - months_back
+    return date(idx // 12, idx % 12 + 1, day).isoformat()
+
+
+def test_recommend_real_advisor_path_without_mock():
+    """No mock of advise: a signature drift between endpoint and advisor must fail here."""
+    txs = [_tx("Ăn uống", 3_000_000, _prev_month_day(2)), _tx("Mua sắm", 2_000_000, _prev_month_day(1)),
+           _tx("Ăn uống", 3_000_000, _prev_month_day(1))]
+    r = client.post("/spade/recommend", json={"transactions": txs, "target": 6_000_000, "months_left": 3})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["meta"]["nMonths"] == 2 and body["goal"]["hasDeadline"] is True
+    assert "trends" not in body
+
+
+def test_recommend_without_months_left_is_allowed():
+    txs = [_tx("Ăn uống", 3_000_000, _prev_month_day(1))]
+    r = client.post("/spade/recommend", json={"transactions": txs, "target": 6_000_000})
+    assert r.status_code == 200 and r.json()["goal"]["hasDeadline"] is False
+
+
+def test_recommend_empty_list_is_422_fixed_text():
+    import budget_advisor
+    r = client.post("/spade/recommend", json={"transactions": []})
+    assert r.status_code == 422 and r.json() == {"detail": budget_advisor.NO_EXPENSE_MESSAGE}
+
+
+def test_recommend_maps_advice_error_to_422_with_fixed_text(mocker):
+    import budget_advisor
+    mocker.patch("budget_advisor.advise",
+                 side_effect=budget_advisor.AdviceError(budget_advisor.NOT_ENOUGH_HISTORY_MESSAGE))
+    r = client.post("/spade/recommend", json={"transactions": [_tx()]})
+    assert r.status_code == 422 and r.json() == {"detail": budget_advisor.NOT_ENOUGH_HISTORY_MESSAGE}
+
+
+def test_recommend_rejects_months_left_zero():
+    r = client.post("/spade/recommend", json={"transactions": [_tx()], "months_left": 0})
+    assert r.status_code == 422
+
+
+def test_recommend_ignores_old_max_cut_ratio(mocker):
+    m = mocker.patch("budget_advisor.advise", return_value={"summary": "ok"})
+    r = client.post("/spade/recommend", json={"transactions": [_tx()], "max_cut_ratio": 5, "alpha": 1})
+    assert r.status_code == 200
+    assert "max_cut_ratio" not in m.call_args.kwargs and "alpha" not in m.call_args.kwargs

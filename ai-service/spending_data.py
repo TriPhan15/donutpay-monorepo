@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, Field, StringConstraints
 
 from local_time import parse_local_date
 
@@ -21,7 +23,8 @@ MIN_WEEKS_WITH_DATA = 8
 
 
 class TransactionIn(BaseModel):
-    category: str = Field(min_length=1, max_length=MAX_CATEGORY_LENGTH)
+    category: Annotated[str, StringConstraints(
+        strip_whitespace=True, min_length=1, max_length=MAX_CATEGORY_LENGTH)]
     amount: float = Field(0.0, ge=0, le=MAX_AMOUNT)
     date: str = Field("", max_length=MAX_DATE_LENGTH)
     isExpense: bool = True
