@@ -110,7 +110,32 @@ class ElasticsearchTransactionSearchEngineIntegrationTest {
     void typo_phoHug_matchesPhoHung() {
         index(30, ALICE, "Phở Hưng", null, null, DATE);
 
-        assertEquals(List.of(30L), ids(ALICE, "pho hug"));
+        // "hunh" is 4 letters: one edit from "hung" is still forgiven by AUTO:4,7.
+        assertEquals(List.of(30L), ids(ALICE, "pho hunh"));
+    }
+
+    @Test
+    void pho_doesNotMatchCho() {
+        index(31, ALICE, "Phở Hưng", null, null, DATE);
+        index(32, ALICE, "Chợ Bến Thành", null, null, DATE);
+
+        assertEquals(List.of(31L), ids(ALICE, "pho"));
+    }
+
+    @Test
+    void pho_doesNotMatchPhi() {
+        index(33, ALICE, "Phở Hưng", null, null, DATE);
+        index(34, ALICE, "Phí chuyển khoản", null, null, DATE);
+
+        assertEquals(List.of(33L), ids(ALICE, "pho"));
+    }
+
+    @Test
+    void pho_stillMatchesPhoAndPhoCo() {
+        index(35, ALICE, "Phở Hưng", null, null, DATE);
+        index(36, ALICE, "Phố Cổ", null, null, DATE);
+
+        assertEquals(java.util.Set.of(35L, 36L), new java.util.HashSet<>(ids(ALICE, "pho")));
     }
 
     @Test

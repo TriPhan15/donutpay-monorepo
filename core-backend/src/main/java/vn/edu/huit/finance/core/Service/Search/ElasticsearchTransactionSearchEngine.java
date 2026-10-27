@@ -35,7 +35,8 @@ public class ElasticsearchTransactionSearchEngine implements TransactionSearchEn
     static final String MIN_SHOULD_MATCH = "1";
     static final String USER_ID_FIELD = "userId";
     static final String DATE_FIELD = "transactionDate";
-    static final String FUZZINESS = "AUTO";
+    /** No typos for terms under 4 characters (so "pho" never matches "cho"/"phi"), 1 edit for 4-7, 2 edits from 8. */
+    static final String FUZZINESS = "AUTO:4,7";
 
     private final ElasticsearchOperations operations;
 

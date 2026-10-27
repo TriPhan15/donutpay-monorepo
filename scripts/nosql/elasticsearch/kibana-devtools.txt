@@ -71,10 +71,10 @@ GET transactions/_analyze
 # ---------------------------------------------------------------------------
 # Q-35 [NÂNG CAO] TRUY VẤN THẬT CỦA APP cho GET /api/transactions/search?q=pho
 # (ElasticsearchTransactionSearchEngine.hits): bool { filter userId, should [ multi_match chính xác/tiền tố trên cả
-# trường autocomplete (boost 2), multi_match mờ fuzziness AUTO chỉ trên trường nguyên từ ], minimum_should_match 1 },
+# trường autocomplete (boost 2), multi_match mờ fuzziness AUTO:4,7 chỉ trên trường nguyên từ ], minimum_should_match 1 },
 # sắp xếp theo _score rồi transactionDate giảm dần. Phải ra các dòng "Phở ..." của user 1 và KHÔNG ra user khác.
-# Kết quả: 4 dòng "Phở ..." đứng đầu (điểm ~13-15). Phần đuôi điểm thấp (~1-2) là kết quả của nhánh MỜ: "pho" cách "phê" (Cà phê)
-# đúng 1 ký tự nên cũng khớp. Đó là hành vi thật của app (xếp theo điểm nên Phở luôn lên trước), không phải lỗi của script.
+# Kết quả: chỉ các dòng "Phở ..."/"Phố ..." (và tiền tố "Ph...") của user 1; từ "pho" có 3 chữ nên nhánh MỜ không còn kéo
+# "Chợ" hay "Phí" vào (AUTO:4,7 không cho sai với từ dưới 4 chữ).
 # ---------------------------------------------------------------------------
 GET transactions/_search
 {
@@ -94,7 +94,7 @@ GET transactions/_search
         { "multi_match": {
             "query": "pho",
             "fields": [ "vendorName^3", "note^2", "categoryName", "location", "paymentMethod" ],
-            "fuzziness": "AUTO",
+            "fuzziness": "AUTO:4,7",
             "operator": "and"
         } }
       ],
@@ -107,7 +107,7 @@ GET transactions/_search
 
 # ---------------------------------------------------------------------------
 # Q-36 [NÂNG CAO] Tìm mờ (fuzzy multi_match): gõ sai "highlans cofee" vẫn ra "Highlands Coffee"
-# Access pattern: lỗi gõ phím. fuzziness AUTO cho phép sai 1 ký tự với từ 3-5 chữ, 2 ký tự với từ dài hơn.
+# Access pattern: lỗi gõ phím. fuzziness AUTO:4,7 không cho sai với từ dưới 4 chữ, cho sai 1 ký tự với từ 4-7 chữ, 2 ký tự với từ từ 8 chữ trở lên.
 # ---------------------------------------------------------------------------
 GET transactions/_search
 {
@@ -116,7 +116,7 @@ GET transactions/_search
     "must": [ { "multi_match": {
         "query": "highlans cofee",
         "fields": [ "vendorName^3", "note^2", "categoryName", "location", "paymentMethod" ],
-        "fuzziness": "AUTO",
+        "fuzziness": "AUTO:4,7",
         "operator": "and"
     } } ]
   } },
