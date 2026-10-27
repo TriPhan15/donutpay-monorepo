@@ -27,6 +27,7 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
+import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Exception.TransactionNotFoundException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
@@ -36,6 +37,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
@@ -77,6 +79,7 @@ public class TransactionService {
     private static final String KEY_WARNING = "warning";
 
     private static final String MSG_LOW_BALANCE = "CẢNH BÁO: Số dư ví của bạn sắp cạn kiệt (Dưới 50,000 VNĐ)!";
+    private static final String MSG_SAVINGS_MANAGED_BY_GOAL = "Khoản góp tiết kiệm được quản lý trong mục Mục tiêu tiết kiệm. Hãy góp thêm hoặc xóa mục tiêu ở đó.";
     private static final String MSG_INSUFFICIENT_BALANCE = "GIAO DỊCH THẤT BẠI: Số dư ví không đủ!";
     private static final String MSG_DELETE_WOULD_OVERDRAW = "Không thể xóa khoản thu này: số dư ví hiện tại không đủ để hoàn lại số tiền đã cộng.";
     private static final String MSG_TRANSACTION_NOT_FOUND = "Không tìm thấy giao dịch";
@@ -151,21 +154,31 @@ public class TransactionService {
      */
     @Transactional
     public Map<String, Object> createTransaction(TransactionRequestDto request, Long userId) {
-        return create(request, userId, AuditActor.system());
+        return create(request, userId, AuditActor.system(), false);
     }
 
     /** Same as {@link #createTransaction} for the signed-in caller. Transactional itself, because it calls that method directly. */
     @Transactional
     public Map<String, Object> createMyTransaction(TransactionRequestDto request) {
         User caller = currentUserProvider.getCurrentUser();
-        return create(request, caller.getId(), AuditActor.of(caller));
+        return create(request, caller.getId(), AuditActor.of(caller), false);
+    }
+
+    /**
+     * Same as {@link #createMyTransaction} but may use the "Tiết kiệm" category. Only SavingGoalService calls it, so a
+     * savings movement always goes together with the goal's amount; the generic checkout refuses that category.
+     */
+    @Transactional
+    public Map<String, Object> recordSavingsMovement(TransactionRequestDto request) {
+        User caller = currentUserProvider.getCurrentUser();
+        return create(request, caller.getId(), AuditActor.of(caller), true);
     }
 
     /**
      * The checkout itself. A replay of an id already recorded writes no audit row: it changes nothing. Otherwise the rows
      * (the transaction; the receipt and the AI's reading when one came with it; a category created by name) commit with it.
      */
-    private Map<String, Object> create(TransactionRequestDto request, Long userId, AuditActor actor) {
+    private Map<String, Object> create(TransactionRequestDto request, Long userId, AuditActor actor, boolean savingsAllowed) {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
 
@@ -182,6 +195,11 @@ public class TransactionService {
         }
 
         Category category = resolveCategory(request.getCategoryId(), request.getCategoryName(), request.isExpense(), actor);
+        if (!savingsAllowed && SavingsContributions.isSavingsCategory(category)) {
+            // Ví đã được khóa nhưng chưa ghi gì: rollback là đủ.
+            log.warn("Generic checkout in the savings category refused, userId={}", userId);
+            throw new SavingsLedgerException(MSG_SAVINGS_MANAGED_BY_GOAL);
+        }
 
         BigDecimal finalAmount = request.getAmount();
 
@@ -244,6 +262,7 @@ public class TransactionService {
     public TransactionResponseDto updateTransaction(Long transactionId, TransactionUpdateRequestDto request) {
         User caller = currentUserProvider.getCurrentUser();
         Transaction transaction = findOwnedTransaction(transactionId, caller.getId());
+        refuseSavingsContribution(transaction, caller.getId());
         // Taken before anything changes: the budget alert needs to know what this transaction counted for until now.
         BudgetAlertService.SpendingSnapshot spendingBefore = BudgetAlertService.SpendingSnapshot.of(transaction);
 
@@ -254,6 +273,11 @@ public class TransactionService {
         Category newCategory = hasCategory(request)
                 ? resolveCategory(request.getCategoryId(), request.getCategoryName(), newExpense, actor)
                 : null;
+        if (SavingsContributions.isSavingsCategory(newCategory)) {
+            log.warn("Moving a transaction into the savings category refused, userId={}, transactionId={}",
+                    caller.getId(), transactionId);
+            throw new SavingsLedgerException(MSG_SAVINGS_MANAGED_BY_GOAL);
+        }
 
         BigDecimal walletChange = signedAmount(newAmount, newExpense)
                 .subtract(signedAmount(transaction.getAmount(), transaction.isExpense()));
@@ -302,6 +326,7 @@ public class TransactionService {
     public void deleteTransaction(Long transactionId) {
         User caller = currentUserProvider.getCurrentUser();
         Transaction transaction = findOwnedTransaction(transactionId, caller.getId());
+        refuseSavingsContribution(transaction, caller.getId());
 
         BigDecimal undo = signedAmount(transaction.getAmount(), transaction.isExpense()).negate();
         User owner = lockWallet(caller);
@@ -314,6 +339,14 @@ public class TransactionService {
                         categoryIdOf(transaction), sign(undo), undo.toPlainString())));
 
         log.info("Transaction deleted, userId={}, transactionId={}, walletChange={}", caller.getId(), transactionId, undo);
+    }
+
+    /** Khoản góp tiết kiệm chỉ đổi qua mục tiêu: sửa hay xóa ở đây sẽ làm ví lệch với số tiền của mục tiêu. */
+    private void refuseSavingsContribution(Transaction transaction, Long userId) {
+        if (SavingsContributions.isContribution(transaction)) {
+            log.warn("Change of a savings contribution refused, userId={}, transactionId={}", userId, transaction.getId());
+            throw new SavingsLedgerException(MSG_SAVINGS_MANAGED_BY_GOAL);
+        }
     }
 
     @Transactional

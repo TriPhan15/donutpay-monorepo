@@ -29,6 +29,7 @@ import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.Category;
+import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
@@ -38,6 +39,7 @@ import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.InvalidSortFieldException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
+import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Exception.TransactionNotFoundException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
@@ -48,6 +50,7 @@ import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -2012,6 +2015,96 @@ class TransactionServiceTest {
         verifyNoInteractions(eventPublisher);
     }
 
+    // ------------------------------------------------------------------------ savings: only through the savings goal
+
+    private Category savingsCategory() {
+        return category(12L, SavingsContributions.CATEGORY_NAME, DefaultCategory.TYPE_EXPENSE);
+    }
+
+    private Transaction aliceHasASavingsContribution() {
+        Transaction contribution = aliceHasOwnTransaction(new BigDecimal("500000"), true);
+        contribution.setCategory(savingsCategory());
+        contribution.setCategoryName(SavingsContributions.CATEGORY_NAME);
+        return contribution;
+    }
+
+    private void savingsCategoryExistsByName() {
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(SavingsContributions.CATEGORY_NAME))
+                .thenReturn(Optional.of(savingsCategory()));
+    }
+
+    @Test
+    void updatingASavingsContributionIsRefusedAndTheWalletIsUntouched() {
+        aliceHasASavingsContribution();
+
+        assertThrows(SavingsLedgerException.class, () -> service.updateTransaction(TX_ID, updateAmount("100000")));
+
+        verifyNothingWasWritten();
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void deletingASavingsContributionIsRefusedAndNothingIsDeleted() {
+        aliceHasASavingsContribution();
+
+        assertThrows(SavingsLedgerException.class, () -> service.deleteTransaction(TX_ID));
+
+        verifyNothingWasWritten();
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void movingATransactionIntoTheSavingsCategoryIsRefused() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        savingsCategoryExistsByName();
+        TransactionUpdateRequestDto request = update();
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        assertThrows(SavingsLedgerException.class, () -> service.updateTransaction(TX_ID, request));
+
+        verifyNothingWasWritten();
+    }
+
+    @Test
+    void genericCheckoutInTheSavingsCategoryIsRefusedAndTheWalletIsUntouched() {
+        checkoutAsAlice();
+        savingsCategoryExistsByName();
+        TransactionRequestDto request = checkout(true, "100000");
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        assertThrows(SavingsLedgerException.class, () -> service.createMyTransaction(request));
+
+        verify(userRepo, never()).saveAndFlush(any());
+        verify(transactionRepo, never()).save(any());
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void theWebhookCheckoutInTheSavingsCategoryIsRefusedToo() {
+        when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
+        savingsCategoryExistsByName();
+        TransactionRequestDto request = checkout(true, "100000");
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        assertThrows(SavingsLedgerException.class, () -> service.createTransaction(request, ALICE_ID));
+
+        verify(transactionRepo, never()).save(any());
+    }
+
+    @Test
+    void recordSavingsMovementAcceptsTheSavingsCategory() {
+        checkoutAsAlice();
+        savingsCategoryExistsByName();
+        TransactionRequestDto request = checkout(true, "100000");
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        Map<String, Object> result = service.recordSavingsMovement(request);
+
+        assertTrue(result.containsKey("transactionId"));
+        assertMoney("900000", alice.getWalletBalance());
+        verify(transactionRepo).save(any(Transaction.class));
+    }
+
     // ------------------------------------------------------------------------------------------------ structural guards
 
     @Test
@@ -2032,6 +2125,7 @@ class TransactionServiceTest {
                 TransactionService.class.getMethod("cancelMyReceipt", Long.class),
                 TransactionService.class.getMethod("approveReceipt", Long.class),
                 TransactionService.class.getMethod("createMyTransaction", TransactionRequestDto.class),
+                TransactionService.class.getMethod("recordSavingsMovement", TransactionRequestDto.class),
                 TransactionService.class.getMethod("createTransaction", TransactionRequestDto.class, Long.class));
 
         for (Method method : writers) {

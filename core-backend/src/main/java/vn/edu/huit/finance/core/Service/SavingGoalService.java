@@ -104,7 +104,7 @@ public class SavingGoalService {
         User caller = currentUserProvider.getCurrentUser();
         SavingGoal goal = requireOwned(savingGoalRepository.findLockedById(goalId), goalId, caller);
 
-        Map<String, Object> checkout = transactionService.createMyTransaction(contributionTransaction(goal, amount));
+        Map<String, Object> checkout = transactionService.recordSavingsMovement(contributionTransaction(goal, amount));
         Object transactionId = checkout.get(KEY_TRANSACTION_ID);
 
         BigDecimal current = Objects.requireNonNullElse(goal.getCurrentAmount(), BigDecimal.ZERO);

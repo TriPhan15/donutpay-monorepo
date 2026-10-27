@@ -161,13 +161,13 @@ class SavingGoalServiceTest {
     }
 
     private void theCheckoutRecordsTransaction(long transactionId) {
-        when(transactionService.createMyTransaction(any(TransactionRequestDto.class)))
+        when(transactionService.recordSavingsMovement(any(TransactionRequestDto.class)))
                 .thenReturn(Map.of("transactionId", transactionId));
     }
 
     private TransactionRequestDto checkoutSent() {
         ArgumentCaptor<TransactionRequestDto> sent = ArgumentCaptor.forClass(TransactionRequestDto.class);
-        verify(transactionService).createMyTransaction(sent.capture());
+        verify(transactionService).recordSavingsMovement(sent.capture());
         return sent.getValue();
     }
 
@@ -223,7 +223,7 @@ class SavingGoalServiceTest {
 
         InOrder inOrder = inOrder(repository, transactionService);
         inOrder.verify(repository).findLockedById(6L);
-        inOrder.verify(transactionService).createMyTransaction(any());
+        inOrder.verify(transactionService).recordSavingsMovement(any());
         inOrder.verify(repository).save(goal);
         verify(repository, never()).findById(any());
     }
@@ -265,7 +265,7 @@ class SavingGoalServiceTest {
     @Test
     void aWalletThatCannotCarryTheContributionLeavesTheGoalAsItWas() {
         SavingGoal goal = lockedGoalOf(alice);
-        when(transactionService.createMyTransaction(any()))
+        when(transactionService.recordSavingsMovement(any()))
                 .thenThrow(new InsufficientBalanceException("GIAO DỊCH THẤT BẠI: Số dư ví không đủ!"));
 
         assertThrows(InsufficientBalanceException.class, () -> service.contributeToMySaving(6L, CONTRIBUTION));

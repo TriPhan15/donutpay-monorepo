@@ -157,6 +157,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    // 409: a savings transaction can only change through its savings goal; nothing was written.
+    @ExceptionHandler(SavingsLedgerException.class)
+    public Object handleSavingsLedger(SavingsLedgerException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
     // 409: a versioned row (a receipt) was changed by another request between the read and the write of this one, and the
     // whole transaction of this one was rolled back. The exception names the entity and its id, so the answer is a fixed text.
     @ExceptionHandler(OptimisticLockingFailureException.class)
