@@ -21,6 +21,7 @@ import vn.edu.huit.finance.core.Dto.SavingGoalDto;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
+import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
@@ -46,6 +47,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -186,5 +188,63 @@ class SavingGoalControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Không tìm thấy mục tiêu tiết kiệm"));
+    }
+
+    // ------------------------------------------------------------------------------------ create and update a goal
+
+    private static final String GOALS_URL = "/api/savings";
+    private static final String GOAL_URL = "/api/savings/7";
+
+    @Test
+    void oldAppPutWithOnlyCurrent_isRefused400_andNothingChanges() throws Exception {
+        mockMvc.perform(signedIn(put(GOAL_URL).contentType(MediaType.APPLICATION_JSON).content("{\"current\":5000000}")))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(savingGoalService);
+    }
+
+    @Test
+    void createWithBlankTitleOrNonPositiveTarget_is400() throws Exception {
+        mockMvc.perform(signedIn(post(GOALS_URL).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\" \",\"target\":0}")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("Tên mục tiêu không được để trống")))
+                .andExpect(jsonPath("$.message").value(containsString("Số tiền mục tiêu phải lớn hơn 0")));
+
+        verifyNoInteractions(savingGoalService);
+    }
+
+    @Test
+    void aMalformedDeadlineOrNegativeCurrentIs400() throws Exception {
+        mockMvc.perform(signedIn(post(GOALS_URL).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Xe\",\"target\":100,\"deadline\":\"2027-06-30\",\"current\":-1}")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("dd/MM/yyyy")))
+                .andExpect(jsonPath("$.message").value(containsString("không được âm")));
+
+        verifyNoInteractions(savingGoalService);
+    }
+
+    @Test
+    void aValidUpdateAnswers200WithTheGoal() throws Exception {
+        when(savingGoalService.updateMySaving(eq(7L), any())).thenReturn(goalAfterTheContribution());
+
+        mockMvc.perform(signedIn(put(GOAL_URL).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Mua xe\",\"target\":50000000,\"deadline\":\"30/06/2027\"}")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("Cập nhật thành công"))
+                .andExpect(jsonPath("$.data.current").value(1500000));
+    }
+
+    @Test
+    void anUpdateThatChangesTheSavedAmountIsA409() throws Exception {
+        when(savingGoalService.updateMySaving(anyLong(), any()))
+                .thenThrow(new SavingsLedgerException("Số tiền đã tiết kiệm chỉ thay đổi qua Góp tiền"));
+
+        mockMvc.perform(signedIn(put(GOAL_URL).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Mua xe\",\"target\":100,\"current\":9}")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Số tiền đã tiết kiệm chỉ thay đổi qua Góp tiền"));
     }
 }
