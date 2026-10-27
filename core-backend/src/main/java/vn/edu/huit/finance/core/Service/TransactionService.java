@@ -654,6 +654,21 @@ public class TransactionService {
         return walletChange.signum() == 0 ? "" : String.format(AUDIT_WALLET_CHANGE, sign(walletChange), walletChange.toPlainString());
     }
 
+    /**
+     * Locks the wallet row until the end of the caller's transaction and tells whether its balance covers [amount].
+     * Never throws for a shortfall: a caller that must still commit (a payment webhook closing its order as FAILED)
+     * decides from the answer, before any write, instead of catching an exception that would mark its transaction
+     * rollback-only.
+     */
+    @Transactional
+    public boolean lockWalletAndCheckCovers(Long userId, BigDecimal amount) {
+        User locked = entityManager.find(User.class, userId, LockModeType.PESSIMISTIC_WRITE);
+        if (locked == null) {
+            throw new UserNotFoundException(MSG_USER_NOT_FOUND);
+        }
+        return locked.getWalletBalance().compareTo(amount) >= 0;
+    }
+
     /** What a transaction does to the wallet: an income adds its amount, an expense takes it away. */
     private static BigDecimal signedAmount(BigDecimal amount, boolean isExpense) {
         return isExpense ? amount.negate() : amount;

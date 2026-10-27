@@ -39,6 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -154,13 +155,37 @@ class PaymentWebhookConcurrencyPostgresTest {
         assertEquals(PaymentStatus.SUCCESS, orderRepository.findByOrderCode(ORDER_CODE).orElseThrow().getStatus());
     }
 
+    @Test
+    void withdrawWithoutFunds_commitsTheOrderAsFailed_andLeavesTheWalletAlone() {
+        BigDecimal balance = new BigDecimal("100000");
+        BigDecimal withdrawal = new BigDecimal("500000");
+        User owner = userRepository.findById(userId).orElseThrow();
+        owner.setWalletBalance(balance);
+        userRepository.saveAndFlush(owner);
+        orderRepository.deleteAll();
+        orderRepository.saveAndFlush(PaymentOrder.builder()
+                .orderCode(ORDER_CODE).userId(userId).amount(withdrawal).type(PaymentType.WITHDRAW)
+                .status(PaymentStatus.PENDING).provider("MOCK").build());
+
+        assertDoesNotThrow(() -> paymentService.handleWebhook(signedWebhook(withdrawal)));
+
+        assertEquals(PaymentStatus.FAILED, orderRepository.findByOrderCode(ORDER_CODE).orElseThrow().getStatus());
+        BigDecimal wallet = userRepository.findById(userId).orElseThrow().getWalletBalance();
+        assertEquals(0, balance.compareTo(wallet), "the wallet is untouched, but was " + wallet);
+        assertEquals(0, transactionRepository.count());
+    }
+
     private static PaymentWebhookDto signedWebhook() {
+        return signedWebhook(AMOUNT);
+    }
+
+    private static PaymentWebhookDto signedWebhook(BigDecimal amount) {
         PaymentWebhookDto dto = new PaymentWebhookDto();
         dto.setOrderCode(ORDER_CODE);
         dto.setGatewayTxnId(GATEWAY_TXN);
         dto.setResultCode(SUCCESS_CODE);
-        dto.setAmount(AMOUNT);
-        String raw = ORDER_CODE + "|" + GATEWAY_TXN + "|" + SUCCESS_CODE + "|" + AMOUNT.toPlainString();
+        dto.setAmount(amount);
+        String raw = ORDER_CODE + "|" + GATEWAY_TXN + "|" + SUCCESS_CODE + "|" + amount.toPlainString();
         dto.setSignature(HmacUtil.hmacSha256(raw, SECRET));
         return dto;
     }

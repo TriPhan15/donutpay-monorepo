@@ -191,6 +191,7 @@ class PaymentServiceTest {
     void webhook_success_withdraw_createsExpenseTransaction() {
         PaymentOrder order = pendingOrder(PaymentType.WITHDRAW, "30000");
         when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(transactionService.lockWalletAndCheckCovers(USER_ID, new BigDecimal("30000"))).thenReturn(true);
 
         service.handleWebhook(webhook("PAY123", "TXN1", "00", "30000", true));
 
@@ -199,6 +200,33 @@ class PaymentServiceTest {
                 ArgumentCaptor.forClass(TransactionRequestDto.class);
         verify(transactionService).createTransaction(cap.capture(), org.mockito.ArgumentMatchers.eq(USER_ID));
         assertTrue(cap.getValue().isExpense()); // WITHDRAW -> chi
+    }
+
+    @Test
+    void webhook_withdrawWithoutFunds_marksFailed_recordsWhy_andCreatesNoTransaction() {
+        PaymentOrder order = pendingOrder(PaymentType.WITHDRAW, "500000");
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(transactionService.lockWalletAndCheckCovers(USER_ID, new BigDecimal("500000"))).thenReturn(false);
+
+        assertDoesNotThrow(() -> service.handleWebhook(webhook("PAY123", "TXN1", "00", "500000", true)));
+
+        assertEquals(PaymentStatus.FAILED, order.getStatus());
+        verify(orderRepo).save(order);
+        verify(transactionService, never()).createTransaction(any(), any());
+        AuditEntry entry = recorded();
+        assertEquals(AuditAction.PAYMENT_FAILED, entry.action());
+        assertEquals(AuditActor.system(), entry.actor());
+        assertEquals("Cổng MOCK xác nhận rút 500000 VNĐ nhưng số dư ví không đủ, mã đơn PAY123", entry.description());
+    }
+
+    @Test
+    void webhook_success_deposit_doesNotLockOrCheckTheWallet() {
+        PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
+
+        service.handleWebhook(webhook("PAY123", "TXN1", "00", "50000", true));
+
+        verify(transactionService, never()).lockWalletAndCheckCovers(any(), any());
     }
 
     @Test
