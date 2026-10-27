@@ -1114,22 +1114,18 @@
   "@savingsTargetAmount": {
     "description": "Field of the add goal dialog."
   },
-  "savingsSavedAmount": "Saved so far (₫)",
-  "@savingsSavedAmount": {
-    "description": "Field of the add goal dialog."
-  },
-  "savingsUpdateTitle": "Update: {title}",
-  "@savingsUpdateTitle": {
-    "description": "Title of the update goal dialog.",
+  "savingsEditTitle": "Edit goal {title}",
+  "@savingsEditTitle": {
+    "description": "Title of the edit goal dialog (name, target and deadline only).",
     "placeholders": {
       "title": {
         "type": "String"
       }
     }
   },
-  "savingsCurrentAmount": "Amount saved (₫)",
-  "@savingsCurrentAmount": {
-    "description": "Field of the update goal dialog."
+  "ledgerSavingsManagedByGoal": "Savings contributions are managed from Savings goals. Contribute or delete the goal there.",
+  "@ledgerSavingsManagedByGoal": {
+    "description": "Shown instead of Edit and Delete in the detail sheet of a savings contribution."
   },
   "savingsTotalSaved": "Total saved",
   "@savingsTotalSaved": {
@@ -2476,10 +2472,6 @@
   "categorySavings": "Savings",
   "@categorySavings": {
     "description": "Default expense category 'savings': money moved into a savings goal."
-  },
-  "savingsSavedAmountHint": "Leave empty if there is none yet or you don't remember; you can change it later",
-  "@savingsSavedAmountHint": {
-    "description": "Helper under the optional saved amount when creating a goal."
   },
   "savingsTargetDateField": "Target date",
   "@savingsTargetDateField": {

@@ -141,30 +141,52 @@ void main() {
     },
   );
 
-  testWidgets('a successful update closes the dialog and reloads the list', (
+  Finder dialogFields() => find.descendant(
+    of: find.byType(AlertDialog),
+    matching: find.byType(TextField),
+  );
+
+  testWidgets(
+    'editing a goal sends title, target and deadline but never current',
+    (tester) async {
+      backend.on('PUT', '/api/savings/7', (_) => okResponse(null));
+      await open(tester);
+
+      await tester.tap(find.text('Du lịch'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sửa mục tiêu Du lịch'), findsOneWidget);
+      // Name and target only, filled in; no saved amount to change.
+      expect(dialogFields(), findsNWidgets(2));
+      await tester.enterText(dialogFields().at(0), 'Laptop');
+      await tester.enterText(dialogFields().at(1), '20000000');
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Lưu'));
+      await settle(tester);
+
+      final body =
+          backend.requests.singleWhere((r) => r.method == 'PUT').data as Map;
+      expect(body.containsKey('current'), isFalse);
+      expect(body['title'], 'Laptop');
+      expect(body['target'], 20000000);
+      // The stored deadline is kept: the server would clear it if it were missing.
+      expect(body['deadline'], '31/12/2026');
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(backend.calls.where((c) => c == 'GET /api/savings'), hasLength(2));
+    },
+  );
+
+  testWidgets('an emptied target keeps the dialog open and sends nothing', (
     tester,
   ) async {
-    Object? sent;
-    backend.on('PUT', '/api/savings/7', (options) {
-      sent = options.data;
-      return okResponse(null);
-    });
+    backend.on('PUT', '/api/savings/7', (_) => okResponse(null));
     await open(tester);
 
     await tester.tap(find.text('Du lịch'));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.byType(TextField),
-      ),
-      '3000000',
-    );
+    await tester.enterText(dialogFields().at(1), '');
     await tester.tap(find.widgetWithText(ElevatedButton, 'Lưu'));
     await settle(tester);
 
-    expect(sent, {'current': 3000000.0});
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(backend.calls.where((c) => c == 'GET /api/savings'), hasLength(2));
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(backend.requests.where((r) => r.method == 'PUT'), isEmpty);
   });
 }

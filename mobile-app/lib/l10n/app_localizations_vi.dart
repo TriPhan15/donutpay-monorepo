@@ -850,15 +850,13 @@ class AppLocalizationsVi extends AppLocalizations {
   String get savingsTargetAmount => 'Số tiền mục tiêu (₫)';
 
   @override
-  String get savingsSavedAmount => 'Đã tiết kiệm (₫)';
-
-  @override
-  String savingsUpdateTitle(String title) {
-    return 'Cập nhật: $title';
+  String savingsEditTitle(String title) {
+    return 'Sửa mục tiêu $title';
   }
 
   @override
-  String get savingsCurrentAmount => 'Số tiền đã tiết kiệm (₫)';
+  String get ledgerSavingsManagedByGoal =>
+      'Khoản góp tiết kiệm được quản lý trong mục Mục tiêu tiết kiệm. Hãy góp thêm hoặc xóa mục tiêu ở đó.';
 
   @override
   String get savingsTotalSaved => 'Tổng đã tiết kiệm';
@@ -1826,10 +1824,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get categorySavings => 'Tiết kiệm';
-
-  @override
-  String get savingsSavedAmountHint =>
-      'Bỏ trống nếu chưa có hoặc không nhớ, sửa được sau';
 
   @override
   String get savingsTargetDateField => 'Ngày đạt mục tiêu';

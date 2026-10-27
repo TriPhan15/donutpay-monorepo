@@ -1347,8 +1347,18 @@ class LedgerPageState extends State<LedgerPage> {
                     ),
                     const SizedBox(height: 12),
                   ],
+                  // A savings contribution belongs to its goal: edit and delete are refused by the server (409).
+                  if (tx.isSavingsContribution)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        loc.ledgerSavingsManagedByGoal,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: colors.onSurfaceVariant),
+                      ),
+                    ),
                   // Editing goes through the server, so only a transaction it already has can be edited.
-                  if (tx.id != null) ...[
+                  if (tx.id != null && !tx.isSavingsContribution) ...[
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -1367,7 +1377,8 @@ class LedgerPageState extends State<LedgerPage> {
                     const SizedBox(height: 12),
                   ],
                   // A row being sent may already be on the server: it cannot be deleted until its send is over.
-                  if (tx.syncStatus != SyncStatus.pending)
+                  if (tx.syncStatus != SyncStatus.pending &&
+                      !tx.isSavingsContribution)
                     SizedBox(
                       width: double.infinity,
                       height: 50,

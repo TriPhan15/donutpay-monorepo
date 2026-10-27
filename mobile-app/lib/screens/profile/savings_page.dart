@@ -85,11 +85,6 @@ class _SavingsPageState extends State<SavingsPage> {
         fields: [
           _SavingField(loc.savingsGoalName),
           _SavingField(loc.savingsTargetAmount, isMoney: true),
-          _SavingField(
-            loc.savingsSavedAmount,
-            isMoney: true,
-            helperText: loc.savingsSavedAmountHint,
-          ),
         ],
         offersTargetDate: true,
         onSubmit: (values, targetDate) async {
@@ -102,8 +97,6 @@ class _SavingsPageState extends State<SavingsPage> {
           await RemoteApiHelper.instance.addSaving({
             'title': title,
             'target': target,
-            // Optional: an empty field is a goal that starts from nothing.
-            'current': _amountOf(values[2]),
             'deadline': ?deadline,
           });
           _afterWrite();
@@ -113,28 +106,51 @@ class _SavingsPageState extends State<SavingsPage> {
     );
   }
 
-  void _editAmount(int index) {
+  /// The stored target date of [goal] as a day; null when there is none or it is not in the stored pattern.
+  DateTime? _deadlineOf(Map<String, dynamic> goal) {
+    final text = goal['deadline'];
+    if (text is! String || text.isEmpty) return null;
+    try {
+      return _targetDateFormat.parseStrict(text);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// Edits the name, target and deadline; the saved amount is not editable here (it moves through contributions).
+  void _editGoal(int index) {
     final goal = _goals[index];
     final loc = context.loc;
     showDialog<void>(
       context: context,
       builder: (_) => _SavingFormDialog(
-        title: loc.savingsUpdateTitle('${goal['title']}'),
+        title: loc.savingsEditTitle('${goal['title']}'),
         submitLabel: loc.commonSave,
         fields: [
+          _SavingField(loc.savingsGoalName, initialText: '${goal['title']}'),
           _SavingField(
-            loc.savingsCurrentAmount,
+            loc.savingsTargetAmount,
             isMoney: true,
             initialText: MoneyInputFormatter.format(
-              _numberOf(goal['current']),
+              _numberOf(goal['target']),
               loc.localeName,
             ),
           ),
         ],
-        onSubmit: (values, _) async {
-          await RemoteApiHelper.instance.updateSavingCurrent(
+        offersTargetDate: true,
+        initialTargetDate: _deadlineOf(goal),
+        onSubmit: (values, targetDate) async {
+          final title = values[0].trim();
+          final target = _amountOf(values[1]);
+          if (title.isEmpty || target <= 0) return false;
+          await RemoteApiHelper.instance.updateSaving(
             goal['id'].toString(),
-            _amountOf(values[0]),
+            title: title,
+            target: target,
+            // Always sent: the server clears the deadline when it is missing.
+            deadline: targetDate == null
+                ? null
+                : _targetDateFormat.format(targetDate),
           );
           _afterWrite();
           return true;
@@ -482,7 +498,7 @@ class _SavingsPageState extends State<SavingsPage> {
                     child: Icon(Icons.delete_rounded, color: colors.onError),
                   ),
                   child: GestureDetector(
-                    onTap: () => _editAmount(i),
+                    onTap: () => _editGoal(i),
                     onLongPress: () => _deleteGoal(i),
                     child: Container(
                       padding: const EdgeInsets.all(16),
@@ -743,6 +759,9 @@ class _SavingFormDialog extends StatefulWidget {
   /// Adds the optional target date under the fields; [onSubmit] gets it (null when none was picked).
   final bool offersTargetDate;
 
+  /// The target date the dialog starts with (an edit of a goal that has one); null starts without a date.
+  final DateTime? initialTargetDate;
+
   /// Returns false when the values are not acceptable (the dialog stays open), throws when the request fails.
   final Future<bool> Function(List<String> values, DateTime? targetDate)
   onSubmit;
@@ -753,6 +772,7 @@ class _SavingFormDialog extends StatefulWidget {
     required this.fields,
     required this.onSubmit,
     this.offersTargetDate = false,
+    this.initialTargetDate,
   });
 
   @override
@@ -766,7 +786,7 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
   ];
   bool _isSaving = false;
   String? _error;
-  DateTime? _targetDate;
+  late DateTime? _targetDate = widget.initialTargetDate;
 
   @override
   void dispose() {

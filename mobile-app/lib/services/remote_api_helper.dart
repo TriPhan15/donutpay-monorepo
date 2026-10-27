@@ -757,8 +757,19 @@ class RemoteApiHelper {
     notifyDataChanged();
   }
 
-  Future<void> updateSavingCurrent(String id, double current) async {
-    await _dio.put('/api/savings/$id', data: {'current': current});
+  /// PUT /api/savings/{id}: the name, target and deadline of a goal. The body never carries `current` (the server
+  /// refuses it: the saved amount only moves through contributions). The server treats a missing [deadline] as "clear
+  /// it", so a caller keeping the deadline must pass it.
+  Future<void> updateSaving(
+    String id, {
+    required String title,
+    required double target,
+    String? deadline,
+  }) async {
+    await _dio.put(
+      '/api/savings/$id',
+      data: {'title': title, 'target': target, 'deadline': deadline},
+    );
     notifyDataChanged();
   }
 

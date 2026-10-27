@@ -125,4 +125,40 @@ void main() {
       expect(find.text(_editLabel), findsNothing);
     },
   );
+
+  testWidgets(
+    'a savings contribution shows why it cannot be edited or deleted',
+    (tester) async {
+      transactions = [
+        {..._tx(9, DateTime.now()), 'category': 'Tiết kiệm'},
+      ];
+      await pump(tester);
+
+      ledgerKey.currentState!.showTransaction(9);
+      await tester.pumpAndSettle();
+
+      expect(find.text(_editLabel), findsNothing);
+      expect(find.text('Xóa giao dịch này'), findsNothing);
+      expect(
+        find.text(
+          'Khoản góp tiết kiệm được quản lý trong mục Mục tiêu tiết kiệm. '
+          'Hãy góp thêm hoặc xóa mục tiêu ở đó.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('an ordinary expense keeps its edit and delete buttons', (
+    tester,
+  ) async {
+    transactions = [_tx(1, DateTime.now())];
+    await pump(tester);
+
+    ledgerKey.currentState!.showTransaction(1);
+    await tester.pumpAndSettle();
+
+    expect(find.text(_editLabel), findsOneWidget);
+    expect(find.text('Xóa giao dịch này'), findsOneWidget);
+  });
 }

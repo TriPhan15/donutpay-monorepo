@@ -1646,23 +1646,17 @@ abstract class AppLocalizations {
   /// **'Target amount (₫)'**
   String get savingsTargetAmount;
 
-  /// Field of the add goal dialog.
+  /// Title of the edit goal dialog (name, target and deadline only).
   ///
   /// In en, this message translates to:
-  /// **'Saved so far (₫)'**
-  String get savingsSavedAmount;
+  /// **'Edit goal {title}'**
+  String savingsEditTitle(String title);
 
-  /// Title of the update goal dialog.
+  /// Shown instead of Edit and Delete in the detail sheet of a savings contribution.
   ///
   /// In en, this message translates to:
-  /// **'Update: {title}'**
-  String savingsUpdateTitle(String title);
-
-  /// Field of the update goal dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount saved (₫)'**
-  String get savingsCurrentAmount;
+  /// **'Savings contributions are managed from Savings goals. Contribute or delete the goal there.'**
+  String get ledgerSavingsManagedByGoal;
 
   /// Label of the savings summary card.
   ///
@@ -3311,12 +3305,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Savings'**
   String get categorySavings;
-
-  /// Helper under the optional saved amount when creating a goal.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave empty if there is none yet or you don\'t remember; you can change it later'**
-  String get savingsSavedAmountHint;
 
   /// Label of the optional target date of a goal.
   ///

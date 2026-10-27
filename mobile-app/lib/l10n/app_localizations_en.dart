@@ -857,15 +857,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get savingsTargetAmount => 'Target amount (₫)';
 
   @override
-  String get savingsSavedAmount => 'Saved so far (₫)';
-
-  @override
-  String savingsUpdateTitle(String title) {
-    return 'Update: $title';
+  String savingsEditTitle(String title) {
+    return 'Edit goal $title';
   }
 
   @override
-  String get savingsCurrentAmount => 'Amount saved (₫)';
+  String get ledgerSavingsManagedByGoal =>
+      'Savings contributions are managed from Savings goals. Contribute or delete the goal there.';
 
   @override
   String get savingsTotalSaved => 'Total saved';
@@ -1857,10 +1855,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categorySavings => 'Savings';
-
-  @override
-  String get savingsSavedAmountHint =>
-      'Leave empty if there is none yet or you don\'t remember; you can change it later';
 
   @override
   String get savingsTargetDateField => 'Target date';
