@@ -269,7 +269,7 @@ def main():
     w("Dương tính giả của Elasticsearch: chỉ còn **tiền tố**. Nhánh chính xác dùng thêm trường `.autocomplete` (edge-ngram) nên \"pho\" khớp mọi từ bắt đầu bằng "
       "`pho`, ví dụ \"phòng\" trong \"Ăn trưa văn phòng\" (PostgreSQL cũng có dương tính giả cùng loại vì `LIKE '%pho%'` khớp \"phong\" khi viết không dấu). "
       f"Chuỗi có dương tính giả: {', '.join(n_fp) if n_fp else 'không có'} ({th(qh['pho']['es_fp'])} giao dịch ở \"pho\"). "
-      "Nhánh mờ hiện chạy với `AUTO:4,7` và `prefix_length: 1` (commit 7f07caa, b35cd6e): từ dưới 4 ký tự không được sai, từ 4-7 ký tự sai tối đa 1 ký tự **nhưng chữ cái đầu phải đúng**. "
+      "Nhánh mờ hiện chạy với `AUTO:4,7` và `prefix_length: 1` (commit 7f07caa, b35cd6e): từ dưới 4 ký tự không được sai, từ 4-6 ký tự sai tối đa 1 ký tự, từ 7 ký tự sai tối đa 2 **nhưng chữ cái đầu phải đúng**. "
       f"Vì vậy \"tiền điện\"/\"tien dien\" (trước khi có `prefix_length` là 6.224 hit so với sự thật nền 391, 5.833 dương tính giả vì \"tien\" và \"dien\" cách nhau đúng một ký tự) "
       f"nay trả {th(qh['tiền điện']['es_total'])} hit, đúng bằng sự thật nền {th(qh['tiền điện']['truth'])}. \"phố\" (\"Xúc Xích Phố Cổ\") **không** phải dương tính giả: nó khớp \"pho\" "
       "vì `asciifolding` (token chính xác), không phải do mờ, nên nó nằm trong sự thật nền. "

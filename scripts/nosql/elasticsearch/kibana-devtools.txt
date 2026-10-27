@@ -108,7 +108,7 @@ GET transactions/_search
 
 # ---------------------------------------------------------------------------
 # Q-36 [NÂNG CAO] Tìm mờ (fuzzy multi_match): gõ sai "highlans cofee" vẫn ra "Highlands Coffee"
-# Access pattern: lỗi gõ phím. fuzziness AUTO:4,7 không cho sai với từ dưới 4 chữ, cho sai 1 ký tự với từ 4-7 chữ, 2 ký tự với từ từ 8 chữ trở lên.
+# Access pattern: lỗi gõ phím. fuzziness AUTO:4,7 không cho sai với từ dưới 4 chữ, cho sai 1 ký tự với từ 4-6 chữ, 2 ký tự với từ từ 7 chữ trở lên.
 # ---------------------------------------------------------------------------
 GET transactions/_search
 {
