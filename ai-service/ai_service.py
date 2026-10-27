@@ -9,7 +9,7 @@ import re
 import io
 import os
 import threading
-import traceback
+import logging
 
 from starlette.concurrency import run_in_threadpool
 
@@ -18,6 +18,18 @@ from spending_data import MAX_AMOUNT, MAX_TRANSACTIONS, TransactionIn, expenses_
 from wcm_spade import DEFAULT_MIN_SUP
 import budget_advisor
 from receipt_postprocess import fields_from_sequence, normalize_receipt
+
+logger = logging.getLogger(__name__)
+
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+MAX_IMAGE_PIXELS = 40_000_000
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+ALLOWED_IMAGE_FORMATS = frozenset({"JPEG", "PNG", "WEBP"})
+
+EMPTY_IMAGE_MESSAGE = "File ảnh nhận được bị rỗng (0 bytes)"
+IMAGE_TOO_LARGE_MESSAGE = "Ảnh quá lớn, vui lòng chụp lại với độ phân giải thấp hơn."
+UNSUPPORTED_IMAGE_MESSAGE = "Chỉ nhận ảnh JPEG, PNG hoặc WEBP."
+UNREADABLE_IMAGE_MESSAGE = "Không đọc được file ảnh."
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = FastAPI()
@@ -29,7 +41,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 IMAGE_HEIGHT = 1920
 IMAGE_WIDTH = 1440
 
-print(f"Đang khởi động AI DONUT Engine trên thiết bị: [{DEVICE.upper()}]...")
+logger.info("Đang khởi động AI DONUT Engine trên thiết bị: [%s]...", DEVICE.upper())
 if not os.path.exists(MODEL_PATH):
     raise RuntimeError(f"Không tìm thấy weights tại {MODEL_PATH}")
 
@@ -38,7 +50,7 @@ processor = DonutProcessor.from_pretrained(MODEL_PATH)
 
 model = VisionEncoderDecoderModel.from_pretrained(MODEL_PATH).to(DEVICE)
 model.eval()
-print("AI DONUT Engine đã tải xong!")
+logger.info("AI DONUT Engine đã tải xong!")
 
 
 def _raw_fields(sequence: str, prediction: Dict[str, Any]) -> Dict[str, str]:
@@ -88,37 +100,48 @@ def _run_donut_locked(pil_img: Image.Image) -> str:
 
 
 @app.get("/health")
-def health_check():
+async def health_check() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+def _decode_image(contents: bytes) -> Image.Image:
+    """Giải mã ảnh (nặng CPU, chạy trong threadpool). Loại theo định dạng Pillow đọc được,
+    không tin Content-Type (app gửi application/octet-stream); kiểm số pixel trước khi giải mã."""
+    try:
+        pil_img = Image.open(io.BytesIO(contents))
+    except Exception:
+        logger.warning("Không mở được ảnh", exc_info=True)
+        raise HTTPException(status_code=400, detail=UNREADABLE_IMAGE_MESSAGE)
+    if pil_img.format not in ALLOWED_IMAGE_FORMATS:
+        raise HTTPException(status_code=415, detail=UNSUPPORTED_IMAGE_MESSAGE)
+    if pil_img.width * pil_img.height > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=413, detail=IMAGE_TOO_LARGE_MESSAGE)
+    try:
+        # Khắc phục lỗi xoay ảnh EXIF từ Camera Android & convert sang RGB chuẩn
+        return ImageOps.exif_transpose(pil_img).convert("RGB")
+    except Exception:  # gồm DecompressionBombError, file cắt cụt
+        logger.warning("Không giải mã được ảnh", exc_info=True)
+        raise HTTPException(status_code=400, detail=UNREADABLE_IMAGE_MESSAGE)
 
 
 @app.post("/donut/scan")
 async def extract_receipt_info(image: UploadFile = File(...)):
-    print(f"\nĐã nhận hóa đơn từ App: {image.filename}")
-    try:
-        contents = await image.read()
-        if not contents or len(contents) == 0:
-            print("LỖI: File ảnh rỗng (0 bytes)!")
-            raise HTTPException(status_code=400, detail="File ảnh nhận được bị rỗng (0 bytes)")
-            
-        pil_img = Image.open(io.BytesIO(contents))
-        # Khắc phục lỗi xoay ảnh EXIF từ Camera Android & convert sang RGB chuẩn
-        pil_img = ImageOps.exif_transpose(pil_img).convert("RGB")
-        print(f"Đã mở ảnh thành công! Kích thước: {pil_img.size}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Lỗi đọc/convert file ảnh chi tiết: {e}")
-        print(traceback.format_exc())
-        raise HTTPException(status_code=400, detail=f"Lỗi đọc file ảnh: {str(e)}")
+    contents = await image.read(MAX_UPLOAD_BYTES + 1)
+    if not contents:
+        raise HTTPException(status_code=400, detail=EMPTY_IMAGE_MESSAGE)
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=IMAGE_TOO_LARGE_MESSAGE)
+
+    pil_img = await run_in_threadpool(_decode_image, contents)
+    logger.info("Đã mở ảnh, kích thước %s", pil_img.size)
 
     # Suy luận trong threadpool để event loop vẫn trả lời /health và các request khác
     sequence = await run_in_threadpool(_run_donut_locked, pil_img)
 
     try:
         prediction = processor.token2json(sequence)
-    except Exception as e:
-        print(f"Lỗi parse JSON từ Donut: {e}")
+    except Exception:
+        logger.warning("Lỗi parse JSON từ Donut", exc_info=True)
         prediction = {"raw_text": sequence}
     if not isinstance(prediction, dict):
         prediction = {"raw_text": sequence}
@@ -126,13 +149,14 @@ async def extract_receipt_info(image: UploadFile = File(...)):
     # Hậu xử lý Regex (receipt_postprocess): giữ nguyên các field cũ, thêm "normalized" kèm cờ valid từng trường
     normalized = normalize_receipt(_raw_fields(sequence, prediction))
     seller = prediction.get("seller")
-    if isinstance(seller, dict) and "total_cost" in seller:
-        seller["total_cost_number"] = normalized.total_cost.value or 0
+    if isinstance(seller, dict):
+        if normalized.total_cost.valid:
+            seller["total_cost_number"] = normalized.total_cost.value
+        else:
+            seller.pop("total_cost_number", None)
     prediction["normalized"] = normalized.model_dump()
     if normalized.invalid_fields:
-        print(f"Trường cần người dùng kiểm tra: {normalized.invalid_fields}")
-
-    print(f"Bóc tách thành công: {prediction}")
+        logger.info("Trường cần người dùng kiểm tra: %s", normalized.invalid_fields)
     return prediction
 
 
@@ -162,7 +186,7 @@ def analyze_patterns(req: SpadeRequest) -> SpadeAnalyzeResponse:
 
 @app.post("/spade/recommend")
 def recommend_budget(req: RecommendRequest):
-    print(f"\nBudgetAdvisor nhận {len(req.transactions)} giao dịch")
+    logger.info("BudgetAdvisor nhận %d giao dịch", len(req.transactions))
     try:
         result = budget_advisor.advise(
             req.transactions,
@@ -175,7 +199,7 @@ def recommend_budget(req: RecommendRequest):
     except budget_advisor.AdviceError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    print(f"BudgetAdvisor: {len(result.get('recommendations', []))} đề xuất")
+    logger.info("BudgetAdvisor: %d đề xuất", len(result.get("recommendations", [])))
     return result
 
 
@@ -190,7 +214,7 @@ class AdminSegmentRequest(BaseModel):
 
 @app.post("/admin/segment")
 def segment_users(req: AdminSegmentRequest):
-    print(f"\n Đang phân lớp {len(req.users)} khách hàng RFM...")
+    logger.info("Đang phân lớp %d khách hàng RFM...", len(req.users))
     
     if not req.users:
         return {"segments": []}

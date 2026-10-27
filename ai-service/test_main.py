@@ -1,6 +1,7 @@
 """Unit test cho ai_service.py bang mock, khong tai model Donut vat ly."""
 
 import asyncio
+import inspect
 import threading
 import time
 from datetime import date, timedelta
@@ -169,6 +170,74 @@ def test_scans_run_one_at_a_time_and_health_stays_responsive(mocker):
     assert health_done < scans[1]
     # Tuan tu that su: luot thu hai xong sau it nhat hai lan ngu
     assert scans[1] >= 2 * SCAN_SECONDS
+
+
+def _image_bytes(width: int, height: int, fmt: str) -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", (width, height), color=(10, 20, 30)).save(buffer, format=fmt)
+    return buffer.getvalue()
+
+
+def _png_bytes(width: int, height: int) -> bytes:
+    return _image_bytes(width, height, "PNG")
+
+
+def _mock_donut(mocker, token2json_value):
+    ai_service.processor.tokenizer.convert_tokens_to_ids.return_value = 1
+    mocker.patch.object(ai_service, "_run_donut", return_value="<s_seller>x</s_seller>")
+    mocker.patch.object(ai_service.processor, "token2json", return_value=token2json_value)
+
+
+def test_health_is_async():
+    assert inspect.iscoroutinefunction(ai_service.health_check)
+
+
+def test_scan_rejects_file_over_size_limit(mocker):
+    mocker.patch.object(ai_service, "MAX_UPLOAD_BYTES", 10)
+    r = client.post("/donut/scan", files={"image": ("r.jpg", _make_test_image_bytes(), "image/jpeg")})
+    assert r.status_code == 413 and r.json()["detail"] == ai_service.IMAGE_TOO_LARGE_MESSAGE
+
+
+def test_scan_rejects_too_many_pixels_before_decoding(mocker):
+    mocker.patch.object(ai_service, "MAX_IMAGE_PIXELS", 100)
+    run = mocker.patch.object(ai_service, "_run_donut")
+    r = client.post("/donut/scan", files={"image": ("r.png", _png_bytes(20, 20), "image/png")})
+    assert r.status_code == 413 and run.call_count == 0
+    assert r.json()["detail"] == ai_service.IMAGE_TOO_LARGE_MESSAGE
+
+
+def test_scan_rejects_unsupported_format(mocker):
+    run = mocker.patch.object(ai_service, "_run_donut")
+    r = client.post("/donut/scan", files={"image": ("r.gif", _image_bytes(2, 2, "GIF"), "image/gif")})
+    assert r.status_code == 415 and r.json()["detail"] == ai_service.UNSUPPORTED_IMAGE_MESSAGE
+    assert run.call_count == 0
+
+
+def test_scan_hides_decoder_errors():
+    r = client.post("/donut/scan", files={"image": ("r.jpg", b"not an image", "image/jpeg")})
+    assert r.status_code == 400 and r.json()["detail"] == ai_service.UNREADABLE_IMAGE_MESSAGE
+    assert "identify" not in r.text
+
+
+def test_scan_rejects_empty_file():
+    r = client.post("/donut/scan", files={"image": ("r.jpg", b"", "image/jpeg")})
+    assert r.status_code == 400 and r.json()["detail"] == ai_service.EMPTY_IMAGE_MESSAGE
+
+
+def test_scan_accepts_jpeg_sent_as_octet_stream(mocker):
+    _mock_donut(mocker, {"seller": {"total_cost": "100.000đ"}})
+    r = client.post(
+        "/donut/scan",
+        files={"image": ("r.jpg", _make_test_image_bytes(), "application/octet-stream")},
+    )
+    assert r.status_code == 200
+
+
+def test_total_cost_number_absent_when_total_invalid(mocker):
+    _mock_donut(mocker, {"seller": {"total_cost": "2.000.000.000đ", "total_cost_number": 5}})
+    r = client.post("/donut/scan", files={"image": ("r.jpg", _make_test_image_bytes(), "image/jpeg")})
+    assert r.status_code == 200
+    assert "total_cost_number" not in r.json()["seller"]
 
 
 def test_extract_receipt_info_missing_file():

@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Dict, List, Mapping, Optional, Tuple
 
 from pydantic import BaseModel
+
+from local_time import local_today
 
 
 class ReceiptField(str, Enum):
@@ -315,19 +317,27 @@ def parse_timestamp(raw: str) -> Optional[str]:
     return datetime(year, month, day, hour, minute, second).isoformat()
 
 
-def normalize_timestamp_field(raw: str) -> TimestampFieldResult:
+MAX_FUTURE_DAYS = 1  # lệch múi giờ/đồng hồ máy in: cho phép hôm nay + 1 ngày
+
+
+def _is_future(iso: str, today: date) -> bool:
+    return date.fromisoformat(iso[:10]) > today + timedelta(days=MAX_FUTURE_DAYS)
+
+
+def normalize_timestamp_field(raw: str, today: Optional[date] = None) -> TimestampFieldResult:
     repaired, leaked = _repair_leak(raw or "", ReceiptField.TIMESTAMP)
     iso = parse_timestamp(repaired)
+    in_future = iso is not None and _is_future(iso, today or local_today())
     return TimestampFieldResult(
         raw=raw or "",
         value=clean_timestamp_text(repaired),
         iso=iso,
-        valid=not leaked and iso is not None,
+        valid=not leaked and iso is not None and not in_future,
     )
 
 
 # --- Gộp ----------------------------------------------------------------------------
-def normalize_receipt(fields: Mapping[str, object]) -> NormalizedReceipt:
+def normalize_receipt(fields: Mapping[str, object], today: Optional[date] = None) -> NormalizedReceipt:
     """`fields` có khóa là tên thẻ (seller_name, address, timestamp, total_cost)."""
 
     def raw(field: ReceiptField) -> str:
@@ -337,7 +347,7 @@ def normalize_receipt(fields: Mapping[str, object]) -> NormalizedReceipt:
     result = {
         "seller": normalize_text_field(raw(ReceiptField.SELLER), ReceiptField.SELLER),
         "address": normalize_text_field(raw(ReceiptField.ADDRESS), ReceiptField.ADDRESS),
-        "timestamp": normalize_timestamp_field(raw(ReceiptField.TIMESTAMP)),
+        "timestamp": normalize_timestamp_field(raw(ReceiptField.TIMESTAMP), today),
         "total_cost": normalize_amount_field(raw(ReceiptField.TOTAL_COST)),
     }
     invalid = [name for name, item in result.items() if not item.valid]
