@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -112,17 +113,33 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.category LEFT JOIN FETCH t.receipt WHERE t.user.id = :userId ORDER BY t.transactionDate DESC")
     List<Transaction> findByUserIdOrderByTransactionDateDesc(@Param("userId") Long userId);
 
-    @Query("SELECT t.user.username, SUM(t.amount) as totalSpent FROM Transaction t WHERE t.isExpense = true GROUP BY t.user.id, t.user.username ORDER BY totalSpent DESC")
-    List<Object[]> findTopSpenders(org.springframework.data.domain.Pageable pageable);
+    /** Top spenders: expenses only, savings contributions left out (D1). */
+    @Query("SELECT t.user.username, SUM(t.amount) as totalSpent FROM Transaction t WHERE t.isExpense = true " +
+           "AND t.category.name <> :excludedCategoryName GROUP BY t.user.id, t.user.username ORDER BY totalSpent DESC")
+    List<Object[]> findTopSpenders(@Param("excludedCategoryName") String excludedCategoryName,
+                                   org.springframework.data.domain.Pageable pageable);
 
-    /** What a user spent (expenses only) from rangeStart, inclusive, to rangeEnd, exclusive; null when there is nothing. */
+    default List<Object[]> findTopSpenders(org.springframework.data.domain.Pageable pageable) {
+        return findTopSpenders(SavingsContributions.CATEGORY_NAME, pageable);
+    }
+
+    /**
+     * What a user spent (expenses only, savings contributions left out) from rangeStart, inclusive, to rangeEnd,
+     * exclusive; null when there is nothing.
+     */
     @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.user.id = :userId AND t.isExpense = true " +
+           "AND t.category.name <> :excludedCategoryName " +
            "AND t.transactionDate >= :rangeStart AND t.transactionDate < :rangeEnd")
-    BigDecimal sumExpensesBetween(@Param("userId") Long userId,
+    BigDecimal sumSpendingBetween(@Param("userId") Long userId,
                                   @Param("rangeStart") java.time.LocalDateTime rangeStart,
-                                  @Param("rangeEnd") java.time.LocalDateTime rangeEnd);
+                                  @Param("rangeEnd") java.time.LocalDateTime rangeEnd,
+                                  @Param("excludedCategoryName") String excludedCategoryName);
 
-    /** Same as {@link #sumExpensesBetween}, restricted to one category. */
+    default BigDecimal sumSpendingBetween(Long userId, java.time.LocalDateTime rangeStart, java.time.LocalDateTime rangeEnd) {
+        return sumSpendingBetween(userId, rangeStart, rangeEnd, SavingsContributions.CATEGORY_NAME);
+    }
+
+    /** Same as {@link #sumSpendingBetween}, restricted to one category. */
     @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.user.id = :userId AND t.isExpense = true " +
            "AND t.category.id = :categoryId AND t.transactionDate >= :rangeStart AND t.transactionDate < :rangeEnd")
     BigDecimal sumExpensesInCategoryBetween(@Param("userId") Long userId,

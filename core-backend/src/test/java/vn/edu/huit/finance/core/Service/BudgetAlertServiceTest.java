@@ -19,6 +19,7 @@ import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.BudgetRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
+import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -120,7 +121,7 @@ class BudgetAlertServiceTest {
     private void totalInBudgetAfterTheChange(Budget budget, String total) {
         BigDecimal sum = total == null ? null : new BigDecimal(total);
         if (budget.getCategory() == null) {
-            when(transactionRepository.sumExpensesBetween(ALICE_ID, PERIOD_START, PERIOD_END_EXCLUSIVE)).thenReturn(sum);
+            when(transactionRepository.sumSpendingBetween(ALICE_ID, PERIOD_START, PERIOD_END_EXCLUSIVE)).thenReturn(sum);
         } else {
             when(transactionRepository.sumExpensesInCategoryBetween(
                     ALICE_ID, budget.getCategory().getId(), PERIOD_START, PERIOD_END_EXCLUSIVE)).thenReturn(sum);
@@ -235,8 +236,30 @@ class BudgetAlertServiceTest {
         service.notifyAfterCreate(expense(food, "100000"));
 
         verify(transactionRepository).sumExpensesInCategoryBetween(ALICE_ID, FOOD_ID, PERIOD_START, PERIOD_END_EXCLUSIVE);
-        verify(transactionRepository).sumExpensesBetween(ALICE_ID, PERIOD_START, PERIOD_END_EXCLUSIVE);
+        verify(transactionRepository).sumSpendingBetween(ALICE_ID, PERIOD_START, PERIOD_END_EXCLUSIVE);
         verifyNoMoreInteractions(transactionRepository);
+    }
+
+    @Test
+    void aSavingsContributionNeverRaisesABudgetAlert() {
+        // Góp tiết kiệm trừ ví nhưng không phải chi tiêu (D1)
+        Category savings = category(30L, SavingsContributions.CATEGORY_NAME);
+
+        service.notifyAfterCreate(expense(savings, "4500000"));
+
+        verifyNoInteractions(budgetRepository, notificationService, transactionRepository);
+    }
+
+    @Test
+    void theAllCategoriesTotalIsTheSpendingWithoutContributions() {
+        Budget allBudget = budget(ALL_BUDGET_ID, null, "5000000");
+        budgetsInForce(allBudget);
+        totalInBudgetAfterTheChange(allBudget, "3900000"); // 78%: the contributions are not in this sum
+
+        service.notifyAfterCreate(expense(food, "100000"));
+
+        verify(transactionRepository).sumSpendingBetween(eq(ALICE_ID), any(), any());
+        assertNoNotification();
     }
 
     @Test
