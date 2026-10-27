@@ -25,6 +25,7 @@ import vn.edu.huit.finance.core.Service.AdminStatisticsService;
 import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
+import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
@@ -65,6 +66,7 @@ class AdminDashboardPageTest {
     @MockBean private CampaignRepository campaignRepo;
     @MockBean private ReceiptRepository receiptRepo;
     @MockBean private BackupService backupService;
+    @MockBean private CustomerSegmentationService customerSegmentationService;
     @MockBean private UserService userService;
     @MockBean private TransactionService transactionService;
     @MockBean private EntityManager entityManager;

@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.hibernate.envers.AuditReader;
 import org.hibernate.envers.AuditReaderFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,8 +18,6 @@ import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import jakarta.validation.Valid;
 import vn.edu.huit.finance.core.Dto.AdminDashboardSummaryDto;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
@@ -30,7 +27,6 @@ import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
 import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.*;
-import vn.edu.huit.finance.core.Exception.AiServiceUnavailableException;
 import vn.edu.huit.finance.core.Repository.*;
 import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.AdminStatisticsService;
@@ -39,6 +35,7 @@ import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
 import vn.edu.huit.finance.core.Service.CategoryService;
+import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
 import vn.edu.huit.finance.core.Service.SubscriptionPlanService;
@@ -69,23 +66,17 @@ public class AdminController {
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
     private static final String AUDIT_UNLOCK = "Gỡ khóa đăng nhập sớm cho email: %s / IP: %s";
-    private static final String AUDIT_SEGMENTATION = "Chạy phân lớp khách hàng (RFM + K-Means): %d người dùng được gán nhãn";
+    private static final String AUDIT_SEGMENTATION = "Chạy phân lớp khách hàng (RFM): %d người dùng được gán nhãn";
     private static final String MSG_FILTER_FIELD_INVALID = "Giá trị của %s không hợp lệ";
     private static final String TYPE_MISMATCH = "typeMismatch";
-    private static final String AI_SEGMENT_PATH = "/admin/segment";
-    private static final String AI_SEGMENTS_KEY = "segments";
-    private static final String MSG_AI_SERVICE_UNAVAILABLE = "Dịch vụ AI tạm thời không phản hồi, vui lòng thử lại sau.";
     private static final String MSG_BACKUP_TYPE_INVALID = "Loại sao lưu không hợp lệ (chỉ hỗ trợ FULL, SCHEMA_ONLY, DATA_ONLY).";
     private static final String MSG_BACKUP_SUCCESS = "Đã sao lưu %s thành công!";
     private static final String MSG_BACKUP_FAILED = "Lỗi sao lưu! Kiểm tra lại đường dẫn PostgreSQL.";
     private static final String MSG_RESTORE_SUCCESS = "Đã phục hồi từ bản sao lưu FULL mới nhất!";
     private static final String MSG_RESTORE_FAILED = "Lỗi phục hồi! Không tìm thấy bản sao lưu FULL hoặc pg_restore lỗi.";
 
-    /** Base URL of the AI service; env AI_SERVICE_URL, by default the docker-compose service name. */
-    @Value("${app.ai-service.url:${AI_SERVICE_URL:http://data-mining-api:8000}}")
-    private String aiServiceUrl;
-
     @Autowired private UserRepository userRepo;
+    @Autowired private CustomerSegmentationService customerSegmentationService;
     @Autowired private AdminStatisticsService adminStatisticsService;
     @Autowired private ReceiptProcessingService receiptProcessingService;
     @Autowired private CategoryRepository categoryRepo;
@@ -533,46 +524,12 @@ public class AdminController {
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> runAiSegmentation() {
-        List<Object[]> rfmData = userRepo.calculateAllUsersRFM();
-        List<Map<String, Object>> userRFMs = new java.util.ArrayList<>();
+        int assigned = customerSegmentationService.runSegmentation();
 
-        for (Object[] row : rfmData) {
-            Map<String, Object> rfm = new HashMap<>();
-            rfm.put("user_id", row[0].toString());
-            rfm.put("recency", ((Number) row[1]).intValue());
-            rfm.put("frequency", ((Number) row[2]).intValue());
-            rfm.put("monetary", ((Number) row[3]).doubleValue());
-            userRFMs.add(rfm);
-        }
-
-        List<Map<String, String>> segments = requestSegments(Map.of("users", userRFMs));
-        for (Map<String, String> seg : segments) {
-            userRepo.updateUserAiLabel(Long.parseLong(seg.get("user_id")), seg.get("label"));
-        }
-
-        // A batch of one-row updates, each committed on its own: recorded once it has run, in a row of its own.
+        // Mọi nhãn đã ghi trong một giao dịch: chỉ ghi nhật ký sau khi nó đã commit, ở một dòng riêng.
         eventPublisher.publishEvent(SecurityAuditEvent.ofCurrentCaller(AuditAction.SYSTEM_SEGMENTATION_RUN,
-                String.format(AUDIT_SEGMENTATION, segments.size())));
+                String.format(AUDIT_SEGMENTATION, assigned)));
 
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).message("Phân lớp hoàn tất").build());
-    }
-
-    /** Asks the AI service for the segments; any failure becomes a fixed 503 text, the cause only goes to the log. */
-    @SuppressWarnings("unchecked")
-    private List<Map<String, String>> requestSegments(Map<String, Object> requestBody) {
-        String url = aiServiceUrl + AI_SEGMENT_PATH;
-        ResponseEntity<Map> response;
-        try {
-            response = new RestTemplate().postForEntity(url, requestBody, Map.class);
-        } catch (RestClientException e) {
-            log.error("AI segmentation call to {} failed", url, e);
-            throw new AiServiceUnavailableException(MSG_AI_SERVICE_UNAVAILABLE, e);
-        }
-        Object segments = response.getBody() == null ? null : response.getBody().get(AI_SEGMENTS_KEY);
-        if (!response.getStatusCode().is2xxSuccessful() || !(segments instanceof List)) {
-            log.error("AI segmentation call to {} returned no segments, status={}", url, response.getStatusCode());
-            throw new AiServiceUnavailableException(MSG_AI_SERVICE_UNAVAILABLE);
-        }
-        return (List<Map<String, String>>) segments;
     }
 }

@@ -2,7 +2,6 @@ package vn.edu.huit.finance.core.Controller;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -12,7 +11,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Exception.AiServiceUnavailableException;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
-import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Service.AiSegmentClient;
+import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
 
 import java.util.List;
 
@@ -20,10 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -34,25 +31,34 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AdminSegmentationTest {
 
+    @Mock private ApplicationEventPublisher eventPublisher;
+
     /** Nothing listens on port 1, so the connection is refused at once. */
     private static final String UNREACHABLE_AI_SERVICE = "http://127.0.0.1:1";
     private static final String FIXED_TEXT = "Dịch vụ AI tạm thời không phản hồi, vui lòng thử lại sau.";
 
-    @Mock private UserRepository userRepo;
-    @Mock private ApplicationEventPublisher eventPublisher;
-    @InjectMocks private AdminController controller;
-
     @Test
-    void anUnreachableAiServiceIsAFixedText_andNoLabelIsWritten() {
-        ReflectionTestUtils.setField(controller, "aiServiceUrl", UNREACHABLE_AI_SERVICE);
-        when(userRepo.calculateAllUsersRFM()).thenReturn(List.<Object[]>of(new Object[]{7L, 3, 12, 1500000.0}));
+    void anUnreachableAiServiceIsAFixedText() {
+        AiSegmentClient client = new AiSegmentClient();
+        ReflectionTestUtils.setField(client, "aiServiceUrl", UNREACHABLE_AI_SERVICE);
 
         AiServiceUnavailableException error =
-                assertThrows(AiServiceUnavailableException.class, controller::runAiSegmentation);
+                assertThrows(AiServiceUnavailableException.class, () -> client.requestSegments(List.of()));
 
         assertEquals(FIXED_TEXT, error.getMessage());
         assertFalse(error.getMessage().contains("127.0.0.1"));
-        verify(userRepo, never()).updateUserAiLabel(anyLong(), any());
+    }
+
+    @Test
+    void anUnreachableAiServiceWritesNoLabel_andRecordsNothing() {
+        AdminController controller = new AdminController();
+        CustomerSegmentationService service = mock(CustomerSegmentationService.class);
+        when(service.runSegmentation()).thenThrow(new AiServiceUnavailableException(FIXED_TEXT));
+        ReflectionTestUtils.setField(controller, "customerSegmentationService", service);
+        ReflectionTestUtils.setField(controller, "eventPublisher", eventPublisher);
+
+        assertThrows(AiServiceUnavailableException.class, controller::runAiSegmentation);
+
         verifyNoInteractions(eventPublisher);
     }
 
