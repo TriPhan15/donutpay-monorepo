@@ -111,6 +111,9 @@ def _decode_image(contents: bytes) -> Image.Image:
     không tin Content-Type (app gửi application/octet-stream); kiểm số pixel trước khi giải mã."""
     try:
         pil_img = Image.open(io.BytesIO(contents))
+    except Image.DecompressionBombError:
+        logger.warning("Ảnh vượt giới hạn pixel của Pillow")
+        raise HTTPException(status_code=413, detail=IMAGE_TOO_LARGE_MESSAGE)
     except Exception:
         logger.warning("Không mở được ảnh", exc_info=True)
         raise HTTPException(status_code=400, detail=UNREADABLE_IMAGE_MESSAGE)
@@ -121,7 +124,10 @@ def _decode_image(contents: bytes) -> Image.Image:
     try:
         # Khắc phục lỗi xoay ảnh EXIF từ Camera Android & convert sang RGB chuẩn
         return ImageOps.exif_transpose(pil_img).convert("RGB")
-    except Exception:  # gồm DecompressionBombError, file cắt cụt
+    except Image.DecompressionBombError:
+        logger.warning("Ảnh vượt giới hạn pixel của Pillow")
+        raise HTTPException(status_code=413, detail=IMAGE_TOO_LARGE_MESSAGE)
+    except Exception:  # file cắt cụt, dữ liệu hỏng
         logger.warning("Không giải mã được ảnh", exc_info=True)
         raise HTTPException(status_code=400, detail=UNREADABLE_IMAGE_MESSAGE)
 

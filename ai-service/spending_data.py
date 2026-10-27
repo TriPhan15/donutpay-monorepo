@@ -5,21 +5,23 @@ import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints
 
-from local_time import parse_local_date
+from local_time import local_today, parse_local_date
 
 SAVINGS_CATEGORY = "Tiết kiệm"
 MAX_TRANSACTIONS = 5000
-MAX_CATEGORY_LENGTH = 64
+MAX_CATEGORY_LENGTH = 255  # backend category name is varchar(255)
 MAX_AMOUNT = 1e12
 MAX_DATE_LENGTH = 40
 WINDOW_WEEKS = 26
 MIN_WEEKS_WITH_DATA = 8
+# Expenses dated later than local today + this many days are ignored (clock skew).
+FUTURE_TOLERANCE_DAYS = 1
 
 
 class TransactionIn(BaseModel):
@@ -92,18 +94,25 @@ class WeeklyDatabase:
 
 
 def weekly_database(
-    expenses: Sequence[Expense], window_weeks: int = WINDOW_WEEKS
+    expenses: Sequence[Expense],
+    window_weeks: int = WINDOW_WEEKS,
+    today: Optional[date] = None,
 ) -> WeeklyDatabase:
     """Group expenses into one sequence per ISO week inside the window.
 
-    The window is [Monday of the latest expense's week - (window_weeks - 1)
-    weeks, latest expense]. Each day is one sorted, de-duplicated itemset.
+    Expenses dated after local today + FUTURE_TOLERANCE_DAYS are dropped first,
+    so a mistyped future date can neither anchor the window nor be mined.
+    The window is [Monday of the latest remaining expense's week -
+    (window_weeks - 1) weeks, latest expense]. Each day is one sorted,
+    de-duplicated itemset.
 
     Precondition for the miner: WCMSpade.mine counts every sequence passed in
     as a week in N (the lift denominator), so only weeks with at least one
     expense become sequences; empty weeks are never emitted. `labels` is the
     parallel list of week labels, ascending.
     """
+    last_allowed = (today or local_today()) + timedelta(days=FUTURE_TOLERANCE_DAYS)
+    expenses = [e for e in expenses if e.day <= last_allowed]
     if not expenses:
         return WeeklyDatabase([], [], {}, [])
     latest = max(e.day for e in expenses)

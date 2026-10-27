@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from local_time import parse_local_date
 from spending_data import (
     Expense,
+    MAX_CATEGORY_LENGTH,
     Income,
     TransactionIn,
     expenses_from,
@@ -78,8 +79,10 @@ def test_one_day_is_one_sorted_itemset_without_duplicates():
 
 
 def test_transaction_limits():
+    assert MAX_CATEGORY_LENGTH == 255   # khớp varchar(255) của backend
+    assert TransactionIn(category="x" * 200, amount=1).category == "x" * 200
     with pytest.raises(ValidationError):
-        TransactionIn(category="x" * 65, amount=1)
+        TransactionIn(category="x" * 256, amount=1)
     with pytest.raises(ValidationError):
         TransactionIn(category="A", amount=-1)
     with pytest.raises(ValidationError):
@@ -99,3 +102,13 @@ def test_whitespace_only_category_is_rejected():
     with pytest.raises(ValidationError):
         TransactionIn(category="   ", amount=1)
     assert TransactionIn(category="  Ăn uống ", amount=1).category == "Ăn uống"
+
+
+def test_expenses_after_tomorrow_do_not_anchor_the_window():
+    today = date(2026, 10, 28)
+    past = [Expense(date(2026, 10, 20), "A", 1.0), Expense(date(2026, 10, 29), "B", 1.0)]
+    far_future = Expense(date(2027, 6, 1), "Z", 1.0)
+    db = weekly_database(past + [far_future], today=today)
+    assert db.labels == ["2026-W43", "2026-W44"]
+    assert far_future not in db.expenses and "Z" not in db.spending_totals
+    assert [e.category for e in db.expenses] == ["A", "B"]   # ngày mai vẫn được nhận

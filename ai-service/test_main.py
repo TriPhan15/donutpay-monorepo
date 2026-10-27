@@ -206,6 +206,19 @@ def test_scan_rejects_too_many_pixels_before_decoding(mocker):
     assert r.json()["detail"] == ai_service.IMAGE_TOO_LARGE_MESSAGE
 
 
+@pytest.mark.parametrize("stage", ["open", "decode"])
+def test_scan_maps_decompression_bomb_to_413(mocker, stage):
+    bomb = ai_service.Image.DecompressionBombError("too many pixels")
+    if stage == "open":
+        mocker.patch.object(ai_service.Image, "open", side_effect=bomb)
+    else:
+        mocker.patch.object(ai_service.ImageOps, "exif_transpose", side_effect=bomb)
+    run = mocker.patch.object(ai_service, "_run_donut")
+    r = client.post("/donut/scan", files={"image": ("r.png", _png_bytes(4, 4), "image/png")})
+    assert r.status_code == 413 and r.json()["detail"] == ai_service.IMAGE_TOO_LARGE_MESSAGE
+    assert run.call_count == 0
+
+
 def test_scan_rejects_unsupported_format(mocker):
     run = mocker.patch.object(ai_service, "_run_donut")
     r = client.post("/donut/scan", files={"image": ("r.gif", _image_bytes(2, 2, "GIF"), "image/gif")})
@@ -288,7 +301,7 @@ def test_analyze_accepts_old_request_fields():
 @pytest.mark.parametrize("bad", [
     {"transactions": [_tx()] * 5001}, {"transactions": [], "top_n": 0}, {"transactions": [], "top_n": 51},
     {"transactions": [], "min_sup_factor": 0}, {"transactions": [], "min_sup_factor": 1.5},
-    {"transactions": [_tx(category="x" * 65)]}, {"transactions": [_tx(amount=-1)]},
+    {"transactions": [_tx(category="x" * 256)]}, {"transactions": [_tx(amount=-1)]},
 ])
 def test_analyze_rejects_out_of_range_input(bad):
     assert client.post("/spade/analyze", json=bad).status_code == 422
