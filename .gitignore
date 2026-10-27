@@ -24,7 +24,6 @@ serviceAccount*.json
 **/GoogleService-Info.plist
 
 # Spring config with credentials
-**/application.yml
 **/application.yaml
 **/application-*.yml
 **/application-*.yaml

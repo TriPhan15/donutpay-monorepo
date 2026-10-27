@@ -168,7 +168,7 @@ services:
       - PAYMENT_WEBHOOK_URL=${PAYMENT_WEBHOOK_URL}
       - PAYMENT_VNPAY_SECRET=${VNPAY_SECRET}
       - PAYMENT_ZALOPAY_SECRET=${ZALOPAY_SECRET}
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - DATA_MINING_URL=http://data-mining-api:8000
       # ai-service as seen from inside finance-network (property app.ai-service.url, e.g. /admin/segment).
       - AI_SERVICE_URL=http://data-mining-api:8000
