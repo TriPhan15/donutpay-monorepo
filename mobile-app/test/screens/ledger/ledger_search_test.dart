@@ -128,6 +128,19 @@ void main() {
     expect(find.text('Bún bò'), findsNothing);
   });
 
+  testWidgets('localMatchNotInServerSet_staysVisible', (tester) async {
+    // The server only adds matches (accents, typos): what the device finds by itself is never hidden.
+    backend.on('GET', _search, (_) => _found([1]));
+    await openSearch(tester);
+
+    await type(tester, 'bún');
+
+    expect(searchQueries(), ['bún']);
+    expect(find.text('Bún bò'), findsOneWidget);
+    expect(find.text('Phở Hùng'), findsOneWidget);
+    expect(find.text('Cà phê sáng'), findsNothing);
+  });
+
   testWidgets('serverError_fallsBackToLocalFilter', (tester) {
     return withCapturedLogs((logs) async {
       backend.on(

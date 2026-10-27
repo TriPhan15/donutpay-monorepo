@@ -1,8 +1,13 @@
 package vn.edu.huit.finance.core.Service.Search;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import vn.edu.huit.finance.core.Config.SearchEngineType;
 import vn.edu.huit.finance.core.Dto.TransactionSearchRequestDto;
@@ -18,6 +23,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -111,6 +118,27 @@ class TransactionSearchServiceTest {
 
         assertEquals("postgres", response.getEngine());
         assertEquals(List.of(5L), response.getItems().stream().map(i -> i.getId()).toList());
+    }
+
+    @Test
+    void esThrows_warnHasNoStackTrace_soAnOutageDoesNotFloodTheLog() {
+        when(elasticsearch.hits(anyLong(), any(), any())).thenThrow(new IllegalStateException("es down"));
+        when(postgres.hits(eq(USER_ID), eq(QUERY), any(Pageable.class)))
+                .thenReturn(new TransactionSearchEngine.SearchHits(List.of(), 0));
+        Logger logger = (Logger) LoggerFactory.getLogger(TransactionSearchService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            service(SearchEngineType.ELASTICSEARCH).search(request(QUERY));
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        List<ILoggingEvent> warnings = appender.list.stream().filter(event -> event.getLevel() == Level.WARN).toList();
+        assertEquals(1, warnings.size());
+        assertNull(warnings.get(0).getThrowableProxy(), "the stack trace is logged at debug only");
+        assertTrue(warnings.get(0).getFormattedMessage().contains("es down"), "the cause is still named");
     }
 
     @Test

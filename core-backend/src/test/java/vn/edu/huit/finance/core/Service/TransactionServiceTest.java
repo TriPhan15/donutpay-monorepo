@@ -1971,6 +1971,16 @@ class TransactionServiceTest {
     }
 
     @Test
+    void aCanceledReceiptReindexesItsTransaction() {
+        signedInAsAlice();
+        when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt("PENDING", transaction(alice, HUNDRED_THOUSAND, true))));
+
+        service.cancelMyReceipt(7L);
+
+        assertEquals(TransactionChangedEvent.upserted(TX_ID, ALICE_ID, Set.of()), publishedTransactionChange());
+    }
+
+    @Test
     void aRefusedCancellationReportsNothing() {
         signedInAsAlice();
         when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt("PENDING", transaction(bob, HUNDRED_THOUSAND, true))));

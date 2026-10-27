@@ -64,7 +64,7 @@ for (let i = 0; i < 36; i++) {
     transactionId: L(1001 + i),
     rawJsonData: {
       seller: { seller_name: seller, address: "TP. Hồ Chí Minh", timestamp: dateText, total_cost: total.toLocaleString("en-US"), total_cost_number: total },
-      confidence_score: score
+      confidence_score: score       // dữ liệu mẫu có độ tin cậy; câu trả lời thật của Donut V5 không có, ứng dụng ghi null
     },
     modelVersion: v5 ? "donut-v5" : "donut-v4",
     aiReading: { sellerName: seller, totalCost: String(total), receiptDate: dateText },
@@ -171,25 +171,33 @@ const deleted = d.ocr_feedbacks.deleteOne({ _id: target._id });
 print("deleted=" + deleted.deletedCount + "; số feedback " + before + " -> " + d.ocr_feedbacks.countDocuments());
 
 // ---- Q-09 [NÂNG CAO] ---------------------------------------------------------
-// Access pattern: người dùng sửa lại hóa đơn. Cặp (hóa đơn, trường) chưa có thì thêm, đã có thì sửa tại chỗ,
-// đặt lại "chưa xử lý" và giữ nguyên reportedAt của lần báo đầu (OcrMongoService.upsertCorrection).
-print("\n-- Q-09 [NÂNG CAO] upsert với $setOnInsert (không bao giờ tạo bản trùng nhờ receipt_field_uq) --");
+// Access pattern: người dùng sửa lại hóa đơn (OcrMongoService.upsertCorrection), hai bước:
+//   1) cặp (hóa đơn, trường) đã có với giá trị KHÁC: ghi đè và đặt lại "chưa xử lý";
+//   2) chưa có: thêm mới bằng upsert chỉ có $setOnInsert. Đã có với CÙNG giá trị (một lần sửa trường khác của hóa đơn
+//      gửi lại chỗ sửa này) thì cả hai bước không đổi gì: phản hồi admin đã xử lý vẫn là đã xử lý.
+// Trường người dùng trả về đúng giá trị AI thì chỗ sửa cũ bị xóa (deleteMany theo receiptId + fieldError).
+print("\n-- Q-09 [NÂNG CAO] updateOne có điều kiện + upsert $setOnInsert (không bao giờ tạo bản trùng nhờ receipt_field_uq) --");
 function upsertCorrection(receiptId, transactionId, userId, field, aiValue, expectedValue, now) {
-  return d.ocr_feedbacks.updateOne(
-    { receiptId: L(receiptId), fieldError: field },
-    {
-      $setOnInsert: { reportedAt: now },
-      $set: {
-        transactionId: L(transactionId), userId: L(userId), aiValue: aiValue, expectedValue: expectedValue,
-        modelVersion: "donut-v5", isResolved: false, updatedAt: now
-      }
-    },
-    { upsert: true });
+  const key = { receiptId: L(receiptId), fieldError: field };
+  const fields = {
+    transactionId: L(transactionId), userId: L(userId), aiValue: aiValue, expectedValue: expectedValue,
+    modelVersion: "donut-v5", isResolved: false, updatedAt: now
+  };
+  const changed = d.ocr_feedbacks.updateOne(
+    { $and: [key, { $or: [{ expectedValue: { $ne: expectedValue } }, { aiValue: { $ne: aiValue } }] }] },
+    { $set: fields });
+  if (changed.matchedCount > 0) {
+    return "sửa tại chỗ, mở lại";
+  }
+  const inserted = d.ocr_feedbacks.updateOne(key, { $setOnInsert: Object.assign({ reportedAt: now }, fields) }, { upsert: true });
+  return inserted.upsertedCount === 1 ? "thêm mới" : "không đổi";
 }
-const first = upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25", ISODate("2026-10-20T08:00:00Z"));
-const again = upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25 Cầu Giấy", ISODate("2026-10-21T09:00:00Z"));
-print("lần 1: upsertedCount=" + first.upsertedCount + " (thêm mới); lần 2: upsertedCount=" + again.upsertedCount + ", matchedCount=" + again.matchedCount + " (sửa tại chỗ)");
-printjson(d.ocr_feedbacks.findOne({ receiptId: L(530), fieldError: "seller_name" }, { _id: 0, expectedValue: 1, reportedAt: 1, updatedAt: 1 }));
+print("lần 1: " + upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25", ISODate("2026-10-20T08:00:00Z")));
+d.ocr_feedbacks.updateOne({ receiptId: L(530), fieldError: "seller_name" }, { $set: { isResolved: true } });   // admin xử lý
+print("lần 2 (cùng giá trị): " + upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25", ISODate("2026-10-20T12:00:00Z"))
+  + ", isResolved=" + d.ocr_feedbacks.findOne({ receiptId: L(530), fieldError: "seller_name" }).isResolved);
+print("lần 3 (giá trị khác): " + upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25 Cầu Giấy", ISODate("2026-10-21T09:00:00Z")));
+printjson(d.ocr_feedbacks.findOne({ receiptId: L(530), fieldError: "seller_name" }, { _id: 0, expectedValue: 1, isResolved: 1, reportedAt: 1, updatedAt: 1 }));
 print("số document của (530, seller_name): " + d.ocr_feedbacks.countDocuments({ receiptId: L(530), fieldError: "seller_name" }));
 
 // ---- Q-10 [NÂNG CAO] ---------------------------------------------------------
@@ -245,11 +253,16 @@ d.ocr_feedbacks.aggregate([
 ]).forEach(printjson);
 
 // ---- Q-15 [NÂNG CAO] ---------------------------------------------------------
-// Access pattern: analytics -> receiptsWithErrorRate = số hóa đơn có ít nhất một chỗ bị sửa / số lần đọc (ocr_logs).
-print("\n-- Q-15 [NÂNG CAO] distinct + countDocuments: tỉ lệ hóa đơn bị sửa (receiptsWithErrorRate) --");
-const receiptsWithError = d.ocr_feedbacks.distinct("receiptId").length;
-const readings = d.ocr_logs.countDocuments();
-print("hóa đơn có lỗi = " + receiptsWithError + ", số lần đọc = " + readings + ", tỉ lệ = " + (receiptsWithError / readings).toFixed(3));
+// Access pattern: analytics -> receiptsWithErrorRate. Trong các lần đọc (ocr_logs) của khoảng thời gian, tỉ lệ lần đọc có
+// giao dịch bị sửa ít nhất một chỗ (feedback báo lúc nào cũng được). Tử số là tập con của mẫu số nên tỉ lệ <= 1.
+// $lookup theo transactionId dùng index transactionId của ocr_feedbacks.
+print("\n-- Q-15 [NÂNG CAO] $lookup + $group: tỉ lệ lần đọc bị sửa (receiptsWithErrorRate) --");
+d.ocr_logs.aggregate([
+  { $match: { createdAt: { $gte: ISODate("2026-08-01T00:00:00Z"), $lt: ISODate("2026-11-01T00:00:00Z") } } },
+  { $lookup: { from: "ocr_feedbacks", localField: "transactionId", foreignField: "transactionId", as: "feedbacks" } },
+  { $group: { _id: null, readings: { $sum: 1 }, withError: { $sum: { $cond: [{ $gt: [{ $size: "$feedbacks" }, 0] }, 1, 0] } } } },
+  { $project: { _id: 0, readings: 1, withError: 1, rate: { $round: [{ $divide: ["$withError", "$readings"] }, 3] } } }
+]).forEach(printjson);
 
 // ---- Q-16 [NÂNG CAO] ---------------------------------------------------------
 // Access pattern: chứng minh index được dùng. winningPlan phải chứa IXSCAN (không phải COLLSCAN).

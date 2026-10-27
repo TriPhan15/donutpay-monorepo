@@ -161,6 +161,7 @@ services:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-}
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
       - path.repo=/usr/share/elasticsearch/snapshots
+      - action.auto_create_index=false
     healthcheck:
       test: ["CMD-SHELL", "curl -fsu elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health || exit 1"]
       interval: 15s

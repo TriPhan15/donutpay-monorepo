@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Service.Search;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -8,9 +9,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.elasticsearch.NoSuchIndexException;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -20,8 +23,11 @@ import vn.edu.huit.finance.core.Document.Search.TransactionSearchDocument;
 import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 /**
  * Keeps the Elasticsearch index of the transactions in step with PostgreSQL, which stays the source of truth. Only exists
@@ -29,10 +35,15 @@ import java.util.List;
  * <ul>
  *   <li>after every committed write of a transaction, the row is read back from PostgreSQL and indexed whole (or its
  *       document deleted), never patched from the event, so a lost or repeated event heals on the next change;</li>
- *   <li>at start-up the index is created from its settings and mapping when it is missing;</li>
+ *   <li>the index is only ever created from its settings and mapping files (docker-compose.yml forbids Elasticsearch to
+ *       create one on its own with a dynamic mapping): at start-up, again every {@value #INDEX_CHECK_DELAY_MS} ms until
+ *       that has worked once (Elasticsearch may still be starting), and by a write that finds it missing, which is then
+ *       retried once;</li>
+ *   <li>an index this class has just created is filled from PostgreSQL in the background, and a restore of the database
+ *       rebuilds it from scratch, so neither leaves it empty or stale;</li>
  *   <li>{@link #reindexAll} rebuilds it from scratch, for an administrator.</li>
  * </ul>
- * A failure of Elasticsearch in the first two is logged and goes no further: it never reaches the PostgreSQL write that
+ * A failure of Elasticsearch in all but the last is logged and goes no further: it never reaches the PostgreSQL write that
  * caused it, nor stops the application from starting.
  */
 @Slf4j
@@ -43,27 +54,50 @@ public class TransactionSearchIndexer {
     /** Rows read from PostgreSQL and sent to Elasticsearch in one bulk request by {@link #reindexAll}. */
     static final int PAGE_SIZE = 500;
 
+    /** Pause between two checks of the index while it has been neither found nor created yet. */
+    static final long INDEX_CHECK_DELAY_MS = 15_000;
+
     private final ElasticsearchOperations operations;
     private final TransactionRepository transactionRepo;
+    private final Executor backgroundExecutor;
+    /** Serialises the creation (and the drop and re-creation) of the index, never the bulk writes that follow. */
+    private final Object indexLock = new Object();
+    /** Set once the index has been seen or created; the periodic check does nothing from then on. */
+    private volatile boolean indexReady;
 
-    public TransactionSearchIndexer(ElasticsearchOperations operations, TransactionRepository transactionRepo) {
+    public TransactionSearchIndexer(ElasticsearchOperations operations, TransactionRepository transactionRepo,
+                                    @Qualifier("mongoAsyncExecutor") Executor backgroundExecutor) {
         this.operations = operations;
         this.transactionRepo = transactionRepo;
+        this.backgroundExecutor = backgroundExecutor;
     }
 
-    /** Creates the index from the settings and mapping files when it does not exist yet; leaves an existing one alone. */
+    /**
+     * Creates the index from the settings and mapping files when it does not exist yet, and then fills it from PostgreSQL
+     * in the background; leaves an existing one alone. A failure is logged and the periodic check tries again.
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void ensureIndex() {
         try {
-            IndexOperations indexOps = indexOps();
-            if (!indexOps.exists()) {
-                indexOps.createWithMapping();
-                log.info("Search index created, index={}", TransactionSearchDocument.INDEX);
-            }
+            createIndexIfMissing();
         } catch (RuntimeException e) {
-            log.warn("Search index could not be checked or created, it is created by the next reindex, index={}",
-                    TransactionSearchDocument.INDEX, e);
+            log.warn("Search index could not be checked or created, tried again in {} ms, index={}: {}",
+                    INDEX_CHECK_DELAY_MS, TransactionSearchDocument.INDEX, e.toString());
+            log.debug("Search index check failure", e);
         }
+    }
+
+    /** Tries {@link #ensureIndex} again while no attempt has worked yet; does nothing afterwards. */
+    @Scheduled(initialDelay = INDEX_CHECK_DELAY_MS, fixedDelay = INDEX_CHECK_DELAY_MS)
+    public void retryEnsureIndex() {
+        if (!indexReady) {
+            ensureIndex();
+        }
+    }
+
+    /** Whether the index has been found or created since the start. */
+    public boolean isIndexReady() {
+        return indexReady;
     }
 
     /** Indexes the transaction as it is now in PostgreSQL, or removes its document when it is gone. */
@@ -75,14 +109,7 @@ public class TransactionSearchIndexer {
             return;
         }
         try {
-            if (event.kind() == TransactionChangedEvent.Kind.DELETED) {
-                delete(transactionId);
-                return;
-            }
-            transactionRepo.findForSearchIndex(transactionId).ifPresentOrElse(
-                    transaction -> operations.save(TransactionSearchDocument.from(transaction)),
-                    // Deleted again between the commit and now: what the index must hold is nothing.
-                    () -> delete(transactionId));
+            withIndex(() -> sync(event));
             log.debug("Search index updated, transactionId={}, kind={}", transactionId, event.kind());
         } catch (RuntimeException e) {
             // Elasticsearch down or slow (or the row unreadable): the document stays stale until the next change of this
@@ -93,18 +120,102 @@ public class TransactionSearchIndexer {
     }
 
     /**
+     * Rebuilds the index after a restore of the database, which changes the transactions without saying which. Runs after
+     * the commit of the restore (or at once outside a transaction), in the background.
+     */
+    @Async("mongoAsyncExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onStatisticsChanged(StatisticsChangedEvent event) {
+        if (event.change() != StatisticsChange.DATABASE_RESTORED) {
+            return;
+        }
+        try {
+            reindexAll();
+        } catch (RuntimeException e) {
+            log.warn("Search index rebuild after a restore failed, run POST /api/admin/search/reindex, index={}",
+                    TransactionSearchDocument.INDEX, e);
+        }
+    }
+
+    /**
      * Drops the index, creates it again from the settings and mapping files and indexes every transaction of PostgreSQL,
      * {@value #PAGE_SIZE} per bulk request in the order of their ids; the number of documents indexed. Searches find
      * nothing (or part) while it runs, and a change committed during the run may be missing until its next change.
      * Failures propagate to the caller.
      */
     public int reindexAll() {
-        IndexOperations indexOps = indexOps();
-        if (indexOps.exists()) {
-            indexOps.delete();
+        synchronized (indexLock) {
+            IndexOperations indexOps = indexOps();
+            if (indexOps.exists()) {
+                indexOps.delete();
+            }
+            indexOps.createWithMapping();
+            indexReady = true;
         }
-        indexOps.createWithMapping();
+        int indexed = indexAllRows();
+        log.info("Search index rebuilt from PostgreSQL, index={}, documents={}", TransactionSearchDocument.INDEX, indexed);
+        return indexed;
+    }
 
+    private void sync(TransactionChangedEvent event) {
+        Long transactionId = event.transactionId();
+        if (event.kind() == TransactionChangedEvent.Kind.DELETED) {
+            delete(transactionId);
+            return;
+        }
+        transactionRepo.findForSearchIndex(transactionId).ifPresentOrElse(
+                transaction -> operations.save(TransactionSearchDocument.from(transaction)),
+                // Deleted again between the commit and now: what the index must hold is nothing.
+                () -> delete(transactionId));
+    }
+
+    /** Runs {@code write}; when it finds no index, creates the index from its files and runs it once more. */
+    private void withIndex(Runnable write) {
+        try {
+            write.run();
+        } catch (RuntimeException e) {
+            if (!isIndexNotFound(e)) {
+                throw e;
+            }
+            log.info("Search index missing at a write, creating it from its mapping, index={}",
+                    TransactionSearchDocument.INDEX);
+            createIndexIfMissing();
+            write.run();
+        }
+    }
+
+    /**
+     * Creates the index when it is missing and starts filling it from PostgreSQL in the background. Marks the index ready
+     * whether it found or created it.
+     */
+    private void createIndexIfMissing() {
+        synchronized (indexLock) {
+            IndexOperations indexOps = indexOps();
+            if (indexOps.exists()) {
+                indexReady = true;
+                return;
+            }
+            indexOps.createWithMapping();
+            indexReady = true;
+            log.info("Search index created, filling it from PostgreSQL in the background, index={}",
+                    TransactionSearchDocument.INDEX);
+        }
+        backgroundExecutor.execute(this::fillNewIndex);
+    }
+
+    private void fillNewIndex() {
+        try {
+            int indexed = indexAllRows();
+            log.info("New search index filled from PostgreSQL, index={}, documents={}",
+                    TransactionSearchDocument.INDEX, indexed);
+        } catch (RuntimeException e) {
+            log.warn("New search index could not be filled, run POST /api/admin/search/reindex, index={}",
+                    TransactionSearchDocument.INDEX, e);
+        }
+    }
+
+    /** Indexes every transaction of PostgreSQL into the existing index, {@value #PAGE_SIZE} per bulk request. */
+    private int indexAllRows() {
         int indexed = 0;
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id"));
         while (true) {
@@ -121,9 +232,19 @@ public class TransactionSearchIndexer {
             }
             pageable = page.nextPageable();
         }
-        indexOps.refresh();
-        log.info("Search index rebuilt from PostgreSQL, index={}, documents={}", TransactionSearchDocument.INDEX, indexed);
+        indexOps().refresh();
         return indexed;
+    }
+
+    /** Elasticsearch answered index_not_found_exception, whether Spring Data translated it or not. */
+    static boolean isIndexNotFound(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
+            if (cause instanceof NoSuchIndexException
+                    || (cause.getMessage() != null && cause.getMessage().contains("index_not_found_exception"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void delete(Long transactionId) {

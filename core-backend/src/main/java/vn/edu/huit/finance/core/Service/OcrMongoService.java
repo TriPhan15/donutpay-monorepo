@@ -10,6 +10,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
+import org.springframework.data.mongodb.core.aggregation.ComparisonOperators;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
 import org.springframework.data.mongodb.core.aggregation.DateOperators;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import vn.edu.huit.finance.core.Document.OcrFeedback;
+import vn.edu.huit.finance.core.Document.OcrField;
 import vn.edu.huit.finance.core.Document.OcrRawLog;
 import vn.edu.huit.finance.core.Dto.ExtractedReceiptDto;
 import vn.edu.huit.finance.core.Dto.OcrAnalyticsResponseDto;
@@ -50,6 +54,11 @@ public class OcrMongoService {
     private static final String FIELD_RECEIPT_ID = "receiptId";
     private static final String FIELD_ERROR = "fieldError";
     private static final String FIELD_RESOLVED = "isResolved";
+    private static final String FIELD_TRANSACTION_ID = "transactionId";
+    private static final String FIELD_USER_ID = "userId";
+    private static final String FIELD_AI_VALUE = "aiValue";
+    private static final String FIELD_EXPECTED_VALUE = "expectedValue";
+    private static final String FIELD_UPDATED_AT = "updatedAt";
     private static final String FIELD_REPORTED_AT = "reportedAt";
     private static final String FIELD_MODEL_VERSION = "modelVersion";
     private static final String FIELD_CREATED_AT = "createdAt";
@@ -62,6 +71,10 @@ public class OcrMongoService {
     private static final String ALIAS_AVERAGE = "average";
     private static final String ALIAS_LOGS = "logs";
     private static final String GROUP_KEY = "_id";
+    private static final String ALIAS_FEEDBACKS = "feedbacks";
+    private static final String ALIAS_HAS_FEEDBACK = "hasFeedback";
+    private static final String ALIAS_READINGS = "readings";
+    private static final String ALIAS_WITH_ERROR = "withError";
 
     private final OcrRawLogRepository ocrRawLogRepository;
     private final OcrFeedbackRepository ocrFeedbackRepository;
@@ -127,8 +140,10 @@ public class OcrMongoService {
     }
 
     /**
-     * Ghi các chỗ người dùng sửa AI sau khi PostgreSQL commit: mỗi (hóa đơn, trường) đúng một document, sửa lại lần nữa thì
-     * cập nhật document đó (đặt lại chưa xử lý) và giữ nguyên reportedAt của lần báo đầu. Lỗi MongoDB chỉ được ghi log.
+     * Ghi các chỗ người dùng sửa AI sau khi PostgreSQL commit: mỗi (hóa đơn, trường) đúng một document. Sửa lại thành một
+     * giá trị khác thì cập nhật document đó (đặt lại chưa xử lý) và giữ nguyên reportedAt của lần báo đầu; gửi lại đúng
+     * chỗ sửa đã lưu (một lần sửa hóa đơn ở trường khác) thì không đổi gì, phản hồi đã xử lý vẫn là đã xử lý. Trường nào
+     * người dùng đã trả về đúng giá trị AI thì chỗ sửa cũ của nó bị xóa. Lỗi MongoDB chỉ được ghi log.
      */
     @Async("mongoAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -137,27 +152,57 @@ public class OcrMongoService {
             for (OcrFieldCorrection correction : event.corrections()) {
                 upsertCorrection(event, correction);
             }
-            log.info("Persisted {} OCR correction(s) to MongoDB for Receipt: {}", event.corrections().size(), event.receiptId());
+            long removed = removeCleared(event);
+            log.info("Persisted {} OCR correction(s) and removed {} stale one(s) in MongoDB for Receipt: {}",
+                    event.corrections().size(), removed, event.receiptId());
         } catch (Exception e) {
             // MongoDB là kho phân tích phụ: không ghi được thì chỉ log, không ảnh hưởng dữ liệu PostgreSQL đã commit.
             log.error("Failed to save OCR correction to MongoDB for Receipt: {}. Error: {}", event.receiptId(), e.getMessage(), e);
         }
     }
 
+    /**
+     * Hai bước: (1) document của (hóa đơn, trường) có giá trị khác thì được ghi đè và mở lại; (2) không có document nào
+     * thì tạo mới ({@code $setOnInsert}: không đụng tới document đã có cùng giá trị). Hai luồng cùng tạo một document thì
+     * khóa duy nhất receipt_field_uq chặn luồng sau (lỗi đó chỉ được ghi log).
+     */
     private void upsertCorrection(OcrCorrectionEvent event, OcrFieldCorrection correction) {
         LocalDateTime now = LocalDateTime.now();
-        Query key = new Query(Criteria.where(FIELD_RECEIPT_ID).is(event.receiptId())
-                .and(FIELD_ERROR).is(correction.field().key()));
-        Update update = new Update()
-                .setOnInsert(FIELD_REPORTED_AT, now)
-                .set("transactionId", event.transactionId())
-                .set("userId", event.userId())
-                .set("aiValue", correction.aiValue())
-                .set("expectedValue", correction.expectedValue())
+        Criteria key = Criteria.where(FIELD_RECEIPT_ID).is(event.receiptId()).and(FIELD_ERROR).is(correction.field().key());
+        Criteria changed = new Criteria().andOperator(key, new Criteria().orOperator(
+                Criteria.where(FIELD_EXPECTED_VALUE).ne(correction.expectedValue()),
+                Criteria.where(FIELD_AI_VALUE).ne(correction.aiValue())));
+        Update reopen = new Update()
+                .set(FIELD_TRANSACTION_ID, event.transactionId())
+                .set(FIELD_USER_ID, event.userId())
+                .set(FIELD_AI_VALUE, correction.aiValue())
+                .set(FIELD_EXPECTED_VALUE, correction.expectedValue())
                 .set(FIELD_MODEL_VERSION, modelVersion)
                 .set(FIELD_RESOLVED, false)
-                .set("updatedAt", now);
-        mongoTemplate.upsert(key, update, OcrFeedback.class);
+                .set(FIELD_UPDATED_AT, now);
+        if (mongoTemplate.updateFirst(new Query(changed), reopen, OcrFeedback.class).getMatchedCount() > 0) {
+            return;
+        }
+        Update insertIfAbsent = new Update()
+                .setOnInsert(FIELD_REPORTED_AT, now)
+                .setOnInsert(FIELD_TRANSACTION_ID, event.transactionId())
+                .setOnInsert(FIELD_USER_ID, event.userId())
+                .setOnInsert(FIELD_AI_VALUE, correction.aiValue())
+                .setOnInsert(FIELD_EXPECTED_VALUE, correction.expectedValue())
+                .setOnInsert(FIELD_MODEL_VERSION, modelVersion)
+                .setOnInsert(FIELD_RESOLVED, false)
+                .setOnInsert(FIELD_UPDATED_AT, now);
+        mongoTemplate.upsert(new Query(key), insertIfAbsent, OcrFeedback.class);
+    }
+
+    /** Xóa chỗ sửa của các trường người dùng đã trả về đúng giá trị AI; số document đã xóa. */
+    private long removeCleared(OcrCorrectionEvent event) {
+        if (event.clearedFields().isEmpty()) {
+            return 0;
+        }
+        List<String> fields = event.clearedFields().stream().map(OcrField::key).toList();
+        Query stale = new Query(Criteria.where(FIELD_RECEIPT_ID).is(event.receiptId()).and(FIELD_ERROR).in(fields));
+        return mongoTemplate.remove(stale, OcrFeedback.class).getDeletedCount();
     }
 
 
@@ -230,7 +275,7 @@ public class OcrMongoService {
                         .map(group -> new ModelCount(group.getString(GROUP_KEY) == null ? UNKNOWN_MODEL : group.getString(GROUP_KEY),
                                 group.getInteger(ALIAS_COUNT))).toList())
                 .confidenceByMonth(confidenceByMonth(logRange))
-                .receiptsWithErrorRate(receiptsWithErrorRate(feedbackRange, logRange))
+                .receiptsWithErrorRate(receiptsWithErrorRate(logRange))
                 .build();
     }
 
@@ -255,14 +300,27 @@ public class OcrMongoService {
                 .toList();
     }
 
-    /** Số hóa đơn có ít nhất một chỗ bị sửa chia cho số lần đọc (ocr_logs), cùng khoảng thời gian. */
-    private double receiptsWithErrorRate(Criteria feedbackRange, Criteria logRange) {
-        long readings = mongoTemplate.count(new Query(logRange), OcrRawLog.class);
-        if (readings == 0) {
+    /**
+     * Trong các lần đọc (ocr_logs) tạo trong khoảng thời gian, tỉ lệ lần đọc có giao dịch bị sửa ít nhất một chỗ
+     * (ocr_feedbacks cùng transactionId, báo lúc nào cũng được). Tử số là một phần của mẫu số nên tỉ lệ không vượt 1.
+     * Một aggregation: $match theo createdAt, $lookup sang ocr_feedbacks theo transactionId (có index), rồi đếm.
+     */
+    private double receiptsWithErrorRate(Criteria logRange) {
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(logRange),
+                Aggregation.lookup(mongoTemplate.getCollectionName(OcrFeedback.class), FIELD_TRANSACTION_ID,
+                        FIELD_TRANSACTION_ID, ALIAS_FEEDBACKS),
+                Aggregation.project().and(ComparisonOperators.Gt.valueOf(ArrayOperators.Size.lengthOfArray(ALIAS_FEEDBACKS))
+                        .greaterThanValue(0)).as(ALIAS_HAS_FEEDBACK),
+                Aggregation.group().count().as(ALIAS_READINGS)
+                        .sum(ConditionalOperators.when(Criteria.where(ALIAS_HAS_FEEDBACK).is(true)).then(1).otherwise(0))
+                        .as(ALIAS_WITH_ERROR));
+        org.bson.Document totals = mongoTemplate.aggregate(aggregation, OcrRawLog.class, org.bson.Document.class)
+                .getUniqueMappedResult();
+        if (totals == null || totals.getInteger(ALIAS_READINGS, 0) == 0) {
             return 0.0;
         }
-        long receiptsWithError = mongoTemplate.findDistinct(new Query(feedbackRange), FIELD_RECEIPT_ID, OcrFeedback.class, Long.class).size();
-        return (double) receiptsWithError / readings;
+        return (double) totals.getInteger(ALIAS_WITH_ERROR, 0) / totals.getInteger(ALIAS_READINGS);
     }
 
     private Double extractConfidenceScore(String json) {
@@ -273,10 +331,11 @@ public class OcrMongoService {
             if (root.has("confidence_score")) return root.get("confidence_score").asDouble();
             if (root.has("score")) return root.get("score").asDouble();
             if (root.has("confidence")) return root.get("confidence").asDouble();
-            return 1.0; // Default if not found
+            // Không có (Donut V5 không trả về độ tin cậy): null, không bịa một con số; $avg của thống kê bỏ qua null.
+            return null;
         } catch (Exception e) {
-            log.warn("Failed to parse JSON for confidence score, defaulting to 1.0", e);
-            return 1.0;
+            log.warn("Failed to parse JSON for confidence score, leaving it empty", e);
+            return null;
         }
     }
 }

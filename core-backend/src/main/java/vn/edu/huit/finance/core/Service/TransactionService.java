@@ -355,6 +355,8 @@ public class TransactionService {
         receipt.moveTo(ReceiptStatus.CANCELED);
         receiptRepo.save(receipt);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, userId));
+        // The receipt status is part of the transaction's search document: the index reads it again after the commit.
+        eventPublisher.publishEvent(TransactionChangedEvent.upserted(owningTransaction.getId(), userId, Set.of()));
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_CANCELED, AuditActor.of(caller), receiptId,
                 String.format(AUDIT_RECEIPT_CANCELED, previousStatus, receipt.getStatus())));
         log.info("Receipt canceled, userId={}, receiptId={}", userId, receiptId);

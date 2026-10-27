@@ -6,6 +6,8 @@ import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchIndexer;
 
+import java.util.concurrent.Executor;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,7 +26,8 @@ class SearchConfigTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(SearchConfig.class, TransactionSearchIndexer.class)
             .withBean(ElasticsearchOperations.class, () -> operations)
-            .withBean(TransactionRepository.class, () -> mock(TransactionRepository.class));
+            .withBean(TransactionRepository.class, () -> mock(TransactionRepository.class))
+            .withBean("mongoAsyncExecutor", Executor.class, () -> Runnable::run);
 
     @Test
     void postgresEngine_noIndexerBean() {

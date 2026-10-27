@@ -23,6 +23,8 @@ import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -37,11 +39,15 @@ import java.util.stream.LongStream;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -74,7 +80,10 @@ class TransactionSearchIndexerIntegrationTest {
             indexOps.delete();
         }
         transactionRepo = mock(TransactionRepository.class);
-        indexer = new TransactionSearchIndexer(template, transactionRepo);
+        when(transactionRepo.findPageForSearchIndex(any(Pageable.class)))
+                .thenAnswer(invocation -> Page.empty(invocation.getArgument(0)));
+        // Runs the background rebuild on the calling thread, so the test sees it finished.
+        indexer = new TransactionSearchIndexer(template, transactionRepo, Runnable::run);
     }
 
     @Test
@@ -103,6 +112,86 @@ class TransactionSearchIndexerIntegrationTest {
         template.save(document("1"));
         indexer.ensureIndex();
         assertNotNull(template.get("1", TransactionSearchDocument.class));
+    }
+
+    @Test
+    void saveBeforeEnsureIndex_createsIndexFromMapping_notDynamic() throws IOException {
+        // Elasticsearch was still starting at ApplicationReadyEvent: the first write finds no index.
+        when(transactionRepo.findForSearchIndex(46L)).thenReturn(Optional.of(transaction(46L, 7L, "Phở Hà Nội")));
+
+        indexer.onTransactionChanged(TransactionChangedEvent.upserted(46L, 7L, Set.of()));
+
+        assertTrue(template.indexOps(TransactionSearchDocument.class).exists());
+        assertEquals("vi_folded", field(properties(), "vendorName").get("analyzer"));
+        assertEquals("keyword", field(properties(), "receiptStatus").get("type"));
+        List<String> tokens = client.indices().analyze(a -> a
+                        .index(TransactionSearchDocument.INDEX).analyzer("vi_folded").text("Phở"))
+                .tokens().stream().map(AnalyzeToken::token).toList();
+        assertEquals(List.of("pho"), tokens);
+        assertNotNull(template.get("46", TransactionSearchDocument.class), "the write is retried once the index exists");
+    }
+
+    @Test
+    void deleteBeforeEnsureIndex_createsIndex_andDoesNotThrow() {
+        assertDoesNotThrow(() -> indexer.onTransactionChanged(TransactionChangedEvent.deleted(47L, 7L, Set.of())));
+        assertTrue(template.indexOps(TransactionSearchDocument.class).exists());
+    }
+
+    @Test
+    void ensureIndex_creatingTheIndex_fillsItFromPostgres() {
+        when(transactionRepo.findPageForSearchIndex(any(Pageable.class))).thenAnswer(invocation ->
+                new PageImpl<>(List.of(transaction(48L, 7L, "Circle K")), invocation.getArgument(0), 1));
+
+        indexer.ensureIndex();
+
+        assertTrue(indexer.isIndexReady());
+        assertEquals("Circle K", template.get("48", TransactionSearchDocument.class).getVendorName());
+    }
+
+    @Test
+    void ensureIndex_onExistingIndex_doesNotReindex() {
+        template.indexOps(TransactionSearchDocument.class).createWithMapping();
+
+        indexer.ensureIndex();
+
+        assertTrue(indexer.isIndexReady());
+        verify(transactionRepo, never()).findPageForSearchIndex(any(Pageable.class));
+    }
+
+    @Test
+    void databaseRestored_rebuildsTheIndex_otherChangesDoNot() {
+        indexer.ensureIndex();
+        clearInvocations(transactionRepo); // the fill of the new index
+        template.save(document("999998")); // gone from the restored PostgreSQL
+        when(transactionRepo.findPageForSearchIndex(any(Pageable.class))).thenAnswer(invocation ->
+                new PageImpl<>(List.of(transaction(49L, 7L, "Bách Hóa Xanh")), invocation.getArgument(0), 1));
+
+        indexer.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_TOTALS, 7L));
+        assertNotNull(template.get("999998", TransactionSearchDocument.class));
+        verify(transactionRepo, never()).findPageForSearchIndex(any(Pageable.class));
+
+        indexer.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.DATABASE_RESTORED));
+
+        assertNull(template.get("999998", TransactionSearchDocument.class));
+        assertEquals("Bách Hóa Xanh", template.get("49", TransactionSearchDocument.class).getVendorName());
+    }
+
+    @Test
+    void indexCheck_retriesUntilTheIndexExists_thenStops() {
+        // Elasticsearch was unreachable at start-up: ensureIndex failed and left the flag down.
+        TransactionSearchIndexer offline = new TransactionSearchIndexer(
+                ElasticsearchTestContainers.templateFor(ElasticsearchTestContainers.clientFor("localhost:1")),
+                transactionRepo, Runnable::run);
+        offline.ensureIndex();
+        assertFalse(offline.isIndexReady());
+
+        // The periodic check on a reachable cluster creates it, once.
+        indexer.retryEnsureIndex();
+        assertTrue(indexer.isIndexReady());
+        assertTrue(template.indexOps(TransactionSearchDocument.class).exists());
+        template.indexOps(TransactionSearchDocument.class).delete();
+        indexer.retryEnsureIndex();
+        assertFalse(template.indexOps(TransactionSearchDocument.class).exists(), "no check once the index was there");
     }
 
     @Test
@@ -202,7 +291,7 @@ class TransactionSearchIndexerIntegrationTest {
         ElasticsearchTemplate down = ElasticsearchTestContainers.templateFor(ElasticsearchTestContainers.clientFor("localhost:1"));
         TransactionRepository repo = mock(TransactionRepository.class);
         when(repo.findForSearchIndex(45L)).thenReturn(Optional.of(transaction(45L, 7L, "Highlands")));
-        TransactionSearchIndexer offline = new TransactionSearchIndexer(down, repo);
+        TransactionSearchIndexer offline = new TransactionSearchIndexer(down, repo, Runnable::run);
 
         assertDoesNotThrow(() -> offline.onTransactionChanged(TransactionChangedEvent.upserted(45L, 7L, Set.of())));
         assertDoesNotThrow(() -> offline.onTransactionChanged(TransactionChangedEvent.deleted(45L, 7L, Set.of())));

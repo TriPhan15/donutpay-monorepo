@@ -48,7 +48,7 @@ import static org.mockito.Mockito.times;
  * <ol>
  *   <li>Graceful Degradation: Khi MongoDB lỗi, KHÔNG ném exception ra ngoài (đảm bảo Postgres không bị ảnh hưởng).</li>
  *   <li>Data Parsing: BSON Document được parse đúng từ JSON hợp lệ và invalid JSON.</li>
- *   <li>Confidence Score: extractConfidenceScore tìm đúng field từ nhiều cấu trúc JSON của AI.</li>
+ *   <li>Confidence Score: extractConfidenceScore tìm đúng field từ nhiều cấu trúc JSON của AI, null khi không có.</li>
  *   <li>Resolve Feedback: Update isResolved=true và trả về đúng kết quả.</li>
  *   <li>Skip Empty Event: Không ghi DB khi payload rỗng/null.</li>
  * </ol>
@@ -136,8 +136,8 @@ class OcrMongoServiceTest {
         }
 
         @Test
-        @DisplayName("Dùng confidence mặc định 1.0 khi JSON không có field confidence nào")
-        void defaultsConfidenceToOneWhenNoFieldFound() {
+        @DisplayName("Không có field confidence nào (Donut V5 không trả về): độ tin cậy để null, không bịa 1.0")
+        void leavesConfidenceNullWhenNoFieldFound() {
             String jsonNoConfidence = "{\"vendor_name\":\"Starbucks\",\"total\":120000}";
             OcrProcessedEvent event = new OcrProcessedEvent(TRANSACTION_ID, jsonNoConfidence);
             given(ocrRawLogRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -146,7 +146,7 @@ class OcrMongoServiceTest {
 
             ArgumentCaptor<OcrRawLog> captor = ArgumentCaptor.forClass(OcrRawLog.class);
             then(ocrRawLogRepository).should().save(captor.capture());
-            assertThat(captor.getValue().getAverageConfidenceScore()).isEqualTo(1.0);
+            assertThat(captor.getValue().getAverageConfidenceScore()).isNull();
         }
     }
 

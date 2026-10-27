@@ -208,6 +208,22 @@ class SpendingLeaderboardServiceIntegrationTest {
     }
 
     @Test
+    void onTransactionChanged_keyExpiresWhileTheTotalIsRead_isNotCreatedAgain() {
+        postgresHoldsAnAndBinh();
+        service.topSpenders(month, 10);
+        // The set expires (or is dropped by a restore) after the check and before the write.
+        when(transactionRepo.sumExpensesBetween(eq(1L), any(), any())).thenAnswer(invocation -> {
+            redis.delete(key);
+            return new BigDecimal("450000");
+        });
+
+        service.onTransactionChanged(TransactionChangedEvent.upserted(10L, 1L, Set.of(month)));
+
+        // A one-member set without a TTL would hide everybody else until it is dropped by hand.
+        assertEquals(Boolean.FALSE, redis.hasKey(key));
+    }
+
+    @Test
     void onTransactionChanged_noExpenseMonths_doesNothing() {
         service.onTransactionChanged(TransactionChangedEvent.upserted(10L, 1L, Set.of()));
 

@@ -86,6 +86,7 @@ class OcrMongoServiceMongoIntegrationTest {
     private static OcrFeedback feedback(long receiptId, OcrField field, boolean resolved, String model, LocalDateTime reportedAt) {
         OcrFeedback feedback = new OcrFeedback();
         feedback.setReceiptId(receiptId);
+        feedback.setTransactionId(10 + receiptId);
         feedback.setUserId(5L);
         feedback.setFieldError(field.key());
         feedback.setResolved(resolved);
@@ -94,7 +95,7 @@ class OcrMongoServiceMongoIntegrationTest {
         return feedback;
     }
 
-    private static OcrRawLog rawLog(long transactionId, double confidence, LocalDateTime createdAt) {
+    private static OcrRawLog rawLog(long transactionId, Double confidence, LocalDateTime createdAt) {
         OcrRawLog rawLog = new OcrRawLog();
         rawLog.setTransactionId(transactionId);
         rawLog.setAverageConfidenceScore(confidence);
@@ -202,8 +203,88 @@ class OcrMongoServiceMongoIntegrationTest {
         assertEquals(0.4333, result.getConfidenceByMonth().get(0).getAverageConfidence(), 0.001);
         assertEquals(3, result.getConfidenceByMonth().get(0).getLogs());
         assertEquals("2026-06", result.getConfidenceByMonth().get(1).getMonth());
-        // Two distinct receipts with a correction in the range, five readings in it.
-        assertEquals(2.0 / 5.0, result.getReceiptsWithErrorRate(), 1e-9);
+        // Five readings in the range; three of their transactions (11, 12, 13) have a correction, whenever it was reported.
+        assertEquals(3.0 / 5.0, result.getReceiptsWithErrorRate(), 1e-9);
+    }
+
+    @Test
+    void analytics_feedbackReportedAfterTheRange_rateStaysAtMostOne() {
+        // One reading in May, corrected in June: the May rate counts it, and never more readings than there are.
+        LocalDateTime may = LocalDateTime.of(2026, 5, 31, 22, 0);
+        rawLogRepository.save(rawLog(11, 0.8, may));
+        feedbackRepository.saveAll(List.of(
+                feedback(1, OcrField.TOTAL_COST, false, MODEL, LocalDateTime.of(2026, 6, 2, 8, 0)),
+                feedback(1, OcrField.SELLER_NAME, false, MODEL, LocalDateTime.of(2026, 6, 2, 8, 0)),
+                // Corrections of receipts whose reading is in another month do not count in May.
+                feedback(2, OcrField.TOTAL_COST, false, MODEL, LocalDateTime.of(2026, 5, 3, 8, 0)),
+                feedback(3, OcrField.TOTAL_COST, false, MODEL, LocalDateTime.of(2026, 5, 4, 8, 0))));
+
+        double may2026 = service.analytics(LocalDate.of(2026, 5, 1), LocalDate.of(2026, 5, 31)).getReceiptsWithErrorRate();
+        double june2026 = service.analytics(LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30)).getReceiptsWithErrorRate();
+
+        assertEquals(1.0, may2026, 1e-9);
+        assertEquals(0.0, june2026, "no reading in June");
+    }
+
+    @Test
+    void analytics_readingsWithoutConfidence_doNotCountInTheAverage() {
+        LocalDateTime may = LocalDateTime.of(2026, 5, 10, 12, 0);
+        LocalDateTime june = LocalDateTime.of(2026, 6, 10, 12, 0);
+        rawLogRepository.saveAll(List.of(rawLog(11, 0.6, may), rawLog(12, null, may), rawLog(13, null, june)));
+
+        List<OcrAnalyticsResponseDto.MonthlyConfidence> months =
+                service.analytics(LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 30)).getConfidenceByMonth();
+
+        assertEquals(0.6, months.get(0).getAverageConfidence(), 1e-9);
+        assertEquals(2, months.get(0).getLogs());
+        assertNull(months.get(1).getAverageConfidence(), "no reading of June has a confidence");
+        assertEquals(1, months.get(1).getLogs());
+    }
+
+    @Test
+    void rawLog_withoutConfidenceField_storesNull() {
+        service.onOcrProcessedEvent(new OcrProcessedEvent(78L, FULL_SCAN));
+
+        assertNull(rawLogRepository.findAll().get(0).getAverageConfidenceScore());
+    }
+
+    @Test
+    void correction_editedBackToTheAiValue_removesTheStaleDoc() {
+        service.onOcrCorrectionEvent(new OcrCorrectionEvent(1L, 10L, 5L, List.of(
+                new OcrFieldCorrection(OcrField.TOTAL_COST, "120000", "150000"),
+                new OcrFieldCorrection(OcrField.SELLER_NAME, "A", "B"))));
+        assertEquals(2, feedbackRepository.count());
+
+        // The user typed the AI's total again; the seller stays corrected.
+        service.onOcrCorrectionEvent(new OcrCorrectionEvent(1L, 10L, 5L, List.of(), List.of(OcrField.TOTAL_COST)));
+
+        List<OcrFeedback> left = feedbackRepository.findAll();
+        assertEquals(1, left.size());
+        assertEquals("seller_name", left.get(0).getFieldError());
+        // Clearing a field that has no correction is no error.
+        assertDoesNotThrow(() -> service.onOcrCorrectionEvent(
+                new OcrCorrectionEvent(2L, 20L, 5L, List.of(), List.of(OcrField.RECEIPT_DATE))));
+    }
+
+    @Test
+    void correction_sameExpectedValueAgain_keepsItResolved_differentValueReopens() {
+        service.onOcrCorrectionEvent(total(1, "120000", "150000"));
+        OcrFeedback first = feedbackRepository.findAll().get(0);
+        service.resolveFeedback(first.getId());
+
+        // An unrelated edit of the receipt compares the total again and finds the same correction.
+        service.onOcrCorrectionEvent(total(1, "120000", "150000"));
+
+        OcrFeedback unchanged = feedbackRepository.findAll().get(0);
+        assertTrue(unchanged.isResolved(), "nothing new to look at");
+        assertEquals(first.getUpdatedAt(), unchanged.getUpdatedAt());
+
+        service.onOcrCorrectionEvent(total(1, "120000", "160000"));
+
+        OcrFeedback reopened = feedbackRepository.findAll().get(0);
+        assertFalse(reopened.isResolved());
+        assertEquals("160000", reopened.getExpectedValue());
+        assertEquals(1, feedbackRepository.count());
     }
 
     @Test

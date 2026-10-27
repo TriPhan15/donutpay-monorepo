@@ -293,6 +293,16 @@ class ReceiptProcessingServiceTest {
     }
 
     @Test
+    void feedbackReindexesTheTransactionSoItsReceiptStatusIsSearchedAsItIsNow() {
+        signedInAsAlice();
+        repositoryHolds(receipt("FAILED", transactionOf(alice)));
+
+        service.submitFeedback(RECEIPT_ID, new BigDecimal("150000"));
+
+        assertEquals(List.of(TransactionChangedEvent.upserted(TRANSACTION_ID, ALICE_ID, Set.of())), publishedTransactionChanges());
+    }
+
+    @Test
     void refusedFeedbackReportsNothing() {
         signedInAsAlice();
         repositoryHolds(receipt("FAILED", transactionOf(bob)));
@@ -359,6 +369,15 @@ class ReceiptProcessingServiceTest {
     }
 
     @Test
+    void aRejectionReindexesTheTransactionOfTheOwner() {
+        repositoryHolds(receipt("WAITING_FOR_REVIEW", transactionOf(bob)));
+
+        service.rejectReceipt(RECEIPT_ID);
+
+        assertEquals(List.of(TransactionChangedEvent.upserted(TRANSACTION_ID, BOB_ID, Set.of())), publishedTransactionChanges());
+    }
+
+    @Test
     void aRejectionIsRecordedWithTheAdministratorWhoCalledAsActorAndTheOwnerOnlyNamed() {
         repositoryHolds(receipt("WAITING_FOR_REVIEW", transactionOf(bob)));
 
@@ -390,6 +409,7 @@ class ReceiptProcessingServiceTest {
 
         assertEquals("FAILED", orphan.getStatus());
         verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS));
+        assertTrue(publishedTransactionChanges().isEmpty(), "no transaction to reindex");
     }
 
     @Test
@@ -1186,6 +1206,8 @@ class ReceiptProcessingServiceTest {
         assertEquals("Lần đọc #2: AI đọc được tổng tiền, trạng thái COMPLETED_RAW", entries.get(1).description());
         assertNoneContains(entries, NEW_SCAN, "Highlands Coffee");
         verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_CONTENT, ALICE_ID));
+        // The reading changed the status (and maybe the seller): the search index reads the transaction again.
+        verify(eventPublisher).publishEvent(TransactionChangedEvent.upserted(TRANSACTION_ID, ALICE_ID, Set.of()));
         verifyNoMoreInteractions(eventPublisher);
     }
 
@@ -1291,7 +1313,7 @@ class ReceiptProcessingServiceTest {
     }
 
     @Test
-    void editMyReceipt_backToTheAiValue_publishesNothing() {
+    void editMyReceipt_backToTheAiValue_publishesClearedFields() {
         signedInAsAlice();
         Receipt receipt = receipt("COMPLETED_RAW", transactionOf(alice));
         ReflectionTestUtils.setField(receipt, "attempts", List.of(
@@ -1303,6 +1325,22 @@ class ReceiptProcessingServiceTest {
         request.setExtractedTotal(new BigDecimal("245000.00"));
 
         service.editMyReceipt(RECEIPT_ID, request);
+
+        // No correction, but both fields are named as cleared: a correction stored by an earlier edit is stale now.
+        assertEquals(List.of(new OcrCorrectionEvent(RECEIPT_ID, TRANSACTION_ID, ALICE_ID, List.of(),
+                List.of(OcrField.SELLER_NAME, OcrField.TOTAL_COST))), publishedCorrections());
+    }
+
+    @Test
+    void editMyReceipt_nothingCompared_publishesNothing() {
+        signedInAsAlice();
+        Receipt receipt = receipt("COMPLETED_RAW", transactionOf(alice));
+        ReflectionTestUtils.setField(receipt, "attempts", List.of(
+                ReceiptProcessingAttempt.completed(receipt, 1, FULL_SCAN, null, CLIENT_DATE)));
+        repositoryHolds(receipt);
+        savingAnswersWithTheReceipt();
+
+        service.editMyReceipt(RECEIPT_ID, edit(VERSION));
 
         assertTrue(publishedCorrections().isEmpty());
     }

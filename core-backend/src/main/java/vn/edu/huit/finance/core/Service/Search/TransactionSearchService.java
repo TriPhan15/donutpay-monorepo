@@ -60,7 +60,9 @@ public class TransactionSearchService {
                 answeredBy = SearchEngineType.ELASTICSEARCH;
             } catch (RuntimeException e) {
                 // Elasticsearch is down, slow or answered something unusable: PostgreSQL answers instead.
-                log.warn("Elasticsearch search failed, falling back to PostgreSQL, userId={}", userId, e);
+                // One line per search while it is down; the stack trace only at debug, so an outage does not flood the log.
+                log.warn("Elasticsearch search failed, falling back to PostgreSQL, userId={}: {}", userId, e.toString());
+                log.debug("Elasticsearch search failure", e);
             }
         }
         if (hits == null) {

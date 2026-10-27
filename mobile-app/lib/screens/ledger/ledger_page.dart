@@ -80,8 +80,10 @@ class LedgerPageState extends State<LedgerPage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  /// Ids the server found for [_searchQuery], best match first; null while there is no answer (typing, query too
-  /// short, server error), and the list is then filtered on the device alone.
+  /// Ids the server found for [_searchQuery] (accent-insensitive, typo-tolerant). They only add to what the device
+  /// matches by itself, never hide it. Null when there is no answer for the current query (query too short, request
+  /// not answered yet, server error): the list is then filtered on the device alone. While the user keeps typing it
+  /// still holds the answer for the previous query, until the new one arrives.
   Set<int>? _serverMatchIds;
   Timer? _searchTimer;
 
@@ -271,12 +273,11 @@ class LedgerPageState extends State<LedgerPage> {
           q.isEmpty ||
           tx.title.toLowerCase().contains(q) ||
           tx.category.toLowerCase().contains(q);
-      // A transaction not sent yet is not in the server index: it is matched on the device.
-      // The id of a transaction is text on the device, a number on the server.
+      // The server only adds matches the device cannot find (no accents, typos). A transaction not sent yet is not
+      // in the server index: only the device can match it. The id is text on the device, a number on the server.
       final serverId = tx.id == null ? null : int.tryParse(tx.id!);
-      final matchSearch = _serverMatchIds == null || serverId == null
-          ? localMatch
-          : _serverMatchIds!.contains(serverId);
+      final matchSearch =
+          localMatch || (_serverMatchIds?.contains(serverId) ?? false);
 
       final matchMin =
           _filterMinAmount == null || tx.amount >= _filterMinAmount!;

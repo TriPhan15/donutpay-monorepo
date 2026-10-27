@@ -21,6 +21,8 @@ public class OcrFeedback {
     @Indexed
     private Long receiptId;
     
+    /** Có index: thống kê receiptsWithErrorRate nối ocr_logs sang đây theo transactionId ($lookup). */
+    @Indexed
     private Long transactionId;
 
     @Indexed

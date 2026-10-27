@@ -64,6 +64,7 @@ const OCR_LOGS_VALIDATOR = {
           receiptDate: { bsonType: ["string", "null"] }
         }
       },
+      // null khi câu trả lời của AI không có độ tin cậy (Donut V5 không trả về): ứng dụng không bịa 1.0; $avg bỏ qua null.
       averageConfidenceScore: { bsonType: ["double", "null"] },
       createdAt: { bsonType: ["date", "null"] }
     }
@@ -129,6 +130,9 @@ appDb.ocr_feedbacks.createIndex({ receiptId: 1, fieldError: 1 }, { name: "receip
 // OcrFeedback.java khai báo @Indexed trên receiptId, để script khớp 1-1 với annotation.
 appDb.ocr_feedbacks.createIndex({ receiptId: 1 }, { name: "receiptId" });                           // @Indexed
 appDb.ocr_feedbacks.createIndex({ userId: 1 }, { name: "userId" });                                 // @Indexed
+// receiptsWithErrorRate nối ocr_logs sang ocr_feedbacks theo transactionId ($lookup): không có index này thì mỗi log là
+// một lần quét cả collection.
+appDb.ocr_feedbacks.createIndex({ transactionId: 1 }, { name: "transactionId" });                   // @Indexed
 appDb.ocr_feedbacks.createIndex({ isResolved: 1 }, { name: "isResolved" });                         // @Indexed
 appDb.ocr_feedbacks.createIndex({ reportedAt: 1 }, { name: "reportedAt" });                         // @Indexed
 // Danh sách "chưa xử lý, mới nhất trước" (GET /api/admin/ocr-feedbacks?resolved=false): @CompoundIndex(name = "status_date_idx")

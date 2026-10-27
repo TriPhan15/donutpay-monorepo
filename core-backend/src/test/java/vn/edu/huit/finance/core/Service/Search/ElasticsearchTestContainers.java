@@ -33,6 +33,8 @@ public final class ElasticsearchTestContainers {
                 .withExposedPorts(PORT)
                 .withEnv("discovery.type", "single-node")
                 .withEnv("xpack.security.enabled", "false")
+                // As in docker-compose.yml: a write into a missing index fails instead of creating it with a dynamic mapping.
+                .withEnv("action.auto_create_index", "false")
                 .withEnv("ES_JAVA_OPTS", "-Xms256m -Xmx256m")
                 .waitingFor(Wait.forHttp("/_cluster/health").forPort(PORT).forStatusCode(200)
                         .withStartupTimeout(Duration.ofMinutes(2)));

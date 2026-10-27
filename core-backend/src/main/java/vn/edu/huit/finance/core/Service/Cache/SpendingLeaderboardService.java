@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 import org.springframework.data.redis.core.DefaultTypedTuple;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
@@ -46,6 +47,21 @@ public class SpendingLeaderboardService {
 
     private static final int MONEY_SCALE = 2;
     private static final long SCAN_BATCH_SIZE = 100;
+    /** The score argument of {@link #REFRESH_MEMBER_SCRIPT} that removes the member (no expense left that month). */
+    private static final String REMOVE_MEMBER = "";
+
+    // KEYS[1] = set of the month, ARGV = member (user id), score (total, or REMOVE_MEMBER). 0 when the set does not exist.
+    private static final RedisScript<Long> REFRESH_MEMBER_SCRIPT = RedisScript.of("""
+            if redis.call('EXISTS', KEYS[1]) == 0 then
+              return 0
+            end
+            if ARGV[2] == '%s' then
+              redis.call('ZREM', KEYS[1], ARGV[1])
+            else
+              redis.call('ZADD', KEYS[1], ARGV[2], ARGV[1])
+            end
+            return 1
+            """.formatted(REMOVE_MEMBER), Long.class);
 
     private final StringRedisTemplate redis;
     private final TransactionRepository transactionRepo;
@@ -136,19 +152,21 @@ public class SpendingLeaderboardService {
         }
     }
 
+    /**
+     * The first check only spares PostgreSQL the sum for a month nobody reads. The write itself is one script that checks
+     * again: a set that expired (or was dropped) while the sum was read is not created again as a one-member set without
+     * a TTL.
+     */
     private void refreshMember(YearMonth month, Long userId) {
         String key = keyOf(month);
         if (!Boolean.TRUE.equals(redis.hasKey(key))) {
             return;
         }
         BigDecimal total = transactionRepo.sumExpensesBetween(userId, startOf(month), startOf(month.plusMonths(1)));
-        String member = String.valueOf(userId);
-        if (total == null || total.signum() <= 0) {
-            redis.opsForZSet().remove(key, member);
-        } else {
-            redis.opsForZSet().add(key, member, total.doubleValue());
-        }
-        log.debug("Leaderboard member refreshed, month={}, userId={}, total={}", month, userId, total);
+        String score = total == null || total.signum() <= 0 ? REMOVE_MEMBER : total.toPlainString();
+        Long written = redis.execute(REFRESH_MEMBER_SCRIPT, List.of(key), String.valueOf(userId), score);
+        log.debug("Leaderboard member refreshed, month={}, userId={}, total={}, setExisted={}",
+                month, userId, total, Long.valueOf(1).equals(written));
     }
 
     private List<Object[]> readRows(YearMonth month) {

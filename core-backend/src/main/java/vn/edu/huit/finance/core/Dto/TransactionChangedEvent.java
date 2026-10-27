@@ -5,8 +5,10 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Published inside the database transaction of every write to a transaction (create, edit, delete, receipt approval) and
- * handled once it has committed (TransactionalEventListener AFTER_COMMIT), by the Redis leaderboard and the search index.
+ * Published inside the database transaction of every write to a transaction (create, edit, delete, receipt approval), and
+ * of every change of its receipt that the search document shows (seller, status: edit, retry, feedback, rejection,
+ * cancellation), and handled once it has committed (TransactionalEventListener AFTER_COMMIT), by the Redis leaderboard
+ * and the search index.
  *
  * @param transactionId the transaction written (null only when the write did not yield an id)
  * @param userId        its owner

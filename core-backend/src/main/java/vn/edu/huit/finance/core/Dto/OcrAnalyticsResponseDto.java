@@ -12,7 +12,10 @@ public class OcrAnalyticsResponseDto {
     List<FieldCount> errorsByField;
     List<ModelCount> errorsByModel;
     List<MonthlyConfidence> confidenceByMonth;
-    /** Số hóa đơn có ít nhất một chỗ bị sửa chia cho số lần đọc (ocr_logs) trong khoảng thời gian; 0 khi chưa có lần đọc nào. */
+    /**
+     * Trong các lần đọc (ocr_logs) tạo trong khoảng thời gian, tỉ lệ lần đọc có giao dịch bị sửa ít nhất một chỗ (dù chỗ
+     * sửa được báo lúc nào); luôn trong [0, 1], 0 khi chưa có lần đọc nào.
+     */
     double receiptsWithErrorRate;
 
     @Value
@@ -31,7 +34,8 @@ public class OcrAnalyticsResponseDto {
     public static class MonthlyConfidence {
         /** Tháng dạng yyyy-MM. */
         String month;
-        double averageConfidence;
+        /** Trung bình của các lần đọc có độ tin cậy; null khi không lần đọc nào của tháng có (mô hình không trả về). */
+        Double averageConfidence;
         long logs;
     }
 }
