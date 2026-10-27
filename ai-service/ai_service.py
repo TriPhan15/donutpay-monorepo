@@ -17,6 +17,8 @@ from spending_analysis import DEFAULT_TOP_N, SpadeAnalyzeResponse, analyze_spend
 from spending_data import MAX_AMOUNT, MAX_TRANSACTIONS, TransactionIn, expenses_from
 from wcm_spade import DEFAULT_MIN_SUP
 import budget_advisor
+import rfm_segmentation
+from rfm_segmentation import RfmInput
 from receipt_postprocess import fields_from_sequence, normalize_receipt
 
 logger = logging.getLogger(__name__)
@@ -203,40 +205,32 @@ def recommend_budget(req: RecommendRequest):
     return result
 
 
+MAX_RFM_USERS = 100_000
+
+
 class UserRFM(BaseModel):
-    user_id: str
-    recency: int    
-    frequency: int   
-    monetary: float  
+    user_id: str = Field(min_length=1, max_length=20, pattern=r"^\d+$")
+    recency: int = Field(ge=0, le=36500)
+    frequency: int = Field(ge=0, le=10_000_000)
+    monetary: float = Field(ge=0, le=1e15)
+
 
 class AdminSegmentRequest(BaseModel):
-    users: List[UserRFM]
+    users: List[UserRFM] = Field(max_length=MAX_RFM_USERS)
+
 
 @app.post("/admin/segment")
 def segment_users(req: AdminSegmentRequest):
     logger.info("Đang phân lớp %d khách hàng RFM...", len(req.users))
-    
-    if not req.users:
-        return {"segments": []}
-
-    result_segments = []
-    
-    for u in req.users:
-        if u.recency > 120:
-            label = "CHURN"
-        elif u.recency > 30:
-            label = "AT-RISK"
-        elif u.monetary > 10000000 and u.frequency >= 2:
-            label = "VIP"
-        else:
-            label = "ACTIVE"
-            
-        result_segments.append({
-            "user_id": u.user_id,
-            "label": label
-        })
-        
-    return {"segments": result_segments}
+    results = rfm_segmentation.segment_users(
+        [RfmInput(u.user_id, u.recency, u.frequency, u.monetary) for u in req.users]
+    )
+    return {
+        "segments": [
+            {"user_id": r.user_id, "label": r.label.value, "rfm": r.rfm}
+            for r in results
+        ]
+    }
 
 if __name__ == "__main__":
     uvicorn.run("ai_service", host="0.0.0.0", port=8000, reload=True)

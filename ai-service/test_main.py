@@ -381,3 +381,26 @@ def test_recommend_ignores_old_max_cut_ratio(mocker):
     r = client.post("/spade/recommend", json={"transactions": [_tx()], "max_cut_ratio": 5, "alpha": 1})
     assert r.status_code == 200
     assert "max_cut_ratio" not in m.call_args.kwargs and "alpha" not in m.call_args.kwargs
+
+
+def test_admin_segment_endpoint_returns_labels_and_codes():
+    from rfm_segmentation import Segment
+    users = [{"user_id": "1", "recency": 400, "frequency": 0, "monetary": 0},
+             {"user_id": "2", "recency": 2, "frequency": 20, "monetary": 9e6},
+             {"user_id": "3", "recency": 60, "frequency": 3, "monetary": 1e5}]
+    res = client.post("/admin/segment", json={"users": users})
+    assert res.status_code == 200
+    segs = res.json()["segments"]
+    assert [s["user_id"] for s in segs] == ["1", "2", "3"]
+    for s in segs:
+        assert s["label"] in {x.value for x in Segment}
+        assert len(s["rfm"]) == 3 and s["rfm"].isdigit()
+    assert segs[0]["label"] == "LOST"
+
+
+@pytest.mark.parametrize("user", [
+    {"user_id": None, "recency": 1, "frequency": 1, "monetary": 1},
+    {"user_id": "7", "recency": -1, "frequency": 1, "monetary": 1},
+    {"user_id": "abc", "recency": 1, "frequency": 1, "monetary": 1}])
+def test_admin_segment_rejects_bad_users(user):
+    assert client.post("/admin/segment", json={"users": [user]}).status_code == 422
