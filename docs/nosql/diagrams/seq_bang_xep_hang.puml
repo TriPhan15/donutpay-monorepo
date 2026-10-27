@@ -1,0 +1,29 @@
+@startuml seq_bang_xep_hang
+' facts.md 1.2c: SpendingLeaderboardService (topSpenders, rebuildMonth, onTransactionChanged, REFRESH_MEMBER_SCRIPT)
+!include _style.iuml
+skinparam wrapWidth 210
+title Tuần tự bảng xếp hạng chi tiêu tháng (Redis ZSET, PostgreSQL)
+actor "Quản trị viên" as A
+participant "core-api\nSpendingLeaderboardService" as C
+database "Redis" as R
+database "PostgreSQL" as P
+== Đọc: GET /api/admin/leaderboard hoặc /admin/dashboard ==
+A -> C : month, limit
+C -> R : hasKey ledgermind:leaderboard:spend:yyyy-MM
+alt thiếu key
+  C -> P : sumExpensesByUserBetween(đầu tháng, đầu tháng sau)
+  P --> C : (userId, tổng chi)
+  C -> R : ZADD từng member, sau cùng EXPIRE (62 ngày)
+end
+C -> R : ZREVRANGE 0 limit-1 WITHSCORES
+R --> C : userId và score
+C -> P : findAllById(các userId) lấy tên
+P --> C : username
+C --> A : top N
+note over C, R : Redis lỗi khi đọc: trả lời từ PostgreSQL
+== Ghi: sau commit giao dịch (@Async, AFTER_COMMIT) ==
+C -> P : sumExpensesBetween(userId, tháng) - tổng tuyệt đối
+P --> C : tổng chi tháng
+C -> R : Lua REFRESH_MEMBER_SCRIPT: EXISTS key rồi\nZADD tổng tuyệt đối, hoặc ZREM khi tổng <= 0
+note over C, R : Không dùng ZINCRBY; set chưa tồn tại thì không tạo
+@enduml

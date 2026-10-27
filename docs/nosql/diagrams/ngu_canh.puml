@@ -1,0 +1,18 @@
+@startuml ngu_canh
+!pragma layout smetana
+' Sơ đồ ngữ cảnh (facts.md 1.5; AuthService gửi OTP bằng JavaMailSender)
+!include _style.iuml
+title Sơ đồ ngữ cảnh hệ thống LedgerMind
+actor "Người dùng\n(ứng dụng di động)" as U
+actor "Quản trị viên\n(web quản trị)" as A
+rectangle "Hệ thống LedgerMind\n(core-api + PostgreSQL, Redis,\nMongoDB, Elasticsearch)" as S
+rectangle "ai-service\n(DONUT V5)" as AI
+rectangle "Dịch vụ email\n(gửi OTP)" as M
+U --> S : giao dịch, hóa đơn, tìm kiếm,\nthống kê, đặt lại mật khẩu
+S --> U : kết quả, thống kê
+A --> S : duyệt phản hồi OCR, bảng xếp hạng,\nchỉ mục, sao lưu
+S --> A : thống kê, sự kiện realtime (SSE)
+U --> AI : ảnh hóa đơn\n(/donut/scan)
+AI --> U : JSON đọc được
+S --> M : mã OTP
+@enduml

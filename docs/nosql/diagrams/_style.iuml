@@ -1,0 +1,16 @@
+' Kiểu chung cho sơ đồ Chương 2 (đen trắng, Times New Roman)
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam monochrome true
+skinparam dpi 150
+skinparam ActivityBackgroundColor white
+skinparam SwimlaneTitleFontStyle bold
+skinparam ParticipantBackgroundColor white
+skinparam EntityBackgroundColor white
+skinparam ActorBackgroundColor white
+skinparam RectangleBackgroundColor white
+skinparam UsecaseBackgroundColor white
+skinparam SequenceLifeLineBorderColor black
+skinparam ArrowColor black
+skinparam Padding 4

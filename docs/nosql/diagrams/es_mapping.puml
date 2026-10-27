@@ -1,0 +1,31 @@
+@startuml es_mapping
+' Index transactions (R/elasticsearch/transactions-settings.json, transactions-mapping.json; facts.md 1.4)
+!pragma layout smetana
+!include _style.iuml
+hide circle
+skinparam wrapWidth 240
+skinparam ClassAttributeIconSize 0
+title Cấu trúc index Elasticsearch transactions
+class "transactions\n(1 shard, 0 replica; id = transactions.id)" as T <<EsDocument>> {
+  userId : long
+  note : text [vi_folded] + note.autocomplete
+  vendorName : text [vi_folded] + vendorName.autocomplete
+  location : text [vi_folded]
+  paymentMethod : text [vi_folded]
+  categoryName : text [vi_folded] + categoryName.keyword
+  amount : scaled_float (x100)
+  expense : boolean
+  transactionDate : date
+  receiptStatus : keyword
+}
+class "vi_folded" as A1 <<Analyzer>> {
+  tokenizer: standard
+  filter: lowercase, asciifolding
+}
+class "vi_autocomplete" as A2 <<Analyzer>> {
+  như vi_folded + vi_edge
+  vi_edge = edge_ngram 2..15
+}
+T ..> A1 : index và search
+T ..> A2 : index sub-field .autocomplete
+@enduml

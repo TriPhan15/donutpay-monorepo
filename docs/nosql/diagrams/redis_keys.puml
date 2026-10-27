@@ -1,0 +1,38 @@
+@startuml redis_keys
+!pragma layout smetana
+' Khóa Redis (facts.md 1.2)
+!include _style.iuml
+skinparam wrapWidth 480
+title Các khóa và kênh Redis của LedgerMind
+rectangle "Redis 8.10 (một node, không persistence, allkeys-lru)" {
+  rectangle "Cache thống kê (String, JSON, cache-aside)" as A
+  rectangle "OTP quên mật khẩu (Hash)" as B
+  rectangle "Bảng xếp hạng chi tiêu tháng (Sorted Set)" as C
+  rectangle "Sự kiện realtime admin (Pub/Sub, không phải khóa)" as D
+}
+note right of A
+  <prefix>:v1:user-dashboard:<userId> (TTL tối đa 45 s)
+  <prefix>:v1:user-popular-vendors:<userId> (60 s)
+  <prefix>:v1:admin-dashboard-summary:<yyyy-MM>:<ngưỡng> (45 s)
+  <prefix>:v1:admin-statistics:monthly-transactions:<yyyy-MM>:<n> (60 s)
+  <prefix> = ledgermind:<profile>; TTL trừ ngẫu nhiên tới 10 %
+end note
+note right of B
+  ledgermind:password-reset-otp:<email>
+  trường code, expiresAt, failedAttempts
+  hạn 5 phút, sai tối đa 3 lần (Lua nguyên tử)
+end note
+note right of C
+  ledgermind:leaderboard:spend:<yyyy-MM>
+  member = userId, score = tổng chi tháng (tuyệt đối)
+  ghi bằng Lua ZADD/ZREM; TTL 62 ngày
+end note
+note right of D
+  kênh ledgermind:admin-events
+  JSON AdminEvent(type, id, message, at)
+  tin không được lưu
+end note
+A -[hidden]- B
+B -[hidden]- C
+C -[hidden]- D
+@enduml

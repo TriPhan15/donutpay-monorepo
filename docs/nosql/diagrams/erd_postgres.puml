@@ -1,0 +1,78 @@
+@startuml erd_postgres
+' ERD PostgreSQL từ @Entity (J/Entity/*.java; facts.md 1.1)
+!pragma layout smetana
+!include _style.iuml
+hide circle
+skinparam wrapWidth 220
+title ERD PostgreSQL (nguồn sự thật)
+entity users {
+  *id : bigint <<PK>>
+  username, email, phone : varchar <<unique>>
+  role : varchar
+  active : boolean
+  wallet_balance : numeric
+  credentials_version : int
+}
+entity categories {
+  *id : bigint <<PK>>
+  name, type : varchar
+}
+entity transactions {
+  *id : bigint <<PK>>
+  user_id : bigint <<FK>>
+  category_id : bigint <<FK>>
+  receipt_id : bigint <<FK>>
+  amount : numeric
+  transaction_date : timestamp
+  is_expense : boolean
+  category_name, note, location, payment_method : varchar
+  client_id : varchar
+  --
+  unique (user_id, client_id)
+}
+entity receipts {
+  *id : bigint <<PK>>
+  vendor_name : varchar
+  extracted_total : numeric
+  extracted_date : date
+  status : varchar
+  error_code : varchar
+  version : bigint <<@Version>>
+}
+entity receipt_processing_attempts {
+  *id : bigint <<PK>>
+  receipt_id : bigint <<FK>>
+  attempt_number : int
+  status : varchar
+  ai_raw_data : text
+  client_id : varchar
+  created_at, completed_at : timestamp
+}
+entity budgets {
+  *id : bigint <<PK>>
+  user_id : bigint <<FK>>
+  category_id : bigint <<FK>> (null được)
+  amount : numeric
+  period_type : varchar
+  start_date, end_date : date
+}
+entity notifications {
+  *id : bigint <<PK>>
+  user_id : bigint <<FK>>
+  type : varchar
+  message : varchar
+  is_read : boolean
+}
+entity revoked_tokens {
+  *id : bigint <<PK>>
+  token_hash : varchar <<unique>>
+  expires_at, revoked_at : timestamp
+}
+users ||--o{ transactions
+categories ||--o{ transactions
+receipts |o--o| transactions
+receipts ||--o{ receipt_processing_attempts
+users ||--o{ budgets
+categories |o--o{ budgets
+users ||--o{ notifications
+@enduml

@@ -1,0 +1,46 @@
+@startuml uc_tong_quat
+!pragma layout smetana
+' Use case tổng quát (facts.md 2.1)
+!include _style.iuml
+skinparam wrapWidth 230
+title Use case tổng quát (kèm CSDL tham gia)
+actor "Người dùng" as U
+actor "Quản trị viên" as A
+rectangle "Chức năng của người dùng" as RU {
+  usecase "FR-01 Đăng nhập, phân quyền\n[PostgreSQL]" as F1
+  usecase "FR-02 Quên mật khẩu OTP\n[Redis, PostgreSQL]" as F2
+  usecase "FR-03/04 Ghi, sửa, xóa giao dịch\n[PostgreSQL; sau commit Redis, ES]" as F3
+  usecase "FR-05/06 Quét, sửa hóa đơn AI\n[PostgreSQL, MongoDB]" as F5
+  usecase "FR-07 Thống kê trang chủ\n[Redis cache, PostgreSQL]" as F7
+  usecase "FR-08 Tìm kiếm giao dịch\n[Elasticsearch, PostgreSQL]" as F8
+}
+rectangle "Chức năng của quản trị viên" as RA {
+  usecase "FR-09/10 Dashboard, bảng xếp hạng\n[Redis, PostgreSQL]" as F9
+  usecase "FR-11/12/13 Phản hồi, thống kê OCR\n[MongoDB]" as F11
+  usecase "FR-14 Vận hành chỉ mục\n[Elasticsearch, PostgreSQL]" as F14
+  usecase "FR-15 Sao lưu, khôi phục\n[PostgreSQL, MongoDB]" as F15
+  usecase "FR-16 Thông báo realtime\n[Redis Pub/Sub]" as F16
+}
+U --> F1
+U --> F2
+U --> F3
+U --> F5
+U --> F7
+U --> F8
+A --> F9
+A --> F11
+A --> F14
+A --> F15
+A --> F16
+A ..> F1 : (đăng nhập)
+RU -[hidden]right- RA
+F1 -[hidden]- F2
+F2 -[hidden]- F3
+F3 -[hidden]- F5
+F5 -[hidden]- F7
+F7 -[hidden]- F8
+F9 -[hidden]- F11
+F11 -[hidden]- F14
+F14 -[hidden]- F15
+F15 -[hidden]- F16
+@enduml

@@ -1,0 +1,29 @@
+@startuml seq_dong_bo_index
+' facts.md 1.4: TransactionChangedEvent, TransactionSearchIndexer.onTransactionChanged
+!include _style.iuml
+skinparam wrapWidth 210
+title Tuần tự đồng bộ chỉ mục tìm kiếm sau commit
+actor "Ứng dụng" as A
+participant "core-api\nTransactionService" as T
+participant "TransactionSearchIndexer\n(@Async)" as I
+database "PostgreSQL" as P
+database "Elasticsearch" as E
+A -> T : POST /api/transactions/checkout (hoặc PUT, DELETE)
+T -> P : ghi giao dịch
+T -> T : phát TransactionChangedEvent\n(UPSERTED hoặc DELETED)
+T -> P : COMMIT
+T --> A : 200
+== AFTER_COMMIT, luồng mongoAsyncExecutor ==
+T ->> I : onTransactionChanged(event)
+alt kind = UPSERTED
+  I -> P : findForSearchIndex(transactionId)
+  P --> I : giao dịch kèm vendorName của hóa đơn
+  I -> E : save document (id = transactions.id)
+else kind = DELETED
+  I -> E : delete document
+end
+alt ES lỗi hoặc quá hạn
+  I -> I : log cảnh báo; document cũ giữ nguyên\ntới lần đổi sau hoặc reindex
+end
+note over I, E : index_not_found: tạo index từ file rồi ghi lại 1 lần
+@enduml

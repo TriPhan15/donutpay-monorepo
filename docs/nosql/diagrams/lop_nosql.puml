@@ -1,0 +1,69 @@
+@startuml lop_nosql
+' Lớp dịch vụ và cấu trúc dữ liệu NoSQL (facts.md 1.2-1.4)
+!pragma layout smetana
+!include _style.iuml
+hide circle
+skinparam wrapWidth 200
+skinparam ClassAttributeIconSize 0
+left to right direction
+title Sơ đồ lớp: dịch vụ và cấu trúc dữ liệu của PostgreSQL, Redis, MongoDB, Elasticsearch
+class TransactionService
+class ReceiptProcessingService
+class OcrMongoService
+class TransactionSearchIndexer
+class TransactionSearchService
+class SpendingLeaderboardService
+class StatisticsCacheEvictor
+class UserStatisticsService
+class RedisPasswordResetOtpStore
+class AdminEventPublisher
+
+class Transaction <<Table>> {
+  transactions
+}
+class Receipt <<Table>> {
+  receipts
+}
+class ReceiptProcessingAttempt <<Table>> {
+  receipt_processing_attempts
+}
+class OcrRawLog <<Document>> {
+  ocr_logs
+}
+class OcrFeedback <<Document>> {
+  ocr_feedbacks
+}
+class TransactionSearchDocument <<EsDocument>> {
+  index transactions
+}
+class LeaderboardSpend <<RedisKey>> {
+  ledgermind:leaderboard:spend:yyyy-MM (ZSET)
+}
+class StatisticsCache <<RedisKey>> {
+  prefix:v1:cache:key (String JSON)
+}
+class PasswordResetOtp <<RedisKey>> {
+  ledgermind:password-reset-otp:email (Hash)
+}
+class AdminEventsChannel <<RedisKey>> {
+  ledgermind:admin-events (Pub/Sub)
+}
+
+TransactionService --> Transaction : ghi
+ReceiptProcessingService --> Receipt : ghi
+ReceiptProcessingService --> ReceiptProcessingAttempt : ghi
+OcrMongoService --> OcrRawLog : insert
+OcrMongoService --> OcrFeedback : upsert, remove
+OcrMongoService --> AdminEventPublisher
+TransactionSearchIndexer --> TransactionSearchDocument : save, delete
+TransactionSearchIndexer ..> Transaction : đọc lại
+TransactionSearchService --> TransactionSearchDocument : truy vấn
+SpendingLeaderboardService --> LeaderboardSpend : Lua ZADD/ZREM
+SpendingLeaderboardService ..> Transaction : tổng chi
+StatisticsCacheEvictor --> StatisticsCache : DEL
+UserStatisticsService --> StatisticsCache : @Cacheable
+RedisPasswordResetOtpStore --> PasswordResetOtp : Lua
+AdminEventPublisher --> AdminEventsChannel : PUBLISH
+Transaction "1" -- "0..1" Receipt
+Receipt "1" -- "0..*" ReceiptProcessingAttempt
+@enduml

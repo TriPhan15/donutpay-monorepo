@@ -1,0 +1,26 @@
+@startuml uc_quan_tri
+!pragma layout smetana
+' Use case quản trị viên FR-09..FR-16 (facts.md 2.1, 1.5)
+!include _style.iuml
+left to right direction
+title Use case của Quản trị viên
+actor "Quản trị viên" as A
+rectangle "Web quản trị /admin/~*~*" {
+  usecase "Xem dashboard\n[Redis cache + ZSET]" as D
+  usecase "Xem, dựng lại bảng xếp hạng\n[Redis, PostgreSQL]" as B
+  usecase "Duyệt phản hồi OCR\n(lọc, đánh dấu, xóa)\n[MongoDB]" as F
+  usecase "Xem thống kê chất lượng OCR\n[MongoDB]" as S
+  usecase "Xem log OCR thô (REST)\n[MongoDB]" as G
+  usecase "Dựng lại chỉ mục tìm kiếm\n[Elasticsearch, PostgreSQL]" as I
+  usecase "Sao lưu, khôi phục\n[PostgreSQL, MongoDB]" as K
+  usecase "Nhận thông báo realtime\n[Redis Pub/Sub, SSE]" as N
+}
+A --> D
+A --> B
+A --> F
+A --> S
+A --> G
+A --> I
+A --> K
+A --> N
+@enduml
