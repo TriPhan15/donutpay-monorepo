@@ -45,6 +45,7 @@ import vn.edu.huit.finance.core.Exception.TransactionNotFoundException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Repository.ReceiptRepository;
+import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
@@ -85,6 +86,7 @@ class TransactionServiceTest {
     @Mock private ReceiptRepository receiptRepo;
     @Mock private TransactionRepository transactionRepo;
     @Mock private UserRepository userRepo;
+    @Mock private SavingGoalRepository savingGoalRepository;
     @Mock private CategoryRepository categoryRepo;
     @Mock private AuditLogService auditLogService;
     @Mock private CurrentUserProvider currentUserProvider;
@@ -2065,10 +2067,45 @@ class TransactionServiceTest {
     }
 
     @Test
-    void deletingASavingsContributionIsRefusedAndNothingIsDeleted() {
+    void deletingASavingsContributionIsRefusedAndNothingIsDeletedWhileTheOwnerHasAGoal() {
         aliceHasASavingsContribution();
+        when(savingGoalRepository.existsByUserId(ALICE_ID)).thenReturn(true);
 
         assertThrows(SavingsLedgerException.class, () -> service.deleteTransaction(TX_ID));
+
+        verifyNothingWasWritten();
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void aSavingsRowOfAnOwnerWithoutAnyGoalIsDeletedAndTheWalletGetsItBack() {
+        Transaction legacyRow = aliceHasASavingsContribution();
+        when(savingGoalRepository.existsByUserId(ALICE_ID)).thenReturn(false);
+
+        service.deleteTransaction(TX_ID);
+
+        assertMoney("1500000", alice.getWalletBalance());
+        InOrder order = inOrder(entityManager, userRepo, transactionRepo);
+        order.verify(entityManager).find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE);
+        order.verify(userRepo).saveAndFlush(alice);
+        order.verify(transactionRepo).delete(legacyRow);
+    }
+
+    @Test
+    void anOrdinaryDeleteDoesNotLookAtTheSavingsGoals() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+
+        service.deleteTransaction(TX_ID);
+
+        verifyNoInteractions(savingGoalRepository);
+    }
+
+    @Test
+    void updatingASavingsRowStaysRefusedEvenWithoutAnyGoal() {
+        aliceHasASavingsContribution();
+        lenient().when(savingGoalRepository.existsByUserId(ALICE_ID)).thenReturn(false);
+
+        assertThrows(SavingsLedgerException.class, () -> service.updateTransaction(TX_ID, updateAmount("100000")));
 
         verifyNothingWasWritten();
         assertMoney("1000000", alice.getWalletBalance());

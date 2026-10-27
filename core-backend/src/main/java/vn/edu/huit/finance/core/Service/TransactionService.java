@@ -126,6 +126,8 @@ public class TransactionService {
     @Autowired
     private UserRepository userRepo;
     @Autowired
+    private SavingGoalRepository savingGoalRepository;
+    @Autowired
     private CategoryService categoryService;
     @Autowired
     private vn.edu.huit.finance.core.Service.AuditLogService auditLogService;
@@ -166,7 +168,9 @@ public class TransactionService {
 
     /**
      * Same as {@link #createMyTransaction} but may use the "Tiết kiệm" category. Only SavingGoalService calls it, so a
-     * savings movement always goes together with the goal's amount; the generic checkout refuses that category.
+     * savings movement always goes together with the goal's amount; the generic checkout refuses that category. It also
+     * records the refund of a deleted goal (an income in "Thu khác" for the amount the goal held), so the wallet gets
+     * that money back in the same database transaction as the delete.
      */
     @Transactional
     public Map<String, Object> recordSavingsMovement(TransactionRequestDto request) {
@@ -321,12 +325,18 @@ public class TransactionService {
         return TransactionResponseDto.from(saved);
     }
 
-    /** Deletes one of the caller's transactions and gives its effect back to the wallet, all or nothing. */
+    /**
+     * Deletes one of the caller's transactions and gives its effect back to the wallet, all or nothing. A savings
+     * contribution is refused while its owner has any savings goal (the goal holds that money); without any goal it is a
+     * row typed by hand before goals existed, and it is deleted like any other expense.
+     */
     @Transactional
     public void deleteTransaction(Long transactionId) {
         User caller = currentUserProvider.getCurrentUser();
         Transaction transaction = findOwnedTransaction(transactionId, caller.getId());
-        refuseSavingsContribution(transaction, caller.getId());
+        if (SavingsContributions.isContribution(transaction) && savingGoalRepository.existsByUserId(caller.getId())) {
+            refuseSavingsContribution(transaction, caller.getId());
+        }
 
         BigDecimal undo = signedAmount(transaction.getAmount(), transaction.isExpense()).negate();
         User owner = lockWallet(caller);
