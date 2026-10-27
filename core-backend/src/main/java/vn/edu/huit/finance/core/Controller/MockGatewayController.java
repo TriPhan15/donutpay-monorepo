@@ -18,6 +18,7 @@ import vn.edu.huit.finance.core.Service.Payment.PaymentGatewayRegistry;
 import vn.edu.huit.finance.core.Util.HmacUtil;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -157,6 +158,7 @@ public class MockGatewayController {
     }
 
     private static String esc(String value) {
-        return HtmlUtils.htmlEscape(value);
+        // Pages are served as UTF-8: escape only the HTML specials and keep Vietnamese letters readable.
+        return HtmlUtils.htmlEscape(value, StandardCharsets.UTF_8.name());
     }
 }
