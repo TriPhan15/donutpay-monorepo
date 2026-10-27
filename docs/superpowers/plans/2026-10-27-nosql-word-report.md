@@ -32,8 +32,8 @@
 - **Group:** 38.
   - Members: Phan Thanh Trí (2001230977, nhóm trưởng) and Phan Minh Tiến (2001230806).
   - GVHD: Ths. Ngô Minh Anh Thư.
-  - Title: "ỨNG DỤNG MONGODB, REDIS VÀ ELASTICSEARCH TRONG HỆ THỐNG QUẢN LÝ TÀI CHÍNH CÁ NHÂN LEDGERMIND".
-  - Cover date: [Q6].
+  - Title (registered with the GVHD, same as the week-6 SRS cover): "ỨNG DỤNG CƠ SỞ DỮ LIỆU MONGODB VÀ BỘ NHỚ ĐỆM REDIS TRONG VIỆC XÂY DỰNG HỆ THỐNG QUẢN LÝ TÀI CHÍNH CÁ NHÂN". Elasticsearch is presented inside the report as the self-researched DB.
+  - Cover date: "Thành phố Hồ Chí Minh tháng 11 năm 2026".
   - Cover lines as in the SRS: Bộ Công Thương / Trường ĐH Công Thương TP.HCM / Khoa CNTT / "BÁO CÁO MÔN HỌC – DỮ LIỆU NOSQL".
 - **Styles:** use only the thesis style set and never manual formatting: `noidung`, `GachDau1/2`, `Heading1–4` ("CHƯƠNG n:"), `TieuDeKhongSo`, `Caption`/`ChuThichBang` with `SEQ Hình`/`SEQ Bảng \s 1`, `NoiDungBang`, `Hinh`, `TableGrid` 8504 dxa, plus the new monospace `MaNguon`.
 - **Honesty** (spec §2 anti-goals):
@@ -74,7 +74,7 @@
   - The agent commits only after the user's "ok".
   - Never touch the running local compose stack; throwaway containers only.
   - Running core-backend tests follows the backend runbook: system `mvn -o`, a scratchpad `~/.m2` copy, Testcontainers. Never start the app.
-- **Open user answers** (asked before Task 1; recorded in `facts.md` §0):
+- **User answers** (all answered on 2026-10-27, see spec §11; Task 1 copies them into `facts.md` §0). Q1: rubric criterion 10 = 4 × 0.5. Q2/Q4: plan 1b is done (admin pages, Mongo backup UI, realtime). Q3: honest split (Trí: all code; Tiến: real remaining work per `docs/nosql/HUONG_DAN_TIEN.md`). Q5: the `main` branch link, repo private (note collaborator or zip). Q6: tháng 11/2026. Q7: the registered title. Q8: separate demo stack. The questions were:
   - [Q1] official thang điểm / criterion 10;
   - [Q2] realtime;
   - [Q3] real task split, dates, "Phụ trách CSDL", %;
