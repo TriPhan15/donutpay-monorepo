@@ -15,6 +15,7 @@ không tham gia chấm ngũ phân vị, để họ không kéo lệch điểm c�
 """
 
 import math
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Sequence
@@ -62,15 +63,20 @@ def quintile_scores(values: Sequence[float], higher_is_better: bool = True) -> L
         return []
     signed = [v if higher_is_better else -v for v in values]
     scores = []
+    ordered = sorted(signed)
     for v in signed:
-        less = sum(1 for x in signed if x < v)
-        equal = sum(1 for x in signed if x == v)
+        less = bisect_left(ordered, v)
+        equal = bisect_right(ordered, v) - less
         scores.append(min(QUINTILES, 1 + math.floor(QUINTILES * (less + 0.5 * equal) / n)))
     return scores
 
 
 def segment_of(r: int, f: int, m: int) -> Segment:
-    """Luật đầu tiên khớp thắng."""
+    """Luật đầu tiên khớp thắng.
+
+    Lựa chọn thiết kế: Monetary chỉ ảnh hưởng tới CHAMPIONS; các segment còn
+    lại chỉ xét Recency và Frequency.
+    """
     if r >= HIGH_SCORE and f >= HIGH_SCORE and m >= HIGH_SCORE:
         return Segment.CHAMPIONS
     if r >= HIGH_SCORE and f <= LOW_SCORE:

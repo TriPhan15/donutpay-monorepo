@@ -44,6 +44,38 @@ def test_users_without_spending_are_lost_and_not_scored():
     assert [o.user_id for o in out] == ["1", "2", "3"]
 
 
+def test_two_distinct_users():
+    assert quintile_scores([10, 20]) == [2, 4]
+
+
+def _brute_force(values, higher_is_better=True):
+    import math
+    n = len(values)
+    s = [v if higher_is_better else -v for v in values]
+    return [min(5, 1 + math.floor(5 * (sum(x < v for x in s) + 0.5 * sum(x == v for x in s)) / n))
+            for v in s]
+
+
+@pytest.mark.parametrize("higher", [True, False])
+def test_matches_brute_force_with_many_ties(higher):
+    import random
+    rng = random.Random(42)
+    values = [rng.randint(0, 12) for _ in range(400)]
+    assert quintile_scores(values, higher) == _brute_force(values, higher)
+
+
+def test_twenty_thousand_users_are_fast():
+    import random
+    import time
+    rng = random.Random(7)
+    users = [RfmInput(str(i), rng.randint(0, 365), rng.randint(1, 500), rng.random() * 1e8)
+             for i in range(20_000)]
+    start = time.perf_counter()
+    out = segment_users(users)
+    assert time.perf_counter() - start < 2.0
+    assert len(out) == 20_000
+
+
 def test_lost_users_do_not_shift_other_scores():
     base = segment_users([RfmInput("2", 3, 9, 5e6), RfmInput("3", 90, 2, 1e5)])
     with_lost = segment_users([RfmInput("1", 366, 0, 0.0), RfmInput("2", 3, 9, 5e6),
