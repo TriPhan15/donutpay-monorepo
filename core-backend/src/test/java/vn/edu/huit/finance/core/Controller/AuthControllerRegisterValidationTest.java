@@ -62,9 +62,18 @@ class AuthControllerRegisterValidationTest {
     }
 
     @Test
+    void usernameDifferingFromEmailOnlyByCase_isRefusedWith400() throws Exception {
+        mockMvc.perform(register("Victim@x.com", "victim@x.com"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("@")));
+
+        verify(authService, never()).register(any());
+    }
+
+    @Test
     void usernameEqualToOwnEmail_isAccepted() throws Exception {
         // What the mobile app sends: username == email.
-        mockMvc.perform(register("Newbie@x.com", "newbie@x.com"))
+        mockMvc.perform(register("newbie@x.com", "newbie@x.com"))
                 .andExpect(status().isOk());
 
         verify(authService).register(any());

@@ -279,6 +279,18 @@ class UserServiceRoleTest {
     }
 
     @Test
+    void anOwnerSendingTheirEmailInOtherCaseLeavesTheStoredEmailUnchanged() {
+        User alice = whenLoaded(user("ROLE_USER", true));
+        UserUpdateDto dto = new UserUpdateDto();
+        dto.setEmail("ALICE@example.com");
+
+        User saved = service.updateOwnProfile(ID, dto);
+
+        assertEquals("alice@example.com", saved.getEmail());
+        assertEquals("alice@example.com", alice.getEmail());
+    }
+
+    @Test
     void theAdministratorPathAndTheSelfServicePathShareTheFieldRules() {
         User alice = whenLoaded(user("ROLE_USER", true));
         UserUpdateDto blanks = new UserUpdateDto();

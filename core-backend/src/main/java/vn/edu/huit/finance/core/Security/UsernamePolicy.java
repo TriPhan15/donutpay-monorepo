@@ -14,11 +14,15 @@ public final class UsernamePolicy {
     private UsernamePolicy() {
     }
 
-    /** True khi tên đăng nhập không chứa @, hoặc trùng với email của chính tài khoản (không phân biệt hoa thường). */
+    /**
+     * True khi tên đăng nhập không chứa @, hoặc trùng đúng từng ký tự với email của chính tài khoản. Cố ý phân biệt
+     * hoa thường: tính duy nhất của users.email cũng phân biệt hoa thường, nên so sánh không phân biệt sẽ cho
+     * "VICTIM@x.com" chiếm tên đăng nhập "victim@x.com".
+     */
     public static boolean isAllowed(String username, String email) {
         if (username == null || !username.contains(AT_SIGN)) {
             return true;
         }
-        return email != null && username.equalsIgnoreCase(email);
+        return email != null && username.equals(email);
     }
 }

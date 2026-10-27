@@ -157,6 +157,8 @@ class MockGatewayControllerTest {
                 .param("orderCode", ORDER).param("amount", AMOUNT).param("provider", PROVIDER)
                 .param("sign", SIGN).param("result", "success"));
 
+        res.andExpect(status().isBadGateway());
         assertFalse(body(res).contains("secret-host"));
+        assertTrue(body(res).contains("Không gọi được webhook, vui lòng thử lại sau"));
     }
 }

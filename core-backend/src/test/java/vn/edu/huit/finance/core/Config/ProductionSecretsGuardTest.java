@@ -15,6 +15,8 @@ class ProductionSecretsGuardTest {
             "cloudinary.api-key=x3",
             "cloudinary.api-secret=x4",
             "payment.secret=x5",
+            "payment.vnpay.secret=x8",
+            "payment.zalopay.secret=x9",
             "app.jwt.secret=x6"
     };
 
@@ -22,6 +24,14 @@ class ProductionSecretsGuardTest {
         return new ApplicationContextRunner()
                 .withInitializer(context -> context.getEnvironment().setActiveProfiles(profile))
                 .withUserConfiguration(ProductionSecretsGuard.class);
+    }
+
+    private static String rootMessage(Throwable failure) {
+        Throwable root = failure;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        return root.getMessage();
     }
 
     @Test
@@ -35,6 +45,24 @@ class ProductionSecretsGuardTest {
             }
             assertThat(messages.toString()).contains("payment.secret").doesNotContain("x1", "x2", "x3", "x4", "x6");
         });
+    }
+
+    @Test
+    void prodWithMockGatewayEnabledAndEmptyVnpaySecret_failsNamingIt() {
+        runner("prod").withPropertyValues(ALL_SECRETS)
+                .withPropertyValues("payment.mock-gateway.enabled=true", "payment.vnpay.secret=").run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(rootMessage(context.getStartupFailure())).contains("payment.vnpay.secret")
+                            .doesNotContain("x8", "x9");
+                });
+    }
+
+    @Test
+    void prodWithMockGatewayDisabled_doesNotRequireVnpayAndZalopaySecrets() {
+        runner("prod").withPropertyValues(ALL_SECRETS)
+                .withPropertyValues("payment.mock-gateway.enabled=false", "payment.vnpay.secret=",
+                        "payment.zalopay.secret=")
+                .run(context -> assertThat(context).hasNotFailed());
     }
 
     @Test

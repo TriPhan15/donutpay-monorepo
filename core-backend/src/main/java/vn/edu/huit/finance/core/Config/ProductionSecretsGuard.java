@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,11 +33,19 @@ public class ProductionSecretsGuard {
             "payment.secret",
             JWT_SECRET_PROPERTY);
 
+    /** Khi cổng thanh toán giả lập bật (mặc định bật) thì hai khóa ký này cũng bắt buộc. */
+    static final String MOCK_GATEWAY_ENABLED_PROPERTY = "payment.mock-gateway.enabled";
+    static final List<String> MOCK_GATEWAY_PROPERTIES = List.of("payment.vnpay.secret", "payment.zalopay.secret");
+
     private final Environment environment;
 
     @PostConstruct
     void verify() {
-        List<String> missing = REQUIRED_PROPERTIES.stream().filter(this::isBlank).toList();
+        List<String> missing = new ArrayList<>(REQUIRED_PROPERTIES.stream().filter(this::isBlank).toList());
+        if (environment.getProperty(MOCK_GATEWAY_ENABLED_PROPERTY, Boolean.class, true)) {
+            // Cổng giả lập ký bằng HMAC: khóa rỗng làm HmacUtil ném "Empty key" nên đơn VNPay/ZaloPay trả 500.
+            missing.addAll(MOCK_GATEWAY_PROPERTIES.stream().filter(this::isBlank).toList());
+        }
         if (!missing.isEmpty()) {
             log.error("Profile prod thiếu cấu hình bắt buộc: {}", missing);
             throw new IllegalStateException("Profile prod thiếu secret bắt buộc (điền trong .env): " + missing);

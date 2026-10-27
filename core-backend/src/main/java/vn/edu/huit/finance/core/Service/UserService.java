@@ -114,7 +114,8 @@ public class UserService {
             addIfChanged(changedFields, AUDIT_FIELD_PHONE, user.getPhone(), dto.getPhone());
             user.setPhone(dto.getPhone());
         }
-        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+        // Đường tự sửa hồ sơ: email không đổi theo định nghĩa (đã kiểm ở trên), không ghi lại để khỏi đổi kiểu chữ của subject JWT.
+        if (mayChangeRole && dto.getEmail() != null && !dto.getEmail().isBlank()) {
             addIfChanged(changedFields, AUDIT_FIELD_EMAIL, user.getEmail(), dto.getEmail());
             user.setEmail(dto.getEmail());
         }

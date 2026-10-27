@@ -202,8 +202,9 @@ public class AuthService {
 
     /**
      * Mails a new OTP when the email has an account, and answers the same way when it has none (the controller's text
-     * does not say which): the request limit runs first, for known and unknown emails alike, so neither the answer nor
-     * its timing shows whether the email is registered. Re-requesting cannot be used to guess the code either: the limit
+     * does not say which): the request limit runs first, for known and unknown emails alike, so neither the answer
+     * text nor the request limit depends on whether the email is registered. The mail is sent synchronously, so the
+     * response time can still differ (known gap). Re-requesting cannot be used to guess the code either: the limit
      * is what bounds how many fresh codes (each with its own 3 guesses) an email can get.
      */
     public void generateAndSendOtp(String email) {
