@@ -87,6 +87,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
+    // 401 with a fixed text: the reason (wrong app, unverified email...) stays in the service log.
+    @ExceptionHandler(SocialLoginRejectedException.class)
+    public Object handleSocialLoginRejected(SocialLoginRejectedException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
     // 409: another request changed the password first; nothing was written, so trying again is safe.
     @ExceptionHandler(CredentialsChangeConflictException.class)
     public Object handleCredentialsChangeConflict(CredentialsChangeConflictException ex, HttpServletRequest request) {

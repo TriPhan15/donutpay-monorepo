@@ -19,6 +19,7 @@ import vn.edu.huit.finance.core.Dto.ResetPasswordRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.InvalidTokenException;
+import vn.edu.huit.finance.core.Exception.SocialLoginRejectedException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.BearerToken;
@@ -208,7 +209,7 @@ public class AuthController {
             // The provider's token is opaque: nobody is named, only the provider (when it is one the server supports).
             publishLoginRefusal(AuditAction.AUTH_LOGIN_FAILED, null,
                     String.format(AUDIT_SOCIAL_LOGIN_FAILED, providerName(req.get("provider"))));
-            return ResponseEntity.status(401).body(java.util.Map.of("message", "Lỗi xác thực: " + e.getMessage()));
+            return ResponseEntity.status(401).body(java.util.Map.of("message", SocialLoginRejectedException.MESSAGE));
         }
     }
 
