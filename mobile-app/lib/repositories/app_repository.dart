@@ -141,25 +141,21 @@ class AppRepository {
   }
 
   Future<UserModel?> getCurrentUser(int userId) async {
-    final me = await RemoteApiHelper.instance.fetchMe();
-    final email = (me['email'] ?? '').toString();
-    return UserModel(
-      id: (me['id'] as num?)?.toInt(),
-      email: email,
-      password: '',
-      fullName: displayNameOf(me),
-      phone: me['phone']?.toString(),
-    );
+    return _userOf(await RemoteApiHelper.instance.fetchMe());
   }
 
-  Future<List<WalletModel>> getWallets(int userId) async {
-    final txs = await getTransactions(userId);
-    final bal = txs.fold<double>(
-      0.0,
-      (s, t) => s + (t.isExpense ? -t.amount : t.amount),
-    );
-    return [_mainWallet(bal, userId)];
-  }
+  static UserModel _userOf(Map<String, dynamic> me) => UserModel(
+    id: (me['id'] as num?)?.toInt(),
+    email: (me['email'] ?? '').toString(),
+    password: '',
+    fullName: displayNameOf(me),
+    phone: me['phone']?.toString(),
+  );
+
+  /// The balance the server keeps for the user (/api/users/me), 0 when it does not send one.
+  @visibleForTesting
+  static double walletBalanceOf(Map<String, dynamic> me) =>
+      (me['walletBalance'] as num?)?.toDouble() ?? 0;
 
   /// The single wallet of the user, named in the language the app shows.
   static WalletModel _mainWallet(double balance, int userId) => WalletModel(
@@ -168,22 +164,35 @@ class AppRepository {
     userId: userId,
   );
 
+  /// Keys of the map [getHomeSummary] returns.
+  static const String summaryUser = 'user';
+  static const String summaryTransactions = 'transactions';
+  static const String summaryWallets = 'wallets';
+
+  /// The signed total (income plus, expense minus) of the transactions that wait on this device: the server balance
+  /// does not include them yet.
+  static const String summaryPendingWalletChange = 'pendingWalletChange';
+
+  /// The user, the transactions and the wallet in one round trip each: /me once and /mine once. The wallet carries the
+  /// balance of the server; what still waits on the device is reported apart in [summaryPendingWalletChange].
   Future<Map<String, dynamic>> getHomeSummary(int userId) async {
-    final results = await Future.wait([
-      getCurrentUser(userId),
+    final results = await Future.wait<Object>([
+      RemoteApiHelper.instance.fetchMe(),
       getTransactions(userId),
     ]);
 
-    final user = results[0] as UserModel?;
+    final me = results[0] as Map<String, dynamic>;
     final txs = results[1] as List<TransactionModel>;
+    final pending = txs
+        .where((t) => t.isUnsynced)
+        .fold<double>(0.0, (s, t) => s + (t.isExpense ? -t.amount : t.amount));
 
-    final bal = txs.fold<double>(
-      0.0,
-      (s, t) => s + (t.isExpense ? -t.amount : t.amount),
-    );
-    final wallets = [_mainWallet(bal, userId)];
-
-    return {'user': user, 'transactions': txs, 'wallets': wallets};
+    return {
+      summaryUser: _userOf(me),
+      summaryTransactions: txs,
+      summaryWallets: [_mainWallet(walletBalanceOf(me), userId)],
+      summaryPendingWalletChange: pending,
+    };
   }
 
   /// Saves a new transaction made on this device and returns where it ended up.

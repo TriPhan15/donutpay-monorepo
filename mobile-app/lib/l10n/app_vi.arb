@@ -448,6 +448,7 @@
   "budgetCategoriesLoadFailedMessage": "Bạn vẫn có thể chọn \"{allLabel}\" hoặc thử lại sau.",
   "dashboardGreeting": "Xin chào,",
   "dashboardBalance": "Số dư hiện tại",
+  "dashboardPendingNotInBalance": "Chưa tính {amount} của giao dịch đang chờ gửi",
   "dashboardVsLastMonth": "so với tháng trước",
   "dashboardNoTransactions": "Chưa có giao dịch nào.",
   "moneySourcesSubtitle": "Các ví đã liên kết với tài khoản",

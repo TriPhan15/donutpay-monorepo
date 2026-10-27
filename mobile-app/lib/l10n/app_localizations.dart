@@ -2796,6 +2796,12 @@ abstract class AppLocalizations {
   /// **'Current balance'**
   String get dashboardBalance;
 
+  /// Note under the balance: the signed total of the transactions still waiting to be sent, which the balance does not include.
+  ///
+  /// In en, this message translates to:
+  /// **'Excludes {amount} from transactions waiting to be sent'**
+  String dashboardPendingNotInBalance(String amount);
+
   /// After the percentage change of the month.
   ///
   /// In en, this message translates to:

@@ -2020,6 +2020,15 @@
   "@dashboardBalance": {
     "description": "Label of the balance card."
   },
+  "dashboardPendingNotInBalance": "Excludes {amount} from transactions waiting to be sent",
+  "@dashboardPendingNotInBalance": {
+    "description": "Note under the balance: the signed total of the transactions still waiting to be sent, which the balance does not include.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardVsLastMonth": "vs. last month",
   "@dashboardVsLastMonth": {
     "description": "After the percentage change of the month."

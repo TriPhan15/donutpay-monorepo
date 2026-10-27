@@ -8,6 +8,7 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/user_model.dart';
+import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -64,6 +65,7 @@ class DashboardPageState extends State<DashboardPage>
 
   /// Σ income − Σ expense of every transaction, so it can be negative.
   double _currentBalance = 0;
+  double _pendingBalanceChange = 0;
   double _monthlyIncome = 0;
   double _monthlyExpense = 0;
   double _prevMonthlyIncome = 0;
@@ -118,13 +120,18 @@ class DashboardPageState extends State<DashboardPage>
 
       if (!mounted || request != _loadRequest) return;
 
-      final List<TransactionModel> txs = summary['transactions'];
+      final List<TransactionModel> txs =
+          summary[AppRepository.summaryTransactions];
+      final wallets =
+          summary[AppRepository.summaryWallets] as List<WalletModel>;
+      final balance = wallets.fold<double>(0.0, (s, w) => s + w.balance);
+      final pendingChange =
+          summary[AppRepository.summaryPendingWalletChange] as double;
 
-      double balance = 0, mInc = 0, mExp = 0, pInc = 0, pExp = 0;
+      double mInc = 0, mExp = 0, pInc = 0, pExp = 0;
 
       for (var tx in txs) {
         if (tx.isExpense) {
-          balance -= tx.amount;
           if (tx.countsAsSpending &&
               tx.date.year == now.year &&
               tx.date.month == now.month) {
@@ -136,7 +143,6 @@ class DashboardPageState extends State<DashboardPage>
             pExp += tx.amount;
           }
         } else {
-          balance += tx.amount;
           if (tx.date.year == now.year && tx.date.month == now.month) {
             mInc += tx.amount;
           }
@@ -154,11 +160,12 @@ class DashboardPageState extends State<DashboardPage>
               ..sort((a, b) => b.percent.compareTo(a.percent)));
 
       setState(() {
-        _user = summary['user'];
+        _user = summary[AppRepository.summaryUser];
         _budgetProgress = budgetProgress;
         _budgetsFailed = budgets == null;
 
         _currentBalance = balance;
+        _pendingBalanceChange = pendingChange;
         _monthlyIncome = mInc;
         _monthlyExpense = mExp;
         _prevMonthlyIncome = pInc;
@@ -579,9 +586,28 @@ class DashboardPageState extends State<DashboardPage>
               ),
             ),
           ),
+          if (_pendingBalanceChange != 0) _buildPendingNote(),
           const SizedBox(height: 16),
           _buildTrendCapsule(),
         ],
+      ),
+    );
+  }
+
+  /// Under the balance: the amount of the transactions still waiting to be sent, which the balance does not include.
+  Widget _buildPendingNote() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        _balanceHidden
+            ? '••••••••'
+            : context.loc.dashboardPendingNotInBalance(
+                _formatCurrency(_pendingBalanceChange),
+              ),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: 12,
+        ),
       ),
     );
   }

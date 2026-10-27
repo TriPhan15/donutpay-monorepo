@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 
@@ -796,6 +797,88 @@ void main() {
         );
         expect(store.rows, isEmpty);
       });
+    });
+  });
+
+  group('getHomeSummary', () {
+    Map<String, Object?> income(num amount) => {
+      'id': 1,
+      'title': 'Lương',
+      'amount': amount,
+      'date': DateTime(2026, 9, 1).toIso8601String(),
+      'category': 'Lương',
+      'isExpense': false,
+    };
+
+    void serverHas({num walletBalance = 750000}) {
+      backend.on(
+        'GET',
+        '/api/users/me',
+        (_) => okResponse({
+          'id': 1,
+          'email': 'a@x.com',
+          'walletBalance': walletBalance,
+        }),
+      );
+      backend.on('GET', _mine, (_) => okResponse([income(1000000)]));
+    }
+
+    test(
+      'the wallet is the balance the server keeps, not a sum of the list',
+      () async {
+        serverHas();
+
+        final s = await AppRepository.instance.getHomeSummary(_userId);
+
+        expect(
+          (s[AppRepository.summaryWallets] as List<WalletModel>).single.balance,
+          750000,
+        );
+      },
+    );
+
+    test(
+      'waiting transactions are reported apart, not added to the balance',
+      () async {
+        serverHas();
+        await store.insertTransaction(
+          _draft().withSyncStatus(SyncStatus.pending),
+          _userId,
+        );
+
+        final s = await AppRepository.instance.getHomeSummary(_userId);
+
+        expect(s[AppRepository.summaryPendingWalletChange], -45000);
+        expect(
+          (s[AppRepository.summaryWallets] as List<WalletModel>).single.balance,
+          750000,
+        );
+      },
+    );
+
+    test('nothing is pending when everything reached the server', () async {
+      serverHas();
+
+      final s = await AppRepository.instance.getHomeSummary(_userId);
+
+      expect(s[AppRepository.summaryPendingWalletChange], 0);
+    });
+
+    test('the summary asks for /mine and /me once each', () async {
+      serverHas();
+
+      await AppRepository.instance.getHomeSummary(_userId);
+
+      expect(backend.calls.where((c) => c == 'GET $_mine'), hasLength(1));
+      expect(
+        backend.calls.where((c) => c == 'GET /api/users/me'),
+        hasLength(1),
+      );
+    });
+
+    test('walletBalanceOf reads the field, 0 when it is missing', () {
+      expect(AppRepository.walletBalanceOf({'walletBalance': 12.5}), 12.5);
+      expect(AppRepository.walletBalanceOf({}), 0);
     });
   });
 }

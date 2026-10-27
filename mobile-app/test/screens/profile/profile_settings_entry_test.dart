@@ -109,4 +109,17 @@ void main() {
       expect(find.byType(SettingsScreen), findsOneWidget);
     },
   );
+
+  testWidgets('the profile loads /mine once per reload', (tester) async {
+    await pumpProfile(tester, FakeSettingsRepository());
+
+    expect(
+      backend.calls.where((c) => c == 'GET /api/transactions/mine'),
+      hasLength(1),
+    );
+    expect(
+      backend.calls.where((c) => c == 'GET /api/users/me'),
+      hasLength(1),
+    );
+  });
 }

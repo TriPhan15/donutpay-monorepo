@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1506,6 +1507,11 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get dashboardBalance => 'Số dư hiện tại';
+
+  @override
+  String dashboardPendingNotInBalance(String amount) {
+    return 'Chưa tính $amount của giao dịch đang chờ gửi';
+  }
 
   @override
   String get dashboardVsLastMonth => 'so với tháng trước';
