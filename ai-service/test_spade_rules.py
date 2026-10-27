@@ -18,6 +18,7 @@ from wcm_spade import (
     MIN_ANTECEDENT_SUPPORT,
     MIN_LAPLACE_CONFIDENCE,
     MIN_LIFT,
+    RULE_MIN_SUPPORT,
     SequentialRule,
     WCMSpade,
     sequential_rules,
@@ -175,7 +176,70 @@ def test_rule_lists_supporting_sequences():
     assert rule.sids == tuple(A_THEN_B_WEEKS)
 
 
-def test_rule_with_missing_side_support_is_skipped():
-    res = _planted_result()
-    res.explored.pop((("A",),))
-    assert _rule_or_none(sequential_rules(res), ("A",), ("B",)) is None
+def test_rule_min_support_is_the_smallest_count_passing_laplace():
+    assert RULE_MIN_SUPPORT == 3
+    assert (RULE_MIN_SUPPORT + 1) / (MIN_ANTECEDENT_SUPPORT + 2) >= MIN_LAPLACE_CONFIDENCE
+    assert RULE_MIN_SUPPORT / (MIN_ANTECEDENT_SUPPORT + 2) < MIN_LAPLACE_CONFIDENCE
+
+
+def test_planted_data_yields_exactly_a_then_b():
+    pairs = {(r.antecedent, r.consequent) for r in sequential_rules(_planted_result())}
+    assert pairs == {(("A",), ("B",))}
+
+
+def _sparse_rule_weeks() -> List[Week]:
+    """26 tuần; A ở 8 tuần, B sau A ở 6 tuần trong đó; B không ở đâu khác; X mọi tuần."""
+    weeks: List[Week] = []
+    for week in range(N_WEEKS):
+        if week < 6:
+            weeks.append([("A", "X"), ("B",)])
+        elif week < 8:
+            weeks.append([("A", "X")])
+        else:
+            weeks.append([("X",)])
+    return weeks
+
+
+def test_rule_below_weighted_raw_bound_is_still_found():
+    res = WCMSpade(min_sup=0.25).mine(_sparse_rule_weeks(), {"A": 1.0, "B": 1.0, "X": 1.0})
+    assert res.raw_bound == 7   # mẫu A→B (6 tuần) không được khai phá
+    assert (("A",), ("B",)) not in res.explored
+    rule = _rule(sequential_rules(res), ("A",), ("B",))
+    assert (rule.support, rule.antecedent_support, rule.consequent_support) == (6, 8, 6)
+    assert rule.laplace_confidence == pytest.approx(7 / 10)
+    assert rule.lift == pytest.approx((6 / 8) / (6 / 26))
+
+
+def test_heavy_unrelated_category_does_not_change_rules():
+    def rule_set(weeks: List[Week], totals: Dict[str, float]):
+        res = WCMSpade(min_sup=0.25).mine(weeks, totals)
+        return res, [(r.antecedent, r.consequent, r.support, r.antecedent_support)
+                     for r in sequential_rules(res)]
+
+    equal = _sparse_rule_weeks()
+    heavy = [list(week) for week in equal]
+    heavy[25] = heavy[25] + [("R",)]
+    _, base = rule_set(equal, {"A": 1.0, "B": 1.0, "X": 1.0})
+    res, with_heavy = rule_set(heavy, {"A": 1.0, "B": 1.0, "X": 1.0, "R": 50.0})
+    assert res.raw_bound < 7   # trọng số của R đổi ngưỡng tỉa mẫu...
+    assert with_heavy == base == [(("A",), ("B",), 6, 8)]   # ...nhưng không đổi luật
+
+
+def test_rule_with_larger_antecedent_and_no_better_laplace_is_dropped():
+    # {A,X}⇒B 10/10 (Laplace 11/12) kém A⇒B 12/12 (13/14) và bằng X⇒B 10/10.
+    seqs = [[("A", "X"), ("B",)]] * 10 + [[("A",), ("B",)]] * 2 + [[("Z",)]] * 14
+    totals = {"A": 1.0, "B": 1.0, "X": 1.0, "Z": 1.0}
+    rules = sequential_rules(WCMSpade(min_sup=0.2).mine(seqs, totals))
+    assert _rule(rules, ("A",), ("B",)) and _rule(rules, ("X",), ("B",))
+    assert _rule_or_none(rules, ("A", "X"), ("B",)) is None
+
+
+def test_rule_with_larger_antecedent_and_better_laplace_is_kept():
+    # A⇒B và X⇒B đều 10/16; {A,X}⇒B 10/10 tốt hơn nên được giữ.
+    seqs = ([[("A", "X"), ("B",)]] * 10 + [[("A",)]] * 6 + [[("X",)]] * 6
+            + [[("Z",)]] * 4)
+    totals = {"A": 1.0, "B": 1.0, "X": 1.0, "Z": 1.0}
+    rules = sequential_rules(WCMSpade(min_sup=0.2).mine(seqs, totals))
+    combined = _rule(rules, ("A", "X"), ("B",))
+    assert combined.laplace_confidence == pytest.approx(11 / 12)
+    assert _rule(rules, ("A",), ("B",)).laplace_confidence == pytest.approx(11 / 18)

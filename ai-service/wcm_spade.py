@@ -1,19 +1,22 @@
 """WCM-SPADE: khai phá mẫu tuần tự có trọng số trên chuỗi chi tiêu theo tuần.
 
 Thành phần:
-- CM-SPADE (Fournier-Viger et al. 2014): SPADE id-list dọc + CMAP (bản đồ đồng
-  xuất hiện) để tỉa ứng viên trước khi nối id-list. CMAP ở đây giữ cả cặp a→a và
-  so với ngưỡng support thô ``raw_bound``.
+- CM-SPADE (Fournier-Viger et al. 2014, CHƯA KIỂM CHỨNG): SPADE id-list dọc +
+  CMAP (bản đồ đồng xuất hiện) để tỉa ứng viên trước khi nối id-list. CMAP ở đây
+  giữ cả cặp a→a và so với ngưỡng support thô ``raw_bound``.
 - Weighted support kiểu WSpan (Yun & Leggett 2006): trọng số mẫu = trung bình
   trọng số item; tỉa bằng cận trên ``support × maxW``. Công thức MaxW CHƯA KIỂM
   CHỨNG trong bài gốc.
-- Lọc closed (BIDE, Wang & Han 2004): ẩn mẫu khi có mẫu cha được hiện với cùng
-  support thô.
-- Luật tuần tự A ⇒ B (``sequential_rules``): confidence, Laplace, lift trên các
-  mẫu 2 itemset đã khai phá; xem ghi chú phương pháp trong docstring của hàm.
+- Lọc closed: hậu lọc theo tinh thần khai phá mẫu đóng (closed pattern mining,
+  vd. BIDE, Wang & Han 2004, CHƯA KIỂM CHỨNG), không phải thuật toán BIDE: ẩn mẫu
+  khi có mẫu cha được hiện với cùng support thô.
+- Luật tuần tự A ⇒ B (``sequential_rules``): đếm lại trên id-list thô, KHÔNG
+  phụ thuộc trọng số hay ``raw_bound``; confidence, Laplace, lift; xem ghi chú
+  phương pháp trong docstring của hàm.
 
-Mỗi chuỗi là một tuần ISO (danh sách itemset theo ngày). Đây là xấp xỉ WINEPI với
-cửa sổ tumbling 7 ngày (Mannila et al. 1997).
+Mỗi chuỗi là một tuần ISO (danh sách itemset theo ngày). Chia theo tuần là một xấp
+xỉ lấy cảm hứng từ khai phá episode theo cửa sổ (window-based episode mining,
+Mannila et al. 1997, CHƯA KIỂM CHỨNG), không phải cài đặt WINEPI.
 
 Trọng số item: ``w(i) = m · total(i) / Σ total`` (tỷ trọng chi tiêu chia cho tỷ
 trọng trung bình, m = số item có mặt), nên trung bình trọng số bằng 1.
@@ -24,7 +27,7 @@ from __future__ import annotations
 import logging
 import math
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
 
 logger = logging.getLogger(__name__)
@@ -74,6 +77,9 @@ class WCMSpadeResult:
     item_weights: Dict[Item, float]
     # True khi max_patterns cắt DFS lúc còn mẫu đạt raw_bound chưa được ghi.
     truncated: bool = False
+    # id-list thô của MỌI item (không tỉa theo trọng số): nguồn của ``sequential_rules``.
+    item_idlists: Dict[Item, IDList] = field(default_factory=dict)
+    max_pattern_length: int = DEFAULT_MAX_PATTERN_LENGTH
 
 
 def item_weights_from_totals(
@@ -141,6 +147,7 @@ class WCMSpade:
         self._cmap_i: Dict[Item, Dict[Item, int]] = {}
         self._explored: Dict[PatternKey, Pattern] = {}
         self._truncated = False
+        self._all_idlists: Dict[Item, IDList] = {}
 
     # ---- chuẩn bị dữ liệu ----
 
@@ -287,6 +294,7 @@ class WCMSpade:
             MIN_RAW_BOUND, math.ceil(self._min_wsup / max_weight - FLOAT_TOLERANCE)
         )
 
+        self._all_idlists = all_idlists
         if self._n_sequences == 0:
             return self._result([], max_weight)
 
@@ -323,12 +331,16 @@ class WCMSpade:
             max_weight=max_weight,
             item_weights=dict(self._item_weights),
             truncated=self._truncated,
+            item_idlists={item: dict(by_sid) for item, by_sid in self._all_idlists.items()},
+            max_pattern_length=self.max_pattern_length,
         )
 
 
 # ---- luật tuần tự A ⇒ B ----
 
-RULE_ITEMSET_COUNT: int = 2
+# Support thô tối thiểu của itemset/luật khi sinh luật (không trọng số): k nhỏ nhất
+# qua được Laplace (k + 1) / (sup(A) + 2) ≥ 0,6 với sup(A) = 4.
+RULE_MIN_SUPPORT: int = 3
 
 
 @dataclass(frozen=True)
@@ -356,26 +368,74 @@ class SequentialRule:
         return self.confidence / (self.consequent_support / self.n_sequences)
 
 
+def _frequent_itemsets(
+    item_idlists: Mapping[Item, IDList], max_size: int, min_support: int
+) -> Dict[Itemset, IDList]:
+    """Itemset (cùng ngày) có support thô ≥ ``min_support``, kèm id-list, không trọng số."""
+    singles = {
+        (item,): item_idlists[item]
+        for item in sorted(item_idlists)
+        if len(item_idlists[item]) >= min_support
+    }
+    found: Dict[Itemset, IDList] = dict(singles)
+    level = dict(singles)
+    for _ in range(2, max_size + 1):
+        next_level: Dict[Itemset, IDList] = {}
+        for itemset, idlist in level.items():
+            for (item,), item_idlist in singles.items():
+                if item <= itemset[-1]:
+                    continue
+                joined = WCMSpade._i_extend(idlist, item_idlist)
+                if len(joined) >= min_support:
+                    next_level[itemset + (item,)] = joined
+        found.update(next_level)
+        level = next_level
+    return found
+
+
+def _dominated(rule: SequentialRule, rules: List[SequentialRule]) -> bool:
+    """Có luật A' ⇒ B với A' ⊊ A và Laplace ≥ Laplace của ``rule``."""
+    antecedent = set(rule.antecedent)
+    return any(
+        other.consequent == rule.consequent
+        and set(other.antecedent) < antecedent
+        and other.laplace_confidence >= rule.laplace_confidence - FLOAT_TOLERANCE
+        for other in rules
+    )
+
+
 def sequential_rules(
     result: WCMSpadeResult,
     min_antecedent_support: int = MIN_ANTECEDENT_SUPPORT,
     min_laplace_confidence: float = MIN_LAPLACE_CONFIDENCE,
     min_lift: float = MIN_LIFT,
 ) -> List[SequentialRule]:
-    """Sinh luật A ⇒ B từ các mẫu đúng 2 itemset ``(A, B)`` trong ``result.explored``.
+    """Sinh luật A ⇒ B (A, B là itemset cùng ngày, A ∩ B = ∅) từ id-list thô.
 
-    Chỉ nhận A ∩ B = ∅ (mẫu a→a là mẫu, không phải luật). ``antecedent_support`` và
-    ``consequent_support`` tra ở ``explored[(A,)]`` / ``explored[(B,)]``; thiếu thì
-    bỏ luật đó. Giữ luật có sup(A) ≥ ``min_antecedent_support``, Laplace ≥
-    ``min_laplace_confidence`` và lift ≥ ``min_lift``; xếp theo (Laplace giảm, lift
-    giảm, support giảm, A, B).
+    Luật KHÔNG lấy từ ``result.explored``: các mẫu ở đó bị tỉa theo ``raw_bound``,
+    tức phụ thuộc trọng số chi tiêu, nên một danh mục chi lớn không liên quan có thể
+    làm mất luật. Ở đây đếm lại trực tiếp từ ``result.item_idlists`` (không trọng số):
+
+    - sup(A) = số tuần có A trong cùng một ngày; sup(B) = số tuần có B ở bất kỳ đâu;
+    - sup(A⇒B) = số tuần có B ở một ngày SAU lần đầu A trong tuần đó;
+    - chỉ xét itemset/cặp có support thô ≥ ``RULE_MIN_SUPPORT`` (= 3, giá trị nhỏ
+      nhất có thể qua Laplace ≥ 0,6 khi sup(A) = 4) và |A| + |B| ≤
+      ``result.max_pattern_length``.
+
+    Giữ luật có sup(A) ≥ ``min_antecedent_support``, Laplace ≥
+    ``min_laplace_confidence`` và lift ≥ ``min_lift``; bỏ luật A ⇒ B khi có luật
+    A' ⇒ B được giữ với A' ⊊ A và Laplace ≥ (luật nhỏ hơn đã nói đủ). Xếp theo
+    (Laplace giảm, lift giảm, support giảm, A, B). Khai phá/xếp hạng mẫu vẫn có trọng
+    số như cũ; chỉ luật là không trọng số.
 
     Ghi chú phương pháp:
 
     1. confidence = sup(A⇒B) / sup(A), theo định nghĩa luật tuần tự của
-       Fournier-Viger et al. 2015 (IEEE TKDE 27(8)).
-    2. Laplace ``(sup + 1) / (sup(A) + 2)`` và các ngưỡng 4 / 0,6 / 1,2 là lựa chọn
-       thiết kế của dự án, không phải giá trị công bố trong tài liệu.
+       Fournier-Viger et al. 2015 (IEEE TKDE 27(8)) (CHƯA KIỂM CHỨNG); bài này chỉ
+       được dẫn cho định nghĩa confidence.
+    2. Laplace ``(sup + 1) / (sup(A) + 2)``, các ngưỡng 4 / 0,6 / 1,2,
+       ``RULE_MIN_SUPPORT`` và luật lọc luật bị trội là lựa chọn thiết kế của dự án,
+       không phải giá trị công bố trong tài liệu.
     3. Mức nền của lift là tỷ lệ "tuần có B ở bất kỳ đâu" (không đòi B đứng sau một
        mốc nào), nên lift là ước lượng bảo thủ.
     4. Ý nghĩa thống kê: khai phá nhiều luật trên 13–26 tuần sẽ có luật "trúng" do
@@ -384,33 +444,38 @@ def sequential_rules(
        significant patterns", Machine Learning 68(1):1–33 (CHƯA KIỂM CHỨNG). Kết quả
        chỉ là mô tả lịch sử chi tiêu, không phải phát hiện có ý nghĩa thống kê.
     """
-    explored = result.explored
-    rules: List[SequentialRule] = []
-    for itemsets, pattern in explored.items():
-        if len(itemsets) != RULE_ITEMSET_COUNT:
+    if result.n_sequences == 0:
+        return []
+    itemsets = _frequent_itemsets(
+        result.item_idlists, result.max_pattern_length - 1, RULE_MIN_SUPPORT
+    )
+    candidates: List[SequentialRule] = []
+    for antecedent, a_idlist in itemsets.items():
+        if len(a_idlist) < min_antecedent_support:
             continue
-        antecedent, consequent = itemsets
-        if not set(antecedent).isdisjoint(consequent):
-            continue
-        antecedent_pattern = explored.get((antecedent,))
-        consequent_pattern = explored.get((consequent,))
-        if antecedent_pattern is None or consequent_pattern is None:
-            continue
-        rule = SequentialRule(
-            antecedent=antecedent,
-            consequent=consequent,
-            support=pattern.raw_sup,
-            antecedent_support=antecedent_pattern.raw_sup,
-            consequent_support=consequent_pattern.raw_sup,
-            n_sequences=result.n_sequences,
-            sids=pattern.sids,
-        )
-        if (
-            rule.antecedent_support >= min_antecedent_support
-            and rule.laplace_confidence >= min_laplace_confidence - FLOAT_TOLERANCE
-            and rule.lift >= min_lift - FLOAT_TOLERANCE
-        ):
-            rules.append(rule)
+        for consequent, b_idlist in itemsets.items():
+            if len(antecedent) + len(consequent) > result.max_pattern_length:
+                continue
+            if not set(antecedent).isdisjoint(consequent):
+                continue
+            joined = WCMSpade._s_extend(a_idlist, b_idlist)
+            if len(joined) < RULE_MIN_SUPPORT:
+                continue
+            rule = SequentialRule(
+                antecedent=antecedent,
+                consequent=consequent,
+                support=len(joined),
+                antecedent_support=len(a_idlist),
+                consequent_support=len(b_idlist),
+                n_sequences=result.n_sequences,
+                sids=tuple(sorted(joined)),
+            )
+            if (
+                rule.laplace_confidence >= min_laplace_confidence - FLOAT_TOLERANCE
+                and rule.lift >= min_lift - FLOAT_TOLERANCE
+            ):
+                candidates.append(rule)
+    rules = [rule for rule in candidates if not _dominated(rule, candidates)]
     rules.sort(
         key=lambda r: (-r.laplace_confidence, -r.lift, -r.support, r.antecedent, r.consequent)
     )
