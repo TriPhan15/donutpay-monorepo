@@ -42,6 +42,8 @@ import java.util.Set;
 @RestController
 @RequestMapping(AuthPaths.BASE)
 public class AuthController {
+    // The same text for a registered and an unregistered email, and without the email: the answer reveals neither.
+    private static final String FORGOT_PASSWORD_MESSAGE = "Nếu email đã đăng ký, mã OTP sẽ được gửi tới email đó.";
     private static final String CHANGE_PASSWORD_SUCCESS_MESSAGE = "Đổi mật khẩu thành công!";
     private static final String LOGOUT_SUCCESS_MESSAGE = "Đăng xuất thành công!";
     private static final String REFRESH_SUCCESS_MESSAGE = "Refresh token thành công";
@@ -219,7 +221,7 @@ public class AuthController {
 
         ApiResponse<String> response = ApiResponse.<String>builder()
                 .code(200)
-                .message("Mã OTP đã được gửi đến email: " + email)
+                .message(FORGOT_PASSWORD_MESSAGE)
                 .build();
         return ResponseEntity.ok(response);
     }

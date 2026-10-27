@@ -78,6 +78,7 @@ class PasswordAuditTrailTest {
     }
 
     @Autowired private AuthService authService;
+    @Autowired private InMemoryPasswordResetOtpStore otpStore;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private UserRepository userRepository;
     @Autowired private RevokedTokenRepository revokedTokenRepository;
@@ -92,6 +93,8 @@ class PasswordAuditTrailTest {
 
     @BeforeEach
     void setUp() {
+        // The store lives as long as the cached context: one email may request a code only once a minute.
+        otpStore.clear();
         User alice = new User();
         alice.setUsername("alice");
         alice.setEmail(EMAIL);

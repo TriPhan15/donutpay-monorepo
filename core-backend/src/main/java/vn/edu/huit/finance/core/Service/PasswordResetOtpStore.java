@@ -23,6 +23,14 @@ public interface PasswordResetOtpStore {
      */
     OtpCheck check(String email, String submittedCode, Instant now, int maxFailedAttempts);
 
+    /**
+     * Records that a code is about to be issued to {@code email} at {@code now}, unless that would break the limit: the
+     * previous issue is less than {@code cooldown} old, or {@code maxIssues} codes were already issued in the window of
+     * {@code window} that began with the first of them. Answers {@code false} (and records nothing) when refused. The
+     * email is counted case-insensitively and trimmed.
+     */
+    boolean tryRegisterIssue(String email, Instant now, Duration cooldown, int maxIssues, Duration window);
+
     enum Outcome {
         /** The code matched and the OTP is consumed. */
         ACCEPTED,

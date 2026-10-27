@@ -24,6 +24,7 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.AuditLogWriteException;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Exception.InvalidOtpException;
+import vn.edu.huit.finance.core.Exception.OtpRequestLimitedException;
 import vn.edu.huit.finance.core.Exception.OtpStoreUnavailableException;
 import vn.edu.huit.finance.core.Exception.InvalidPasswordException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
@@ -208,6 +209,25 @@ class AuthControllerPasswordTest {
                 .andExpect(status().isOk());
 
         verify(authService).generateAndSendOtp("a@b.c");
+    }
+
+    @Test
+    void forgotPassword_messageDoesNotContainTheEmail() throws Exception {
+        mockMvc.perform(post(FORGOT_PASSWORD_URL).servletPath(FORGOT_PASSWORD_URL).param("email", EMAIL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Nếu email đã đăng ký, mã OTP sẽ được gửi tới email đó."))
+                .andExpect(content().string(not(containsString(EMAIL))));
+    }
+
+    @Test
+    void forgotPassword_mapsATooFrequentRequest_to429WithItsMessage() throws Exception {
+        String message = "Bạn yêu cầu mã quá nhiều lần. Vui lòng thử lại sau.";
+        doThrow(new OtpRequestLimitedException(message)).when(authService).generateAndSendOtp(EMAIL);
+
+        mockMvc.perform(post(FORGOT_PASSWORD_URL).servletPath(FORGOT_PASSWORD_URL).param("email", EMAIL))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value(429))
+                .andExpect(jsonPath("$.message").value(message));
     }
 
     @Test

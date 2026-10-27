@@ -115,6 +115,7 @@ class CrossSessionTokenRevocationTest {
     }
 
     @Autowired private AuthService authService;
+    @Autowired private InMemoryPasswordResetOtpStore otpStore;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private JwtAuthFilter jwtAuthFilter;
     @Autowired private UserRepository userRepository;
@@ -133,6 +134,8 @@ class CrossSessionTokenRevocationTest {
 
     @BeforeEach
     void setUp() {
+        // The store lives as long as the cached context: one email may request a code only once a minute.
+        otpStore.clear();
         User alice = new User();
         alice.setUsername(USERNAME);
         alice.setEmail(EMAIL);
