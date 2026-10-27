@@ -20,7 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     /**
      * Chuẩn RFM của mọi người dùng: chỉ khoản chi, từ {@code windowStart}, bỏ khoản góp tiết kiệm; ngày ở tương lai
-     * tính là hôm nay (LEAST của PostgreSQL bỏ qua NULL nên dòng không có khoản chi phải được loại bằng CASE). Người không có khoản chi nào nhận recency = {@code noActivityDays}, frequency 0, monetary 0.
+     * tính là hôm nay (LEAST của PostgreSQL bỏ qua NULL nên dòng không có khoản chi
+     * phải được loại bằng CASE). Người không có khoản chi nào nhận recency = {@code noActivityDays}, frequency 0, monetary 0.
      */
     @Query(value = "SELECT u.id AS \"userId\", " +
             "CAST(COALESCE(EXTRACT(DAY FROM (CAST(:now AS TIMESTAMP) - MAX(CASE WHEN t.id IS NULL THEN NULL ELSE LEAST(t.transaction_date, CAST(:now AS TIMESTAMP)) END))), " +

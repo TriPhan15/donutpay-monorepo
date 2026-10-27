@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.edu.huit.finance.core.Entity.CustomerSegment;
 import vn.edu.huit.finance.core.Exception.AiServiceUnavailableException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
@@ -36,9 +37,12 @@ public class CustomerSegmentationService {
 
     @Autowired private UserRepository userRepository;
     @Autowired private AiSegmentClient aiSegmentClient;
+    @Autowired private TransactionTemplate transactionTemplate;
 
-    /** Trả số người dùng được gán nhãn. */
-    @Transactional
+    /**
+     * Trả số người dùng được gán nhãn. Cuộc gọi HTTP tới AI chạy NGOÀI mọi giao dịch (không giữ kết nối DB trong lúc
+     * chờ); chỉ bước ghi nhãn nằm trong một giao dịch duy nhất.
+     */
     public int runSegmentation() {
         LocalDateTime now = LocalDateTime.now(clock);
         List<UserRfmRow> rows = userRepository.calculateAllUsersRfm(
@@ -50,12 +54,19 @@ public class CustomerSegmentationService {
 
         Map<CustomerSegment, Set<Long>> idsBySegment = validate(aiSegmentClient.requestSegments(rows), sentIds);
 
-        int assigned = 0;
-        for (Map.Entry<CustomerSegment, Set<Long>> entry : idsBySegment.entrySet()) {
-            userRepository.updateAiLabelForUsers(entry.getKey().name(), entry.getValue());
-            assigned += entry.getValue().size();
+        Integer assigned = transactionTemplate.execute(status -> {
+            int count = 0;
+            for (Map.Entry<CustomerSegment, Set<Long>> entry : idsBySegment.entrySet()) {
+                userRepository.updateAiLabelForUsers(entry.getKey().name(), entry.getValue());
+                count += entry.getValue().size();
+            }
+            return count;
+        });
+        int total = assigned == null ? 0 : assigned;
+        if (total != rows.size()) {
+            log.warn("AI segmentation answered {} of {} users", total, rows.size());
         }
-        return assigned;
+        return total;
     }
 
     /** Số người dùng theo nhóm, đủ mọi nhóm theo thứ tự enum (nhóm vắng là 0); nhãn cũ hoặc lạ bị bỏ qua. */
@@ -88,7 +99,7 @@ public class CustomerSegmentationService {
     }
 
     private static Long parseUserId(String text) {
-        if (text == null || text.isEmpty() || !text.chars().allMatch(Character::isDigit)) {
+        if (text == null || text.isEmpty() || !text.chars().allMatch(c -> c >= '0' && c <= '9')) {
             return null;
         }
         try {

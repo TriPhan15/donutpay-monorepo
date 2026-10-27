@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -39,7 +40,7 @@ class AdminSegmentationTest {
 
     @Test
     void anUnreachableAiServiceIsAFixedText() {
-        AiSegmentClient client = new AiSegmentClient();
+        AiSegmentClient client = new AiSegmentClient(new RestTemplateBuilder());
         ReflectionTestUtils.setField(client, "aiServiceUrl", UNREACHABLE_AI_SERVICE);
 
         AiServiceUnavailableException error =
@@ -47,6 +48,19 @@ class AdminSegmentationTest {
 
         assertEquals(FIXED_TEXT, error.getMessage());
         assertFalse(error.getMessage().contains("127.0.0.1"));
+    }
+
+    @Test
+    void theClientIsBuiltOnceWithConnectAndReadTimeouts() {
+        AiSegmentClient client = new AiSegmentClient(new RestTemplateBuilder());
+
+        org.springframework.web.client.RestTemplate template =
+                (org.springframework.web.client.RestTemplate) ReflectionTestUtils.getField(client, "restTemplate");
+
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                (org.springframework.http.client.SimpleClientHttpRequestFactory) template.getRequestFactory();
+        assertEquals((int) AiSegmentClient.CONNECT_TIMEOUT.toMillis(), ReflectionTestUtils.getField(factory, "connectTimeout"));
+        assertEquals((int) AiSegmentClient.READ_TIMEOUT.toMillis(), ReflectionTestUtils.getField(factory, "readTimeout"));
     }
 
     @Test

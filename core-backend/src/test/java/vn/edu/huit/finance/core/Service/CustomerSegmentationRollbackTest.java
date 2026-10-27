@@ -13,16 +13,19 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.AiSegmentClient.SegmentAssignment;
 
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -93,6 +96,19 @@ class CustomerSegmentationRollbackTest {
         assertThrows(DataAccessException.class, service::runSegmentation);
 
         assertEquals(List.of(OLD_LABEL, OLD_LABEL), labelsInDatabase());
+    }
+
+    @Test
+    void noTransactionIsActiveWhileTheAiServiceIsCalled() {
+        AtomicBoolean active = new AtomicBoolean(true);
+        when(client.requestSegments(any())).thenAnswer(invocation -> {
+            active.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return List.of(new SegmentAssignment(aliceId.toString(), "CHAMPIONS"));
+        });
+
+        service.runSegmentation();
+
+        assertFalse(active.get());
     }
 
     @Test

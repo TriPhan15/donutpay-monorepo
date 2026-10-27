@@ -13,6 +13,9 @@ import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Repository.UserRfmRow;
 import vn.edu.huit.finance.core.Service.AiSegmentClient.SegmentAssignment;
 
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -46,6 +49,8 @@ class CustomerSegmentationServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(service, "transactionTemplate",
+                new TransactionTemplate(org.mockito.Mockito.mock(PlatformTransactionManager.class)));
         ReflectionTestUtils.setField(service, "clock", Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE));
         rows = List.of(row(1L), row(2L), row(3L));
         lenient().when(userRepo.calculateAllUsersRfm(any(), any(), anyString(), anyInt())).thenReturn(rows);

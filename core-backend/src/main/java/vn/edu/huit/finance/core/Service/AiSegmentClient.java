@@ -2,6 +2,7 @@ package vn.edu.huit.finance.core.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
@@ -9,6 +10,7 @@ import org.springframework.web.client.RestTemplate;
 import vn.edu.huit.finance.core.Exception.AiServiceUnavailableException;
 import vn.edu.huit.finance.core.Repository.UserRfmRow;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,6 +22,8 @@ import java.util.Map;
 public class AiSegmentClient {
 
     static final String MSG_AI_SERVICE_UNAVAILABLE = "Dịch vụ AI tạm thời không phản hồi, vui lòng thử lại sau.";
+    public static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    public static final Duration READ_TIMEOUT = Duration.ofSeconds(60);
     private static final String AI_SEGMENT_PATH = "/admin/segment";
     private static final String USERS_KEY = "users";
     private static final String AI_SEGMENTS_KEY = "segments";
@@ -37,6 +41,12 @@ public class AiSegmentClient {
     @Value("${app.ai-service.url:${AI_SERVICE_URL:http://data-mining-api:8000}}")
     private String aiServiceUrl;
 
+    private final RestTemplate restTemplate;
+
+    public AiSegmentClient(RestTemplateBuilder builder) {
+        this.restTemplate = builder.setConnectTimeout(CONNECT_TIMEOUT).setReadTimeout(READ_TIMEOUT).build();
+    }
+
     @SuppressWarnings("unchecked")
     public List<SegmentAssignment> requestSegments(List<UserRfmRow> rows) {
         List<Map<String, Object>> users = new ArrayList<>();
@@ -52,7 +62,7 @@ public class AiSegmentClient {
         String url = aiServiceUrl + AI_SEGMENT_PATH;
         ResponseEntity<Map> response;
         try {
-            response = new RestTemplate().postForEntity(url, Map.of(USERS_KEY, users), Map.class);
+            response = restTemplate.postForEntity(url, Map.of(USERS_KEY, users), Map.class);
         } catch (RestClientException e) {
             log.error("AI segmentation call to {} failed", url, e);
             throw new AiServiceUnavailableException(MSG_AI_SERVICE_UNAVAILABLE, e);
