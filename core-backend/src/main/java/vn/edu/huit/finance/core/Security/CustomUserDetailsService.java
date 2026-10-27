@@ -29,7 +29,8 @@ public class CustomUserDetailsService implements UserDetailsService {
         String role = user.getRole().startsWith("ROLE_") ? user.getRole() : "ROLE_" + user.getRole();
 
         return new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
+                // Email, not username: it is unique and the JWT subject, so Authentication.getName() is always the email.
+                user.getEmail(),
                 user.getPassword(),
                 user.isActive(),
                 true,
@@ -48,8 +49,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     public User loadApplicationUser(String usernameOrEmail) throws UsernameNotFoundException {
-        return userRepository.findByUsername(usernameOrEmail)
-                .or(() -> userRepository.findByEmail(usernameOrEmail))
+        // Email first: a legacy username equal to someone else's email must never win over that email's owner.
+        return userRepository.findByEmail(usernameOrEmail)
+                .or(() -> userRepository.findByUsername(usernameOrEmail))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + usernameOrEmail));
     }
 }

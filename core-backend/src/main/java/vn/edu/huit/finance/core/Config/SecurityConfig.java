@@ -189,7 +189,7 @@ public class SecurityConfig {
     }
 
     private Optional<User> findAccount(String usernameOrEmail) {
-        return userRepository.findByUsername(usernameOrEmail).or(() -> userRepository.findByEmail(usernameOrEmail));
+        return userRepository.findByEmail(usernameOrEmail).or(() -> userRepository.findByUsername(usernameOrEmail));
     }
 
     private Optional<User> updateLoginAudit(String usernameOrEmail) {

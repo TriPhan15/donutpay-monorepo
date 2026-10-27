@@ -2,14 +2,12 @@ package vn.edu.huit.finance.core.Controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.UserResponseDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.User;
-import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.UserService;
 
 @RestController
@@ -17,29 +15,10 @@ import vn.edu.huit.finance.core.Service.UserService;
 public class UserController {
 
     @Autowired
-    private UserRepository userRepository;
+    private CurrentUserProvider currentUserProvider;
 
     @Autowired
     private UserService userService;
-
-    private User currentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getName() == null) {
-            throw new RuntimeException("Chưa đăng nhập");
-        }
-
-        String identifier = auth.getName();
-
-        try {
-            Long userId = Long.parseLong(identifier);
-            return userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy user ID: " + userId));
-        } catch (NumberFormatException e) {
-            return userRepository.findByUsername(identifier)
-                    .orElseGet(() -> userRepository.findByEmail(identifier)
-                            .orElseThrow(() -> new RuntimeException("Không tìm thấy user: " + identifier)));
-        }
-    }
 
     // Hàm tiện ích map Entity sang DTO
     private UserResponseDto mapToDto(User u) {
@@ -55,7 +34,7 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponseDto>> me() {
-        User u = currentUser();
+        User u = currentUserProvider.getCurrentUser();
         ApiResponse<UserResponseDto> response = ApiResponse.<UserResponseDto>builder()
                 .code(200)
                 .message("OK")
@@ -69,7 +48,7 @@ public class UserController {
             @PathVariable Long id,
             @RequestBody UserUpdateDto dto) {
 
-        User current = currentUser();
+        User current = currentUserProvider.getCurrentUser();
         if (!current.getId().equals(id)) {
             throw new RuntimeException("Lỗi: Bạn không có quyền chỉnh sửa tài khoản của người khác!");
         }

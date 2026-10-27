@@ -17,6 +17,7 @@ import vn.edu.huit.finance.core.Config.SecurityConfig;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
 import vn.edu.huit.finance.core.Security.JwtAuthFilter;
 import vn.edu.huit.finance.core.Security.JwtUtil;
@@ -44,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(UserController.class)
 @ContextConfiguration(classes = {
-        UserController.class, UserService.class, GlobalExceptionHandler.class, SecurityConfig.class, JwtAuthFilter.class})
+        UserController.class, UserService.class, CurrentUserProvider.class, GlobalExceptionHandler.class, SecurityConfig.class, JwtAuthFilter.class})
 class UserControllerRoleTest {
 
     private static final String TOKEN = "user.jwt.token";
