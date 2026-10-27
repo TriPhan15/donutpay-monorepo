@@ -39,6 +39,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+import vn.edu.huit.finance.core.Service.Realtime.ReceiptWaitingReviewEvent;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -276,6 +277,17 @@ class ReceiptProcessingServiceTest {
         service.submitFeedback(RECEIPT_ID, new BigDecimal("150000"));
 
         verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, ALICE_ID));
+    }
+
+    @Test
+    void feedbackTellsTheAdministratorsAfterTheCommitThatTheReceiptWaitsForReview() {
+        signedInAsAlice();
+        repositoryHolds(receipt("FAILED", transactionOf(alice)));
+
+        service.submitFeedback(RECEIPT_ID, new BigDecimal("150000"));
+
+        // A Spring event only: AdminEventPublisher sends it to Redis after the commit, never inside the transaction.
+        verify(eventPublisher).publishEvent(new ReceiptWaitingReviewEvent(RECEIPT_ID));
     }
 
     @Test

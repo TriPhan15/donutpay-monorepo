@@ -39,6 +39,8 @@ import vn.edu.huit.finance.core.Dto.OcrRawLogResponseDto;
 import vn.edu.huit.finance.core.Exception.OcrFeedbackNotFoundException;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrFeedbackRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -81,6 +83,7 @@ public class OcrMongoService {
     private final ObjectMapper objectMapper;
     private final OcrService ocrService;
     private final MongoTemplate mongoTemplate;
+    private final AdminEventPublisher adminEventPublisher;
 
     @Value("${app.ocr.model-version}")
     private String modelVersion;
@@ -143,18 +146,25 @@ public class OcrMongoService {
      * Ghi các chỗ người dùng sửa AI sau khi PostgreSQL commit: mỗi (hóa đơn, trường) đúng một document. Sửa lại thành một
      * giá trị khác thì cập nhật document đó (đặt lại chưa xử lý) và giữ nguyên reportedAt của lần báo đầu; gửi lại đúng
      * chỗ sửa đã lưu (một lần sửa hóa đơn ở trường khác) thì không đổi gì, phản hồi đã xử lý vẫn là đã xử lý. Trường nào
-     * người dùng đã trả về đúng giá trị AI thì chỗ sửa cũ của nó bị xóa. Lỗi MongoDB chỉ được ghi log.
+     * người dùng đã trả về đúng giá trị AI thì chỗ sửa cũ của nó bị xóa. Lỗi MongoDB chỉ được ghi log. Khi có chỗ sửa mới
+     * hoặc đổi giá trị, trang quản trị được báo (OCR_FEEDBACK_REPORTED qua Redis Pub/Sub); gửi lại y nguyên thì không.
      */
     @Async("mongoAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOcrCorrectionEvent(OcrCorrectionEvent event) {
         try {
+            int written = 0;
             for (OcrFieldCorrection correction : event.corrections()) {
-                upsertCorrection(event, correction);
+                if (upsertCorrection(event, correction)) {
+                    written++;
+                }
             }
             long removed = removeCleared(event);
             log.info("Persisted {} OCR correction(s) and removed {} stale one(s) in MongoDB for Receipt: {}",
                     event.corrections().size(), removed, event.receiptId());
+            if (written > 0) {
+                adminEventPublisher.publish(AdminEvent.ocrFeedbackReported(event.receiptId(), written));
+            }
         } catch (Exception e) {
             // MongoDB là kho phân tích phụ: không ghi được thì chỉ log, không ảnh hưởng dữ liệu PostgreSQL đã commit.
             log.error("Failed to save OCR correction to MongoDB for Receipt: {}. Error: {}", event.receiptId(), e.getMessage(), e);
@@ -164,9 +174,9 @@ public class OcrMongoService {
     /**
      * Hai bước: (1) document của (hóa đơn, trường) có giá trị khác thì được ghi đè và mở lại; (2) không có document nào
      * thì tạo mới ({@code $setOnInsert}: không đụng tới document đã có cùng giá trị). Hai luồng cùng tạo một document thì
-     * khóa duy nhất receipt_field_uq chặn luồng sau (lỗi đó chỉ được ghi log).
+     * khóa duy nhất receipt_field_uq chặn luồng sau (lỗi đó chỉ được ghi log). True khi đã ghi đè hoặc tạo mới một document.
      */
-    private void upsertCorrection(OcrCorrectionEvent event, OcrFieldCorrection correction) {
+    private boolean upsertCorrection(OcrCorrectionEvent event, OcrFieldCorrection correction) {
         LocalDateTime now = LocalDateTime.now();
         Criteria key = Criteria.where(FIELD_RECEIPT_ID).is(event.receiptId()).and(FIELD_ERROR).is(correction.field().key());
         Criteria changed = new Criteria().andOperator(key, new Criteria().orOperator(
@@ -181,7 +191,7 @@ public class OcrMongoService {
                 .set(FIELD_RESOLVED, false)
                 .set(FIELD_UPDATED_AT, now);
         if (mongoTemplate.updateFirst(new Query(changed), reopen, OcrFeedback.class).getMatchedCount() > 0) {
-            return;
+            return true;
         }
         Update insertIfAbsent = new Update()
                 .setOnInsert(FIELD_REPORTED_AT, now)
@@ -192,7 +202,7 @@ public class OcrMongoService {
                 .setOnInsert(FIELD_MODEL_VERSION, modelVersion)
                 .setOnInsert(FIELD_RESOLVED, false)
                 .setOnInsert(FIELD_UPDATED_AT, now);
-        mongoTemplate.upsert(new Query(key), insertIfAbsent, OcrFeedback.class);
+        return mongoTemplate.upsert(new Query(key), insertIfAbsent, OcrFeedback.class).getUpsertedId() != null;
     }
 
     /** Xóa chỗ sửa của các trường người dùng đã trả về đúng giá trị AI; số document đã xóa. */

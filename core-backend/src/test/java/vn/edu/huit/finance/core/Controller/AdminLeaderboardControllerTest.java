@@ -24,6 +24,9 @@ import vn.edu.huit.finance.core.Security.TokenClaims;
 import vn.edu.huit.finance.core.Security.TokenType;
 import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventType;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
 import java.math.BigDecimal;
@@ -57,6 +60,7 @@ class AdminLeaderboardControllerTest {
     @MockBean private UserRepository userRepository;
     @MockBean private LoginAttemptService loginAttemptService;
     @MockBean private TokenBlacklistService tokenBlacklistService;
+    @MockBean private AdminEventPublisher adminEventPublisher;
 
     @BeforeEach
     void stubTokens() {
@@ -135,6 +139,29 @@ class AdminLeaderboardControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("Đã dựng lại bảng xếp hạng chi tiêu từ cơ sở dữ liệu"))
                 .andExpect(jsonPath("$.data").value(7));
+    }
+
+    @Test
+    void aRebuildTellsEveryAdministratorWhichMonthWasRebuilt() throws Exception {
+        when(leaderboardService.rebuildMonth(OCTOBER)).thenReturn(7);
+
+        mockMvc.perform(asAdmin(post(REBUILD).param("month", "2026-10"))).andExpect(status().isOk());
+
+        org.mockito.ArgumentCaptor<AdminEvent> published = org.mockito.ArgumentCaptor.forClass(AdminEvent.class);
+        verify(adminEventPublisher).publish(published.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(AdminEventType.LEADERBOARD_REBUILT, published.getValue().type());
+        org.junit.jupiter.api.Assertions.assertEquals("Đã dựng lại bảng xếp hạng tháng 2026-10: 7 người dùng",
+                published.getValue().message());
+    }
+
+    @Test
+    void aFailedRebuildPublishesNothing() throws Exception {
+        when(leaderboardService.rebuildMonth(OCTOBER))
+                .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("redis down"));
+
+        mockMvc.perform(asAdmin(post(REBUILD).param("month", "2026-10")));
+
+        verifyNoInteractions(adminEventPublisher);
     }
 
     @Test

@@ -32,6 +32,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+import vn.edu.huit.finance.core.Service.Realtime.ReceiptWaitingReviewEvent;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -370,6 +371,8 @@ public class ReceiptProcessingService {
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, caller.getId()));
         // The receipt status is part of the transaction's search document: the index reads it again after the commit.
         eventPublisher.publishEvent(TransactionChangedEvent.upserted(receipt.getTransaction().getId(), caller.getId(), Set.of()));
+        // The admin web is told (Redis Pub/Sub, then a toast) only after the commit, by AdminEventPublisher.
+        eventPublisher.publishEvent(new ReceiptWaitingReviewEvent(receipt.getId()));
         publishCorrections(receipt, caller.getId(), latestReading(receipt).orElseGet(ExtractedReceiptDto::empty), null, amount,
                 null, true);
         // The amount is what the administrator will approve the wallet with, so it is part of the record.

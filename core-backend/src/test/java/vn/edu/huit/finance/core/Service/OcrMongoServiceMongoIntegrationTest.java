@@ -64,7 +64,8 @@ class OcrMongoServiceMongoIntegrationTest {
         MongoRepositoryFactory factory = new MongoRepositoryFactory(template);
         feedbackRepository = factory.getRepository(OcrFeedbackRepository.class);
         rawLogRepository = factory.getRepository(OcrRawLogRepository.class);
-        service = new OcrMongoService(rawLogRepository, feedbackRepository, new ObjectMapper(), new OcrService(), template);
+        service = new OcrMongoService(rawLogRepository, feedbackRepository, new ObjectMapper(), new OcrService(), template,
+                org.mockito.Mockito.mock(vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher.class));
         ReflectionTestUtils.setField(service, "modelVersion", MODEL);
         // Spring Boot creates indexes only when asked to: the IT creates the ones the documents declare, unique key included.
         MongoMappingContext context = (MongoMappingContext) template.getConverter().getMappingContext();

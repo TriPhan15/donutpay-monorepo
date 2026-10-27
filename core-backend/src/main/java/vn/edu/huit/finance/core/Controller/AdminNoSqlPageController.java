@@ -32,6 +32,8 @@ import vn.edu.huit.finance.core.Exception.ReindexInProgressException;
 import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.OcrMongoService;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchIndexer;
 
 import java.time.LocalDate;
@@ -88,14 +90,17 @@ public class AdminNoSqlPageController {
     private final SpendingLeaderboardService leaderboardService;
     private final ObjectProvider<TransactionSearchIndexer> indexer;
     private final String searchEngine;
+    private final AdminEventPublisher adminEvents;
 
     public AdminNoSqlPageController(OcrMongoService ocrMongoService, SpendingLeaderboardService leaderboardService,
                                     ObjectProvider<TransactionSearchIndexer> indexer,
-                                    @Value("${" + SearchConfig.ENGINE_PROPERTY + ":postgres}") String searchEngine) {
+                                    @Value("${" + SearchConfig.ENGINE_PROPERTY + ":postgres}") String searchEngine,
+                                    AdminEventPublisher adminEvents) {
         this.ocrMongoService = ocrMongoService;
         this.leaderboardService = leaderboardService;
         this.indexer = indexer;
         this.searchEngine = searchEngine;
+        this.adminEvents = adminEvents;
     }
 
     // ------------------------------------------------------------------------------------------- OCR feedbacks (MongoDB)
@@ -300,7 +305,9 @@ public class AdminNoSqlPageController {
             redirect.addFlashAttribute(FLASH_ERROR, MSG_SEARCH_DISABLED);
         } else {
             try {
-                redirect.addFlashAttribute(FLASH_MESSAGE, String.format(MSG_REINDEX_OK, available.reindexAll()));
+                int indexed = available.reindexAll();
+                redirect.addFlashAttribute(FLASH_MESSAGE, String.format(MSG_REINDEX_OK, indexed));
+                adminEvents.publish(AdminEvent.searchReindexed(indexed));
             } catch (ReindexInProgressException e) {
                 redirect.addFlashAttribute(FLASH_ERROR, e.getMessage());
             } catch (RuntimeException e) {
@@ -322,8 +329,9 @@ public class AdminNoSqlPageController {
         YearMonth target = month != null ? month : YearMonth.now();
         redirect.addAttribute("month", target.toString());
         try {
-            redirect.addFlashAttribute(FLASH_MESSAGE,
-                    String.format(MSG_REBUILD_OK, target, leaderboardService.rebuildMonth(target)));
+            int members = leaderboardService.rebuildMonth(target);
+            redirect.addFlashAttribute(FLASH_MESSAGE, String.format(MSG_REBUILD_OK, target, members));
+            adminEvents.publish(AdminEvent.leaderboardRebuilt(target, members));
         } catch (RuntimeException e) {
             log.warn("Admin leaderboard rebuild failed, month={}", target, e);
             redirect.addFlashAttribute(FLASH_ERROR, MSG_REBUILD_FAILED);

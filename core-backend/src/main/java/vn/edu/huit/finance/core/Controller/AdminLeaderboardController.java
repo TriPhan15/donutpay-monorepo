@@ -16,6 +16,8 @@ import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.TopSpenderDto;
 import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
 
 import java.time.YearMonth;
 import java.util.List;
@@ -39,9 +41,11 @@ public class AdminLeaderboardController {
     private static final String MSG_REBUILD_OK = "Đã dựng lại bảng xếp hạng chi tiêu từ cơ sở dữ liệu";
 
     private final SpendingLeaderboardService leaderboardService;
+    private final AdminEventPublisher adminEvents;
 
-    public AdminLeaderboardController(SpendingLeaderboardService leaderboardService) {
+    public AdminLeaderboardController(SpendingLeaderboardService leaderboardService, AdminEventPublisher adminEvents) {
         this.leaderboardService = leaderboardService;
+        this.adminEvents = adminEvents;
     }
 
     @GetMapping
@@ -57,6 +61,8 @@ public class AdminLeaderboardController {
     public ResponseEntity<ApiResponse<Integer>> rebuild(
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth month) {
         YearMonth requested = month != null ? month : YearMonth.now();
-        return ApiResponses.respond(HttpStatus.OK, MSG_REBUILD_OK, leaderboardService.rebuildMonth(requested));
+        int members = leaderboardService.rebuildMonth(requested);
+        adminEvents.publish(AdminEvent.leaderboardRebuilt(requested, members));
+        return ApiResponses.respond(HttpStatus.OK, MSG_REBUILD_OK, members);
     }
 }

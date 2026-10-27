@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Exception.ReindexInProgressException;
 import vn.edu.huit.finance.core.Security.Roles;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchIndexer;
 
 /**
@@ -30,9 +32,11 @@ public class AdminSearchController {
     static final String MSG_REINDEX_FAILED = "Không dựng lại được chỉ mục tìm kiếm, vui lòng thử lại sau";
 
     private final ObjectProvider<TransactionSearchIndexer> indexer;
+    private final AdminEventPublisher adminEvents;
 
-    public AdminSearchController(ObjectProvider<TransactionSearchIndexer> indexer) {
+    public AdminSearchController(ObjectProvider<TransactionSearchIndexer> indexer, AdminEventPublisher adminEvents) {
         this.indexer = indexer;
+        this.adminEvents = adminEvents;
     }
 
     /** Drops the index and builds it again from PostgreSQL; the number of transactions indexed. */
@@ -43,7 +47,9 @@ public class AdminSearchController {
             return ApiResponses.respond(HttpStatus.SERVICE_UNAVAILABLE, MSG_SEARCH_DISABLED, null);
         }
         try {
-            return ApiResponses.respond(HttpStatus.OK, MSG_REINDEX_OK, available.reindexAll());
+            int indexed = available.reindexAll();
+            adminEvents.publish(AdminEvent.searchReindexed(indexed));
+            return ApiResponses.respond(HttpStatus.OK, MSG_REINDEX_OK, indexed);
         } catch (ReindexInProgressException e) {
             return ApiResponses.respond(HttpStatus.CONFLICT, e.getMessage(), null);
         } catch (DataAccessException e) {

@@ -25,6 +25,9 @@ import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.OcrMongoService;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventType;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchIndexer;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
@@ -58,6 +61,7 @@ class AdminNoSqlSearchReindexTest {
     @MockBean private JwtUtil jwtUtil;
     @MockBean private CustomUserDetailsService userDetailsService;
     @MockBean private TokenBlacklistService tokenBlacklistService;
+    @MockBean private AdminEventPublisher adminEventPublisher;
 
     @AfterEach
     void clearTheSecurityContext() {
@@ -100,6 +104,29 @@ class AdminNoSqlSearchReindexTest {
         mockMvc.perform(post(REINDEX).session(admin()))
                 .andExpect(redirectedUrl("/admin/nosql"))
                 .andExpect(flash().attribute("message", "Đã dựng lại chỉ mục tìm kiếm: 321 giao dịch"));
+    }
+
+    @Test
+    void reindex_tellsEveryAdministratorHowManyTransactionsWereIndexed() throws Exception {
+        when(indexer.reindexAll()).thenReturn(321);
+
+        mockMvc.perform(post(REINDEX).session(admin()));
+
+        org.mockito.ArgumentCaptor<AdminEvent> published = org.mockito.ArgumentCaptor.forClass(AdminEvent.class);
+        org.mockito.Mockito.verify(adminEventPublisher).publish(published.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(AdminEventType.SEARCH_REINDEXED, published.getValue().type());
+        org.junit.jupiter.api.Assertions.assertEquals("Đã dựng lại chỉ mục tìm kiếm: 321 giao dịch", published.getValue().message());
+    }
+
+    @Test
+    void aRefusedOrFailedReindexPublishesNothing() throws Exception {
+        when(indexer.reindexAll()).thenThrow(new ReindexInProgressException())
+                .thenThrow(new DataAccessResourceFailureException("es down"));
+
+        mockMvc.perform(post(REINDEX).session(admin()));
+        mockMvc.perform(post(REINDEX).session(admin()));
+
+        org.mockito.Mockito.verifyNoInteractions(adminEventPublisher);
     }
 
     @Test

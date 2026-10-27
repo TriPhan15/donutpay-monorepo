@@ -28,6 +28,9 @@ import vn.edu.huit.finance.core.Security.JwtUtil;
 import vn.edu.huit.finance.core.Security.TokenClaims;
 import vn.edu.huit.finance.core.Security.TokenType;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventType;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchIndexer;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
@@ -58,6 +61,7 @@ class AdminSearchControllerTest {
     @MockBean private UserRepository userRepository;
     @MockBean private LoginAttemptService loginAttemptService;
     @MockBean private TokenBlacklistService tokenBlacklistService;
+    @MockBean private AdminEventPublisher adminEventPublisher;
 
     @BeforeEach
     void stubTokens() {
@@ -98,6 +102,29 @@ class AdminSearchControllerTest {
     }
 
     @Test
+    void aReindexTellsEveryAdministratorHowManyTransactionsWereIndexed() throws Exception {
+        when(indexer.reindexAll()).thenReturn(501);
+
+        mockMvc.perform(asAdmin(post(REINDEX))).andExpect(status().isOk());
+
+        org.mockito.ArgumentCaptor<AdminEvent> published = org.mockito.ArgumentCaptor.forClass(AdminEvent.class);
+        verify(adminEventPublisher).publish(published.capture());
+        assertEquals(AdminEventType.SEARCH_REINDEXED, published.getValue().type());
+        assertEquals("Đã dựng lại chỉ mục tìm kiếm: 501 giao dịch", published.getValue().message());
+    }
+
+    @Test
+    void aRefusedOrFailedReindexPublishesNothing() throws Exception {
+        when(indexer.reindexAll()).thenThrow(new ReindexInProgressException())
+                .thenThrow(new DataAccessResourceFailureException("es down"));
+
+        mockMvc.perform(asAdmin(post(REINDEX))).andExpect(status().isConflict());
+        mockMvc.perform(asAdmin(post(REINDEX))).andExpect(status().isServiceUnavailable());
+
+        verifyNoInteractions(adminEventPublisher);
+    }
+
+    @Test
     void elasticsearchDownIsA503() throws Exception {
         when(indexer.reindexAll()).thenThrow(new DataAccessResourceFailureException("connection refused"));
 
@@ -128,7 +155,7 @@ class AdminSearchControllerTest {
     @Test
     void withThePostgresEngineThereIsNoIndexerAndTheAnswerIsA503() {
         AdminSearchController controller = new AdminSearchController(
-                new StaticListableBeanFactory().getBeanProvider(TransactionSearchIndexer.class));
+                new StaticListableBeanFactory().getBeanProvider(TransactionSearchIndexer.class), adminEventPublisher);
 
         ResponseEntity<ApiResponse<Integer>> response = controller.reindex();
 

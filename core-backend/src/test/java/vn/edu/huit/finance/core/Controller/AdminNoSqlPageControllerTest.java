@@ -2,6 +2,7 @@ package vn.edu.huit.finance.core.Controller;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.OcrMongoService;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventType;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
 import java.math.BigDecimal;
@@ -50,10 +54,12 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -87,6 +93,7 @@ class AdminNoSqlPageControllerTest {
     @MockBean private JwtUtil jwtUtil;
     @MockBean private CustomUserDetailsService userDetailsService;
     @MockBean private TokenBlacklistService tokenBlacklistService;
+    @MockBean private AdminEventPublisher adminEventPublisher;
 
     @AfterEach
     void clearTheSecurityContext() {
@@ -305,6 +312,27 @@ class AdminNoSqlPageControllerTest {
     }
 
     @Test
+    void rebuildMonth_tellsEveryAdministratorWhichMonthWasRebuilt() throws Exception {
+        when(leaderboardService.rebuildMonth(YearMonth.of(2026, 9))).thenReturn(12);
+
+        mockMvc.perform(post(NOSQL + "/leaderboard/rebuild").param("month", "2026-09").session(admin()));
+
+        ArgumentCaptor<AdminEvent> published = ArgumentCaptor.forClass(AdminEvent.class);
+        verify(adminEventPublisher).publish(published.capture());
+        assertEquals(AdminEventType.LEADERBOARD_REBUILT, published.getValue().type());
+        assertEquals("Đã dựng lại bảng xếp hạng tháng 2026-09: 12 người dùng", published.getValue().message());
+    }
+
+    @Test
+    void rebuildMonth_failed_publishesNothing() throws Exception {
+        when(leaderboardService.rebuildMonth(any())).thenThrow(new DataAccessResourceFailureException("redis down"));
+
+        mockMvc.perform(post(NOSQL + "/leaderboard/rebuild").param("month", "2026-09").session(admin()));
+
+        verify(adminEventPublisher, never()).publish(any());
+    }
+
+    @Test
     void badFilterValuesRenderThePageWithABannerNotA400() throws Exception {
         when(ocrMongoService.findFeedbacks(any(), any())).thenReturn(new PageImpl<>(List.of()));
         when(ocrMongoService.analytics(any(), any())).thenReturn(analytics());
@@ -360,5 +388,17 @@ class AdminNoSqlPageControllerTest {
                         containsString("Phản hồi OCR (MongoDB)"),
                         containsString("href=\"/admin/nosql\""),
                         containsString("Vận hành NoSQL"))));
+    }
+
+    @Test
+    void theLayoutOpensTheRealtimeStreamWithAToastAreaAndTwoBadges() throws Exception {
+        when(leaderboardService.topSpenders(any(), eq(10))).thenReturn(List.of());
+
+        mockMvc.perform(get(NOSQL).session(admin()))
+                .andExpect(content().string(allOf(
+                        containsString("<script src=\"/admin/js/admin-events.js\"></script>"),
+                        containsString("id=\"adminToastArea\""),
+                        containsString("data-admin-badge=\"/admin/receipts\""),
+                        containsString("data-admin-badge=\"/admin/ocr-feedbacks\""))));
     }
 }
