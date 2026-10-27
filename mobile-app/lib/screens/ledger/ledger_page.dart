@@ -727,7 +727,7 @@ class LedgerPageState extends State<LedgerPage> {
   double _sumOn(DateTime ref, bool expense, {required bool isDay}) {
     return _transactions
         .where((t) {
-          if (t.isExpense != expense) return false;
+          if (expense ? !t.countsAsSpending : t.isExpense) return false;
           if (isDay) return DateUtils.isSameDay(t.date, ref);
           return t.date.year == ref.year && t.date.month == ref.month;
         })
@@ -1604,7 +1604,7 @@ class LedgerPageState extends State<LedgerPage> {
     for (var tx in monthTxs) {
       final dateStr = DateFormat('dd/MM/yyyy').format(tx.date);
       if (tx.isExpense) {
-        totalExpense += tx.amount;
+        if (tx.countsAsSpending) totalExpense += tx.amount;
         sheet.appendRow([
           TextCellValue(dateStr),
           TextCellValue(TransactionCategories.displayName(loc, tx.category)),

@@ -529,10 +529,25 @@ class AiComponents {
   static double needsTotal(List<TransactionModel> txs) => txs
       .where(
         (t) =>
-            t.isExpense &&
+            t.countsAsSpending &&
             TransactionCategories.essentialExpenses.contains(t.category.trim()),
       )
       .fold(0, (s, t) => s + t.amount);
+
+  /// The shares of [income], in percent, that went to needs, wants and what was kept. [spending] must already leave
+  /// savings contributions out, so a contribution is neither a want nor a loss of saved money.
+  static ({double needs, double wants, double save}) shares503020(
+    List<TransactionModel> txs,
+    double income,
+    double spending,
+  ) {
+    final needs = needsTotal(txs);
+    return (
+      needs: needs / income * 100,
+      wants: (spending - needs) / income * 100,
+      save: (income - spending) / income * 100,
+    );
+  }
 
   static Widget build503020Card(
     ColorScheme colors,
@@ -543,11 +558,8 @@ class AiComponents {
   ) {
     if (monthIncome <= 0) return const SizedBox.shrink();
 
-    final needs = needsTotal(monthTxs);
-    double wants = monthExpense - needs;
-    final needsPct = needs / monthIncome * 100,
-        wantsPct = wants / monthIncome * 100,
-        savePct = (monthIncome - monthExpense) / monthIncome * 100;
+    final shares = shares503020(monthTxs, monthIncome, monthExpense);
+    final needsPct = shares.needs, wantsPct = shares.wants, savePct = shares.save;
 
     // Past its target, a share turns to the error colour; the track is the neutral container colour.
     Widget row(
