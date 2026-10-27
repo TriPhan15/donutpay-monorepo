@@ -135,3 +135,24 @@ Tên class/endpoint chi tiết, cấu trúc DTO, cách debounce trên mobile, c�
 - **Thời điểm sinh `ocr_feedbacks`** (đã chỉnh theo code thật: lúc checkout, backend lấy ngày/địa chỉ từ AI, nên người dùng chỉ sửa được số tiền ở bước đó): mỗi lần người dùng sửa một trường AI đã đọc thì sinh feedback. Có 3 điểm: (1) checkout hóa đơn quét có số tiền khác tổng AI đọc; (2) `editMyReceipt` đổi tên quán / tổng tiền / ngày; (3) `submitFeedback` gửi số tiền khi AI không đọc được (aiValue rỗng). Luôn so với lần đọc AI mới nhất (attempt mới nhất). Mỗi cặp (receiptId, trường) chỉ có **một** document, được upsert, nên sửa nhiều lần không nhân bản thống kê. Giá trị trùng với AI thì không sinh. Admin duyệt và lưu hàng loạt T11 không có chênh lệch thì không sinh.
 - **Ô tìm kiếm mobile:** khi có mạng thì thay bộ lọc cục bộ bằng kết quả server. Các dòng outbox chưa đồng bộ (`id` null) vẫn được lọc cục bộ và hiển thị phía trên kết quả server. Mất mạng thì quay về lọc cục bộ.
 - **Bảng xếp hạng admin:** đổi từ "toàn thời gian" sang **theo tháng** (mặc định tháng hiện tại, có tham số chọn tháng) trên trang admin Thymeleaf (`AdminController`). Nhóm cache `admin-top-spenders` được bỏ vì Sorted Set thay thế, Redis còn 4 nhóm cache + 1 leaderboard + OTP.
+
+## 11. Bổ sung ngày 27/10/2026 (sau khi xong plan code 1)
+
+- **Thang điểm** (người dùng cung cấp): tiêu chí 10 gồm 4 ý, mỗi ý 0,5 điểm:
+  1. Báo cáo đầy đủ, đúng chính tả, đúng định dạng, không sao chép.
+  2. Thuyết trình tự tin, trả lời được câu hỏi.
+  3. Nộp đúng hạn, đủ file **Word, PowerPoint, source code**.
+  4. Phân chia công việc rõ ràng, có trách nhiệm.
+- Từ đó plan báo cáo thêm: slide PowerPoint, tài liệu chuẩn bị câu hỏi bảo vệ, bước soát chính tả.
+- **Plan 1b (code), làm trước báo cáo.** Người dùng nhờ chọn; đây là lựa chọn của Claude:
+  - trang admin web cho NoSQL: duyệt feedback OCR kèm biểu đồ, trang vận hành NoSQL có nút dựng lại chỉ mục ES và bảng xếp hạng, backup/restore MongoDB trên trang backup có sẵn;
+  - **realtime cho web admin** bằng Redis Pub/Sub + SSE. Người dùng chọn "làm luôn". Push thông báo trên mobile (FCM) vẫn để hướng phát triển.
+- **Ảnh GUI tool:** chụp trên một stack demo riêng do Claude viết lệnh dựng, không đụng stack đang chạy.
+- **Báo cáo hoạt động nhóm và tài liệu kiểm thử:** nằm trong báo cáo chính (Chương 8 và Chương 7). Mã nhóm 38.
+- **Tên đề tài** (theo tên đã đăng ký và bìa SRS tuần 6): "Ứng dụng cơ sở dữ liệu MongoDB và bộ nhớ đệm Redis trong việc xây dựng hệ thống quản lý tài chính cá nhân". Elasticsearch là "CSDL tự tìm hiểu" trình bày trong nội dung. Nếu GV cho đổi tên thì thêm "… kết hợp Elasticsearch".
+- **Bìa:** tháng 11 năm 2026.
+- **Link:** nhánh `main` của repo (repo private). Ô Ghi chú nhắc: thêm GV làm collaborator hoặc nộp kèm zip source.
+- **Phân công** (trung thực, đối chiếu được với git):
+  - Trí: nhóm trưởng; phân tích, kiến trúc, toàn bộ code (PG, Redis, ES, plan 1b). Khoảng 60%, người dùng chỉnh lại.
+  - Tiến: những việc còn lại, làm thật: MongoDB (truy vấn, minh chứng Compass), Kibana/Elasticvue (mục 2.5), chụp ảnh trên stack demo, chạy lại script và backup/restore, soát Ch.2 và Ch.5, slide, video demo, soát chính tả. Khoảng 40%.
+  - Không ghi Tiến viết phần code đã có.
