@@ -30,7 +30,7 @@ CITE_RE = re.compile(r"\[(\d+(?:\s*[,–-]\s*\d+)*)\]")
 REF_RE = re.compile(r"(Hình|Bảng|hình|bảng) (\d+)\.(\d+)((?: đến | và | tới )(?:(?:Hình|Bảng|hình|bảng) )?)?(\d+\.\d+)?")
 CAPTION_RE = re.compile(r"^(Hình|Bảng) (\d+)\.(\d+)\s*:")
 P_RE = re.compile(r"<w:p[ >](?:(?!<w:p[ >]).)*?</w:p>", re.S)
-CODE_TOKEN_RE = re.compile(r"[A-Za-z_$@][A-Za-z0-9_$]*")
+CODE_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_$])[A-Za-z_$@][A-Za-z0-9_$]*")  # không bắt đầu giữa một từ (01T00 -> không có T00)
 PROSE_CODE_RE = re.compile(
     r"(?<![\w/@.-])("
     r"@[A-Z][A-Za-z]+"                      # @Annotation

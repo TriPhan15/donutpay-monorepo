@@ -8,6 +8,7 @@ Thêm so với builder.py của khóa luận:
       SCREENSHOT_DIR trong content module). Ảnh giữ chỗ do make_placeholder_png.py tạo; ảnh thật thay sau bằng
       IMAGE_REPLACE [("S-xx.png", đường dẫn, "fit")], chú thích và số hình giữ nguyên.
   add_image từ chối chép đè một ảnh khác cùng tên trong word/media.
+  Inline ⟦chữ⟧ (Task 5): nghiêng + tô vàng, dùng cho ô bảng/cụm chữ người dùng phải điền (ví dụ ngày chưa biết).
 Mọi content module của báo cáo NoSQL khai báo SESSION_TAG = None, SECTIONS = {}, RENUMBER = True và đưa nội dung vào
 bằng HEADING_PLACEHOLDERS (dòng giữ chỗ [T7.cN_x] ngay sau tiêu đề).
 
@@ -63,12 +64,15 @@ def esc(s):
 
 
 def runs(text, base_rpr=""):
+    """Inline: **đậm**, *nghiêng*, ⟦ô/chữ tô vàng⟧ (ghi chú cho người dùng, ví dụ ô ngày chưa biết trong bảng)."""
     out = []
-    for tok in re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*)", text):
+    for tok in re.split(r"(\*\*[^*]+\*\*|\*[^*]+\*|⟦[^⟧]+⟧)", text):
         if not tok:
             continue
         rpr = base_rpr
-        if tok.startswith("**"):
+        if tok.startswith("⟦") and tok.endswith("⟧") and len(tok) > 2:
+            tok, rpr = tok[1:-1], rpr + '<w:i/><w:highlight w:val="yellow"/>'
+        elif tok.startswith("**"):
             tok, rpr = tok[2:-2], rpr + "<w:b/>"
         elif tok.startswith("*"):
             tok, rpr = tok[1:-1], rpr + "<w:i/>"

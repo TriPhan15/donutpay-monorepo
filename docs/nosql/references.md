@@ -80,7 +80,7 @@
 
 [16] Elastic, "Licensing FAQ." [Online]. Available: https://www.elastic.co/pricing/faq/licensing (truy cập 27/10/2026).
 - Kiểm chứng: https://www.elastic.co/pricing/faq/licensing — mã nguồn Elasticsearch và Kibana "available under SSPL 1.0, AGPLv3, and the Elastic License v2"; bản phân phối mặc định theo Elastic License 2.0. https://www.elastic.co/subscriptions: các bậc Free and open (Basic), Platinum, Enterprise; bảng chi tiết tính năng theo bậc **không đọc được** qua WebFetch → mọi khẳng định "tính năng X có ở bản Basic" phải được chứng minh bằng ảnh chụp/đo trên stack demo (Task 4), không trích trang này. **Chưa kiểm chứng** việc AGPLv3 đã áp dụng cho bản 8.11 hay chỉ cho bản sau.
-- Dùng cho: Ch.2.5 tiêu chí 3 (giấy phép Kibana trong bảng so sánh).
+- Dùng cho: Ch.2.5 tiêu chí 3 (giấy phép Kibana trong bảng so sánh). Báo cáo ghi cho bản 8.11.4: "ELv2 (bản phân phối mặc định); mã nguồn: SSPL 1.0 hoặc ELv2" và **không** ghi AGPLv3 (Task 5 fix round 1, 28/10/2026: AGPLv3 được thêm vào 8/2024, sau bản 8.11.4 phát hành 1/2024; chưa có URL kiểm chứng riêng nên không nêu).
 
 [17] cars10, "elasticvue," GitHub repository. [Online]. Available: https://github.com/cars10/elasticvue (truy cập 27/10/2026).
 - Kiểm chứng: https://github.com/cars10/elasticvue — giấy phép **MIT**; "GUI for Elasticsearch" dạng ứng dụng desktop, tiện ích trình duyệt, Docker image, tự host; khoảng **2.8k sao** ngày 27/10/2026 (số sao thay đổi theo thời gian, ghi kèm ngày khi trích).
