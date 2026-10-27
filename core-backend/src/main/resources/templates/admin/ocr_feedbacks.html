@@ -13,6 +13,9 @@
         <div th:if="${mongoError}" class="alert alert-warning" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${mongoError}"></span>
         </div>
+        <div th:if="${analyticsError}" class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${analyticsError}"></span>
+        </div>
 
         <div class="row g-3 mb-4">
             <div class="col-lg-3">

@@ -73,6 +73,7 @@ public class AdminNoSqlPageController {
     private static final String MSG_RESOLVE_OK = "Đã đánh dấu phản hồi OCR là đã xử lý";
     private static final String MSG_DELETE_OK = "Đã xóa phản hồi OCR";
     private static final String MSG_MONGO_DOWN = "Không kết nối được MongoDB, vui lòng thử lại sau";
+    static final String MSG_ANALYTICS_READ_FAILED = "Không đọc được thống kê OCR từ MongoDB, vui lòng thử lại sau";
     private static final String MSG_MONGO_READ_FAILED = "Không đọc được dữ liệu MongoDB, vui lòng thử lại sau";
     private static final String MSG_REINDEX_OK = "Đã dựng lại chỉ mục tìm kiếm: %d giao dịch";
     private static final String MSG_REBUILD_OK = "Đã dựng lại bảng xếp hạng tháng %s: %d người dùng";
@@ -151,14 +152,25 @@ public class AdminNoSqlPageController {
         Page<OcrFeedbackResponseDto> feedbacks = Page.empty();
         OcrAnalyticsResponseDto analytics = OcrAnalyticsResponseDto.builder()
                 .errorsByField(List.of()).errorsByModel(List.of()).confidenceByMonth(List.of()).build();
+        Sort sort = Sort.by(Sort.Direction.DESC, "reportedAt");
         try {
-            feedbacks = ocrMongoService.findFeedbacks(filter,
-                    PageRequest.of(Math.max(page, 0), FEEDBACK_PAGE_SIZE, Sort.by(Sort.Direction.DESC, "reportedAt")));
-            analytics = ocrMongoService.analytics(from, to);
+            feedbacks = ocrMongoService.findFeedbacks(filter, PageRequest.of(Math.max(page, 0), FEEDBACK_PAGE_SIZE, sort));
+            if (feedbacks.isEmpty() && feedbacks.getTotalElements() > 0 && feedbacks.getTotalPages() > 0
+                    && feedbacks.getNumber() >= feedbacks.getTotalPages()) {
+                // Page N came back empty (the last row of it was deleted or resolved out of the filter): show the last one.
+                feedbacks = ocrMongoService.findFeedbacks(filter,
+                        PageRequest.of(feedbacks.getTotalPages() - 1, FEEDBACK_PAGE_SIZE, sort));
+            }
         } catch (DataAccessException e) {
-            log.warn("OCR feedback page: MongoDB read failed", e);
+            log.warn("OCR feedback page: MongoDB read of the rows failed", e);
             model.addAttribute("mongoError", MSG_MONGO_READ_FAILED);
             feedbacks = new PageImpl<>(List.of());
+        }
+        try {
+            analytics = ocrMongoService.analytics(from, to);
+        } catch (DataAccessException e) {
+            log.warn("OCR feedback page: MongoDB read of the analytics failed", e);
+            model.addAttribute("analyticsError", MSG_ANALYTICS_READ_FAILED);
         }
         model.addAttribute("feedbacks", feedbacks);
         model.addAttribute("errorRate", String.format(java.util.Locale.forLanguageTag("vi"), "%.1f%%",

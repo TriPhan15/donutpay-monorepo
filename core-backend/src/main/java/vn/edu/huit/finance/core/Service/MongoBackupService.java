@@ -11,8 +11,10 @@ import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -34,7 +36,8 @@ import java.util.regex.Pattern;
  * that is deleted right after the run; it is never logged either, and any text of the tools that reaches the log goes
  * through {@link #maskUri(String)}.
  * <p>
- * mongodump (tools 100.x) has no namespace filter: it dumps the whole {@value #DATABASE} database into one archive. The
+ * mongodump (tools 100.x) cannot be given several collections to include (--collection takes one; it only has
+ * --excludeCollection), so by design it dumps the whole {@value #DATABASE} database into one archive. The
  * restore is where the two collections are fixed: {@code --nsInclude} limits it, and {@code --drop} only drops the
  * collections it restores, so any other collection of the database is left alone.
  * <p>
@@ -50,6 +53,8 @@ public class MongoBackupService {
 
     private static final String ARCHIVE_PREFIX = "mongo_";
     private static final String ARCHIVE_SUFFIX = ".archive.gz";
+    /** What mongodump writes to; renamed to the final name only after it succeeded, so a failed dump is never restorable. */
+    private static final String PARTIAL_SUFFIX = ".partial";
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private static final String AUDIT_BACKUP = "Sao lưu MongoDB (%s): %s";
     private static final String AUDIT_RESTORE = "Phục hồi MongoDB (%s) từ file: %s";
@@ -121,8 +126,18 @@ public class MongoBackupService {
                 return false;
             }
             String fileName = ARCHIVE_PREFIX + LocalDateTime.now().format(TIMESTAMP) + ARCHIVE_SUFFIX;
-            if (!run("mongodump", config -> mongoDumpCommand(backupDir + fileName, config))) {
+            Path target = Path.of(backupDir + fileName);
+            Path partial = Path.of(backupDir + fileName + PARTIAL_SUFFIX);
+            try {
+                if (!run("mongodump", config -> mongoDumpCommand(partial.toString(), config))) {
+                    return false;
+                }
+                publish(partial, target);
+            } catch (IOException e) {
+                log.error("Không đổi tên file sao lưu {}: {}", fileName, e.getMessage());
                 return false;
+            } finally {
+                deleteQuietly(partial);
             }
             eventPublisher.publishEvent(SecurityAuditEvent.ofCurrentCaller(AuditAction.MONGO_BACKUP_CREATED,
                     String.format(AUDIT_BACKUP, String.join(", ", COLLECTIONS), fileName)));
@@ -130,6 +145,14 @@ public class MongoBackupService {
             return true;
         } finally {
             running.unlock();
+        }
+    }
+
+    private static void publish(Path partial, Path target) throws IOException {
+        try {
+            Files.move(partial, target, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

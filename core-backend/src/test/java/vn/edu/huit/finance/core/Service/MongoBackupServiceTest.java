@@ -51,7 +51,8 @@ class MongoBackupServiceTest {
 
     /** A fake tool: records its arguments, keeps a copy of the --config file (and its permissions), then exits. */
     private void tool(String name, int exitCode, String output) throws IOException {
-        toolScript(name, "echo '" + output + "'\nexit " + exitCode + "\n");
+        // A real mongodump creates its --archive file; a fake one that exits 0 without it is a failed dump.
+        toolScript(name, ("mongodump".equals(name) ? WRITE_ARCHIVE : "") + "echo '" + output + "'\nexit " + exitCode + "\n");
     }
 
     private void toolScript(String name, String tail) throws IOException {
@@ -169,6 +170,57 @@ class MongoBackupServiceTest {
         verifyNoInteractions(eventPublisher);
     }
 
+    private static final String WRITE_ARCHIVE = "for a in \"$@\"; do case \"$a\" in --archive=*) echo data > \"${a#--archive=}\";; esac; done\n";
+
+    private List<String> backupFiles() throws IOException {
+        try (var s = Files.list(backups)) {
+            return s.map(p -> p.getFileName().toString()).sorted().toList();
+        }
+    }
+
+    @Test
+    void aDumpThatWroteAnArchiveAndThenFailedLeavesNothingAndRestoreKeepsTheOlderGoodArchive() throws IOException {
+        Files.createFile(backups.resolve("mongo_20200101_000000.archive.gz"));
+        toolScript("mongodump", WRITE_ARCHIVE + "exit 1\n");
+
+        assertFalse(service.backup());
+
+        assertEquals(List.of("mongo_20200101_000000.archive.gz"), backupFiles());
+        assertEquals("mongo_20200101_000000.archive.gz", service.latestBackup());
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void aDumpKilledAtTheTimeoutLeavesNoPartialArchive() throws IOException {
+        Files.createFile(backups.resolve("mongo_20200101_000000.archive.gz"));
+        ReflectionTestUtils.setField(service, "toolTimeoutMillis", 500L);
+        toolScript("mongodump", WRITE_ARCHIVE + "sleep 30\nexit 0\n");
+
+        assertFalse(service.backup());
+
+        assertEquals(List.of("mongo_20200101_000000.archive.gz"), backupFiles());
+        assertEquals("mongo_20200101_000000.archive.gz", service.latestBackup());
+    }
+
+    @Test
+    void aSuccessfulDumpLeavesTheFinalArchiveAndNoPartial() throws IOException {
+        toolScript("mongodump", WRITE_ARCHIVE + "exit 0\n");
+
+        assertTrue(service.backup());
+
+        List<String> files = backupFiles();
+        assertEquals(1, files.size(), files.toString());
+        assertTrue(files.get(0).matches("mongo_\\d{8}_\\d{6}\\.archive\\.gz"), files.toString());
+        assertEquals(files.get(0), service.latestBackup());
+        assertEquals("data\n", Files.readString(backups.resolve(files.get(0))));
+    }
+
+    @Test
+    void aPartialFileIsNeverTheLatestBackup() throws IOException {
+        Files.createFile(backups.resolve("mongo_20261026_100000.archive.gz.partial"));
+        assertNull(service.latestBackup());
+    }
+
     @Test
     void withoutABinPathTheToolsAreFoundOnThePath() {
         ReflectionTestUtils.setField(service, "mongoBinPath", "");
@@ -193,7 +245,7 @@ class MongoBackupServiceTest {
 
         List<String> args = Files.readAllLines(argsFile);
         String archive = args.stream().filter(a -> a.startsWith("--archive=")).findFirst().orElseThrow();
-        assertTrue(archive.startsWith("--archive=" + backups + "/mongo_") && archive.endsWith(".archive.gz"), archive);
+        assertTrue(archive.startsWith("--archive=" + backups + "/mongo_") && archive.endsWith(".archive.gz.partial"), archive);
         ArgumentCaptor<SecurityAuditEvent> event = ArgumentCaptor.forClass(SecurityAuditEvent.class);
         verify(eventPublisher).publishEvent(event.capture());
         AuditEntry entry = event.getValue().entry();

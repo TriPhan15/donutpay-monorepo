@@ -64,7 +64,7 @@ Cùng nhịp **đếm → sao lưu → xóa → khôi phục → đếm lại**,
 
 | | Nội dung |
 |---|---|
-| Archive sao lưu chứa | **toàn bộ database `finance_nosql`** (mongodump 100.x không lọc được collection) |
+| Archive sao lưu chứa | **toàn bộ database `finance_nosql`** (mongodump 100.x không nhận nhiều collection để gộp vào, chỉ có `--excludeCollection`; nên thiết kế là dump cả database, lọc khi khôi phục) |
 | Khôi phục thay thế | **chỉ `ocr_logs` và `ocr_feedbacks`** (`--nsInclude` + `--drop`); collection khác của database giữ nguyên |
 | Nơi lưu file | volume Docker `core_backups` (trong container `/app/backups`), tên `mongo_<thời gian>.archive.gz` |
 | Khôi phục dùng | file `mongo_*.archive.gz` **mới nhất** |

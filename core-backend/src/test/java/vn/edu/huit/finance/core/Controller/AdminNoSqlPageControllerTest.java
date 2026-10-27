@@ -54,6 +54,7 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -212,6 +213,49 @@ class AdminNoSqlPageControllerTest {
                 .andExpect(content().string(allOf(
                         containsString("Không đọc được dữ liệu MongoDB"),
                         containsString("const fieldData = [];"))));
+    }
+
+    @Test
+    void analyticsDown_keepsTheRowsAndShowsAnAnalyticsBanner() throws Exception {
+        when(ocrMongoService.findFeedbacks(any(), any())).thenReturn(
+                new PageImpl<>(List.of(feedback("f1", false)), PageRequest.of(0, 20), 1));
+        when(ocrMongoService.analytics(any(), any())).thenThrow(new DataAccessResourceFailureException("agg failed"));
+
+        mockMvc.perform(get(FEEDBACKS).session(admin()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(
+                        containsString("/admin/ocr-feedbacks/f1/delete"),
+                        containsString("Không đọc được thống kê OCR"),
+                        not(containsString("Không đọc được dữ liệu MongoDB")))));
+    }
+
+    @Test
+    void feedbacksDown_keepsTheChartsAndShowsTheBanner() throws Exception {
+        when(ocrMongoService.findFeedbacks(any(), any())).thenThrow(new DataAccessResourceFailureException("find failed"));
+        when(ocrMongoService.analytics(any(), any())).thenReturn(analytics());
+
+        mockMvc.perform(get(FEEDBACKS).session(admin()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(
+                        containsString("Không đọc được dữ liệu MongoDB"),
+                        containsString("const fieldData = [7,2];"),
+                        not(containsString("Không đọc được thống kê OCR")))));
+    }
+
+    @Test
+    void aPageThatCameBackEmptyAfterADeleteShowsTheLastNonEmptyPage() throws Exception {
+        Sort sort = Sort.by(Sort.Direction.DESC, "reportedAt");
+        when(ocrMongoService.findFeedbacks(any(), eq(PageRequest.of(3, 20, sort))))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(3, 20, sort), 41));
+        when(ocrMongoService.findFeedbacks(any(), eq(PageRequest.of(2, 20, sort))))
+                .thenReturn(new PageImpl<>(List.of(feedback("f41", false)), PageRequest.of(2, 20, sort), 41));
+        when(ocrMongoService.analytics(any(), any())).thenReturn(analytics());
+
+        mockMvc.perform(get(FEEDBACKS).param("page", "3").session(admin()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(
+                        containsString("/admin/ocr-feedbacks/f41/delete"),
+                        containsString("trang 3/3"))));
     }
 
     @Test
