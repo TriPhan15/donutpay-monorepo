@@ -123,4 +123,18 @@ class AdminDashboardPageTest {
 
         verify(receiptProcessingService).rejectReceipt(7L);
     }
+
+    @Test
+    void theBackupPageHasAMongoDbCardNextToThePostgresOneWithItsConfirmDialogs() throws Exception {
+        mockMvc.perform(get("/admin/backup"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(
+                        containsString("MongoDB (ocr_logs, ocr_feedbacks)"),
+                        containsString("ConfirmMongoBackup()"),
+                        containsString("ConfirmMongoRestore()"),
+                        containsString("/admin/backup/mongo/execute"),
+                        containsString("/admin/backup/mongo/restore"),
+                        containsString("/admin/backup/execute?type="),
+                        containsString("/admin/backup/restore?type=FULL"))));
+    }
 }

@@ -74,6 +74,27 @@
                             </div>
                         </div>
 
+                        <h5 class="text-success fw-bold border-bottom pb-3 mb-4 mt-5"><i class="bi bi-database-fill me-2"></i>MongoDB (ocr_logs, ocr_feedbacks)</h5>
+
+                        <div class="card border-success border-2 bg-success bg-opacity-10 mb-4 rounded-4" id="mongoBackupCard">
+                            <div class="card-body p-4">
+                                <p class="text-dark mb-4">
+                                    Sao lưu bằng <code>mongodump</code> thành file <code>mongo_&lt;thời gian&gt;.archive.gz</code> trong thư mục <code>backups/</code>.
+                                    Phục hồi bằng <code>mongorestore --drop</code> từ bản mới nhất và <strong>chỉ ghi đè hai collection</strong> <code>ocr_logs</code>, <code>ocr_feedbacks</code>;
+                                    các collection khác và PostgreSQL không bị ảnh hưởng.
+                                    File lưu trữ chứa toàn bộ database <code>finance_nosql</code>, nhưng phục hồi chỉ thay thế <code>ocr_logs</code> và <code>ocr_feedbacks</code>.
+                                </p>
+                                <div class="d-flex flex-wrap gap-3 justify-content-center">
+                                    <button id="mongoBackupBtn" onclick="ConfirmMongoBackup()" class="btn btn-success btn-lg px-5 fw-bold">
+                                        <i class="bi bi-cloud-arrow-down-fill me-2"></i> SAO LƯU MONGODB
+                                    </button>
+                                    <button id="mongoRestoreBtn" onclick="ConfirmMongoRestore()" class="btn btn-outline-danger btn-lg px-5 fw-bold">
+                                        <i class="bi bi-arrow-counterclockwise me-2"></i> PHỤC HỒI MONGODB
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -81,7 +102,7 @@
 
         <div id="loadingOverlay" class="d-none">
             <div class="spinner-border text-primary" style="width: 4rem; height: 4rem; border-width: 0.3em;" role="status"></div>
-            <h4 class="mt-4 text-white fw-bold">Đang giao tiếp với PostgreSQL...</h4>
+            <h4 class="mt-4 text-white fw-bold"><span id="loadingTarget">Đang giao tiếp với PostgreSQL...</span></h4>
             <p class="text-white-50">Vui lòng không tắt hoặc làm mới trình duyệt.</p>
         </div>
 
@@ -163,6 +184,60 @@
                                 toggleLoading(false);
                                 Swal.fire('Lỗi', 'Mất kết nối với máy chủ!', 'error');
                             });
+                    }
+                });
+            }
+
+            // MongoDB: same flow as the PostgreSQL buttons (confirm dialog, overlay, JSON {success, message}). A cancelled
+            // dialog changes nothing, and the overlay is always closed again, so the buttons stay usable.
+            function runMongo(url, onSuccess) {
+                document.getElementById('loadingTarget').textContent = 'Đang giao tiếp với MongoDB...';
+                toggleLoading(true);
+                fetch(url, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        toggleLoading(false);
+                        if (data.success) onSuccess(data.message);
+                        else Swal.fire('Thất bại', data.message, 'error');
+                    })
+                    .catch(error => {
+                        toggleLoading(false);
+                        Swal.fire('Lỗi', 'Mất kết nối với máy chủ!', 'error');
+                    })
+                    .finally(() => {
+                        document.getElementById('loadingTarget').textContent = 'Đang giao tiếp với PostgreSQL...';
+                    });
+            }
+
+            function ConfirmMongoBackup() {
+                Swal.fire({
+                    title: 'Sao lưu MongoDB?',
+                    text: "Máy chủ sẽ chạy mongodump và lưu một file lưu trữ mới.",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Đồng ý, chạy ngay!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        runMongo('/admin/backup/mongo/execute', msg => Toast.fire({ icon: 'success', title: msg }));
+                    }
+                });
+            }
+
+            function ConfirmMongoRestore() {
+                Swal.fire({
+                    title: 'Phục hồi MongoDB?',
+                    html: "Hai collection <b>ocr_logs</b> và <b>ocr_feedbacks</b> sẽ bị <b>ghi đè</b> bằng bản sao lưu mới nhất.<br/>Không thể hoàn tác.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Tôi hiểu rủi ro, Phục hồi!',
+                    cancelButtonText: 'Quay xe'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        runMongo('/admin/backup/mongo/restore', msg => Swal.fire('Thành công!', msg, 'success'));
                     }
                 });
             }
