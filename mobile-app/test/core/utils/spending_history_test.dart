@@ -41,4 +41,33 @@ void main() {
       DateTime(2026, 5, 4),
     );
   });
+
+  test('spending dated after the end of today is not analysed', () {
+    final today = DateTime(2026, 10, 28, 9);
+    final kept = SpendingHistory.forAnalysis([
+      _tx(DateTime(2026, 10, 28, 23, 59)),
+      _tx(DateTime(2026, 10, 29)),
+      _tx(DateTime(2027, 6, 1)),
+    ], today);
+
+    expect(kept.map((t) => t.date), [DateTime(2026, 10, 28, 23, 59)]);
+  });
+
+  test('budget advice gets the history from the 1st day 7 months back', () {
+    final today = DateTime(2026, 2, 10, 9);
+    expect(SpendingHistory.adviceMonths, 7);
+    expect(SpendingHistory.adviceWindowStart(today), DateTime(2025, 7, 1));
+
+    final kept = SpendingHistory.forBudgetAdvice([
+      _tx(DateTime(2025, 6, 30, 23, 59)),
+      _tx(DateTime(2025, 7, 1)),
+      _tx(DateTime(2026, 2, 1), category: 'Lương', isExpense: false),
+      _tx(DateTime(2026, 2, 2), category: 'Tiết kiệm'),
+    ], today);
+
+    expect(kept.map((t) => t.date), [
+      DateTime(2025, 7, 1),
+      DateTime(2026, 2, 1),
+    ]);
+  });
 }

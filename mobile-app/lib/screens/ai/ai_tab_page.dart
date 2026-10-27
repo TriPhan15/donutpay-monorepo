@@ -74,6 +74,9 @@ class _AITabPageState extends State<AITabPage> {
   Map<String, dynamic>? _budgetAdvice;
   bool _adviceLoading = false;
 
+  /// Numbers each budget advice request, like [_spadeRequestId]: only the latest one may set or clear the advice.
+  int _adviceRequestId = 0;
+
   List<TransactionModel> get _monthTxs {
     final now = DateTime.now();
     return _transactions
@@ -144,18 +147,24 @@ class _AITabPageState extends State<AITabPage> {
   }
 
   Future<void> _loadBudgetAdvice(List<TransactionModel> txs) async {
+    final requestId = ++_adviceRequestId;
     final today = DateTime.now();
     final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
     if (goal == null) {
-      if (mounted) setState(() => _budgetAdvice = null);
+      if (mounted) {
+        setState(() {
+          _budgetAdvice = null;
+          _adviceLoading = false;
+        });
+      }
       return;
     }
 
     setState(() => _adviceLoading = true);
+    Map<String, dynamic>? advice;
     try {
       // Savings contributions are not spending: the advisor would try to cut them like any other category.
-      final data = txs
-          .where((t) => !t.isSavingsContribution)
+      final data = SpendingHistory.forBudgetAdvice(txs, today)
           .map(
             (t) => {
               'category': t.category,
@@ -165,20 +174,23 @@ class _AITabPageState extends State<AITabPage> {
             },
           )
           .toList();
-      final advice = await RemoteApiHelper.instance.recommendBudget(
+      advice = await RemoteApiHelper.instance.recommendBudget(
         transactions: data,
         target: ((goal['target'] ?? 0) as num).toDouble(),
         current: ((goal['current'] ?? 0) as num).toDouble(),
         monthsLeft: SavingsGoalPlanner.monthsLeft(goal, today),
       );
-      if (mounted) setState(() => _budgetAdvice = advice);
     } catch (e) {
       // Also the 422 of a history that is too short: old advice must not outlive a request that failed.
       debugPrint('Lỗi lấy gợi ý phân bổ tiền: $e');
-      if (mounted) setState(() => _budgetAdvice = null);
-    } finally {
-      if (mounted) setState(() => _adviceLoading = false);
+      advice = null;
     }
+    // The page is gone, or a newer request has taken over: this answer, or failure, must not touch its advice.
+    if (!mounted || requestId != _adviceRequestId) return;
+    setState(() {
+      _budgetAdvice = advice;
+      _adviceLoading = false;
+    });
   }
 
   void _onPeriodSelected(SpendingPeriod period) {

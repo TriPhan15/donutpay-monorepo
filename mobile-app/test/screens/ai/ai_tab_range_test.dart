@@ -485,21 +485,20 @@ void main() {
   });
 
   group('refresh button', () {
-    testWidgets(
-      'analyses the same 26 weeks again and shows the new patterns',
-      (tester) async {
-        await pumpPage(tester);
-        expect(find.text(_foodThenTransportShown), findsOneWidget);
+    testWidgets('analyses the same 26 weeks again and shows the new patterns', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      expect(find.text(_foodThenTransportShown), findsOneWidget);
 
-        patterns = [_pattern(_billsThenShopping)];
-        await _tap(tester, _refreshLabel);
+      patterns = [_pattern(_billsThenShopping)];
+      await _tap(tester, _refreshLabel);
 
-        expect(analyses(), hasLength(2));
-        expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
-        expect(find.text(_billsThenShoppingShown), findsOneWidget);
-        expect(find.text(_foodThenTransportShown), findsNothing);
-      },
-    );
+      expect(analyses(), hasLength(2));
+      expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
+      expect(find.text(_billsThenShoppingShown), findsOneWidget);
+      expect(find.text(_foodThenTransportShown), findsNothing);
+    });
 
     testWidgets('keeps the period the user chose', (tester) async {
       await pumpPage(tester);
@@ -789,10 +788,8 @@ void main() {
         backend.on(
           'POST',
           '/spade/recommend',
-          (_) => jsonResponse(200, {
-            'summary': adviceText,
-            'recommendations': [],
-          }),
+          (_) =>
+              jsonResponse(200, {'summary': adviceText, 'recommendations': []}),
         );
         await pumpPage(tester);
         expect(find.text(adviceText), findsOneWidget);
@@ -840,6 +837,85 @@ void main() {
         });
       },
     );
+
+    testWidgets(
+      'the advice gets the history from the 1st day 7 months back, without savings',
+      (tester) async {
+        withGoal();
+        transactions = [
+          _tx(1, _today, amount: 1000),
+          _tx(2, DateTime(_now.year, _now.month - 7, 1), amount: 2000),
+          _tx(3, DateTime(_now.year, _now.month - 7, 0, 23, 59), amount: 4000),
+          _tx(4, _today, amount: 700, category: 'Tiết kiệm'),
+        ];
+        backend.on(
+          'POST',
+          '/spade/recommend',
+          (_) => jsonResponse(200, {'recommendations': []}),
+        );
+
+        await pumpPage(tester);
+
+        final sent = backend.requests
+            .where((r) => r.path == '/spade/recommend')
+            .single;
+        expect(_amountsSent(sent), [1000, 2000]);
+      },
+    );
+
+    group('answers out of order', () {
+      late List<Completer<ResponseBody>> gates;
+
+      /// Opens the tab and changes the data, both advice requests still pending.
+      Future<void> openThenChangeData(WidgetTester tester) async {
+        withGoal();
+        gates = [];
+        backend.on('POST', '/spade/recommend', (_) {
+          final gate = Completer<ResponseBody>();
+          gates.add(gate);
+          return gate.future;
+        });
+        await pumpPageWhileLoading(tester);
+        expect(gates, hasLength(1), reason: 'the first advice request');
+
+        RemoteApiHelper.instance.dataChangedNotifier.value++;
+        await _pumpFrames(tester);
+        expect(gates, hasLength(2), reason: 'the request after the change');
+
+        gates[1].complete(
+          jsonResponse(200, {'summary': adviceText, 'recommendations': []}),
+        );
+        await _pumpFrames(tester);
+        expect(find.text(adviceText), findsOneWidget);
+      }
+
+      testWidgets('a late 422 does not clear the newer advice', (tester) async {
+        await withCapturedLogs((logs) async {
+          await openThenChangeData(tester);
+
+          gates[0].complete(
+            jsonResponse(422, {'detail': 'Chưa đủ lịch sử chi tiêu'}),
+          );
+          await _pumpFrames(tester);
+
+          expect(find.text(adviceText), findsOneWidget);
+        });
+      });
+
+      testWidgets('a late answer does not overwrite the newer advice', (
+        tester,
+      ) async {
+        await openThenChangeData(tester);
+
+        gates[0].complete(
+          jsonResponse(200, {'summary': 'Gợi ý cũ', 'recommendations': []}),
+        );
+        await _pumpFrames(tester);
+
+        expect(find.text(adviceText), findsOneWidget);
+        expect(find.text('Gợi ý cũ'), findsNothing);
+      });
+    });
 
     testWidgets('savings contributions are not sent to /spade/analyze', (
       tester,
@@ -906,15 +982,17 @@ void main() {
         ];
         expect(categories, isNot(contains('Tiết kiệm')));
         expect(categories, hasLength(2));
-        expect(find.text('Mục tiêu chưa có hạn, góp lúc nào cũng được'), findsOneWidget);
+        expect(
+          find.text('Mục tiêu chưa có hạn, góp lúc nào cũng được'),
+          findsOneWidget,
+        );
       },
     );
 
     testWidgets('on track is shown only when the month covers the goal', (
       tester,
     ) async {
-      final deadline =
-          '${two(_now.day)}/${two(_now.month)}/${_now.year}';
+      final deadline = '${two(_now.day)}/${two(_now.month)}/${_now.year}';
       backend.on(
         'GET',
         '/api/savings',
@@ -959,7 +1037,9 @@ void main() {
       await pumpPage(tester);
 
       expect(
-        find.text('Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp'),
+        find.text(
+          'Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp',
+        ),
         findsOneWidget,
       );
       expect(
@@ -983,7 +1063,13 @@ void main() {
           const contributed = 2e6;
           transactions = [
             _tx(1, _today, amount: 3e6),
-            _tx(2, _today, amount: 10e6, category: 'Thu nhập', isExpense: false),
+            _tx(
+              2,
+              _today,
+              amount: 10e6,
+              category: 'Thu nhập',
+              isExpense: false,
+            ),
             _tx(3, _today, amount: contributed, category: 'Tiết kiệm'),
           ];
           backend.on('GET', '/api/savings', (_) => okResponse(goals));
