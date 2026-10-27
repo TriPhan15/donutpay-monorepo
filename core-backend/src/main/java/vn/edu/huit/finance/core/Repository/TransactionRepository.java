@@ -145,4 +145,46 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                                             @Param("categoryId") Long categoryId,
                                             @Param("rangeStart") java.time.LocalDateTime rangeStart,
                                             @Param("rangeEnd") java.time.LocalDateTime rangeEnd);
+
+    /**
+     * The LIKE pattern that finds {@code q} anywhere in a text, case ignored: lowercased, with the characters LIKE treats
+     * as wildcards ({@code \ % _}) escaped by a backslash (the ESCAPE of {@link #searchIdsByText}) so the user's text is
+     * always literal, and wrapped in %.
+     */
+    static String likePattern(String q) {
+        String escaped = q.toLowerCase(java.util.Locale.ROOT)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        return "%" + escaped + "%";
+    }
+
+    /**
+     * The ids of the user's transactions whose note, category, location, payment method or receipt seller contain the text
+     * of {@code pattern} (built by {@link #likePattern}), newest first. Only ids: the rows are loaded by
+     * {@link #findAllByIdInAndUserIdWithReceipt}, the same way as for hits of the search index.
+     */
+    @Query(value = "SELECT t.id FROM Transaction t LEFT JOIN t.receipt r " +
+                   "WHERE t.user.id = :userId AND (" +
+                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(t.location) LIKE :pattern ESCAPE '\\' OR LOWER(t.paymentMethod) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(r.vendorName) LIKE :pattern ESCAPE '\\') " +
+                   "ORDER BY t.transactionDate DESC, t.id DESC",
+           countQuery = "SELECT count(t) FROM Transaction t LEFT JOIN t.receipt r " +
+                   "WHERE t.user.id = :userId AND (" +
+                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(t.location) LIKE :pattern ESCAPE '\\' OR LOWER(t.paymentMethod) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(r.vendorName) LIKE :pattern ESCAPE '\\')")
+    org.springframework.data.domain.Page<Long> searchIdsByText(@Param("userId") Long userId,
+                                                               @Param("pattern") String pattern,
+                                                               org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * The user's own transactions among {@code ids}, each with its category and receipt, in one statement. An id of another
+     * user (a stale or foreign entry of the search index) matches nothing. The order is not that of {@code ids}.
+     */
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.category LEFT JOIN FETCH t.receipt " +
+           "WHERE t.id IN :ids AND t.user.id = :userId")
+    List<Transaction> findAllByIdInAndUserIdWithReceipt(@Param("ids") java.util.Collection<Long> ids,
+                                                        @Param("userId") Long userId);
 }
