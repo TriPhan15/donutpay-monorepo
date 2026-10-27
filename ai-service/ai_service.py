@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
-from datetime import datetime
 import uvicorn
 import torch
 from PIL import Image, ImageOps
@@ -14,7 +13,9 @@ import traceback
 
 from starlette.concurrency import run_in_threadpool
 
-from wcm_spade import WCMSpade
+from spending_analysis import DEFAULT_TOP_N, SpadeAnalyzeResponse, analyze_spending
+from spending_data import MAX_TRANSACTIONS, TransactionIn, expenses_from
+from wcm_spade import DEFAULT_MIN_SUP
 import budget_advisor
 from receipt_postprocess import fields_from_sequence, normalize_receipt
 
@@ -135,22 +136,14 @@ async def extract_receipt_info(image: UploadFile = File(...)):
     return prediction
 
 
-class SpadeTx(BaseModel):
-    category: str
-    amount: float = 0.0
-    date: str = ""
-    isExpense: bool = True
-
 class SpadeRequest(BaseModel):
-    transactions: List[SpadeTx]
-    max_gap_days: int = 7
-    min_sup_factor: float = 0.5
-    top_n: int = 10
-    alpha: float = 0.5
-    beta: float = 0.5
+    # Trường thừa (alpha, beta, max_gap_days của APK cũ) bị Pydantic bỏ qua.
+    transactions: List[TransactionIn] = Field(max_length=MAX_TRANSACTIONS)
+    top_n: int = Field(DEFAULT_TOP_N, ge=1, le=50)
+    min_sup_factor: float = Field(DEFAULT_MIN_SUP, gt=0, le=1)
 
 class RecommendRequest(BaseModel):
-    transactions: List[SpadeTx]
+    transactions: List[TransactionIn]
     target: float = 0.0          
     current: float = 0.0         
     months_left: int = 0        
@@ -161,78 +154,12 @@ class RecommendRequest(BaseModel):
     max_cut_ratio: float = 0.30
 
 
-def _parse_date(s: str):
-    if not s:
-        return None
-    s = s.strip().replace("Z", "")
-    try:
-        return datetime.fromisoformat(s)
-    except ValueError:
-        try:
-            return datetime.fromisoformat(s[:10])
-        except ValueError:
-            return None
-
-
-def _build_user_sequences(exp):
-    from collections import defaultdict
-    by_month = defaultdict(lambda: defaultdict(set))  
-    price_sum = defaultdict(float)
-    price_cnt = defaultdict(int)
-    for d, cat, amt in exp:
-        by_month[(d.year, d.month)][d.toordinal()].add(cat)
-        price_sum[cat] += amt
-        price_cnt[cat] += 1
-    sequences = []
-    for _, days in by_month.items():
-        seq = [tuple(sorted(days[day])) for day in sorted(days.keys())]
-        sequences.append(seq)
-    item_prices = {c: price_sum[c] / price_cnt[c] for c in price_sum}
-    return sequences, item_prices
-
-
-@app.post("/spade/analyze")
-def analyze_patterns(req: SpadeRequest):
-    print(f"\nWCM-SPADE nhận {len(req.transactions)} giao dịch")
-    exp = []
-    for t in req.transactions:
-        d = _parse_date(t.date)
-        if t.isExpense and d is not None:
-            exp.append((d, t.category, max(t.amount, 0.0)))
-    exp.sort(key=lambda x: x[0])
-    
-    if len(exp) < 3:
-        return {
-            "patterns": [],
-            "message": "Chưa đủ dữ liệu chuỗi (cần ít nhất 3 giao dịch hợp lệ)"
-        }
-
-    sequences, item_prices = _build_user_sequences(exp)
-    if len(sequences) < 1:
-        return {"patterns": [], "message": "Không đủ dữ liệu chuỗi"}
-
-    engine = WCMSpade(min_sup=req.min_sup_factor, alpha=req.alpha, max_pattern_length=4)
-    result = engine.mine(sequences, item_prices)
-
-    seq_patterns = [p for p in result.patterns if len(p.itemsets) >= 2 or sum(len(it) for it in p.itemsets) >= 2]
-    patterns = []
-    for p in seq_patterns[: req.top_n]:
-        human = " → ".join("+".join(str(i) for i in it) for it in p.itemsets)
-        cover = (p.raw_sup / result.n_sequences * 100) if result.n_sequences else 0.0
-        patterns.append({
-            "pattern": human,
-            "count": p.raw_sup,
-            "weight": round(p.wsup, 4),
-            "wsupport": f"{cover:.1f}%",
-        })
-
-    print(f"Trả về {len(patterns)} mẫu Cá nhân hóa.")
-    return {
-        "patterns": patterns,
-        "effectiveMinSup": result.effective_min_sup,
-        "meanW": round(result.mean_w, 4),
-        "nSequences": result.n_sequences,
-    }
+@app.post("/spade/analyze", response_model=SpadeAnalyzeResponse)
+def analyze_patterns(req: SpadeRequest) -> SpadeAnalyzeResponse:
+    """Phân tích chi tiêu 26 tuần (CPU-bound nên dùng def, chạy trong threadpool)."""
+    return analyze_spending(
+        expenses_from(req.transactions), top_n=req.top_n, min_sup=req.min_sup_factor
+    )
 
 
 @app.post("/spade/recommend")

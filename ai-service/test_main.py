@@ -3,11 +3,13 @@
 import asyncio
 import threading
 import time
+from datetime import date, timedelta
 from io import BytesIO
 from typing import Dict, List, Tuple
 from unittest.mock import patch
 
 import httpx
+import pytest
 from PIL import Image
 
 # --- Global Import Trap ---------------------------------------------------
@@ -15,16 +17,27 @@ from PIL import Image
 # tai model ngay o top-level khi import module (khong nam trong ham/lifespan).
 # Cac patch() nay PHAI chay va .start() truoc dong "from ai_service import app"
 # ben duoi de chan viec load model vat ly + khoi tao class that.
-patch("os.path.exists", return_value=True).start()
-patch("transformers.DonutProcessor.from_pretrained").start()
-patch("transformers.VisionEncoderDecoderModel.from_pretrained").start()
+# Patch chi song trong luc import: giu chung chay mai se lam lech moi test
+# khac trong cung tien trinh (Path.exists / skipif cua test_receipt_postprocess).
+_import_patches = [
+    patch("os.path.exists", return_value=True),
+    patch("transformers.DonutProcessor.from_pretrained"),
+    patch("transformers.VisionEncoderDecoderModel.from_pretrained"),
+]
+for _p in _import_patches:
+    _p.start()
 
 from fastapi.testclient import TestClient  # noqa: E402
 
 import ai_service  # noqa: E402
 from ai_service import app  # noqa: E402
-from wcm_spade import Pattern, WCMSpadeResult  # noqa: E402
 
+for _p in _import_patches:
+    _p.stop()
+
+from test_spade_rules import _planted_weeks  # noqa: E402
+
+FIRST_MONDAY = date(2026, 1, 5)
 client = TestClient(app)
 
 
@@ -166,59 +179,50 @@ def test_extract_receipt_info_missing_file():
     assert response.status_code == 422
 
 
-def test_spade_analyze(mocker):
-    """POST /spade/analyze tra ve patterns lay tu WCMSpade.mine (da mock),
-    khong phu thuoc thuat toan khai pha chuoi that."""
-    fake_pattern = Pattern(
-        itemsets=[["an uong"], ["di lai"]], idlist={}, raw_sup=2, wsup=1.5
-    )
-    fake_result = WCMSpadeResult(
-        patterns=[fake_pattern],
-        n_sequences=2,
-        min_sup_abs=1,
-        effective_min_sup=1,
-        mean_w=0.75,
-        item_weights={"an uong": 1.0, "di lai": 0.5},
-    )
-    # Mock: chan class wcm_spade.WCMSpade.mine, ep tra ve WCMSpadeResult
-    # gia lap de chi kiem tra tang API/serialization, khong chay thuat
-    # toan WCM-SPADE that.
-    mocker.patch("wcm_spade.WCMSpade.mine", return_value=fake_result)
+def _tx(category: str = "an uong", amount: float = 1000, date: str = "2026-10-20") -> dict:
+    return {"category": category, "amount": amount, "date": date, "isExpense": True}
 
-    payload = {
-        "transactions": [
-            {
-                "category": "an uong",
-                "amount": 50000,
-                "date": "2026-09-01",
-                "isExpense": True,
-            },
-            {
-                "category": "di lai",
-                "amount": 20000,
-                "date": "2026-09-02",
-                "isExpense": True,
-            },
-            {
-                "category": "an uong",
-                "amount": 30000,
-                "date": "2026-09-15",
-                "isExpense": True,
-            },
-        ],
-        "top_n": 5,
-    }
-    response = client.post("/spade/analyze", json=payload)
 
+def _planted_payload() -> list:
+    """26 tuan cay san cua test_spade_rules, moi ngay la mot ngay that."""
+    payload = []
+    for w, week in enumerate(_planted_weeks()):
+        for d, itemset in enumerate(week):
+            day = FIRST_MONDAY + timedelta(days=7 * w + d)
+            payload.extend(_tx(item, 1000, day.isoformat()) for item in itemset)
+    return payload
+
+
+def test_spade_analyze_contract():
+    response = client.post("/spade/analyze", json={"transactions": _planted_payload()})
+    body = response.json()
     assert response.status_code == 200
-    assert response.json()["patterns"] == [
-        {
-            "pattern": "an uong → di lai",
-            "count": 2,
-            "weight": 1.5,
-            "wsupport": "100.0%",
-        }
-    ]
+    assert set(body) == {"status", "patterns", "rules", "habits", "categories", "meta"}
+    assert body["status"] == "OK"
+    assert body["meta"]["algorithm"] == "WCM-SPADE"
+    rule = next(r for r in body["rules"] if r["antecedent"] == ["A"] and r["consequent"] == ["B"])
+    assert {"antecedentSupport", "laplaceConfidence", "lift", "weeks"} <= set(rule)
+
+
+def test_analyze_leaves_savings_out():
+    payload = _planted_payload() + [_tx("Tiết kiệm", 9e9, "2026-10-20")]
+    body = client.post("/spade/analyze", json={"transactions": payload}).json()
+    assert "Tiết kiệm" not in {c["category"] for c in body["categories"]}
+
+
+def test_analyze_accepts_old_request_fields():
+    r = client.post("/spade/analyze", json={"transactions": [], "alpha": 0.5, "beta": 0.5,
+                                            "max_gap_days": 7, "min_sup_factor": 0.5})
+    assert r.status_code == 200 and r.json()["status"] == "INSUFFICIENT_DATA"
+
+
+@pytest.mark.parametrize("bad", [
+    {"transactions": [_tx()] * 5001}, {"transactions": [], "top_n": 0}, {"transactions": [], "top_n": 51},
+    {"transactions": [], "min_sup_factor": 0}, {"transactions": [], "min_sup_factor": 1.5},
+    {"transactions": [_tx(category="x" * 65)]}, {"transactions": [_tx(amount=-1)]},
+])
+def test_analyze_rejects_out_of_range_input(bad):
+    assert client.post("/spade/analyze", json=bad).status_code == 422
 
 
 def test_recommend_budget(mocker):

@@ -57,7 +57,7 @@ def expenses_from(txs: Iterable[TransactionIn]) -> List[Expense]:
         day = parse_local_date(tx.date)
         if day is None:
             continue
-        out.append(Expense(day, tx.category.strip(), float(tx.amount)))
+        out.append(Expense(day, _nfc(tx.category), float(tx.amount)))
     out.sort(key=lambda e: e.day)
     return out
 

@@ -1,3 +1,4 @@
+import unicodedata
 from datetime import date
 
 import pytest
@@ -83,3 +84,12 @@ def test_transaction_limits():
         TransactionIn(category="A", amount=-1)
     with pytest.raises(ValidationError):
         TransactionIn(category="A", amount=1e13)
+
+
+def test_category_is_nfc_normalised_so_spellings_merge():
+    composed = "Ăn uống"
+    decomposed = unicodedata.normalize("NFD", composed)
+    assert composed != decomposed
+    txs = [TransactionIn(category=composed, amount=1, date="2026-10-20"),
+           TransactionIn(category=decomposed, amount=1, date="2026-10-21")]
+    assert {e.category for e in expenses_from(txs)} == {composed}
