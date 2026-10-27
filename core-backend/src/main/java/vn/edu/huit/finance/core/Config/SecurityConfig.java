@@ -70,7 +70,7 @@ public class SecurityConfig {
     public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .securityMatcher("/admin/**", "/login", "/error", "/css/**", "/js/**", "/images/**", "/uploads/**")
-                .csrf(csrf -> csrf.disable())
+                // CSRF stays on (default): the admin pages sign in with a session. Forms carry _csrf, fetch/jQuery send X-CSRF-TOKEN (admin-csrf.js).
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/login", "/error", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()

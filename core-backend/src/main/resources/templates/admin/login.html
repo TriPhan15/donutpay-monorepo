@@ -163,6 +163,7 @@
         </div>
 
         <form action="/admin/login" method="POST">
+            <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}">
 
             <div class="mb-4">
                 <label class="form-label fw-bold text-muted small ms-1 mb-2">TÀI KHOẢN</label>

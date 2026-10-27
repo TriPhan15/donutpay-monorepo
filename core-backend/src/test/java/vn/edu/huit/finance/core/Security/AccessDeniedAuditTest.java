@@ -39,6 +39,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static vn.edu.huit.finance.core.Security.CsrfTestSupport.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -195,7 +196,7 @@ class AccessDeniedAuditTest {
 
     @Test
     void aUserSignedInOnTheAdminPagesIsRefusedThe403Page_andRecorded() throws Exception {
-        MockHttpSession session = (MockHttpSession) mockMvc.perform(post("/admin/login").servletPath("/admin/login")
+        MockHttpSession session = (MockHttpSession) mockMvc.perform(post("/admin/login").with(csrf()).servletPath("/admin/login")
                         .param("username", BOB).param("password", PASSWORD))
                 .andExpect(status().is3xxRedirection())
                 .andReturn().getRequest().getSession();
