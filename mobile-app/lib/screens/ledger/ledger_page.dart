@@ -43,6 +43,12 @@ class LedgerPageState extends State<LedgerPage> {
   /// The month chart shows the selected month and this many before it.
   static const int _monthsBeforeSelected = 5;
 
+  /// The server is asked once the user has stopped typing for this long.
+  static const Duration _searchDebounce = Duration(milliseconds: 350);
+
+  /// A shorter text is only filtered on the device: the server rejects it.
+  static const int _minServerQueryLength = 2;
+
   bool _isLoading = true;
 
   /// True when the list of the server could not be loaded: [_transactions] then holds only the transactions of this
@@ -74,6 +80,11 @@ class LedgerPageState extends State<LedgerPage> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
+  /// Ids the server found for [_searchQuery], best match first; null while there is no answer (typing, query too
+  /// short, server error), and the list is then filtered on the device alone.
+  Set<int>? _serverMatchIds;
+  Timer? _searchTimer;
+
   /// [amount] in VND, with a minus only when it is negative (a balance), as the language of [loc] writes it.
   static String _money(double amount, AppLocalizations loc) =>
       CurrencyHelper.formatVND(amount, loc, showSign: amount < 0);
@@ -89,6 +100,7 @@ class LedgerPageState extends State<LedgerPage> {
   @override
   void dispose() {
     RemoteApiHelper.instance.dataChangedNotifier.removeListener(_load);
+    _searchTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -255,10 +267,16 @@ class LedgerPageState extends State<LedgerPage> {
       final inPeriod = _inSelectedPeriod(tx.date);
       final matchType =
           (_showExpenses && tx.isExpense) || (_showIncome && !tx.isExpense);
-      final matchSearch =
+      final localMatch =
           q.isEmpty ||
           tx.title.toLowerCase().contains(q) ||
           tx.category.toLowerCase().contains(q);
+      // A transaction not sent yet is not in the server index: it is matched on the device.
+      // The id of a transaction is text on the device, a number on the server.
+      final serverId = tx.id == null ? null : int.tryParse(tx.id!);
+      final matchSearch = _serverMatchIds == null || serverId == null
+          ? localMatch
+          : _serverMatchIds!.contains(serverId);
 
       final matchMin =
           _filterMinAmount == null || tx.amount >= _filterMinAmount!;
@@ -275,6 +293,34 @@ class LedgerPageState extends State<LedgerPage> {
       return b.date.compareTo(a.date);
     });
     return list;
+  }
+
+  void _onSearchChanged(String value) {
+    _searchTimer?.cancel();
+    final query = value.trim();
+    setState(() {
+      _searchQuery = value;
+      if (query.length < _minServerQueryLength) _serverMatchIds = null;
+    });
+    if (query.length < _minServerQueryLength) return;
+    _searchTimer = Timer(_searchDebounce, () => _searchOnServer(query));
+  }
+
+  Future<void> _searchOnServer(String query) async {
+    final ids = await AppRepository.instance.searchTransactionIds(query);
+    // The user kept typing or closed the search while the request was on its way: this answer is outdated.
+    if (!mounted || query != _searchQuery.trim()) return;
+    setState(() => _serverMatchIds = ids?.toSet());
+  }
+
+  void _closeSearch() {
+    _searchTimer?.cancel();
+    setState(() {
+      _isSearching = false;
+      _searchQuery = '';
+      _serverMatchIds = null;
+      _searchController.clear();
+    });
   }
 
   double get _periodIncome => _periodTransactions
@@ -336,7 +382,7 @@ class LedgerPageState extends State<LedgerPage> {
                   hintText: loc.ledgerSearchHint,
                   border: InputBorder.none,
                 ),
-                onChanged: (v) => setState(() => _searchQuery = v),
+                onChanged: _onSearchChanged,
               )
             : Text(
                 loc.ledgerTitle,
@@ -345,11 +391,7 @@ class LedgerPageState extends State<LedgerPage> {
         leading: _isSearching
             ? IconButton(
                 icon: const Icon(Icons.close_rounded),
-                onPressed: () => setState(() {
-                  _isSearching = false;
-                  _searchQuery = '';
-                  _searchController.clear();
-                }),
+                onPressed: _closeSearch,
               )
             : IconButton(
                 icon: const Icon(Icons.search_rounded),

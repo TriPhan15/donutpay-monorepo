@@ -417,6 +417,20 @@ class RemoteApiHelper {
         .toList();
   }
 
+  /// Ids of the transactions of the user that match [query], best match first, from GET /api/transactions/search
+  /// (Elasticsearch, or PostgreSQL when it is down). [size] is at most 50, the limit of the backend.
+  Future<List<int>> searchTransactionIds(String query, {int size = 50}) async {
+    final res = await _dio.get(
+      '/api/transactions/search',
+      queryParameters: {'q': query, 'page': 0, 'size': size},
+    );
+    final items = (res.data['data']['items'] as List?) ?? [];
+    return [
+      for (final item in items)
+        if (item is Map && item['id'] is num) (item['id'] as num).toInt(),
+    ];
+  }
+
   Future<Map<String, dynamic>> fetchMe() async {
     final res = await _dio.get('/api/users/me');
     return Map<String, dynamic>.from(res.data['data'] ?? {});
