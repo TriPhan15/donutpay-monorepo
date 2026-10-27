@@ -115,6 +115,22 @@ class ElasticsearchTransactionSearchEngineIntegrationTest {
     }
 
     @Test
+    void tienDien_doesNotMatchTienNuoc() {
+        index(37, ALICE, "Tiền điện", null, null, DATE);
+        index(38, ALICE, "Tiền nước", null, null, DATE);
+
+        assertEquals(List.of(37L), ids(ALICE, "tiền điện"));
+        assertEquals(List.of(37L), ids(ALICE, "tien dien"));
+    }
+
+    @Test
+    void typo_firstLetterRight_stillForgiven() {
+        index(39, ALICE, "Highlands Coffee", null, null, DATE);
+
+        assertEquals(List.of(39L), ids(ALICE, "highlans cofee"));
+    }
+
+    @Test
     void pho_doesNotMatchCho() {
         index(31, ALICE, "Phở Hưng", null, null, DATE);
         index(32, ALICE, "Chợ Bến Thành", null, null, DATE);

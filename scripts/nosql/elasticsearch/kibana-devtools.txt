@@ -71,7 +71,7 @@ GET transactions/_analyze
 # ---------------------------------------------------------------------------
 # Q-35 [NÂNG CAO] TRUY VẤN THẬT CỦA APP cho GET /api/transactions/search?q=pho
 # (ElasticsearchTransactionSearchEngine.hits): bool { filter userId, should [ multi_match chính xác/tiền tố trên cả
-# trường autocomplete (boost 2), multi_match mờ fuzziness AUTO:4,7 chỉ trên trường nguyên từ ], minimum_should_match 1 },
+# trường autocomplete (boost 2), multi_match mờ fuzziness AUTO:4,7 + prefix_length 1 (chữ đầu phải đúng) chỉ trên trường nguyên từ ], minimum_should_match 1 },
 # sắp xếp theo _score rồi transactionDate giảm dần. Phải ra các dòng "Phở ..." của user 1 và KHÔNG ra user khác.
 # Kết quả: chỉ các dòng "Phở ..."/"Phố ..." (và tiền tố "Ph...") của user 1; từ "pho" có 3 chữ nên nhánh MỜ không còn kéo
 # "Chợ" hay "Phí" vào (AUTO:4,7 không cho sai với từ dưới 4 chữ).
@@ -95,6 +95,7 @@ GET transactions/_search
             "query": "pho",
             "fields": [ "vendorName^3", "note^2", "categoryName", "location", "paymentMethod" ],
             "fuzziness": "AUTO:4,7",
+            "prefix_length": 1,
             "operator": "and"
         } }
       ],
@@ -117,6 +118,7 @@ GET transactions/_search
         "query": "highlans cofee",
         "fields": [ "vendorName^3", "note^2", "categoryName", "location", "paymentMethod" ],
         "fuzziness": "AUTO:4,7",
+        "prefix_length": 1,
         "operator": "and"
     } } ]
   } },

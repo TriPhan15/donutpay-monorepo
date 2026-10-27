@@ -37,6 +37,8 @@ public class ElasticsearchTransactionSearchEngine implements TransactionSearchEn
     static final String DATE_FIELD = "transactionDate";
     /** No typos for terms under 4 characters (so "pho" never matches "cho"/"phi"), 1 edit for 4-7, 2 edits from 8. */
     static final String FUZZINESS = "AUTO:4,7";
+    /** A typo is only forgiven when the first letter is right: "dien" must not match "tien". */
+    static final int FUZZY_PREFIX_LENGTH = 1;
 
     private final ElasticsearchOperations operations;
 
@@ -61,6 +63,7 @@ public class ElasticsearchTransactionSearchEngine implements TransactionSearchEn
                                 .query(q)
                                 .fields(FUZZY_FIELDS)
                                 .fuzziness(FUZZINESS)
+                                .prefixLength(FUZZY_PREFIX_LENGTH)
                                 .operator(Operator.And)))
                         .minimumShouldMatch(MIN_SHOULD_MATCH)))
                 .withSort(sort -> sort.score(score -> score.order(SortOrder.Desc)))
