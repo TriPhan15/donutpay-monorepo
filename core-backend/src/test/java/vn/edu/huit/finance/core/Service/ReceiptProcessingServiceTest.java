@@ -14,6 +14,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Document.OcrField;
+import vn.edu.huit.finance.core.Dto.OcrCorrectionEvent;
+import vn.edu.huit.finance.core.Dto.OcrFieldCorrection;
 import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
 import vn.edu.huit.finance.core.Dto.ReceiptAttemptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptResponseDto;
@@ -67,6 +70,7 @@ class ReceiptProcessingServiceTest {
     @Mock private ReceiptProcessingAttemptRepository attemptRepo;
     @Mock private CurrentUserProvider currentUserProvider;
     @Spy private OcrService ocrService = new OcrService();
+    @Spy private OcrCorrectionDetector correctionDetector = new OcrCorrectionDetector();
     @Mock private AuditLogService auditLogService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private ReceiptProcessingService service;
@@ -468,6 +472,7 @@ class ReceiptProcessingServiceTest {
     @Test
     void theRawAnswerGoesToTheMongoRawLogOnlyOnceTheCheckoutHasSavedTheTransaction() {
         Transaction transaction = transactionOf(alice);
+        transaction.setAmount(new BigDecimal("245000"));
         service.attachReceipt(transaction, FULL_SCAN, null);
         // Not yet: the transaction is still being built, so it has no id to file the raw answer under.
         verifyNoInteractions(eventPublisher);
@@ -1192,5 +1197,87 @@ class ReceiptProcessingServiceTest {
         Transactional transactional = AnnotatedElementUtils.findMergedAnnotation(read, Transactional.class);
         assertNotNull(transactional);
         assertTrue(transactional.readOnly());
+    }
+
+    // ------------------------------------------------------------------------------- corrections of the AI (MongoDB)
+
+    private static final String SECOND_SCAN = "{\"seller\": {\"seller_name\": \"Highlands\", \"total_cost_number\": 90000}}";
+
+    private List<OcrCorrectionEvent> publishedCorrections() {
+        ArgumentCaptor<Object> events = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, atLeast(0)).publishEvent(events.capture());
+        return events.getAllValues().stream().filter(OcrCorrectionEvent.class::isInstance).map(OcrCorrectionEvent.class::cast).toList();
+    }
+
+    private void checkoutWithAmount(String amount) {
+        Transaction transaction = transactionOf(alice);
+        transaction.setAmount(new BigDecimal(amount));
+        service.attachReceipt(transaction, FULL_SCAN, null);
+        transaction.getReceipt().setId(RECEIPT_ID);
+        service.recordAttachedReceipt(transaction.getReceipt(), AuditActor.of(alice));
+    }
+
+    @Test
+    void checkout_amountDiffersFromAi_publishesTotalCorrection() {
+        checkoutWithAmount("250000");
+
+        assertEquals(List.of(new OcrCorrectionEvent(RECEIPT_ID, TRANSACTION_ID, ALICE_ID,
+                List.of(new OcrFieldCorrection(OcrField.TOTAL_COST, "245000", "250000")))), publishedCorrections());
+    }
+
+    @Test
+    void checkout_amountEqualsAi_publishesNothing() {
+        checkoutWithAmount("245000.00");
+
+        assertTrue(publishedCorrections().isEmpty());
+    }
+
+    @Test
+    void editMyReceipt_vendorChanged_publishesAgainstLatestAttempt() {
+        signedInAsAlice();
+        Receipt receipt = receipt("COMPLETED_RAW", transactionOf(alice));
+        ReflectionTestUtils.setField(receipt, "attempts", List.of(
+                ReceiptProcessingAttempt.completed(receipt, 1, FULL_SCAN, null, CLIENT_DATE),
+                ReceiptProcessingAttempt.completed(receipt, 2, SECOND_SCAN, "retry-1", CLIENT_DATE)));
+        repositoryHolds(receipt);
+        savingAnswersWithTheReceipt();
+        ReceiptUpdateRequestDto request = edit(VERSION);
+        request.setVendorName("Highlands Coffee");
+
+        service.editMyReceipt(RECEIPT_ID, request);
+
+        assertEquals(List.of(new OcrCorrectionEvent(RECEIPT_ID, TRANSACTION_ID, ALICE_ID,
+                List.of(new OcrFieldCorrection(OcrField.SELLER_NAME, "Highlands", "Highlands Coffee")))), publishedCorrections());
+    }
+
+    @Test
+    void editMyReceipt_backToTheAiValue_publishesNothing() {
+        signedInAsAlice();
+        Receipt receipt = receipt("COMPLETED_RAW", transactionOf(alice));
+        ReflectionTestUtils.setField(receipt, "attempts", List.of(
+                ReceiptProcessingAttempt.completed(receipt, 1, FULL_SCAN, null, CLIENT_DATE)));
+        repositoryHolds(receipt);
+        savingAnswersWithTheReceipt();
+        ReceiptUpdateRequestDto request = edit(VERSION);
+        request.setVendorName("Bách Hóa Xanh");
+        request.setExtractedTotal(new BigDecimal("245000.00"));
+
+        service.editMyReceipt(RECEIPT_ID, request);
+
+        assertTrue(publishedCorrections().isEmpty());
+    }
+
+    @Test
+    void submitFeedback_publishesTotalWithNullAiValue() {
+        signedInAsAlice();
+        Receipt failed = receipt("FAILED", transactionOf(alice));
+        ReflectionTestUtils.setField(failed, "attempts", List.of(
+                ReceiptProcessingAttempt.failed(failed, 1, UNREADABLE_TOTAL, null, ReceiptErrorCode.AI_NO_TOTAL, CLIENT_DATE)));
+        repositoryHolds(failed);
+
+        service.submitFeedback(RECEIPT_ID, new BigDecimal("150000"));
+
+        assertEquals(List.of(new OcrCorrectionEvent(RECEIPT_ID, TRANSACTION_ID, ALICE_ID,
+                List.of(new OcrFieldCorrection(OcrField.TOTAL_COST, null, "150000")))), publishedCorrections());
     }
 }

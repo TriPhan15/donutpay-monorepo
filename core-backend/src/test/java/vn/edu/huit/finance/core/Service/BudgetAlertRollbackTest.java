@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.generate_statistics=true"})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class,
+@Import({TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class, OcrCorrectionDetector.class,
         BudgetAlertService.class, NotificationService.class, UserStatisticsService.class})
 class BudgetAlertRollbackTest {
 

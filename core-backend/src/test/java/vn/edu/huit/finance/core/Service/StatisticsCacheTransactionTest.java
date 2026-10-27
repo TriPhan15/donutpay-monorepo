@@ -76,7 +76,7 @@ import static org.mockito.Mockito.when;
 @Testcontainers(disabledWithoutDocker = true)
 @ImportAutoConfiguration(RedisAutoConfiguration.class)
 @Import({CacheConfig.class, StatisticsCacheEvictor.class, UserStatisticsService.class, AdminStatisticsService.class,
-        TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class})
+        TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class, OcrCorrectionDetector.class})
 class StatisticsCacheTransactionTest {
 
     static final String PREFIX = "ledgermind:transaction-test";

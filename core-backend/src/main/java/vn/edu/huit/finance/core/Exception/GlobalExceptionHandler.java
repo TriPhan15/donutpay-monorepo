@@ -125,7 +125,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
-    @ExceptionHandler({TransactionNotFoundException.class, ReceiptNotFoundException.class})
+    @ExceptionHandler({TransactionNotFoundException.class, ReceiptNotFoundException.class, OcrFeedbackNotFoundException.class})
     public Object handleTransactionOrReceiptNotFound(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }

@@ -11,6 +11,8 @@ import vn.edu.huit.finance.core.Dto.ReceiptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptRetryRequestDto;
 import vn.edu.huit.finance.core.Dto.ReceiptUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Dto.OcrCorrectionEvent;
+import vn.edu.huit.finance.core.Dto.OcrFieldCorrection;
 import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
@@ -36,6 +38,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * The life of a receipt after the AI has read it. The AI runs on the mobile app (ai-service, POST /donut/scan): its answer
@@ -108,6 +111,8 @@ public class ReceiptProcessingService {
     @Autowired
     private OcrService ocrService;
     @Autowired
+    private OcrCorrectionDetector correctionDetector;
+    @Autowired
     private AuditLogService auditLogService;
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -155,8 +160,31 @@ public class ReceiptProcessingService {
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_CREATED, actor, receipt.getId(),
                 String.format(AUDIT_CREATED, receipt.getTransaction().getId())));
         recordReadingOutcome(receipt, ReceiptProcessingAttempt.FIRST_ATTEMPT_NUMBER, actor);
-        eventPublisher.publishEvent(new OcrProcessedEvent(receipt.getTransaction().getId(),
-                receipt.getAttempts().get(0).getAiRawData()));
+        String firstAnswer = receipt.getAttempts().get(0).getAiRawData();
+        eventPublisher.publishEvent(new OcrProcessedEvent(receipt.getTransaction().getId(), firstAnswer));
+        // The amount of the checkout is what the user confirmed: where it differs from what the AI read, the AI was wrong.
+        publishCorrections(receipt, receipt.getTransaction().getUser().getId(), ocrService.extract(firstAnswer),
+                null, receipt.getTransaction().getAmount(), null);
+    }
+
+    /** Hands the fields where the user differs from the AI to the MongoDB analytics, once this transaction commits. */
+    private void publishCorrections(Receipt receipt, Long userId, ExtractedReceiptDto aiReading, String seller,
+                                    BigDecimal total, LocalDate date) {
+        List<OcrFieldCorrection> corrections = correctionDetector.diff(aiReading, seller, total, date);
+        if (corrections.isEmpty()) {
+            return;
+        }
+        eventPublisher.publishEvent(new OcrCorrectionEvent(receipt.getId(),
+                receipt.getTransaction() == null ? null : receipt.getTransaction().getId(), userId, corrections));
+    }
+
+    /** What the AI read in the latest reading of the receipt; empty when the receipt has no reading to compare with. */
+    private Optional<ExtractedReceiptDto> latestReading(Receipt receipt) {
+        List<ReceiptProcessingAttempt> attempts = receipt.getAttempts();
+        if (attempts.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(ocrService.extract(attempts.get(attempts.size() - 1).getAiRawData()));
     }
 
     /** RECEIPT_PROCESSING_SUCCEEDED or _FAILED for the reading just recorded: the attempt, the reason, the new status. */
@@ -237,6 +265,8 @@ public class ReceiptProcessingService {
                 String.format(AUDIT_EDITED, changedFields.isEmpty() ? AUDIT_NO_FIELD_CHANGED : String.join(", ", changedFields),
                         previousStatus, saved.getStatus(), saved.getVersion())));
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_CONTENT, caller.getId()));
+        String editedVendor = request.getVendorName() == null || request.getVendorName().isBlank() ? null : request.getVendorName();
+        latestReading(receipt).ifPresent(ai -> publishCorrections(saved, caller.getId(), ai, editedVendor, total, date));
         log.info("Receipt edited, userId={}, receiptId={}, status={} -> {}, version={}",
                 caller.getId(), receiptId, previousStatus, saved.getStatus(), saved.getVersion());
         return ReceiptResponseDto.from(saved);
@@ -321,6 +351,7 @@ public class ReceiptProcessingService {
         receipt.moveTo(ReceiptStatus.WAITING_FOR_REVIEW);
         receiptRepo.save(receipt);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, caller.getId()));
+        publishCorrections(receipt, caller.getId(), latestReading(receipt).orElseGet(ExtractedReceiptDto::empty), null, amount, null);
         // The amount is what the administrator will approve the wallet with, so it is part of the record.
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_FEEDBACK_SUBMITTED, AuditActor.of(caller), receiptId,
                 String.format(AUDIT_FEEDBACK, amount.toPlainString(), ReceiptStatus.FAILED, receipt.getStatus())));

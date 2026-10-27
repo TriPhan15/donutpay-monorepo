@@ -3,6 +3,7 @@ package vn.edu.huit.finance.core.Config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 
 @Configuration
+@PropertySource("classpath:ocr-analytics.properties")
 @EnableAsync
 @EnableMongoAuditing
 @Slf4j

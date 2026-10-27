@@ -21,6 +21,12 @@ public class OcrRawLog {
     private Long transactionId;
     
     private org.bson.Document rawJsonData;
+
+    /** Phiên bản mô hình OCR đã đọc hóa đơn này (app.ocr.model-version lúc ghi). */
+    private String modelVersion;
+
+    /** Những gì AI đọc được, đã chuẩn hóa (cùng định dạng chuỗi với ocr_feedbacks); null khi không đọc được JSON. */
+    private AiReading aiReading;
     
     @Indexed
     private Double averageConfidenceScore;
@@ -28,4 +34,11 @@ public class OcrRawLog {
     @CreatedDate
     @Indexed
     private LocalDateTime createdAt;
+
+    @Data
+    public static class AiReading {
+        private String sellerName;
+        private String totalCost;
+        private String receiptDate;
+    }
 }

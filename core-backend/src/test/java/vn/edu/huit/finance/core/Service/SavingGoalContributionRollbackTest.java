@@ -41,7 +41,7 @@ import static org.mockito.Mockito.when;
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.jpa.hibernate.ddl-auto=create-drop"})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({SavingGoalService.class, TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class,
+@Import({SavingGoalService.class, TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class, OcrCorrectionDetector.class,
         UserStatisticsService.class})
 class SavingGoalContributionRollbackTest {
 

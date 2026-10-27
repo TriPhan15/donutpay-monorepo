@@ -18,10 +18,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import vn.edu.huit.finance.core.Document.OcrFeedback;
 import vn.edu.huit.finance.core.Document.OcrRawLog;
 import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
+import vn.edu.huit.finance.core.Dto.OcrFeedbackResponseDto;
 import vn.edu.huit.finance.core.Dto.OcrRawLogResponseDto;
+import vn.edu.huit.finance.core.Exception.OcrFeedbackNotFoundException;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrFeedbackRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
 
@@ -61,6 +64,12 @@ class OcrMongoServiceTest {
 
     @Mock
     private OcrFeedbackRepository ocrFeedbackRepository;
+
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Spy
+    private OcrService ocrService = new OcrService();
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -220,30 +229,29 @@ class OcrMongoServiceTest {
     class ResolveFeedbackTests {
 
         @Test
-        @DisplayName("Cập nhật isResolved=true và trả về true khi feedback tồn tại")
-        void returnsTrueAndUpdatesWhenFeedbackExists() {
+        @DisplayName("Cập nhật isResolved=true và trả về DTO khi feedback tồn tại")
+        void returnsDtoAndUpdatesWhenFeedbackExists() {
             String feedbackId = "fb-001";
             OcrFeedback existingFeedback = new OcrFeedback();
             existingFeedback.setResolved(false);
             given(ocrFeedbackRepository.findById(feedbackId)).willReturn(Optional.of(existingFeedback));
             given(ocrFeedbackRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-            boolean result = ocrMongoService.resolveFeedback(feedbackId);
+            OcrFeedbackResponseDto result = ocrMongoService.resolveFeedback(feedbackId);
 
-            assertThat(result).isTrue();
+            assertThat(result.isResolved()).isTrue();
             ArgumentCaptor<OcrFeedback> captor = ArgumentCaptor.forClass(OcrFeedback.class);
             then(ocrFeedbackRepository).should().save(captor.capture());
             assertThat(captor.getValue().isResolved()).isTrue();
         }
 
         @Test
-        @DisplayName("Trả về false và không gọi save khi feedback không tồn tại")
-        void returnsFalseAndSkipsSaveWhenFeedbackNotFound() {
+        @DisplayName("Ném OcrFeedbackNotFoundException và không gọi save khi feedback không tồn tại")
+        void throwsAndSkipsSaveWhenFeedbackNotFound() {
             given(ocrFeedbackRepository.findById("not-exist")).willReturn(Optional.empty());
 
-            boolean result = ocrMongoService.resolveFeedback("not-exist");
-
-            assertThat(result).isFalse();
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> ocrMongoService.resolveFeedback("not-exist"))
+                    .isInstanceOf(OcrFeedbackNotFoundException.class);
             then(ocrFeedbackRepository).should(never()).save(any());
         }
     }
