@@ -122,6 +122,11 @@ services:
       start_period: 20s
     volumes:
       - mongodb_data:/data/db
+      # Collections, $jsonSchema validators and ALL indexes of the app (Spring auto-index-creation is off). The image runs
+      # *.js files of this folder with mongosh on MONGO_INITDB_DATABASE, but ONLY when mongodb_data is empty (first start).
+      # On an existing volume run it by hand, it is idempotent and writes no data:
+      #   docker compose exec mongodb sh -c 'mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --quiet /docker-entrypoint-initdb.d/10-mongodb-init.js'
+      - ./scripts/nosql/mongodb_init.js:/docker-entrypoint-initdb.d/10-mongodb-init.js:ro
     restart: unless-stopped
     deploy:
       resources:

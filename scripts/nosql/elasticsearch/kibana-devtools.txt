@@ -1,0 +1,191 @@
+# =============================================================================
+# ELASTICSEARCH - CÁC TRUY VẤN Q-30 ... Q-40 CHO KIBANA DEV TOOLS (ĐỒ ÁN NOSQL)
+# Dán từng khối vào Kibana > Management > Dev Tools (http://localhost:5601), bấm Ctrl+Enter để chạy khối đang chọn.
+# Dòng bắt đầu bằng # là chú thích. Mỗi truy vấn có nhãn [CƠ BẢN] / [NÂNG CAO] và Access pattern.
+#
+# Index "transactions" là bản sao chỉ-để-tìm của bảng transactions trong PostgreSQL (PostgreSQL vẫn là nguồn chính;
+# mất index thì dựng lại bằng POST /api/admin/search/reindex). Dev Tools không đọc được file, nên việc TẠO index
+# (settings + mapping) làm bằng dòng lệnh, xem README.md cùng thư mục: hai file thật của app là
+#   core-backend/src/main/resources/elasticsearch/transactions-settings.json
+#   core-backend/src/main/resources/elasticsearch/transactions-mapping.json
+# (analyzer vi_folded = lowercase + asciifolding để "Phở" khớp "pho"; vi_autocomplete = thêm edge_ngram 2..15).
+# Dữ liệu mẫu: transactions-bulk.ndjson (47 giao dịch tiếng Việt, 3 người dùng, tháng 8-10/2026).
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Q-30 [CƠ BẢN] Index có mặt và có bao nhiêu document
+# Access pattern: admin kiểm tra index sau khi reindex (số document phải bằng số giao dịch trong PostgreSQL).
+# ---------------------------------------------------------------------------
+GET _cat/indices/transactions?v
+
+GET transactions/_count
+
+# ---------------------------------------------------------------------------
+# Q-31 [CƠ BẢN] Lấy một document theo _id (= transactions.id trong PostgreSQL)
+# Access pattern: đối chiếu một giao dịch giữa PostgreSQL và index.
+# ---------------------------------------------------------------------------
+GET transactions/_doc/1
+
+# ---------------------------------------------------------------------------
+# Q-32 [CƠ BẢN] Giao dịch của MỘT người dùng, mới nhất trước (term trên userId + sort)
+# Access pattern: mọi truy vấn của app đều nằm trong filter userId của người gọi (không bao giờ lộ dữ liệu người khác).
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "size": 3,
+  "query": { "bool": { "filter": [ { "term": { "userId": 1 } } ] } },
+  "sort": [ { "transactionDate": "desc" } ],
+  "_source": [ "vendorName", "note", "amount", "transactionDate" ]
+}
+
+# ---------------------------------------------------------------------------
+# Q-33 [CƠ BẢN] match trên trường đã bỏ dấu: gõ "ca phe" ra được danh mục "Cà phê"
+# Access pattern: người dùng gõ không dấu. Trường categoryName dùng analyzer vi_folded.
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "size": 5,
+  "query": { "bool": {
+    "filter": [ { "term": { "userId": 2 } } ],
+    "must": [ { "match": { "categoryName": "ca phe" } } ]
+  } },
+  "_source": [ "categoryName", "vendorName", "amount" ]
+}
+
+# ---------------------------------------------------------------------------
+# Q-34 [CƠ BẢN] _analyze: xem analyzer biến chữ tiếng Việt thành token thế nào
+# Access pattern: giải thích vì sao tìm "pho" ra "Phở", và vì sao "hig" ra "Highlands" (edge_ngram).
+# ---------------------------------------------------------------------------
+GET transactions/_analyze
+{
+  "analyzer": "vi_folded",
+  "text": "Phở Bò Hòa Pasteur"
+}
+
+GET transactions/_analyze
+{
+  "analyzer": "vi_autocomplete",
+  "text": "Highlands"
+}
+
+# ---------------------------------------------------------------------------
+# Q-35 [NÂNG CAO] TRUY VẤN THẬT CỦA APP cho GET /api/transactions/search?q=pho
+# (ElasticsearchTransactionSearchEngine.hits): bool { filter userId, should [ multi_match chính xác/tiền tố trên cả
+# trường autocomplete (boost 2), multi_match mờ fuzziness AUTO chỉ trên trường nguyên từ ], minimum_should_match 1 },
+# sắp xếp theo _score rồi transactionDate giảm dần. Phải ra các dòng "Phở ..." của user 1 và KHÔNG ra user khác.
+# Kết quả: 4 dòng "Phở ..." đứng đầu (điểm ~13-15). Phần đuôi điểm thấp (~1-2) là kết quả của nhánh MỜ: "pho" cách "phê" (Cà phê)
+# đúng 1 ký tự nên cũng khớp. Đó là hành vi thật của app (xếp theo điểm nên Phở luôn lên trước), không phải lỗi của script.
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "from": 0,
+  "size": 20,
+  "track_total_hits": true,
+  "query": {
+    "bool": {
+      "filter": [ { "term": { "userId": 1 } } ],
+      "should": [
+        { "multi_match": {
+            "query": "pho",
+            "fields": [ "vendorName^3", "vendorName.autocomplete^2", "note^2", "note.autocomplete", "categoryName", "location", "paymentMethod" ],
+            "operator": "and",
+            "boost": 2.0
+        } },
+        { "multi_match": {
+            "query": "pho",
+            "fields": [ "vendorName^3", "note^2", "categoryName", "location", "paymentMethod" ],
+            "fuzziness": "AUTO",
+            "operator": "and"
+        } }
+      ],
+      "minimum_should_match": "1"
+    }
+  },
+  "sort": [ { "_score": "desc" }, { "transactionDate": "desc" } ],
+  "_source": [ "vendorName", "note", "transactionDate" ]
+}
+
+# ---------------------------------------------------------------------------
+# Q-36 [NÂNG CAO] Tìm mờ (fuzzy multi_match): gõ sai "highlans cofee" vẫn ra "Highlands Coffee"
+# Access pattern: lỗi gõ phím. fuzziness AUTO cho phép sai 1 ký tự với từ 3-5 chữ, 2 ký tự với từ dài hơn.
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "query": { "bool": {
+    "filter": [ { "term": { "userId": 1 } } ],
+    "must": [ { "multi_match": {
+        "query": "highlans cofee",
+        "fields": [ "vendorName^3", "note^2", "categoryName", "location", "paymentMethod" ],
+        "fuzziness": "AUTO",
+        "operator": "and"
+    } } ]
+  } },
+  "_source": [ "vendorName", "note", "amount" ]
+}
+
+# ---------------------------------------------------------------------------
+# Q-37 [NÂNG CAO] Gợi ý khi đang gõ (autocomplete): "hig" khớp tiền tố "Highlands" nhờ edge_ngram lúc LẬP chỉ mục
+# Access pattern: ô tìm kiếm gợi ý từng chữ. Lúc lập index vi_autocomplete cắt "highlands" thành hi, hig, high, ...;
+# lúc tìm dùng vi_folded (không cắt) nên "hig" chỉ khớp những từ BẮT ĐẦU bằng hig.
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "size": 5,
+  "query": { "bool": {
+    "filter": [ { "term": { "userId": 1 } } ],
+    "must": [ { "multi_match": {
+        "query": "hig",
+        "fields": [ "vendorName.autocomplete^2", "note.autocomplete" ]
+    } } ]
+  } },
+  "_source": [ "vendorName", "note" ]
+}
+
+# ---------------------------------------------------------------------------
+# Q-38 [NÂNG CAO] bool filter theo người dùng + khoảng ngày (range) + chỉ khoản chi, xếp theo số tiền giảm dần
+# Access pattern: "chi tiêu của tôi trong tháng 9/2026". filter không tính điểm và được cache; range dùng gte/lt.
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "size": 5,
+  "query": { "bool": { "filter": [
+    { "term": { "userId": 1 } },
+    { "term": { "expense": true } },
+    { "range": { "transactionDate": { "gte": "2026-09-01T00:00:00.000", "lt": "2026-10-01T00:00:00.000" } } }
+  ] } },
+  "sort": [ { "amount": "desc" } ],
+  "_source": [ "vendorName", "categoryName", "amount", "transactionDate" ]
+}
+
+# ---------------------------------------------------------------------------
+# Q-39 [NÂNG CAO] Aggregation terms trên categoryName.keyword + tổng tiền từng danh mục
+# Access pattern: biểu đồ "chi tiêu theo danh mục". Dùng trường .keyword (nguyên chuỗi, không bỏ dấu/cắt từ).
+# size 0 = chỉ lấy số liệu tổng hợp, không lấy document.
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "size": 0,
+  "query": { "bool": { "filter": [ { "term": { "userId": 1 } }, { "term": { "expense": true } } ] } },
+  "aggs": {
+    "theo_danh_muc": {
+      "terms": { "field": "categoryName.keyword", "size": 10 },
+      "aggs": { "tong_tien": { "sum": { "field": "amount" } } }
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Q-40 [NÂNG CAO] date_histogram theo tháng + sum(amount): chi tiêu từng tháng
+# Access pattern: biểu đồ cột "chi tiêu theo tháng" (min_doc_count 0 để tháng trống vẫn hiện số 0).
+# ---------------------------------------------------------------------------
+GET transactions/_search
+{
+  "size": 0,
+  "query": { "bool": { "filter": [ { "term": { "userId": 1 } }, { "term": { "expense": true } } ] } },
+  "aggs": {
+    "theo_thang": {
+      "date_histogram": { "field": "transactionDate", "calendar_interval": "month", "format": "yyyy-MM", "min_doc_count": 0 },
+      "aggs": { "tong_chi": { "sum": { "field": "amount" } } }
+    }
+  }
+}
