@@ -483,6 +483,8 @@
   "aiTopCategory": "{category} chiếm {amount} ({percent}% tổng chi).",
   "aiSurplus": "Đang dư {amount}. Hãy lập mục tiêu!",
   "aiAddGoal": "Thêm mục tiêu tiết kiệm để AI phân tích.",
+  "aiGoalNeedMore": "Tháng này cần góp thêm {amount} cho mục tiêu",
+  "aiGoalNoDeadline": "Mục tiêu chưa có hạn, góp lúc nào cũng được",
   "aiOnTrack": "Bạn đang trong lộ trình tiết kiệm. Xem gợi ý phân bổ tiền bên dưới để đạt mục tiêu nhanh hơn!",
   "aiSpadeTitle": "Mẫu Chi Tiêu Tuần Tự",
   "aiSpadeSubtitle": "Hành vi chi tiêu tuần tự thường gặp của bạn",

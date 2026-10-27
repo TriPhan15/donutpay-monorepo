@@ -2214,6 +2214,19 @@
   "@aiAddGoal": {
     "description": "No savings goal yet."
   },
+  "aiGoalNeedMore": "Contribute {amount} more this month to stay on track",
+  "@aiGoalNeedMore": {
+    "description": "Savings tip: what is still missing this month for the urgent goal.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "aiGoalNoDeadline": "This goal has no deadline, contribute whenever you can",
+  "@aiGoalNoDeadline": {
+    "description": "Savings tip: the urgent goal has no deadline, so no monthly need."
+  },
   "aiOnTrack": "You're on your savings path. See the money allocation tips below to reach your goal faster!",
   "@aiOnTrack": {
     "description": "The user has savings goals."

@@ -767,4 +767,94 @@ void main() {
       });
     });
   });
+
+  group('savings goal', () {
+    const onTrackText = 'Bạn đang trong lộ trình tiết kiệm';
+    const needMoreText = 'Tháng này cần góp thêm';
+
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    /// A goal the way core-backend sends it; a deadline of today makes the monthly need the whole rest.
+    Map<String, Object?> goal({
+      required num target,
+      String? deadline,
+      num current = 0,
+    }) => {
+      'id': 1,
+      'title': 'Mục tiêu',
+      'target': target,
+      'current': current,
+      'deadline': deadline,
+    };
+
+    testWidgets(
+      'a goal without deadline sends no months_left and no savings contribution',
+      (tester) async {
+        transactions = [
+          _tx(1, _today, amount: 5000),
+          _tx(2, _today, amount: 9000, category: 'Thu nhập', isExpense: false),
+          _tx(3, _today, amount: 700, category: 'Tiết kiệm'),
+        ];
+        backend.on(
+          'GET',
+          '/api/savings',
+          (_) => okResponse([goal(target: 5e6, current: 1e6)]),
+        );
+        backend.on(
+          'POST',
+          '/spade/recommend',
+          (_) => jsonResponse(200, {'recommendations': []}),
+        );
+
+        await pumpPage(tester);
+
+        final sent = backend.requests
+            .where((r) => r.path == '/spade/recommend')
+            .toList();
+        expect(sent, hasLength(1));
+        final body = sent.single.data as Map;
+        expect(body.containsKey('months_left'), isFalse);
+        final categories = [
+          for (final t in body['transactions'] as List) (t as Map)['category'],
+        ];
+        expect(categories, isNot(contains('Tiết kiệm')));
+        expect(categories, hasLength(2));
+        expect(find.text('Mục tiêu chưa có hạn, góp lúc nào cũng được'), findsOneWidget);
+      },
+    );
+
+    testWidgets('on track is shown only when the month covers the goal', (
+      tester,
+    ) async {
+      final deadline =
+          '${two(_now.day)}/${two(_now.month)}/${_now.year}';
+      backend.on(
+        'GET',
+        '/api/savings',
+        (_) => okResponse([goal(target: 2e6, deadline: deadline)]),
+      );
+      backend.on(
+        'POST',
+        '/spade/recommend',
+        (_) => jsonResponse(200, {'recommendations': []}),
+      );
+
+      transactions = [
+        _tx(1, _today, amount: 3e6),
+        _tx(2, _today, amount: 10e6, category: 'Thu nhập', isExpense: false),
+      ];
+      await pumpPage(tester);
+      expect(find.textContaining(onTrackText), findsOneWidget);
+      expect(find.textContaining(needMoreText), findsNothing);
+
+      transactions = [
+        _tx(1, _today, amount: 2.5e6),
+        _tx(2, _today, amount: 3e6, category: 'Thu nhập', isExpense: false),
+      ];
+      RemoteApiHelper.instance.dataChangedNotifier.value++;
+      await tester.pumpAndSettle();
+      expect(find.textContaining(needMoreText), findsOneWidget);
+      expect(find.textContaining(onTrackText), findsNothing);
+    });
+  });
 }

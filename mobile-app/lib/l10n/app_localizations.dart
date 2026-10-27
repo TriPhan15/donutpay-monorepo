@@ -3006,6 +3006,18 @@ abstract class AppLocalizations {
   /// **'Add a savings goal for the AI to analyse.'**
   String get aiAddGoal;
 
+  /// Savings tip: what is still missing this month for the urgent goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Contribute {amount} more this month to stay on track'**
+  String aiGoalNeedMore(String amount);
+
+  /// Savings tip: the urgent goal has no deadline, so no monthly need.
+  ///
+  /// In en, this message translates to:
+  /// **'This goal has no deadline, contribute whenever you can'**
+  String get aiGoalNoDeadline;
+
   /// The user has savings goals.
   ///
   /// In en, this message translates to:

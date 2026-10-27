@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:dio/dio.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/savings_goal_planner.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -137,42 +140,19 @@ class _AITabPageState extends State<AITabPage> {
     _loadBudgetAdvice(txs);
   }
 
-  Map<String, dynamic>? _pickUrgentGoal() {
-    final active = _savingsGoals
-        .where(
-          (g) => ((g['target'] ?? 0) as num) > ((g['current'] ?? 0) as num),
-        )
-        .toList();
-    if (active.isEmpty) return null;
-
-    final now = DateTime.now();
-    return active.reduce((a, b) {
-      final d1 = _daysLeftOf(a, now) ?? 999999;
-      final d2 = _daysLeftOf(b, now) ?? 999999;
-      return (d1 > 0 && d1 < d2) ? a : b;
-    });
-  }
-
-  int? _daysLeftOf(Map<String, dynamic> g, DateTime now) {
-    try {
-      final p = (g['deadline'] ?? '').toString().split('/');
-      return DateTime(
-        int.parse(p[2]),
-        int.parse(p[1]),
-        int.parse(p[0]),
-      ).difference(now).inDays;
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<void> _loadBudgetAdvice(List<TransactionModel> txs) async {
-    final goal = _pickUrgentGoal();
-    if (goal == null) return;
+    final today = DateTime.now();
+    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
+    if (goal == null) {
+      if (mounted) setState(() => _budgetAdvice = null);
+      return;
+    }
 
     setState(() => _adviceLoading = true);
     try {
+      // Savings contributions are not spending: the advisor would try to cut them like any other category.
       final data = txs
+          .where((t) => !t.isSavingsContribution)
           .map(
             (t) => {
               'category': t.category,
@@ -182,13 +162,11 @@ class _AITabPageState extends State<AITabPage> {
             },
           )
           .toList();
-      final days = _daysLeftOf(goal, DateTime.now());
-
       final advice = await RemoteApiHelper.instance.recommendBudget(
         transactions: data,
         target: ((goal['target'] ?? 0) as num).toDouble(),
         current: ((goal['current'] ?? 0) as num).toDouble(),
-        monthsLeft: (days != null && days > 0) ? (days / 30.0).ceil() : 1,
+        monthsLeft: SavingsGoalPlanner.monthsLeft(goal, today),
       );
       if (mounted) setState(() => _budgetAdvice = advice);
     } catch (_) {
@@ -541,22 +519,14 @@ class _AITabPageState extends State<AITabPage> {
       );
     }
 
-    double goalNeed = 0;
-    final goal = _pickUrgentGoal();
-    if (goal != null) {
-      final target = ((goal['target'] ?? 0) as num).toDouble();
-      final current = ((goal['current'] ?? 0) as num).toDouble();
-      final days = _daysLeftOf(goal, DateTime.now()) ?? 1;
-      goalNeed = ((target - current) / ((days > 0 ? days : 1) / 30.0).ceil())
-          .clamp(0, double.infinity);
-    }
+    final goalReserve = _goalReserve(DateTime.now());
 
     final daysLeft =
         (DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day -
                 DateTime.now().day +
                 1)
             .clamp(1, 31);
-    final safePerDay = (_monthIncome - _monthExpense - goalNeed) / daysLeft;
+    final safePerDay = (_monthIncome - _monthExpense - goalReserve) / daysLeft;
     final ok = safePerDay >= 0;
     final color = ok ? colors.primary : colors.error;
 
@@ -644,13 +614,40 @@ class _AITabPageState extends State<AITabPage> {
     );
   }
 
+  /// The money the urgent goal keeps out of this month's spending (0 without a goal).
+  double _goalReserve(DateTime today) {
+    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
+    if (goal == null) return 0;
+    return SavingsGoalPlanner.goalReserve(
+      monthlyNeed: SavingsGoalPlanner.monthlyNeed(goal, today),
+      contributedThisMonth: SavingsGoalPlanner.contributedInMonth(
+        _transactions,
+        today,
+      ),
+    );
+  }
+
   String _getSavingTip(AppLocalizations loc) {
-    if (_savingsGoals.isEmpty) {
+    final today = DateTime.now();
+    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
+    if (goal == null) {
+      // No unfinished goal (none at all, or all reached): the old tips apply.
       return _monthIncome > _monthExpense
           ? loc.aiSurplus(_fmt(loc, _monthIncome - _monthExpense))
           : loc.aiAddGoal;
     }
-    return loc.aiOnTrack;
+    final need = SavingsGoalPlanner.monthlyNeed(goal, today);
+    if (need == 0) return loc.aiGoalNoDeadline;
+    final contributed = SavingsGoalPlanner.contributedInMonth(
+      _transactions,
+      today,
+    );
+    final reserve = SavingsGoalPlanner.goalReserve(
+      monthlyNeed: need,
+      contributedThisMonth: contributed,
+    );
+    if (_monthIncome - _monthExpense - reserve >= 0) return loc.aiOnTrack;
+    return loc.aiGoalNeedMore(_fmt(loc, math.max(0, need - contributed)));
   }
 
   Widget _buildInsightCard(

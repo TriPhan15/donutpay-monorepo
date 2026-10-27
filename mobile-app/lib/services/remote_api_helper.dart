@@ -533,7 +533,7 @@ class RemoteApiHelper {
     required List<Map<String, dynamic>> transactions,
     double target = 0,
     double current = 0,
-    int monthsLeft = 0,
+    int? monthsLeft,
     double? monthlyIncome,
     double? neededMonthly,
   }) async {
@@ -543,7 +543,8 @@ class RemoteApiHelper {
         'transactions': transactions,
         'target': target,
         'current': current,
-        'months_left': monthsLeft,
+        // ai-service reads a missing field as 0 (no monthly need); null would be refused: the field is an int.
+        'months_left': ?monthsLeft,
         'monthly_income': ?monthlyIncome,
         'needed_monthly': ?neededMonthly,
       },

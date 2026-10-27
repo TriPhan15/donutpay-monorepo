@@ -1675,6 +1675,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiAddGoal => 'Add a savings goal for the AI to analyse.';
 
   @override
+  String aiGoalNeedMore(String amount) {
+    return 'Contribute $amount more this month to stay on track';
+  }
+
+  @override
+  String get aiGoalNoDeadline =>
+      'This goal has no deadline, contribute whenever you can';
+
+  @override
   String get aiOnTrack =>
       'You\'re on your savings path. See the money allocation tips below to reach your goal faster!';
 

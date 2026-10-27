@@ -1644,6 +1644,14 @@ class AppLocalizationsVi extends AppLocalizations {
   String get aiAddGoal => 'Thêm mục tiêu tiết kiệm để AI phân tích.';
 
   @override
+  String aiGoalNeedMore(String amount) {
+    return 'Tháng này cần góp thêm $amount cho mục tiêu';
+  }
+
+  @override
+  String get aiGoalNoDeadline => 'Mục tiêu chưa có hạn, góp lúc nào cũng được';
+
+  @override
   String get aiOnTrack =>
       'Bạn đang trong lộ trình tiết kiệm. Xem gợi ý phân bổ tiền bên dưới để đạt mục tiêu nhanh hơn!';
 
