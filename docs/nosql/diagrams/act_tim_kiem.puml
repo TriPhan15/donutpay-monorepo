@@ -7,7 +7,7 @@ start
 :core-api nhận GET /api/transactions/search?q&page&size;
 :Kiểm tra q (2..100 ký tự), page 0..199, size 1..50;
 if (SEARCH_ENGINE = elasticsearch và có bean ES?) then (có)
-  :[Elasticsearch] bool: filter userId + multi_match\n(chính xác boost 2, mờ fuzziness AUTO);
+  :[Elasticsearch] bool: filter userId + multi_match\n(chính xác boost 2, mờ fuzziness AUTO:4,7, prefix_length 1);
   if (ES lỗi hoặc quá hạn?) then (có)
     :Log 1 dòng cảnh báo;
     :[PostgreSQL] searchIdsByText\nLOWER(cột) LIKE ... ESCAPE;

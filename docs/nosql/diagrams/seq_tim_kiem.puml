@@ -10,7 +10,7 @@ database "PostgreSQL" as P
 A -> C : GET /api/transactions/search?q=...
 C -> C : userId từ JWT, kiểm tra q, page, size
 alt SEARCH_ENGINE = elasticsearch
-  C -> E : bool { filter userId; should multi_match\n(chính xác boost 2, mờ AUTO) }
+  C -> E : bool { filter userId; should multi_match\n(chính xác boost 2, mờ AUTO:4,7, prefix_length 1) }
   alt ES trả lời
     E --> C : id giao dịch theo _score
   else ES lỗi hoặc quá hạn (socket 2 s)
