@@ -363,11 +363,11 @@ class ReceiptWorkflowIntegrationTest {
         assertMoney("250000", receipt.getExtractedTotal());
         assertEquals(LocalDate.of(2026, 5, 28), receipt.getExtractedDate());
         assertEquals(readingsBefore, attemptsInDatabase(receiptId), "an edit touches no attempt");
-        // The transaction keeps the amount Alice typed and the date and place of the first reading; the wallet does not move.
+        // The transaction keeps the amount Alice typed and the date and place the client sent (the AI never overrides them); the wallet does not move.
         Transaction transaction = transactionInDatabase(transactionId);
         assertMoney("200000", transaction.getAmount());
-        assertEquals(LocalDateTime.of(2026, 5, 27, 10, 30), transaction.getTransactionDate());
-        assertEquals("12 Nguyễn Trãi, Quận 1", transaction.getLocation());
+        assertEquals(CLIENT_DATE, transaction.getTransactionDate());
+        assertEquals(CLIENT_LOCATION, transaction.getLocation());
         assertMoney("800000", walletOf(aliceId));
         assertEquals(1, receiptRepository.count());
         verify(auditLogService).record(entryOf(AuditAction.RECEIPT_UPDATED, aliceId));

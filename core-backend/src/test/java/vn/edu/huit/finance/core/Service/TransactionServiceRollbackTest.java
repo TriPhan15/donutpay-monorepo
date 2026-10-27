@@ -326,8 +326,8 @@ class TransactionServiceRollbackTest {
         assertEquals("COMPLETED", readings.get(0).getStatus());
         assertEquals("Bách Hóa Xanh", receipt.getVendorName());
         assertMoney("245000", receipt.getExtractedTotal());
-        assertEquals(LocalDateTime.of(2026, 5, 27, 10, 30), saved.getTransactionDate());
-        assertEquals("12 Nguyễn Trãi, Quận 1", saved.getLocation());
+        assertEquals(CLIENT_DATE, saved.getTransactionDate());
+        assertEquals("Hóa đơn quét", saved.getLocation());
         assertMoney("800000", walletInDatabase());
         assertEquals(transactionId, receiptRepository.findDetailedById(receipt.getId()).orElseThrow().getTransaction().getId(),
                 "the receipt must point back at the transaction that carries it");
@@ -545,7 +545,7 @@ class TransactionServiceRollbackTest {
                 () -> service.createTransaction(scanWithClientId("scan-2"), aliceId));
 
         assertEquals(first, refused.getExistingTransactionId());
-        assertEquals(LocalDateTime.of(2026, 5, 27, 10, 30), refused.getExistingTransactionDate());
+        assertEquals(CLIENT_DATE, refused.getExistingTransactionDate());
         assertEquals(transactionsAfterTheFirst, transactionRepository.count());
         assertEquals(1, receiptRepository.count());
         assertMoney(walletAfterTheFirst.toPlainString(), walletInDatabase());

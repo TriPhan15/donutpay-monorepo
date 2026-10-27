@@ -118,7 +118,8 @@ public class ReceiptProcessingService {
      * the receipt and the attempt of its first reading) after moving the wallet. The JSON is kept in that attempt as it
      * arrived, and the receipt's final fields start as what it says. What the client sent always wins (D3): the AI's
      * timestamp and address fill the transaction's date and location only when the client left them empty (the
-     * receipt keeps what the AI read either way). No seller leaves the vendor empty, and no total marks the receipt FAILED (the AI could not read it) so that its owner can retry it or send the amount through
+     * receipt keeps what the AI read either way). No seller leaves the vendor empty, and no total marks the receipt
+     * FAILED (the AI could not read it) so that its owner can retry it or send the amount through
      * {@link #submitFeedback}.
      */
     public void attachReceipt(Transaction transaction, String rawReceiptData, String imageUrl) {
