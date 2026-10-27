@@ -16,9 +16,6 @@ class AiComponents {
   static const String _sequenceSeparator = ' → ';
   static const String _itemSeparator = '+';
 
-  /// Prefix the AI service puts in front of its advice summary; it is not meant for the user.
-  static const String _summaryPrefix = '(AI dùng Luật Khai Phá Chung) ';
-
   static String _money(AppLocalizations loc, double amount) =>
       CurrencyHelper.formatVND(amount, loc, showSign: amount < 0);
 
@@ -258,9 +255,7 @@ class AiComponents {
     if (budgetAdvice == null) return const SizedBox.shrink();
 
     final recs = (budgetAdvice['recommendations'] as List?) ?? [];
-    String summary = budgetAdvice['summary']?.toString() ?? '';
-
-    summary = summary.replaceAll(_summaryPrefix, '');
+    final summary = budgetAdvice['summary']?.toString() ?? '';
 
     if (summary.isEmpty && recs.isEmpty) return const SizedBox.shrink();
 
