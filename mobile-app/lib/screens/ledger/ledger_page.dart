@@ -173,7 +173,7 @@ class LedgerPageState extends State<LedgerPage> {
       return;
     }
     setState(() => _selectedDate = tx.date);
-    _showTransactionDetails(tx);
+    unawaited(_showTransactionDetails(tx));
   }
 
   /// Asked for by the user (pull-to-refresh, a tap on the tab it is on): what waits in the outbox is sent again first.
@@ -1149,8 +1149,27 @@ class LedgerPageState extends State<LedgerPage> {
     );
   }
 
-  void _showTransactionDetails(TransactionModel tx) {
-    showModalBottomSheet(
+  /// A savings contribution on the server can be deleted only by a user who has no savings goal at all: such a row
+  /// was typed by hand before goals existed (the server refuses the delete otherwise). When the goals cannot be read,
+  /// the row stays locked.
+  Future<bool> _savingsRowDeletable(TransactionModel tx) async {
+    if (!tx.isSavingsContribution || tx.id == null) return false;
+    try {
+      final goals = await RemoteApiHelper.instance.fetchSavings();
+      return goals.isEmpty;
+    } catch (e) {
+      debugPrint('Lỗi tải mục tiêu tiết kiệm: $e');
+      return false;
+    }
+  }
+
+  Future<void> _showTransactionDetails(TransactionModel tx) async {
+    final savingsDeletable = await _savingsRowDeletable(tx);
+    if (!mounted) return;
+    final canDelete =
+        tx.syncStatus != SyncStatus.pending &&
+        (!tx.isSavingsContribution || savingsDeletable);
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -1347,7 +1366,8 @@ class LedgerPageState extends State<LedgerPage> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  // A savings contribution belongs to its goal: edit and delete are refused by the server (409).
+                  // A savings contribution belongs to its goal: the server refuses to edit it, and to delete it while
+                  // the user has a savings goal (409).
                   if (tx.isSavingsContribution)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -1377,8 +1397,7 @@ class LedgerPageState extends State<LedgerPage> {
                     const SizedBox(height: 12),
                   ],
                   // A row being sent may already be on the server: it cannot be deleted until its send is over.
-                  if (tx.syncStatus != SyncStatus.pending &&
-                      !tx.isSavingsContribution)
+                  if (canDelete)
                     SizedBox(
                       width: double.infinity,
                       height: 50,

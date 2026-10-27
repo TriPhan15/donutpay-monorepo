@@ -7,6 +7,7 @@ import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 
@@ -191,6 +192,31 @@ class _SavingsPageState extends State<SavingsPage> {
     }
   }
 
+  /// Asks before a goal is deleted. A goal holding money says how much goes back to the wallet (the server refunds it).
+  Future<bool> _confirmDelete(Map<String, dynamic> goal) {
+    final loc = context.loc;
+    final current = _numberOf(goal['current']);
+    return AppDialog.confirm(
+      context,
+      title: loc.savingsDeleteTitle,
+      message: current > 0
+          ? loc.savingsDeleteConfirmRefund(_money(current))
+          : loc.savingsDeleteConfirm,
+      confirmText: loc.commonDelete,
+      danger: true,
+    );
+  }
+
+  /// The long-press path: the swipe asks through Dismissible.confirmDismiss instead.
+  Future<void> _confirmAndDeleteGoal(Map<String, dynamic> goal) async {
+    final confirmed = await _confirmDelete(goal);
+    if (!confirmed || !mounted) return;
+    // The list may have been reloaded while the dialog was open.
+    final index = _goals.indexWhere((g) => g['id'] == goal['id']);
+    if (index < 0) return;
+    await _deleteGoal(index);
+  }
+
   /// Removes the goal at once; when the server refuses or cannot be reached, it comes back where it was.
   Future<void> _deleteGoal(int index) async {
     final removed = _goals[index];
@@ -211,9 +237,14 @@ class _SavingsPageState extends State<SavingsPage> {
     }
     SessionService.needRefreshAI.value = true;
     if (!mounted) return;
+    final loc = context.loc;
+    final title = '${removed['title']}';
+    final refunded = _numberOf(removed['current']);
     AppToast.success(
       context,
-      context.loc.savingsDeleted('${removed['title']}'),
+      refunded > 0
+          ? loc.savingsDeletedRefunded(title, _money(refunded))
+          : loc.savingsDeleted(title),
     );
   }
 
@@ -487,6 +518,7 @@ class _SavingsPageState extends State<SavingsPage> {
                 child: Dismissible(
                   key: Key(goalId),
                   direction: DismissDirection.endToStart,
+                  confirmDismiss: (_) => _confirmDelete(g),
                   onDismissed: (_) => _deleteGoal(i),
                   background: Container(
                     decoration: BoxDecoration(
@@ -499,7 +531,7 @@ class _SavingsPageState extends State<SavingsPage> {
                   ),
                   child: GestureDetector(
                     onTap: () => _editGoal(i),
-                    onLongPress: () => _deleteGoal(i),
+                    onLongPress: () => _confirmAndDeleteGoal(g),
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(

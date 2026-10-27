@@ -845,6 +845,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String savingsDeletedRefunded(String title, String amount) {
+    return 'Goal deleted: $title. $amount went back to your wallet.';
+  }
+
+  @override
+  String get savingsDeleteTitle => 'Delete goal';
+
+  @override
+  String get savingsDeleteConfirm => 'Delete this goal?';
+
+  @override
+  String savingsDeleteConfirmRefund(String amount) {
+    return 'Delete this goal? The $amount contributed will be refunded to your wallet.';
+  }
+
+  @override
   String get savingsAddTitle => 'Add a savings goal';
 
   @override
@@ -863,7 +879,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerSavingsManagedByGoal =>
-      'Savings contributions are managed from Savings goals. Contribute or delete the goal there.';
+      'Savings contributions are managed on the Savings page.';
 
   @override
   String get savingsTotalSaved => 'Total saved';
@@ -1682,6 +1698,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aiGoalNoDeadline =>
       'This goal has no deadline, contribute whenever you can';
+
+  @override
+  String get aiGoalOverdue =>
+      'This goal is past its deadline: set a new date or keep contributing';
 
   @override
   String get aiOnTrack =>

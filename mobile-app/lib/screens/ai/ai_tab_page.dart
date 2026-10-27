@@ -614,34 +614,40 @@ class _AITabPageState extends State<AITabPage> {
     );
   }
 
-  /// The money the urgent goal keeps out of this month's spending (0 without a goal).
+  /// The money kept out of this month's spending: what the urgent goal asks for. Without an unfinished goal (none, or
+  /// all reached or deleted), what was contributed this month, because that money has already left the wallet.
   double _goalReserve(DateTime today) {
+    final contributed = SavingsGoalPlanner.contributedInMonth(
+      _transactions,
+      today,
+    );
     final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
-    if (goal == null) return 0;
+    if (goal == null) return contributed;
     return SavingsGoalPlanner.goalReserve(
       monthlyNeed: SavingsGoalPlanner.monthlyNeed(goal, today),
-      contributedThisMonth: SavingsGoalPlanner.contributedInMonth(
-        _transactions,
-        today,
-      ),
+      contributedThisMonth: contributed,
     );
   }
 
   String _getSavingTip(AppLocalizations loc) {
     final today = DateTime.now();
-    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
-    if (goal == null) {
-      // No unfinished goal (none at all, or all reached): the old tips apply.
-      return _monthIncome > _monthExpense
-          ? loc.aiSurplus(_fmt(loc, _monthIncome - _monthExpense))
-          : loc.aiAddGoal;
-    }
-    final need = SavingsGoalPlanner.monthlyNeed(goal, today);
-    if (need == 0) return loc.aiGoalNoDeadline;
     final contributed = SavingsGoalPlanner.contributedInMonth(
       _transactions,
       today,
     );
+    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
+    if (goal == null) {
+      // No unfinished goal (none at all, or all reached): the old tips apply. This month's contributions have left the
+      // wallet, so they are not part of the surplus.
+      final surplus = _monthIncome - _monthExpense - contributed;
+      return surplus > 0 ? loc.aiSurplus(_fmt(loc, surplus)) : loc.aiAddGoal;
+    }
+    final need = SavingsGoalPlanner.monthlyNeed(goal, today);
+    if (need == 0) {
+      return SavingsGoalPlanner.isOverdue(goal, today)
+          ? loc.aiGoalOverdue
+          : loc.aiGoalNoDeadline;
+    }
     final reserve = SavingsGoalPlanner.goalReserve(
       monthlyNeed: need,
       contributedThisMonth: contributed,

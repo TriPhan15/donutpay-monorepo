@@ -63,7 +63,7 @@ class DashboardPageState extends State<DashboardPage>
   List<BudgetProgress> _budgetProgress = [];
   bool _budgetsFailed = false;
 
-  /// Σ income − Σ expense of every transaction, so it can be negative.
+  /// The wallet balance the server keeps (User.walletBalance, sent as walletBalance); rows not yet synced are not in it.
   double _currentBalance = 0;
   double _pendingBalanceChange = 0;
   double _monthlyIncome = 0;

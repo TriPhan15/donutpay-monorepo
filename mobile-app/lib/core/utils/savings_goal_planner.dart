@@ -33,6 +33,12 @@ class SavingsGoalPlanner {
     return (math.max(days, 1) / daysPerMonth).ceil();
   }
 
+  /// True when the goal has a real deadline that is already past.
+  static bool isOverdue(Map<String, dynamic> goal, DateTime today) {
+    final days = daysLeft(goal['deadline'], today);
+    return days != null && days < 0;
+  }
+
   static double _remaining(Map<String, dynamic> goal) =>
       ((goal['target'] ?? 0) as num).toDouble() -
       ((goal['current'] ?? 0) as num).toDouble();

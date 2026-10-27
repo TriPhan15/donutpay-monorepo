@@ -838,6 +838,22 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String savingsDeletedRefunded(String title, String amount) {
+    return 'Đã xóa mục tiêu: $title. $amount đã được hoàn vào ví.';
+  }
+
+  @override
+  String get savingsDeleteTitle => 'Xóa mục tiêu';
+
+  @override
+  String get savingsDeleteConfirm => 'Xóa mục tiêu này?';
+
+  @override
+  String savingsDeleteConfirmRefund(String amount) {
+    return 'Xóa mục tiêu này? $amount đã góp sẽ được hoàn vào ví.';
+  }
+
+  @override
   String get savingsAddTitle => 'Thêm mục tiêu tiết kiệm';
 
   @override
@@ -856,7 +872,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get ledgerSavingsManagedByGoal =>
-      'Khoản góp tiết kiệm được quản lý trong mục Mục tiêu tiết kiệm. Hãy góp thêm hoặc xóa mục tiêu ở đó.';
+      'Khoản góp tiết kiệm được quản lý ở mục Tiết kiệm.';
 
   @override
   String get savingsTotalSaved => 'Tổng đã tiết kiệm';
@@ -1650,6 +1666,10 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get aiGoalNoDeadline => 'Mục tiêu chưa có hạn, góp lúc nào cũng được';
+
+  @override
+  String get aiGoalOverdue =>
+      'Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp';
 
   @override
   String get aiOnTrack =>

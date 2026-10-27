@@ -1622,6 +1622,30 @@ abstract class AppLocalizations {
   /// **'Goal deleted: {title}'**
   String savingsDeleted(String title);
 
+  /// Snackbar after a goal holding money is deleted; amount is what was refunded to the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal deleted: {title}. {amount} went back to your wallet.'**
+  String savingsDeletedRefunded(String title, String amount);
+
+  /// Title of the dialog that confirms deleting a savings goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete goal'**
+  String get savingsDeleteTitle;
+
+  /// Message of the delete goal dialog when nothing has been contributed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this goal?'**
+  String get savingsDeleteConfirm;
+
+  /// Message of the delete goal dialog when the goal holds money; amount is what goes back to the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this goal? The {amount} contributed will be refunded to your wallet.'**
+  String savingsDeleteConfirmRefund(String amount);
+
   /// Title of the add goal dialog.
   ///
   /// In en, this message translates to:
@@ -1652,10 +1676,10 @@ abstract class AppLocalizations {
   /// **'Edit goal {title}'**
   String savingsEditTitle(String title);
 
-  /// Shown instead of Edit and Delete in the detail sheet of a savings contribution.
+  /// Shown in the detail sheet of a savings contribution, which cannot be edited (nor deleted while the user has savings goals).
   ///
   /// In en, this message translates to:
-  /// **'Savings contributions are managed from Savings goals. Contribute or delete the goal there.'**
+  /// **'Savings contributions are managed on the Savings page.'**
   String get ledgerSavingsManagedByGoal;
 
   /// Label of the savings summary card.
@@ -3017,6 +3041,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This goal has no deadline, contribute whenever you can'**
   String get aiGoalNoDeadline;
+
+  /// Savings tip: the urgent goal has a deadline that is already past.
+  ///
+  /// In en, this message translates to:
+  /// **'This goal is past its deadline: set a new date or keep contributing'**
+  String get aiGoalOverdue;
 
   /// The user has savings goals.
   ///

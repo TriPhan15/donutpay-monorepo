@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
@@ -95,12 +96,112 @@ void main() {
 
     await withCapturedLogs((logs) async {
       await tester.longPress(find.text('Du lịch'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
       await settle(tester);
     });
 
     expect(find.text('Du lịch'), findsOneWidget);
     expect(find.text('Không xóa được mục tiêu. $_serverError'), findsOneWidget);
     expect(find.textContaining('SQLException'), findsNothing);
+  });
+
+  group('deleting a goal asks first', () {
+    const refundQuestion =
+        'Xóa mục tiêu này? 2.500.000 đ đã góp sẽ được hoàn vào ví.';
+
+    Iterable<RequestOptions> deletes() => backend.requests.where(
+      (r) => r.method == 'DELETE' && r.path == '/api/savings/7',
+    );
+
+    setUp(() {
+      backend.on('DELETE', '/api/savings/7', (_) => okResponse(null));
+    });
+
+    testWidgets(
+      'a long press says how much goes back to the wallet; Hủy sends nothing',
+      (tester) async {
+        await open(tester);
+
+        await tester.longPress(find.text('Du lịch'));
+        await tester.pumpAndSettle();
+        expect(find.text(refundQuestion), findsOneWidget);
+
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Hủy'));
+        await settle(tester);
+
+        expect(deletes(), isEmpty);
+        expect(find.text('Du lịch'), findsOneWidget);
+      },
+    );
+
+    testWidgets('a swipe cancelled in the dialog sends nothing', (
+      tester,
+    ) async {
+      await open(tester);
+
+      await tester.drag(find.text('Du lịch'), const Offset(-600, 0));
+      await tester.pumpAndSettle();
+      expect(find.text(refundQuestion), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Hủy'));
+      await settle(tester);
+
+      expect(deletes(), isEmpty);
+      expect(find.text('Du lịch'), findsOneWidget);
+    });
+
+    testWidgets(
+      'a confirmed swipe sends the DELETE and the toast names the refund',
+      (tester) async {
+        await open(tester);
+
+        await tester.drag(find.text('Du lịch'), const Offset(-600, 0));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+        await settle(tester);
+
+        expect(deletes(), hasLength(1));
+        expect(
+          find.text('Đã xóa mục tiêu: Du lịch. 2.500.000 đ đã được hoàn vào ví.'),
+          findsOneWidget,
+        );
+        // Lets the toast end, so no timer is left when the test is over.
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
+      'a goal with nothing saved asks without a refund and the toast names none',
+      (tester) async {
+        backend.on(
+          'GET',
+          '/api/savings',
+          (_) => okResponse([
+            {
+              'id': 7,
+              'title': 'Du lịch',
+              'target': 10000000,
+              'current': 0,
+              'deadline': '31/12/2026',
+            },
+          ]),
+        );
+        await open(tester);
+
+        await tester.longPress(find.text('Du lịch'));
+        await tester.pumpAndSettle();
+        expect(find.text('Xóa mục tiêu này?'), findsOneWidget);
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+        await settle(tester);
+
+        expect(deletes(), hasLength(1));
+        expect(find.text('Đã xóa mục tiêu: Du lịch'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 6));
+        await tester.pumpAndSettle();
+      },
+    );
   });
 
   testWidgets(

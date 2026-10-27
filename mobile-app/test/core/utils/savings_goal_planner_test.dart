@@ -119,4 +119,12 @@ void main() {
       1.5e6,
     );
   });
+
+  test('only a real deadline already past is overdue', () {
+    expect(SavingsGoalPlanner.isOverdue(goal(deadline: '26/10/2026'), today), isTrue);
+    expect(SavingsGoalPlanner.isOverdue(goal(deadline: '27/10/2026'), today), isFalse);
+    expect(SavingsGoalPlanner.isOverdue(goal(deadline: '30/11/2026'), today), isFalse);
+    expect(SavingsGoalPlanner.isOverdue(goal(), today), isFalse);
+    expect(SavingsGoalPlanner.isOverdue(goal(deadline: '31/02/2026'), today), isFalse);
+  });
 }

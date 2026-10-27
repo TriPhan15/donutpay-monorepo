@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -856,5 +857,83 @@ void main() {
       expect(find.textContaining(needMoreText), findsOneWidget);
       expect(find.textContaining(onTrackText), findsNothing);
     });
+
+    testWidgets('an overdue goal says it is past its deadline', (tester) async {
+      backend.on(
+        'GET',
+        '/api/savings',
+        (_) => okResponse([goal(target: 5e6, deadline: '01/01/2020')]),
+      );
+      backend.on(
+        'POST',
+        '/spade/recommend',
+        (_) => jsonResponse(200, {'recommendations': []}),
+      );
+
+      await pumpPage(tester);
+
+      expect(
+        find.text('Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Mục tiêu chưa có hạn, góp lúc nào cũng được'),
+        findsNothing,
+      );
+    });
+
+    /// What the page shows for [amount]: grouped the Vietnamese way, then the currency.
+    String money(double amount) =>
+        '${NumberFormat.decimalPattern('vi').format(amount.round())} đ';
+
+    final noUnfinishedGoal = {
+      'reached this month': [goal(target: 2e6, current: 2e6)],
+      'deleted this month': <Map<String, Object?>>[],
+    };
+    noUnfinishedGoal.forEach((how, goals) {
+      testWidgets(
+        'a goal $how after contributing: safe-to-spend and the surplus leave out what was contributed',
+        (tester) async {
+          const contributed = 2e6;
+          transactions = [
+            _tx(1, _today, amount: 3e6),
+            _tx(2, _today, amount: 10e6, category: 'Thu nhập', isExpense: false),
+            _tx(3, _today, amount: contributed, category: 'Tiết kiệm'),
+          ];
+          backend.on('GET', '/api/savings', (_) => okResponse(goals));
+
+          await pumpPage(tester);
+
+          // Income 10M − spending 3M − the 2M that left the wallet for the goal.
+          const left = 10e6 - 3e6 - contributed;
+          final daysLeft =
+              DateTime(_now.year, _now.month + 1, 0).day - _now.day + 1;
+          expect(find.text('${money(left / daysLeft)} / ngày'), findsOneWidget);
+          expect(
+            find.text('Đang dư ${money(left)}. Hãy lập mục tiêu!'),
+            findsOneWidget,
+          );
+        },
+      );
+    });
+
+    testWidgets(
+      'without a goal, contributions that eat the whole surplus ask for a goal instead',
+      (tester) async {
+        transactions = [
+          _tx(1, _today, amount: 3e6),
+          _tx(2, _today, amount: 5e6, category: 'Thu nhập', isExpense: false),
+          _tx(3, _today, amount: 2e6, category: 'Tiết kiệm'),
+        ];
+
+        await pumpPage(tester);
+
+        expect(
+          find.text('Thêm mục tiêu tiết kiệm để AI phân tích.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Đang dư'), findsNothing);
+      },
+    );
   });
 }
