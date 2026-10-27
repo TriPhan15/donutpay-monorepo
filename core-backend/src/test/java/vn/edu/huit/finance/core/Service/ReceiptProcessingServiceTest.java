@@ -436,14 +436,37 @@ class ReceiptProcessingServiceTest {
         assertMoney("245000", receipt.getExtractedTotal());
         assertEquals(LocalDate.of(2026, 5, 27), receipt.getExtractedDate());
         assertEquals("https://img.example.com/1.jpg", receipt.getImageUrl());
-        assertEquals(LocalDateTime.of(2026, 5, 27, 10, 30), transaction.getTransactionDate());
-        assertEquals("12 Nguyễn Trãi, Quận 1", transaction.getLocation());
+        assertEquals(CLIENT_DATE, transaction.getTransactionDate());
+        assertEquals(CLIENT_LOCATION, transaction.getLocation());
         ReceiptProcessingAttempt first = firstAttemptOf(transaction);
         assertEquals("COMPLETED", first.getStatus());
         assertNull(first.getErrorCode());
         assertNotNull(first.getCompletedAt());
         // Nothing is saved here: the transaction is saved by its caller and cascades to the receipt and the attempt.
         verifyNoInteractions(receiptRepo, attemptRepo);
+    }
+
+    @Test
+    void whatTheAiReadFillsOnlyWhatTheClientLeftEmpty() {
+        Transaction t = transactionOf(alice);
+        t.setTransactionDate(null);
+        t.setLocation(null);
+
+        service.attachReceipt(t, FULL_SCAN, null);
+
+        assertEquals(LocalDateTime.of(2026, 5, 27, 10, 30), t.getTransactionDate());
+        assertEquals("12 Nguyễn Trãi, Quận 1", t.getLocation());
+    }
+
+    @Test
+    void aBlankLocationFromTheClientIsFilledByTheAiAddress() {
+        Transaction t = transactionOf(alice);
+        t.setLocation("   ");
+
+        service.attachReceipt(t, FULL_SCAN, null);
+
+        assertEquals("12 Nguyễn Trãi, Quận 1", t.getLocation());
+        assertEquals(CLIENT_DATE, t.getTransactionDate());
     }
 
     @Test

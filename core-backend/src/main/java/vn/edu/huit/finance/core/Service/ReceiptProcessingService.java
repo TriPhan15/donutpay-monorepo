@@ -116,9 +116,9 @@ public class ReceiptProcessingService {
      * Builds the receipt of {@code transaction} from the AI's JSON and links both ways. Meant to be called while the
      * transaction is being built inside {@code TransactionService.createTransaction}, which saves it (and, by cascade,
      * the receipt and the attempt of its first reading) after moving the wallet. The JSON is kept in that attempt as it
-     * arrived, and the final fields start as what it says. Fallbacks for what the AI did not deliver: no timestamp keeps
-     * the date the client sent, no address keeps the client's location, no seller leaves the vendor empty, and no total
-     * marks the receipt FAILED (the AI could not read it) so that its owner can retry it or send the amount through
+     * arrived, and the receipt's final fields start as what it says. What the client sent always wins (D3): the AI's
+     * timestamp and address fill the transaction's date and location only when the client left them empty (the
+     * receipt keeps what the AI read either way). No seller leaves the vendor empty, and no total marks the receipt FAILED (the AI could not read it) so that its owner can retry it or send the amount through
      * {@link #submitFeedback}.
      */
     public void attachReceipt(Transaction transaction, String rawReceiptData, String imageUrl) {
@@ -132,10 +132,11 @@ public class ReceiptProcessingService {
         ExtractedReceiptDto extracted = ocrService.extract(rawReceiptData);
         receipt.addFirstAttempt(recordReading(receipt, extracted, ReceiptProcessingAttempt.FIRST_ATTEMPT_NUMBER,
                 rawReceiptData, null));
-        if (extracted.getTimestamp() != null) {
+        // Giá trị người dùng đã nhập luôn thắng giá trị AI đọc (D3): AI chỉ điền chỗ còn trống.
+        if (extracted.getTimestamp() != null && transaction.getTransactionDate() == null) {
             transaction.setTransactionDate(extracted.getTimestamp());
         }
-        if (extracted.getAddress() != null) {
+        if (extracted.getAddress() != null && (transaction.getLocation() == null || transaction.getLocation().isBlank())) {
             transaction.setLocation(extracted.getAddress());
         }
 

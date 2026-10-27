@@ -1087,14 +1087,16 @@ class TransactionServiceTest {
     private static final String SCAN = "{\"seller\": {}}";
     private static final Long EARLIER_ID = 55L;
 
-    /** What attachReceipt does for real: the receipt's seller and timestamp (here 10:30:42) replace what the client sent. */
+    /** What attachReceipt does for real: the receipt's seller is kept, and the timestamp (here 10:30:42) only fills a date the client left empty. */
     private void theScanReads(String seller) {
         doAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
             Receipt receipt = new Receipt();
             receipt.setVendorName(seller);
             transaction.setReceipt(receipt);
-            transaction.setTransactionDate(SCANNED_MINUTE.plusSeconds(42));
+            if (transaction.getTransactionDate() == null) {
+                transaction.setTransactionDate(SCANNED_MINUTE.plusSeconds(42));
+            }
             return null;
         }).when(receiptProcessingService).attachReceipt(any(), any(), any());
     }
@@ -1117,6 +1119,15 @@ class TransactionServiceTest {
                 SCANNED_MINUTE.plusMinutes(1))).thenReturn(List.of(transactions));
     }
 
+    private static final LocalDateTime MAY_28_0900 = LocalDateTime.of(2026, 5, 28, 9, 0);
+
+    /** A scan whose date the user left empty (the AI's timestamp fills it) or confirmed (it wins over the AI). */
+    private TransactionRequestDto scannedCheckout(LocalDateTime userDate) {
+        TransactionRequestDto request = checkout(SCAN);
+        request.setTransactionDate(userDate);
+        return request;
+    }
+
     private void aliceScansFoodAs(String seller) {
         checkoutAsAlice();
         when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
@@ -1129,7 +1140,7 @@ class TransactionServiceTest {
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
 
         DuplicateReceiptException refused = assertThrows(DuplicateReceiptException.class,
-                () -> service.createMyTransaction(checkout(SCAN)));
+                () -> service.createMyTransaction(scannedCheckout(null)));
 
         assertEquals("Hóa đơn này có vẻ đã được lưu trước đó", refused.getMessage());
         assertEquals(EARLIER_ID, refused.getExistingTransactionId());
@@ -1146,7 +1157,7 @@ class TransactionServiceTest {
         aliceScansFoodAs("Bách Hóa Xanh");
         aliceHasInThatMinute(savedEarlier(earlierSeller));
 
-        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(checkout(SCAN)));
+        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(scannedCheckout(null)));
     }
 
     @Test
@@ -1154,7 +1165,7 @@ class TransactionServiceTest {
         aliceScansFoodAs("Highlands Coffee");
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
 
-        service.createMyTransaction(checkout(SCAN));
+        service.createMyTransaction(scannedCheckout(null));
 
         verify(transactionRepo).save(any(Transaction.class));
     }
@@ -1166,7 +1177,7 @@ class TransactionServiceTest {
         aliceScansFoodAs(seller);
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
 
-        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(checkout(SCAN)));
+        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(scannedCheckout(null)));
     }
 
     @Test
@@ -1177,7 +1188,7 @@ class TransactionServiceTest {
         aliceHasInThatMinute(savedEarlier("Highlands"), withoutSeller);
 
         DuplicateReceiptException refused = assertThrows(DuplicateReceiptException.class,
-                () -> service.createMyTransaction(checkout(SCAN)));
+                () -> service.createMyTransaction(scannedCheckout(null)));
 
         assertEquals(EARLIER_ID + 1, refused.getExistingTransactionId());
     }
@@ -1186,11 +1197,21 @@ class TransactionServiceTest {
     void theLookupIsTheCallersOwnSameDirectionAndAmountInTheMinuteOfTheReceiptsTimestamp() {
         aliceScansFoodAs("Bách Hóa Xanh");
 
-        service.createMyTransaction(checkout(SCAN));
+        service.createMyTransaction(scannedCheckout(null));
 
         verify(transactionRepo).findPossibleReceiptDuplicates(ALICE_ID, true, HUNDRED_THOUSAND, SCANNED_MINUTE,
                 SCANNED_MINUTE.plusMinutes(1));
         verify(transactionRepo).save(any(Transaction.class));
+    }
+
+    @Test
+    void theDuplicateCheckUsesTheDateTheUserConfirmedAndNotTheOneTheAiRead() {
+        aliceScansFoodAs("Bách Hóa Xanh");
+
+        service.createMyTransaction(scannedCheckout(MAY_28_0900));
+
+        verify(transactionRepo).findPossibleReceiptDuplicates(eq(ALICE_ID), eq(true), any(), eq(MAY_28_0900),
+                eq(MAY_28_0900.plusMinutes(1)));
     }
 
     @Test
