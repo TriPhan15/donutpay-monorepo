@@ -25,6 +25,7 @@ import vn.edu.huit.finance.core.Service.AdminStatisticsService;
 import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
+import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
@@ -60,6 +61,7 @@ class AdminAuditLogPageTest {
     @Autowired private MockMvc mockMvc;
 
     @MockBean private AdminStatisticsService adminStatisticsService;
+    @MockBean private SpendingLeaderboardService leaderboardService;
     @MockBean private ReceiptProcessingService receiptProcessingService;
     @MockBean private UserRepository userRepo;
     @MockBean private CategoryRepository categoryRepo;

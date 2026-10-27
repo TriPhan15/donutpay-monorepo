@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -38,6 +39,7 @@ import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
+import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
@@ -64,7 +66,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 public class AdminController {
     private static final int DEFAULT_PAGE_SIZE = 10;
-    private static final int TOP_SPENDERS_PAGE = 0;
     private static final int TOP_SPENDERS_LIMIT = 5;
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
@@ -103,13 +104,16 @@ public class AdminController {
     @Autowired private LoginAttemptService loginAttemptService;
     @Autowired private AppReviewRepository appReviewRepository;
     @Autowired private ApplicationEventPublisher eventPublisher;
+    @Autowired private SpendingLeaderboardService leaderboardService;
     /**
      * The aggregates come from AdminStatisticsService, cached in Redis as DTOs (never this Model, never an entity) and
      * keyed by the month, threshold, page and limit asked for here; the customer segments below are read live.
      */
     @GetMapping("/dashboard")
-    public String showDashboard(Model model) {
+    public String showDashboard(Model model,
+                                @RequestParam(name = "month", required = false) @DateTimeFormat(pattern = "yyyy-MM") YearMonth requestedMonth) {
         YearMonth currentMonth = YearMonth.now();
+        YearMonth topSpendersMonth = requestedMonth != null ? requestedMonth : currentMonth;
         AdminDashboardSummaryDto summary = adminStatisticsService.getDashboardSummary(
                 currentMonth, TransactionService.LOW_BALANCE_THRESHOLD);
 
@@ -118,7 +122,8 @@ public class AdminController {
         model.addAttribute("lowBalanceUsers", summary.getLowBalanceUsers());
         model.addAttribute("totalTransactionsThisMonth", summary.getTransactionsInPeriod());
 
-        model.addAttribute("topSpenders", adminStatisticsService.getTopSpenders(TOP_SPENDERS_PAGE, TOP_SPENDERS_LIMIT));
+        model.addAttribute("topSpenders", leaderboardService.topSpenders(topSpendersMonth, TOP_SPENDERS_LIMIT));
+        model.addAttribute("topSpendersMonth", topSpendersMonth.toString());
 
         List<MonthlyTransactionCountDto> chart = adminStatisticsService.getMonthlyTransactionCounts(currentMonth, CHART_MONTHS);
         model.addAttribute("chartLabels", chart.stream()

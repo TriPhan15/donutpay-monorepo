@@ -23,7 +23,7 @@ class StatisticsChangeTest {
                 Arguments.of(StatisticsChange.RECEIPT_STATUS, Set.of(USER_DASHBOARD), Set.of(ADMIN_DASHBOARD_SUMMARY)),
                 Arguments.of(StatisticsChange.RECEIPT_CONTENT, USER_CACHES, Set.of(ADMIN_DASHBOARD_SUMMARY)),
                 Arguments.of(StatisticsChange.ACCOUNT_CREATED, Set.of(), Set.of(ADMIN_DASHBOARD_SUMMARY)),
-                Arguments.of(StatisticsChange.ACCOUNT_PROFILE, Set.of(), Set.of(ADMIN_DASHBOARD_SUMMARY, ADMIN_TOP_SPENDERS)),
+                Arguments.of(StatisticsChange.ACCOUNT_PROFILE, Set.of(), Set.of(ADMIN_DASHBOARD_SUMMARY)),
                 Arguments.of(StatisticsChange.ACCOUNT_DELETED, USER_CACHES, ADMIN_CACHES),
                 Arguments.of(StatisticsChange.DATABASE_RESTORED, Set.of(), ALL_CACHES));
     }
