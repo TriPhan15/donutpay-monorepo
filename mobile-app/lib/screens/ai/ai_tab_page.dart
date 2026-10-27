@@ -371,11 +371,30 @@ class _AITabPageState extends State<AITabPage> {
         AiComponents.buildSpadeSection(
           colors,
           loc,
-          _analysis?.patterns ?? const [],
+          _analysis,
           _spadeLoading,
           hasError: _spadeFailed,
         ),
         const SizedBox(height: 24),
+        if (_analysis != null && _analysis!.rules.isNotEmpty) ...[
+          AiComponents.buildHabitAlertSection(
+            colors,
+            loc,
+            _analysis!.rules,
+            _transactions,
+            DateTime.now(),
+          ),
+          const SizedBox(height: 24),
+        ],
+        if (_analysis != null && _analysis!.habits.isNotEmpty) ...[
+          AiComponents.buildPeriodicHabitsSection(
+            colors,
+            loc,
+            _analysis!.habits,
+            DateTime.now(),
+          ),
+          const SizedBox(height: 24),
+        ],
 
         AiComponents.build503020Card(
           colors,

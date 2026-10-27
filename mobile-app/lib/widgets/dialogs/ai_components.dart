@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
@@ -37,10 +38,11 @@ class AiComponents {
   static Widget buildSpadeSection(
     ColorScheme colors,
     AppLocalizations loc,
-    List<SpendingPattern> spadePatterns,
+    SpendingAnalysis? analysis,
     bool isLoading, {
     bool hasError = false,
   }) {
+    final spadePatterns = analysis?.patterns ?? const <SpendingPattern>[];
     // Made once for the whole list rather than once per pattern.
     final cardDecoration = BoxDecoration(
       color: colors.surface,
@@ -114,12 +116,7 @@ class AiComponents {
             message: loc.aiSpadeLoadFailedMessage,
           )
         else if (spadePatterns.isEmpty)
-          _buildSpadeMessageCard(
-            colors,
-            icon: Icons.auto_graph_rounded,
-            title: loc.aiSpadeNotEnoughTitle,
-            message: loc.aiSpadeNotEnoughMessage,
-          )
+          _buildSpadeEmptyCard(colors, loc, analysis)
         else
           ...List.generate(spadePatterns.length, (i) {
             final p = spadePatterns[i];
@@ -152,9 +149,9 @@ class AiComponents {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            loc.aiSpadeDetail(
-                              '${p.support}',
-                              p.weightedSupport.toStringAsFixed(2),
+                            loc.aiSpadeWeeksDetail(
+                              p.support,
+                              analysis?.weeksWithData ?? 0,
                             ),
                             style: detailStyle,
                           ),
@@ -167,6 +164,33 @@ class AiComponents {
             );
           }),
       ],
+    );
+  }
+
+  /// No pattern to list: either the history is too short (say how short), or it is long enough and nothing repeats.
+  static Widget _buildSpadeEmptyCard(
+    ColorScheme colors,
+    AppLocalizations loc,
+    SpendingAnalysis? analysis,
+  ) {
+    final enough = analysis?.status == SpendingAnalysisStatus.ok;
+    if (enough) {
+      return _buildSpadeMessageCard(
+        colors,
+        icon: Icons.auto_graph_rounded,
+        title: loc.aiSpadeNoPatternTitle,
+        message: loc.aiSpadeNoPatternMessage,
+      );
+    }
+    final weeks = analysis?.weeksWithData ?? 0;
+    final minWeeks = analysis?.minWeeks ?? 0;
+    return _buildSpadeMessageCard(
+      colors,
+      icon: Icons.auto_graph_rounded,
+      title: loc.aiSpadeNotEnoughTitle,
+      message: minWeeks > 0
+          ? loc.aiSpadeNotEnoughWeeks(weeks, minWeeks)
+          : loc.aiSpadeNotEnoughNone,
     );
   }
 
@@ -382,24 +406,70 @@ class AiComponents {
     );
   }
 
-  static Widget buildBudgetGuardSection(
+  static const int maxHabitAlerts = 3;
+  static const int maxHabits = 5;
+
+  /// 00:00 on the Monday of the ISO week of [day].
+  static DateTime _weekStart(DateTime day) =>
+      DateTime(day.year, day.month, day.day - (day.weekday - DateTime.monday));
+
+  static String _categories(AppLocalizations loc, List<String> names) => names
+      .map((n) => TransactionCategories.displayName(loc, n.trim()))
+      .join(_itemSeparator);
+
+  /// "dd/MM", worked out by hand: it needs no date-format locale data.
+  static String _dayMonth(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+
+  static Widget _sectionHeader(
+    ColorScheme colors,
+    String title,
+    String subtitle,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        subtitle,
+        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+      ),
+      const SizedBox(height: 16),
+    ],
+  );
+
+  /// The rules the server kept (enough weeks, enough confidence), at most [maxHabitAlerts]. A rule is "triggered" when
+  /// every category of its antecedent was spent on in the week of [today] and none of its consequent yet; those come
+  /// first. Each rule says how many weeks it held in, never "will".
+  static Widget buildHabitAlertSection(
     ColorScheme colors,
     AppLocalizations loc,
-    List<SpendingPattern> spadePatterns,
+    List<SpendingRule> rules,
     List<TransactionModel> transactions,
+    DateTime today,
   ) {
-    final now = DateTime.now();
-    final recentCats = transactions
-        .where(
-          (tx) => tx.countsAsSpending && now.difference(tx.date).inDays < 7,
-        )
-        .map((t) => t.category)
-        .toSet();
-    final spadeWarnings = <Widget>[];
-    final warnedCons = <String>{};
+    if (rules.isEmpty) return const SizedBox.shrink();
 
-    // Made once for all the warnings rather than once per warning.
-    final warningDecoration = BoxDecoration(
+    final week = _weekStart(today);
+    final spentThisWeek = transactions
+        .where((t) => t.countsAsSpending && _weekStart(t.date) == week)
+        .map((t) => t.category.trim())
+        .toSet();
+    bool triggered(SpendingRule r) =>
+        r.antecedent.every((c) => spentThisWeek.contains(c.trim())) &&
+        !r.consequent.any((c) => spentThisWeek.contains(c.trim()));
+
+    // Two passes keep the server's order inside each group.
+    final ordered = [
+      ...rules.where(triggered),
+      ...rules.where((r) => !triggered(r)),
+    ].take(maxHabitAlerts);
+
+    // Made once for all the cards rather than once per card.
+    final decoration = BoxDecoration(
       color: colors.surface,
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: colors.primary.withValues(alpha: 0.35)),
@@ -409,81 +479,131 @@ class AiComponents {
       fontSize: 12,
       fontWeight: FontWeight.bold,
     );
-
-    for (final p in spadePatterns) {
-      if (spadeWarnings.length >= 2) break;
-      if (p.itemsets.length < 2 || p.itemsets.last.isEmpty) continue;
-
-      final antes = p.itemsets.first.map((s) => s.trim()).toList();
-      final cons = p.itemsets.last.first.trim();
-      final hitAnte = antes.firstWhere(
-        (a) => recentCats.contains(a),
-        orElse: () => '',
-      );
-
-      if (hitAnte.isEmpty ||
-          cons.isEmpty ||
-          cons == hitAnte ||
-          !warnedCons.add(cons)) {
-        continue;
-      }
-
-      final txt = loc.aiGuardRule(
-        TransactionCategories.displayName(loc, hitAnte),
-        TransactionCategories.displayName(loc, cons),
-      );
-
-      spadeWarnings.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: warningDecoration,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.psychology_alt_rounded,
-                  color: colors.primary,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(loc.aiGuardHeading, style: headingStyle),
-                      const SizedBox(height: 6),
-                      Text(
-                        txt,
-                        style: const TextStyle(fontSize: 13, height: 1.4),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (spadeWarnings.isEmpty) return const SizedBox.shrink();
+    final triggeredStyle = TextStyle(
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      height: 1.4,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          loc.aiGuardTitle,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          loc.aiGuardSubtitle,
-          style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
-        ),
-        const SizedBox(height: 16),
-        ...spadeWarnings,
+        _sectionHeader(colors, loc.aiGuardTitle, loc.aiGuardSubtitle),
+        for (final r in ordered)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: decoration,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.psychology_alt_rounded,
+                    color: colors.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(loc.aiGuardHeading, style: headingStyle),
+                        const SizedBox(height: 6),
+                        Text(
+                          loc.aiGuardRule(
+                            _categories(loc, r.antecedent),
+                            _categories(loc, r.consequent),
+                            r.support,
+                            r.antecedentSupport,
+                          ),
+                          style: const TextStyle(fontSize: 13, height: 1.4),
+                        ),
+                        if (triggered(r)) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            loc.aiGuardTriggered(
+                              _categories(loc, r.antecedent),
+                              _categories(loc, r.consequent),
+                            ),
+                            style: triggeredStyle,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// The categories that come back at a fairly regular interval (descriptive statistics, so shown even when there is too
+  /// little history for sequences), at most [maxHabits]. A habit whose expected date is already past shows its last
+  /// date instead of a date in the past.
+  static Widget buildPeriodicHabitsSection(
+    ColorScheme colors,
+    AppLocalizations loc,
+    List<PeriodicHabit> habits,
+    DateTime today,
+  ) {
+    if (habits.isEmpty) return const SizedBox.shrink();
+
+    final day = DateTime(today.year, today.month, today.day);
+    final gap = NumberFormat.decimalPatternDigits(
+      locale: loc.localeName,
+      decimalDigits: 1,
+    );
+    final decoration = BoxDecoration(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: colors.primary.withValues(alpha: 0.2)),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(colors, loc.aiHabitTitle, loc.aiHabitSubtitle),
+        for (final h in habits.take(maxHabits))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: decoration,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.event_repeat_rounded, color: colors.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      h.nextExpectedDate.isBefore(day)
+                          ? loc.aiHabitLineLate(
+                              TransactionCategories.displayName(
+                                loc,
+                                h.category,
+                              ),
+                              gap.format(h.meanGapDays),
+                              _dayMonth(h.lastDate),
+                            )
+                          : loc.aiHabitLine(
+                              TransactionCategories.displayName(
+                                loc,
+                                h.category,
+                              ),
+                              gap.format(h.meanGapDays),
+                              _dayMonth(h.nextExpectedDate),
+                            ),
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }

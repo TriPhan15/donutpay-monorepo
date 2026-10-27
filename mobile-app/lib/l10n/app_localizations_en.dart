@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1724,12 +1723,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiSpadeNotEnoughTitle => 'Not enough data';
 
   @override
-  String get aiSpadeNotEnoughMessage =>
-      'Add at least 3 transactions to see sequential spending patterns.';
+  String aiSpadeNotEnoughWeeks(int weeks, int minWeeks) {
+    return 'Only $weeks weeks with spending so far; at least $minWeeks weeks are needed to look for sequences.';
+  }
 
   @override
-  String aiSpadeDetail(String count, String support) {
-    return 'Frequency: $count times  ·  Support (W-Sup): $support';
+  String get aiSpadeNotEnoughNone => 'No spending in the last 26 weeks yet.';
+
+  @override
+  String get aiSpadeNoPatternTitle => 'No sequence yet';
+
+  @override
+  String get aiSpadeNoPatternMessage =>
+      'No sequence of spending repeats in enough weeks yet.';
+
+  @override
+  String aiSpadeWeeksDetail(int count, int total) {
+    return 'In $count/$total weeks';
   }
 
   @override
@@ -1749,14 +1759,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiGuardSubtitle =>
-      'The AI predicts upcoming spending from your spending sequence history.';
+      'Habits that repeated in many weeks of your history.';
 
   @override
   String get aiGuardHeading => 'Behaviour forecast · Sequence mining';
 
   @override
-  String aiGuardRule(String from, String to) {
-    return 'WCM-SPADE found the rule [$from → $to]: after spending on $from, you tend to spend on $to within a few days. Keep an eye on your wallet so it does not eat into your savings!';
+  String aiGuardRule(String from, String to, int count, int total) {
+    return '$count/$total weeks: after spending on $from, you also spent on $to in the same week.';
+  }
+
+  @override
+  String aiGuardTriggered(String from, String to) {
+    return 'This week you have spent on $from but not yet on $to.';
+  }
+
+  @override
+  String get aiHabitTitle => 'Recurring habits';
+
+  @override
+  String get aiHabitSubtitle =>
+      'Categories you spend on at a fairly regular interval.';
+
+  @override
+  String aiHabitLine(String category, String days, String date) {
+    return '$category: about every $days days, next around $date';
+  }
+
+  @override
+  String aiHabitLineLate(String category, String days, String last) {
+    return '$category: about every $days days, last on $last';
   }
 
   @override

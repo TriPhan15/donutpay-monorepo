@@ -3084,17 +3084,35 @@ abstract class AppLocalizations {
   /// **'Not enough data'**
   String get aiSpadeNotEnoughTitle;
 
-  /// No pattern found.
+  /// Not enough weeks of spending for the sequence mining.
   ///
   /// In en, this message translates to:
-  /// **'Add at least 3 transactions to see sequential spending patterns.'**
-  String get aiSpadeNotEnoughMessage;
+  /// **'Only {weeks} weeks with spending so far; at least {minWeeks} weeks are needed to look for sequences.'**
+  String aiSpadeNotEnoughWeeks(int weeks, int minWeeks);
 
-  /// count and support come from the AI service.
+  /// No spending to analyse.
   ///
   /// In en, this message translates to:
-  /// **'Frequency: {count} times  ·  Support (W-Sup): {support}'**
-  String aiSpadeDetail(String count, String support);
+  /// **'No spending in the last 26 weeks yet.'**
+  String get aiSpadeNotEnoughNone;
+
+  /// Enough weeks, but no sequence repeats often enough.
+  ///
+  /// In en, this message translates to:
+  /// **'No sequence yet'**
+  String get aiSpadeNoPatternTitle;
+
+  /// Enough weeks, but no sequence repeats often enough.
+  ///
+  /// In en, this message translates to:
+  /// **'No sequence of spending repeats in enough weeks yet.'**
+  String get aiSpadeNoPatternMessage;
+
+  /// How many of the analysed weeks contain the sequence.
+  ///
+  /// In en, this message translates to:
+  /// **'In {count}/{total} weeks'**
+  String aiSpadeWeeksDetail(int count, int total);
 
   /// Title of the budget advice section.
   ///
@@ -3123,7 +3141,7 @@ abstract class AppLocalizations {
   /// Under the habit alert title.
   ///
   /// In en, this message translates to:
-  /// **'The AI predicts upcoming spending from your spending sequence history.'**
+  /// **'Habits that repeated in many weeks of your history.'**
   String get aiGuardSubtitle;
 
   /// Heading of one habit alert.
@@ -3132,11 +3150,41 @@ abstract class AppLocalizations {
   /// **'Behaviour forecast · Sequence mining'**
   String get aiGuardHeading;
 
-  /// from and to are category labels.
+  /// A rule seen in count of the total weeks in which the first part happened.
   ///
   /// In en, this message translates to:
-  /// **'WCM-SPADE found the rule [{from} → {to}]: after spending on {from}, you tend to spend on {to} within a few days. Keep an eye on your wallet so it does not eat into your savings!'**
-  String aiGuardRule(String from, String to);
+  /// **'{count}/{total} weeks: after spending on {from}, you also spent on {to} in the same week.'**
+  String aiGuardRule(String from, String to, int count, int total);
+
+  /// The rule applies to the current week.
+  ///
+  /// In en, this message translates to:
+  /// **'This week you have spent on {from} but not yet on {to}.'**
+  String aiGuardTriggered(String from, String to);
+
+  /// Title of the periodic habits section.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring habits'**
+  String get aiHabitTitle;
+
+  /// Under the periodic habits title.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories you spend on at a fairly regular interval.'**
+  String get aiHabitSubtitle;
+
+  /// Mean gap in days and the next expected date (dd/MM).
+  ///
+  /// In en, this message translates to:
+  /// **'{category}: about every {days} days, next around {date}'**
+  String aiHabitLine(String category, String days, String date);
+
+  /// The expected date has passed; shows the last one.
+  ///
+  /// In en, this message translates to:
+  /// **'{category}: about every {days} days, last on {last}'**
+  String aiHabitLineLate(String category, String days, String last);
 
   /// Title of the 50/30/20 card.
   ///

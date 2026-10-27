@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1692,12 +1691,24 @@ class AppLocalizationsVi extends AppLocalizations {
   String get aiSpadeNotEnoughTitle => 'Chưa đủ dữ liệu';
 
   @override
-  String get aiSpadeNotEnoughMessage =>
-      'Thêm ít nhất 3 giao dịch để xem mẫu chi tiêu tuần tự.';
+  String aiSpadeNotEnoughWeeks(int weeks, int minWeeks) {
+    return 'Mới có $weeks tuần có chi tiêu; cần ít nhất $minWeeks tuần để tìm mẫu tuần tự.';
+  }
 
   @override
-  String aiSpadeDetail(String count, String support) {
-    return 'Tần suất: $count lần  ·  Độ hỗ trợ (W-Sup): $support';
+  String get aiSpadeNotEnoughNone =>
+      'Chưa có khoản chi nào trong 26 tuần gần đây.';
+
+  @override
+  String get aiSpadeNoPatternTitle => 'Chưa có mẫu nào';
+
+  @override
+  String get aiSpadeNoPatternMessage =>
+      'Chưa có chuỗi chi tiêu nào lặp lại đủ nhiều tuần.';
+
+  @override
+  String aiSpadeWeeksDetail(int count, int total) {
+    return 'Có trong $count/$total tuần';
   }
 
   @override
@@ -1717,14 +1728,35 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get aiGuardSubtitle =>
-      'AI dự đoán các khoản chi sắp tới dựa trên lịch sử tuần tự của bạn.';
+      'Những thói quen đã lặp lại qua nhiều tuần trong lịch sử của bạn.';
 
   @override
   String get aiGuardHeading => 'Dự báo hành vi · Khai phá chuỗi';
 
   @override
-  String aiGuardRule(String from, String to) {
-    return 'Thuật toán WCM-SPADE phát hiện luật [$from → $to]: Sau khi chi tiền cho $from, bạn có xu hướng sẽ chi cho $to trong vài ngày tới. Hãy chú ý kiểm soát hầu bao để không lạm lẹm vào khoản tiết kiệm!';
+  String aiGuardRule(String from, String to, int count, int total) {
+    return '$count/$total tuần: sau khi chi $from, bạn chi tiếp $to trong cùng tuần.';
+  }
+
+  @override
+  String aiGuardTriggered(String from, String to) {
+    return 'Tuần này bạn đã chi $from nhưng chưa chi $to.';
+  }
+
+  @override
+  String get aiHabitTitle => 'Thói quen định kỳ';
+
+  @override
+  String get aiHabitSubtitle => 'Những khoản bạn chi khá đều đặn theo chu kỳ.';
+
+  @override
+  String aiHabitLine(String category, String days, String date) {
+    return '$category: khoảng $days ngày/lần, lần tới khoảng $date';
+  }
+
+  @override
+  String aiHabitLineLate(String category, String days, String last) {
+    return '$category: khoảng $days ngày/lần, lần gần nhất $last';
   }
 
   @override

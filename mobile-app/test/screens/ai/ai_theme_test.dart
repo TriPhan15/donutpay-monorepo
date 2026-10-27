@@ -249,7 +249,7 @@ void main() {
             colors.onPrimaryContainer,
           );
           expect(
-            paintedColor(tester, find.textContaining('Tần suất')),
+            paintedColor(tester, find.textContaining('Có trong')),
             colors.primary,
           );
           expect(

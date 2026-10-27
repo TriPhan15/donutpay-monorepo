@@ -2284,19 +2284,39 @@
   "@aiSpadeNotEnoughTitle": {
     "description": "No pattern found."
   },
-  "aiSpadeNotEnoughMessage": "Add at least 3 transactions to see sequential spending patterns.",
-  "@aiSpadeNotEnoughMessage": {
-    "description": "No pattern found."
+  "aiSpadeNotEnoughWeeks": "Only {weeks} weeks with spending so far; at least {minWeeks} weeks are needed to look for sequences.",
+  "@aiSpadeNotEnoughWeeks": {
+    "description": "Not enough weeks of spending for the sequence mining.",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "minWeeks": {
+        "type": "int"
+      }
+    }
   },
-  "aiSpadeDetail": "Frequency: {count} times  ·  Support (W-Sup): {support}",
-  "@aiSpadeDetail": {
-    "description": "count and support come from the AI service.",
+  "aiSpadeNotEnoughNone": "No spending in the last 26 weeks yet.",
+  "@aiSpadeNotEnoughNone": {
+    "description": "No spending to analyse."
+  },
+  "aiSpadeNoPatternTitle": "No sequence yet",
+  "@aiSpadeNoPatternTitle": {
+    "description": "Enough weeks, but no sequence repeats often enough."
+  },
+  "aiSpadeNoPatternMessage": "No sequence of spending repeats in enough weeks yet.",
+  "@aiSpadeNoPatternMessage": {
+    "description": "Enough weeks, but no sequence repeats often enough."
+  },
+  "aiSpadeWeeksDetail": "In {count}/{total} weeks",
+  "@aiSpadeWeeksDetail": {
+    "description": "How many of the analysed weeks contain the sequence.",
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       },
-      "support": {
-        "type": "String"
+      "total": {
+        "type": "int"
       }
     }
   },
@@ -2324,7 +2344,7 @@
   "@aiGuardTitle": {
     "description": "Title of the habit alert section."
   },
-  "aiGuardSubtitle": "The AI predicts upcoming spending from your spending sequence history.",
+  "aiGuardSubtitle": "Habits that repeated in many weeks of your history.",
   "@aiGuardSubtitle": {
     "description": "Under the habit alert title."
   },
@@ -2332,14 +2352,70 @@
   "@aiGuardHeading": {
     "description": "Heading of one habit alert."
   },
-  "aiGuardRule": "WCM-SPADE found the rule [{from} → {to}]: after spending on {from}, you tend to spend on {to} within a few days. Keep an eye on your wallet so it does not eat into your savings!",
+  "aiGuardRule": "{count}/{total} weeks: after spending on {from}, you also spent on {to} in the same week.",
   "@aiGuardRule": {
-    "description": "from and to are category labels.",
+    "description": "A rule seen in count of the total weeks in which the first part happened.",
     "placeholders": {
       "from": {
         "type": "String"
       },
       "to": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "aiGuardTriggered": "This week you have spent on {from} but not yet on {to}.",
+  "@aiGuardTriggered": {
+    "description": "The rule applies to the current week.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHabitTitle": "Recurring habits",
+  "@aiHabitTitle": {
+    "description": "Title of the periodic habits section."
+  },
+  "aiHabitSubtitle": "Categories you spend on at a fairly regular interval.",
+  "@aiHabitSubtitle": {
+    "description": "Under the periodic habits title."
+  },
+  "aiHabitLine": "{category}: about every {days} days, next around {date}",
+  "@aiHabitLine": {
+    "description": "Mean gap in days and the next expected date (dd/MM).",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHabitLineLate": "{category}: about every {days} days, last on {last}",
+  "@aiHabitLineLate": {
+    "description": "The expected date has passed; shows the last one.",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      },
+      "last": {
         "type": "String"
       }
     }
