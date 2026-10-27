@@ -605,7 +605,7 @@ class DashboardPageState extends State<DashboardPage>
                 _formatCurrency(_pendingBalanceChange),
               ),
         style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          color: Colors.white.withValues(alpha: 0.75),
           fontSize: 12,
         ),
       ),
