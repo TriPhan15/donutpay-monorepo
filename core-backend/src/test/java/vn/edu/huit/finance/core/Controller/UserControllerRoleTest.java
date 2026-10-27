@@ -131,6 +131,41 @@ class UserControllerRoleTest {
     }
 
     @Test
+    void ownerChangingEmail_isRefused400_andNotSaved() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"email\":\"new@x.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400));
+
+        assertEquals("alice@example.com", alice.getEmail());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void ownerSendingSameEmail_isAccepted() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"email\":\"alice@example.com\",\"phone\":\"0911111111\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals("0911111111", alice.getPhone());
+    }
+
+    @Test
+    void ownerUsernameWithAt_isRefused400() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"username\":\"other@x.com\"}"))
+                .andExpect(status().isBadRequest());
+
+        assertEquals("alice", alice.getUsername());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void invalidEmailFormat_isRefused400() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     void aUserCannotEditSomebodyElsesProfile() throws Exception {
         User bob = new User();
         bob.setId(2L);

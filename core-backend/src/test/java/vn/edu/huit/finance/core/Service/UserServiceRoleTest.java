@@ -268,13 +268,13 @@ class UserServiceRoleTest {
         UserUpdateDto dto = new UserUpdateDto();
         dto.setUsername("alice2");
         dto.setPhone("0922222222");
-        dto.setEmail("alice2@example.com");
+        dto.setEmail("alice@example.com");
 
         User saved = service.updateOwnProfile(ID, dto);
 
         assertEquals("alice2", saved.getUsername());
         assertEquals("0922222222", saved.getPhone());
-        assertEquals("alice2@example.com", saved.getEmail());
+        assertEquals("alice@example.com", saved.getEmail());
         assertEquals("ROLE_USER", alice.getRole());
     }
 

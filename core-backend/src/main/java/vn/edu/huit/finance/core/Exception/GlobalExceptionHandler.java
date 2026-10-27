@@ -170,7 +170,8 @@ public class GlobalExceptionHandler {
                 .build());
     }
 
-    @ExceptionHandler({InsufficientBalanceException.class, InvalidRoleException.class, InvalidSortFieldException.class})
+    @ExceptionHandler({InsufficientBalanceException.class, InvalidRoleException.class, InvalidSortFieldException.class,
+            ProfileUpdateRefusedException.class})
     public Object handleRejectedInput(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
