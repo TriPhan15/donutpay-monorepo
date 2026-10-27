@@ -1696,6 +1696,10 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get aiSpadeNotEnoughUnknown =>
+      'Chưa đủ lịch sử chi tiêu để tìm mẫu tuần tự.';
+
+  @override
   String get aiSpadeNotEnoughNone =>
       'Chưa có khoản chi nào trong 26 tuần gần đây.';
 
@@ -1724,14 +1728,14 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get aiGuardTitle => 'Cảnh báo thói quen tương lai';
+  String get aiGuardTitle => 'Thói quen cần lưu ý';
 
   @override
   String get aiGuardSubtitle =>
       'Những thói quen đã lặp lại qua nhiều tuần trong lịch sử của bạn.';
 
   @override
-  String get aiGuardHeading => 'Dự báo hành vi · Khai phá chuỗi';
+  String get aiGuardHeading => 'Mẫu lặp lại · Khai phá chuỗi';
 
   @override
   String aiGuardRule(String from, String to, int count, int total) {

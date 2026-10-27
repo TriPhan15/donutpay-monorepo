@@ -2296,6 +2296,10 @@
       }
     }
   },
+  "aiSpadeNotEnoughUnknown": "Not enough spending history to look for sequences.",
+  "@aiSpadeNotEnoughUnknown": {
+    "description": "Not enough history and the server did not say how much is needed."
+  },
   "aiSpadeNotEnoughNone": "No spending in the last 26 weeks yet.",
   "@aiSpadeNotEnoughNone": {
     "description": "No spending to analyse."
@@ -2340,7 +2344,7 @@
       }
     }
   },
-  "aiGuardTitle": "Future habit alerts",
+  "aiGuardTitle": "Habits to watch",
   "@aiGuardTitle": {
     "description": "Title of the habit alert section."
   },
@@ -2348,7 +2352,7 @@
   "@aiGuardSubtitle": {
     "description": "Under the habit alert title."
   },
-  "aiGuardHeading": "Behaviour forecast · Sequence mining",
+  "aiGuardHeading": "Repeated pattern · Sequence mining",
   "@aiGuardHeading": {
     "description": "Heading of one habit alert."
   },

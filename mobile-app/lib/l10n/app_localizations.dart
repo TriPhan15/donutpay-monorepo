@@ -3090,6 +3090,12 @@ abstract class AppLocalizations {
   /// **'Only {weeks} weeks with spending so far; at least {minWeeks} weeks are needed to look for sequences.'**
   String aiSpadeNotEnoughWeeks(int weeks, int minWeeks);
 
+  /// Not enough history and the server did not say how much is needed.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough spending history to look for sequences.'**
+  String get aiSpadeNotEnoughUnknown;
+
   /// No spending to analyse.
   ///
   /// In en, this message translates to:
@@ -3135,7 +3141,7 @@ abstract class AppLocalizations {
   /// Title of the habit alert section.
   ///
   /// In en, this message translates to:
-  /// **'Future habit alerts'**
+  /// **'Habits to watch'**
   String get aiGuardTitle;
 
   /// Under the habit alert title.
@@ -3147,7 +3153,7 @@ abstract class AppLocalizations {
   /// Heading of one habit alert.
   ///
   /// In en, this message translates to:
-  /// **'Behaviour forecast · Sequence mining'**
+  /// **'Repeated pattern · Sequence mining'**
   String get aiGuardHeading;
 
   /// A rule seen in count of the total weeks in which the first part happened.

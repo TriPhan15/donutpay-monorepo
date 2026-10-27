@@ -120,7 +120,7 @@ void main() {
       );
       expect(find.textContaining('6/8 tuần'), findsOneWidget);
       expect(find.textContaining('Mua sắm'), findsWidgets);
-      expect(find.text('Cảnh báo thói quen tương lai'), findsOneWidget);
+      expect(find.text('Thói quen cần lưu ý'), findsOneWidget);
     });
 
     testWidgets(
@@ -221,7 +221,7 @@ void main() {
         (c, l) =>
             AiComponents.buildHabitAlertSection(c, l, const [], const [], _wed),
       );
-      expect(find.text('Cảnh báo thói quen tương lai'), findsNothing);
+      expect(find.text('Thói quen cần lưu ý'), findsNothing);
       expect(find.byType(Text), findsNothing);
     });
 
@@ -334,6 +334,60 @@ void main() {
       expect(find.text('Chưa đủ dữ liệu'), findsOneWidget);
       expect(find.textContaining('5 tuần'), findsOneWidget);
       expect(find.textContaining('8 tuần'), findsOneWidget);
+    });
+
+    testWidgets(
+      'no spending weeks with a known minimum says there is no spending',
+      (tester) async {
+        await _pump(
+          tester,
+          (c, l) => AiComponents.buildSpadeSection(
+            c,
+            l,
+            _insufficient(weeks: 0),
+            false,
+          ),
+        );
+        expect(find.textContaining('Chưa có khoản chi nào'), findsOneWidget);
+      },
+    );
+
+    testWidgets('a missing minimum shows a neutral text, not "no spending"', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        (c, l) => AiComponents.buildSpadeSection(
+          c,
+          l,
+          _analysis(
+            status: SpendingAnalysisStatus.insufficientData,
+            weeks: 0,
+            minWeeks: 0,
+          ),
+          false,
+        ),
+      );
+      expect(find.textContaining('Chưa có khoản chi nào'), findsNothing);
+      expect(find.textContaining('Chưa đủ lịch sử chi tiêu'), findsOneWidget);
+    });
+
+    testWidgets('the section headings do not announce a forecast', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        (c, l) => AiComponents.buildHabitAlertSection(
+          c,
+          l,
+          [_rule('Ăn uống', 'Mua sắm', 6, 8)],
+          const [],
+          _wed,
+        ),
+      );
+      expect(find.text('Mẫu lặp lại · Khai phá chuỗi'), findsOneWidget);
+      expect(find.textContaining('Dự báo'), findsNothing);
+      expect(find.textContaining('tương lai'), findsNothing);
     });
 
     testWidgets('no analysis at all keeps the not-enough-data title', (

@@ -188,9 +188,11 @@ class AiComponents {
       colors,
       icon: Icons.auto_graph_rounded,
       title: loc.aiSpadeNotEnoughTitle,
-      message: minWeeks > 0
-          ? loc.aiSpadeNotEnoughWeeks(weeks, minWeeks)
-          : loc.aiSpadeNotEnoughNone,
+      message: minWeeks <= 0
+          ? loc.aiSpadeNotEnoughUnknown
+          : weeks == 0
+          ? loc.aiSpadeNotEnoughNone
+          : loc.aiSpadeNotEnoughWeeks(weeks, minWeeks),
     );
   }
 

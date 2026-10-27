@@ -1728,6 +1728,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get aiSpadeNotEnoughUnknown =>
+      'Not enough spending history to look for sequences.';
+
+  @override
   String get aiSpadeNotEnoughNone => 'No spending in the last 26 weeks yet.';
 
   @override
@@ -1755,14 +1759,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aiGuardTitle => 'Future habit alerts';
+  String get aiGuardTitle => 'Habits to watch';
 
   @override
   String get aiGuardSubtitle =>
       'Habits that repeated in many weeks of your history.';
 
   @override
-  String get aiGuardHeading => 'Behaviour forecast · Sequence mining';
+  String get aiGuardHeading => 'Repeated pattern · Sequence mining';
 
   @override
   String aiGuardRule(String from, String to, int count, int total) {
