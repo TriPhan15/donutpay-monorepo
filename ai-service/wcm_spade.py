@@ -9,6 +9,8 @@ Thành phần:
   CHỨNG trong bài gốc.
 - Lọc closed (BIDE, Wang & Han 2004): ẩn mẫu khi có mẫu cha được hiện với cùng
   support thô.
+- Luật tuần tự A ⇒ B (``sequential_rules``): confidence, Laplace, lift trên các
+  mẫu 2 itemset đã khai phá; xem ghi chú phương pháp trong docstring của hàm.
 
 Mỗi chuỗi là một tuần ISO (danh sách itemset theo ngày). Đây là xấp xỉ WINEPI với
 cửa sổ tumbling 7 ngày (Mannila et al. 1997).
@@ -43,6 +45,11 @@ FLOAT_TOLERANCE: float = 1e-9
 NEUTRAL_WEIGHT: float = 1.0
 MIN_RAW_BOUND: int = 1
 
+# Ngưỡng cảnh báo cho luật tuần tự (lựa chọn thiết kế, xem ``sequential_rules``).
+MIN_ANTECEDENT_SUPPORT: int = 4
+MIN_LAPLACE_CONFIDENCE: float = 0.6
+MIN_LIFT: float = 1.2
+
 
 @dataclass(frozen=True)
 class Pattern:
@@ -65,6 +72,8 @@ class WCMSpadeResult:
     raw_bound: int
     max_weight: float
     item_weights: Dict[Item, float]
+    # True khi max_patterns cắt DFS lúc còn mẫu đạt raw_bound chưa được ghi.
+    truncated: bool = False
 
 
 def item_weights_from_totals(
@@ -131,6 +140,7 @@ class WCMSpade:
         self._cmap_s: Dict[Item, Dict[Item, int]] = {}
         self._cmap_i: Dict[Item, Dict[Item, int]] = {}
         self._explored: Dict[PatternKey, Pattern] = {}
+        self._truncated = False
 
     # ---- chuẩn bị dữ liệu ----
 
@@ -218,8 +228,13 @@ class WCMSpade:
         self._explored[itemsets] = pattern
         return pattern
 
-    def _budget_left(self) -> bool:
-        return len(self._explored) < self.max_patterns
+    def _admit(self, itemsets: PatternKey, idlist: IDList) -> bool:
+        """Ghi mẫu nếu còn ngân sách; hết ngân sách thì đánh dấu truncated."""
+        if len(self._explored) >= self.max_patterns:
+            self._truncated = True
+            return False
+        self._record(itemsets, idlist)
+        return True
 
     def _cmap_allows(self, cmap: Dict[Item, Dict[Item, int]], last: Item, y: Item) -> bool:
         if not self.use_cmap:
@@ -233,26 +248,28 @@ class WCMSpade:
 
         # S-extension: thêm itemset mới {y} sau cùng.
         for y, y_idlist in self._item_idlists.items():
-            if not self._budget_left():
+            if self._truncated:
                 return
             if not self._cmap_allows(self._cmap_s, last, y):
                 continue
             new_idlist = self._s_extend(idlist, y_idlist)
             if len(new_idlist) >= self._raw_bound:
                 child = itemsets + ((y,),)
-                self._record(child, new_idlist)
+                if not self._admit(child, new_idlist):
+                    return
                 self._extend(child, new_idlist, item_count + 1)
 
         # I-extension: thêm y > last vào itemset cuối.
         for y, y_idlist in self._item_idlists.items():
-            if not self._budget_left():
+            if self._truncated:
                 return
             if y <= last or not self._cmap_allows(self._cmap_i, last, y):
                 continue
             new_idlist = self._i_extend(idlist, y_idlist)
             if len(new_idlist) >= self._raw_bound:
                 child = itemsets[:-1] + (itemsets[-1] + (y,),)
-                self._record(child, new_idlist)
+                if not self._admit(child, new_idlist):
+                    return
                 self._extend(child, new_idlist, item_count + 1)
 
     def mine(
@@ -261,6 +278,7 @@ class WCMSpade:
         normalized = self._normalize(sequences)
         self._n_sequences = len(normalized)
         self._explored = {}
+        self._truncated = False
         all_idlists = self._build_idlists(normalized)
         self._item_weights = item_weights_from_totals(all_idlists.keys(), spending_totals)
         max_weight = max(self._item_weights.values(), default=NEUTRAL_WEIGHT)
@@ -280,13 +298,12 @@ class WCMSpade:
         self._build_cmaps(normalized, set(self._item_idlists))
 
         for item, idlist in self._item_idlists.items():
-            if not self._budget_left():
-                break
             root: PatternKey = ((item,),)
-            self._record(root, idlist)
+            if self._truncated or not self._admit(root, idlist):
+                break
             self._extend(root, idlist, 1)
 
-        if not self._budget_left():
+        if self._truncated:
             logger.warning("WCM-SPADE dừng sớm: đạt max_patterns=%d", self.max_patterns)
 
         shown = [
@@ -305,4 +322,96 @@ class WCMSpade:
             raw_bound=self._raw_bound,
             max_weight=max_weight,
             item_weights=dict(self._item_weights),
+            truncated=self._truncated,
         )
+
+
+# ---- luật tuần tự A ⇒ B ----
+
+RULE_ITEMSET_COUNT: int = 2
+
+
+@dataclass(frozen=True)
+class SequentialRule:
+    """Luật "tuần có A thì sau đó (cùng tuần) có B"; mọi support đếm theo số tuần."""
+
+    antecedent: Itemset
+    consequent: Itemset
+    support: int
+    antecedent_support: int
+    consequent_support: int
+    n_sequences: int
+    sids: Tuple[int, ...]
+
+    @property
+    def confidence(self) -> float:
+        return self.support / self.antecedent_support
+
+    @property
+    def laplace_confidence(self) -> float:
+        return (self.support + 1) / (self.antecedent_support + 2)
+
+    @property
+    def lift(self) -> float:
+        return self.confidence / (self.consequent_support / self.n_sequences)
+
+
+def sequential_rules(
+    result: WCMSpadeResult,
+    min_antecedent_support: int = MIN_ANTECEDENT_SUPPORT,
+    min_laplace_confidence: float = MIN_LAPLACE_CONFIDENCE,
+    min_lift: float = MIN_LIFT,
+) -> List[SequentialRule]:
+    """Sinh luật A ⇒ B từ các mẫu đúng 2 itemset ``(A, B)`` trong ``result.explored``.
+
+    Chỉ nhận A ∩ B = ∅ (mẫu a→a là mẫu, không phải luật). ``antecedent_support`` và
+    ``consequent_support`` tra ở ``explored[(A,)]`` / ``explored[(B,)]``; thiếu thì
+    bỏ luật đó. Giữ luật có sup(A) ≥ ``min_antecedent_support``, Laplace ≥
+    ``min_laplace_confidence`` và lift ≥ ``min_lift``; xếp theo (Laplace giảm, lift
+    giảm, support giảm, A, B).
+
+    Ghi chú phương pháp:
+
+    1. confidence = sup(A⇒B) / sup(A), theo định nghĩa luật tuần tự của
+       Fournier-Viger et al. 2015 (IEEE TKDE 27(8)).
+    2. Laplace ``(sup + 1) / (sup(A) + 2)`` và các ngưỡng 4 / 0,6 / 1,2 là lựa chọn
+       thiết kế của dự án, không phải giá trị công bố trong tài liệu.
+    3. Mức nền của lift là tỷ lệ "tuần có B ở bất kỳ đâu" (không đòi B đứng sau một
+       mốc nào), nên lift là ước lượng bảo thủ.
+    4. Ý nghĩa thống kê: khai phá nhiều luật trên 13–26 tuần sẽ có luật "trúng" do
+       ngẫu nhiên. Lift và Laplace không thay được kiểm định (Fisher exact/binomial
+       kèm hiệu chỉnh Holm, hoặc tách holdout) theo Webb, G. I. (2007) "Discovering
+       significant patterns", Machine Learning 68(1):1–33 (CHƯA KIỂM CHỨNG). Kết quả
+       chỉ là mô tả lịch sử chi tiêu, không phải phát hiện có ý nghĩa thống kê.
+    """
+    explored = result.explored
+    rules: List[SequentialRule] = []
+    for itemsets, pattern in explored.items():
+        if len(itemsets) != RULE_ITEMSET_COUNT:
+            continue
+        antecedent, consequent = itemsets
+        if not set(antecedent).isdisjoint(consequent):
+            continue
+        antecedent_pattern = explored.get((antecedent,))
+        consequent_pattern = explored.get((consequent,))
+        if antecedent_pattern is None or consequent_pattern is None:
+            continue
+        rule = SequentialRule(
+            antecedent=antecedent,
+            consequent=consequent,
+            support=pattern.raw_sup,
+            antecedent_support=antecedent_pattern.raw_sup,
+            consequent_support=consequent_pattern.raw_sup,
+            n_sequences=result.n_sequences,
+            sids=pattern.sids,
+        )
+        if (
+            rule.antecedent_support >= min_antecedent_support
+            and rule.laplace_confidence >= min_laplace_confidence - FLOAT_TOLERANCE
+            and rule.lift >= min_lift - FLOAT_TOLERANCE
+        ):
+            rules.append(rule)
+    rules.sort(
+        key=lambda r: (-r.laplace_confidence, -r.lift, -r.support, r.antecedent, r.consequent)
+    )
+    return rules

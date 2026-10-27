@@ -140,3 +140,40 @@ def test_max_pattern_length_limits_item_count():
 def test_empty_database_gives_empty_result():
     res = WCMSpade().mine([], {})
     assert res.patterns == [] and res.explored == {} and res.n_sequences == 0
+
+
+BRUTE_FORCE_MIN_SUP = 1e-9   # raw_bound = 1: mọi mẫu xuất hiện ít nhất một lần
+BRUTE_FORCE_TOLERANCE = 1e-9
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_max_weight_bound_loses_no_weighted_frequent_pattern(seed):
+    seqs, totals = _random_db(seed, n_seq=20, items="ABCDE")
+    real = WCMSpade(min_sup=0.3).mine(seqs, totals)
+    everything = WCMSpade(min_sup=BRUTE_FORCE_MIN_SUP).mine(seqs, totals)
+    assert everything.raw_bound == 1 and not everything.truncated
+    wanted = {
+        key: p for key, p in everything.explored.items()
+        if p.raw_sup * p.weight >= real.min_wsup - BRUTE_FORCE_TOLERANCE
+    }
+    assert wanted, "dữ liệu ngẫu nhiên phải có ít nhất một mẫu đạt weighted support"
+    for key, p in wanted.items():
+        assert key in real.explored
+        assert real.explored[key].raw_sup == p.raw_sup
+    assert {p.itemsets for p in real.patterns} <= set(wanted)
+
+
+def test_result_is_not_truncated_by_default():
+    seqs, totals = _random_db(0, n_seq=20, items="ABCDE")
+    assert WCMSpade(min_sup=0.2).mine(seqs, totals).truncated is False
+
+
+def test_max_patterns_stop_sets_truncated():
+    seqs = [_weeks("A", "B", "C")] * 4
+    totals = {"A": 1.0, "B": 1.0, "C": 1.0}
+    full = WCMSpade(min_sup=0.5).mine(seqs, totals)
+    assert not full.truncated
+    cut = WCMSpade(min_sup=0.5, max_patterns=3).mine(seqs, totals)
+    assert cut.truncated and len(cut.explored) == 3
+    exact = WCMSpade(min_sup=0.5, max_patterns=len(full.explored)).mine(seqs, totals)
+    assert not exact.truncated and exact.explored.keys() == full.explored.keys()
