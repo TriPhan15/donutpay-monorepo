@@ -2192,6 +2192,12 @@ abstract class AppLocalizations {
   /// **'Unsent transaction deleted'**
   String get ledgerDeletedUnsynced;
 
+  /// Toast when the user deletes an unsent transaction that started being sent meanwhile.
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction is being sent. Try again in a moment.'**
+  String get ledgerDeleteWhileSending;
+
   /// Notice above the list when the server list failed.
   ///
   /// In en, this message translates to:

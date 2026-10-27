@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1168,6 +1169,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerDeletedUnsynced => 'Unsent transaction deleted';
+
+  @override
+  String get ledgerDeleteWhileSending =>
+      'This transaction is being sent. Try again in a moment.';
 
   @override
   String get ledgerLoadFailedNotice =>

@@ -1498,6 +1498,10 @@
   "@ledgerDeletedUnsynced": {
     "description": "Snack bar after a local delete."
   },
+  "ledgerDeleteWhileSending": "This transaction is being sent. Try again in a moment.",
+  "@ledgerDeleteWhileSending": {
+    "description": "Toast when the user deletes an unsent transaction that started being sent meanwhile."
+  },
   "ledgerLoadFailedNotice": "Couldn't load the list from the server. Only the unsent transactions on this device are shown. Pull down to try again.",
   "@ledgerLoadFailedNotice": {
     "description": "Notice above the list when the server list failed."

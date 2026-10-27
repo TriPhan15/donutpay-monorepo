@@ -349,6 +349,7 @@
   "ledgerDeleteUnsyncedTitle": "Xóa giao dịch chưa gửi?",
   "ledgerDeleteUnsyncedMessage": "Giao dịch này chưa được máy chủ xác nhận. Xóa khỏi thiết bị và không gửi nữa? Hành động này không thể khôi phục.",
   "ledgerDeletedUnsynced": "Đã xóa giao dịch chưa gửi",
+  "ledgerDeleteWhileSending": "Giao dịch đang được gửi, hãy thử lại sau ít phút.",
   "ledgerLoadFailedNotice": "Không tải được danh sách từ máy chủ. Chỉ hiển thị các giao dịch chưa gửi trên thiết bị. Kéo xuống để thử lại.",
   "ledgerExcelSheet": "Chi tiêu tháng {month}",
   "ledgerExcelDate": "Ngày",

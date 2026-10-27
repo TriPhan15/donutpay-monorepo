@@ -127,6 +127,8 @@ void main() {
     final write = RemoteApiHelper.instance.addTransaction({'amount': 1});
     await tester.pump(const Duration(milliseconds: 100));
     await write;
+    // addTransaction announces nothing: AppRepository does it once the outbox row is flagged.
+    RemoteApiHelper.instance.notifyDataChanged();
     await tester.pumpAndSettle();
   }
 

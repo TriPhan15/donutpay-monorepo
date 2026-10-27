@@ -156,7 +156,7 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
           setState(() => _syncing = false);
           final loc = context.loc;
           if (status == paymentStatusSuccess) {
-            RemoteApiHelper.instance.dataChangedNotifier.value++;
+            RemoteApiHelper.instance.notifyDataChanged();
             AppToast.success(context, loc.linkedSynced(_fmt(amount)));
             if (mounted) Navigator.pop(context, true);
           } else {

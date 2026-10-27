@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -452,9 +453,12 @@ void main() {
         final tx = _draft().withSyncStatus(SyncStatus.error);
         await store.insertTransaction(tx, _userId);
 
-        await AppRepository.instance.deleteUnsyncedTransaction(
-          _userId,
-          tx.clientId!,
+        expect(
+          await AppRepository.instance.deleteUnsyncedTransaction(
+            _userId,
+            tx.clientId!,
+          ),
+          isTrue,
         );
 
         expect(store.rows, isEmpty);
@@ -644,8 +648,9 @@ void main() {
           () => AppRepository.instance.createTransaction(_userId, draft),
         );
 
-        expect(states, isNotEmpty);
-        expect(states.last, SyncStatus.synced);
+        expect(states, [
+          SyncStatus.synced,
+        ], reason: 'once, after the row is flagged');
       },
     );
 
@@ -698,6 +703,234 @@ void main() {
       );
 
       expect(states, [null], reason: 'once, after the row is gone');
+    });
+  });
+
+  group('outbox', () {
+    test(
+      'allowDuplicate survives in the outbox and is sent again on resend',
+      () {
+        return withCapturedLogs((logs) async {
+          backend.on('POST', _checkout, _noNetwork);
+          final draft = _draft();
+
+          expect(
+            await AppRepository.instance.createTransaction(
+              _userId,
+              draft,
+              allowDuplicate: true,
+            ),
+            SyncStatus.error,
+          );
+          expect(store.byClientId(draft.clientId!)!.allowDuplicate, isTrue);
+
+          backend.on('POST', _checkout, (_) => _created());
+          await AppRepository.instance.resendUnsyncedTransactions(_userId);
+
+          expect(sentBodies(), hasLength(2));
+          expect(sentBodies().last['clientId'], draft.clientId);
+          expect(
+            sentBodies().last[TransactionModel.checkoutAllowDuplicate],
+            isTrue,
+          );
+          expect(
+            store.byClientId(draft.clientId!)!.syncStatus,
+            SyncStatus.synced,
+          );
+        });
+      },
+    );
+
+    test('a row being sent cannot be deleted', () async {
+      final tx = _draft().withSyncStatus(SyncStatus.pending);
+      await store.insertTransaction(tx, _userId);
+      var changes = 0;
+      void count() => changes++;
+      RemoteApiHelper.instance.dataChangedNotifier.addListener(count);
+      addTearDown(
+        () =>
+            RemoteApiHelper.instance.dataChangedNotifier.removeListener(count),
+      );
+
+      expect(
+        await AppRepository.instance.deleteUnsyncedTransaction(
+          _userId,
+          tx.clientId!,
+        ),
+        isFalse,
+      );
+
+      expect(
+        await AppRepository.instance.getUnsyncedTransactions(_userId),
+        hasLength(1),
+      );
+      expect(changes, 0, reason: 'nothing changed');
+    });
+
+    test(
+      'a row deleted before its turn in the outbox send is not sent',
+      () async {
+        final first = _draft().withSyncStatus(SyncStatus.error);
+        final second = _draft().withSyncStatus(SyncStatus.error);
+        await store.insertTransaction(first, _userId);
+        await store.insertTransaction(second, _userId);
+        bool? deletedMeanwhile;
+        backend.on('POST', _checkout, (options) async {
+          if ((options.data as Map)['clientId'] == first.clientId) {
+            // The user deletes the second row while the first one is on its way.
+            deletedMeanwhile = await AppRepository.instance
+                .deleteUnsyncedTransaction(_userId, second.clientId!);
+          }
+          return _created();
+        });
+
+        await AppRepository.instance.resendUnsyncedTransactions(_userId);
+
+        expect(deletedMeanwhile, isTrue);
+        expect(sentBodies().map((b) => b['clientId']), [first.clientId]);
+        expect(store.byClientId(second.clientId!), isNull);
+        expect(
+          store.byClientId(first.clientId!)!.syncStatus,
+          SyncStatus.synced,
+        );
+      },
+    );
+
+    test(
+      'resending a row that is gone sends nothing and returns null',
+      () async {
+        expect(
+          await AppRepository.instance.resendTransaction(_userId, _draft()),
+          isNull,
+        );
+        expect(backend.requests, isEmpty);
+      },
+    );
+
+    test('a refused savings row stays flagged error and can be deleted', () {
+      return withCapturedLogs((logs) async {
+        final savingsRow = TransactionModel.draft(
+          title: 'Góp quỹ',
+          category: TransactionCategories.savings,
+          amount: 100000,
+          date: DateTime(2026, 9, 20, 8, 30),
+          isExpense: true,
+        ).withSyncStatus(SyncStatus.error);
+        await store.insertTransaction(savingsRow, _userId);
+        backend.on(
+          'POST',
+          _checkout,
+          (_) => jsonResponse(409, {'code': 409, 'message': 'msg'}),
+        );
+
+        await expectLater(
+          AppRepository.instance.resendTransaction(_userId, savingsRow),
+          throwsA(isA<TransactionRefusedException>()),
+        );
+        expect(
+          store.byClientId(savingsRow.clientId!)!.syncStatus,
+          SyncStatus.error,
+        );
+
+        expect(
+          await AppRepository.instance.deleteUnsyncedTransaction(
+            _userId,
+            savingsRow.clientId!,
+          ),
+          isTrue,
+        );
+        expect(store.rows, isEmpty);
+      });
+    });
+
+    test('one saved transaction moves dataChangedNotifier once', () async {
+      backend.on('POST', _checkout, (_) => _created());
+      var changes = 0;
+      void count() => changes++;
+      RemoteApiHelper.instance.dataChangedNotifier.addListener(count);
+      addTearDown(
+        () =>
+            RemoteApiHelper.instance.dataChangedNotifier.removeListener(count),
+      );
+
+      await AppRepository.instance.createTransaction(_userId, _draft());
+
+      expect(changes, 1);
+    });
+  });
+
+  group('RemoteApiHelper.batchDataChanges', () {
+    final api = RemoteApiHelper.instance;
+
+    /// How many times dataChangedNotifier moves while [action] runs.
+    Future<int> changesDuring(Future<void> Function() action) async {
+      var changes = 0;
+      void count() => changes++;
+      api.dataChangedNotifier.addListener(count);
+      try {
+        await action();
+      } finally {
+        api.dataChangedNotifier.removeListener(count);
+      }
+      return changes;
+    }
+
+    test('outside a batch every write moves the notifier', () async {
+      expect(
+        await changesDuring(() async {
+          api.notifyDataChanged();
+          api.notifyDataChanged();
+        }),
+        2,
+      );
+    });
+
+    test(
+      'several writes in nested batches move the notifier once, at the end',
+      () async {
+        var changesInside = 0;
+        void count() => changesInside++;
+
+        final changes = await changesDuring(
+          () => api.batchDataChanges(() async {
+            api.dataChangedNotifier.addListener(count);
+            api.notifyDataChanged();
+            await api.batchDataChanges(() async => api.notifyDataChanged());
+            api.notifyDataChanged();
+            api.dataChangedNotifier.removeListener(count);
+          }),
+        );
+
+        expect(changesInside, 0, reason: 'held back while the batch runs');
+        expect(changes, 1);
+      },
+    );
+
+    test('a batch without a write does not move the notifier', () async {
+      expect(await changesDuring(() => api.batchDataChanges(() async {})), 0);
+    });
+
+    test('a batch that throws still moves the notifier once', () async {
+      final changes = await changesDuring(() async {
+        await expectLater(
+          api.batchDataChanges<void>(() async {
+            api.notifyDataChanged();
+            throw StateError('boom');
+          }),
+          throwsStateError,
+        );
+      });
+
+      expect(changes, 1);
+      expect(
+        await changesDuring(() async => api.notifyDataChanged()),
+        1,
+        reason: 'the batch is over',
+      );
+    });
+
+    test('returns what its body returns', () async {
+      expect(await api.batchDataChanges(() async => 42), 42);
     });
   });
 

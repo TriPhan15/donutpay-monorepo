@@ -1366,30 +1366,32 @@ class LedgerPageState extends State<LedgerPage> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.error.withValues(alpha: 0.1),
-                        foregroundColor: colors.error,
-                        elevation: 0,
+                  // A row being sent may already be on the server: it cannot be deleted until its send is over.
+                  if (tx.syncStatus != SyncStatus.pending)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.error.withValues(alpha: 0.1),
+                          foregroundColor: colors.error,
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.delete_rounded),
+                        label: Text(
+                          loc.ledgerDelete,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          if (tx.isUnsynced) {
+                            _deleteUnsyncedAction(tx);
+                          } else {
+                            _deleteTransactionAction(tx.id!);
+                          }
+                        },
                       ),
-                      icon: const Icon(Icons.delete_rounded),
-                      label: Text(
-                        loc.ledgerDelete,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        if (tx.isUnsynced) {
-                          _deleteUnsyncedAction(tx);
-                        } else {
-                          _deleteTransactionAction(tx.id!);
-                        }
-                      },
                     ),
-                  ),
                   const SizedBox(height: 8),
                 ],
               ),
@@ -1512,6 +1514,8 @@ class LedgerPageState extends State<LedgerPage> {
       _resendingClientIds.remove(clientId);
     }
     if (!mounted) return;
+    // The row was deleted meanwhile: nothing was sent and there is nothing to say.
+    if (failure == null && outcome == null) return;
 
     if (failure != null) {
       await AppDialog.error(
@@ -1548,8 +1552,16 @@ class LedgerPageState extends State<LedgerPage> {
     );
     if (!confirmed || !mounted) return;
 
-    await AppRepository.instance.deleteUnsyncedTransaction(userId, clientId);
+    final deleted = await AppRepository.instance.deleteUnsyncedTransaction(
+      userId,
+      clientId,
+    );
     if (!mounted) return;
+    if (!deleted) {
+      // It started being sent after the sheet opened (the outbox resend).
+      AppToast.error(context, context.loc.ledgerDeleteWhileSending);
+      return;
+    }
     AppToast.success(context, context.loc.ledgerDeletedUnsynced);
   }
 

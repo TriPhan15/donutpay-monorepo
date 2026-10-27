@@ -387,6 +387,46 @@ void main() {
       expect(store.rows, hasLength(1));
       expect(find.text('Chưa gửi'), findsOneWidget);
     });
+
+    testWidgets('a pending row offers no delete button', (tester) async {
+      await store.insertTransaction(_unsent('Đang chờ', SyncStatus.pending), 1);
+      await pump(tester, app);
+
+      await tapText(tester, 'Đang chờ');
+
+      expect(find.text('Đồng bộ:'), findsOneWidget);
+      expect(
+        find.text(_deleteLabel),
+        findsNothing,
+        reason: 'it is being sent and may already be on the server',
+      );
+    });
+
+    testWidgets(
+      'a row that started being sent after its details opened is not deleted, and the user is told',
+      (tester) async {
+        final unsent = _unsent('Chưa gửi', SyncStatus.error);
+        await store.insertTransaction(unsent, 1);
+        await pump(tester, app);
+
+        await tapText(tester, 'Chưa gửi');
+        await tapText(tester, _deleteLabel);
+        // Meanwhile the outbox resend picks the row up.
+        await store.updateTransactionSyncStatus(
+          1,
+          unsent.clientId!,
+          SyncStatus.pending,
+        );
+        await tapText(tester, 'Xóa ngay');
+
+        expect(store.rows, hasLength(1));
+        expect(
+          find.text('Giao dịch đang được gửi, hãy thử lại sau ít phút.'),
+          findsOneWidget,
+        );
+        expect(find.text('Đã xóa giao dịch chưa gửi'), findsNothing);
+      },
+    );
   });
 
   group('Dashboard', () {

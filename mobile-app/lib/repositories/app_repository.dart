@@ -203,19 +203,23 @@ class AppRepository {
   /// error): it stays on the device, flagged, until the user resends it. Throws [TransactionRefusedException] when the
   /// server refuses it, and keeps nothing then, because the user still has the form to correct. A scanned receipt the
   /// server takes for one already saved is such a refusal too ([DuplicateReceiptException]): nothing waits on the
-  /// device, and the user decides whether to create it again with [allowDuplicate].
+  /// device, and the user decides whether to create it again with [allowDuplicate], which is stored with the row so a
+  /// resend from the outbox carries it too.
+  ///
+  /// dataChangedNotifier moves once, after the row is flagged (not at all on a refusal: nothing changed).
   Future<SyncStatus> createTransaction(
     int userId,
     TransactionModel draft, {
     bool allowDuplicate = false,
   }) async {
     final clientId = _clientIdOf(draft);
+    final stored = allowDuplicate ? draft.allowingDuplicate() : draft;
     await _localStore.insertTransaction(
-      draft.withSyncStatus(SyncStatus.pending),
+      stored.withSyncStatus(SyncStatus.pending),
       userId,
     );
     try {
-      return await _send(userId, draft, allowDuplicate: allowDuplicate);
+      return await _send(userId, stored);
     } on TransactionRefusedException {
       await _localStore.deleteTransactionByClientId(userId, clientId);
       rethrow;
@@ -225,16 +229,18 @@ class AppRepository {
   /// Sends a transaction that the server has not confirmed again, with the same clientId: when the first send did arrive
   /// and only the answer got lost, the server answers with the transaction it already has instead of creating a second
   /// one. The result is that of [createTransaction], except that a refusal keeps the transaction (flagged error), so the
-  /// user can still delete it.
-  Future<SyncStatus> resendTransaction(
+  /// user can still delete it. Null when the row is no longer on the device (the user deleted it meanwhile): nothing is
+  /// sent then.
+  Future<SyncStatus?> resendTransaction(
     int userId,
     TransactionModel transaction,
   ) async {
-    await _localStore.updateTransactionSyncStatus(
+    final flagged = await _localStore.updateTransactionSyncStatus(
       userId,
       _clientIdOf(transaction),
       SyncStatus.pending,
     );
+    if (flagged == 0) return null;
     try {
       return await _send(userId, transaction);
     } on TransactionRefusedException {
@@ -273,24 +279,24 @@ class AppRepository {
     }
   }
 
-  /// Throws away, for good, a transaction that the server never confirmed.
-  Future<void> deleteUnsyncedTransaction(int userId, String clientId) async {
-    await _localStore.deleteTransactionByClientId(userId, clientId);
+  /// Throws away, for good, a transaction that the server never confirmed, but only one whose last send failed: a row
+  /// that is being sent (pending) may already be on the server. False when nothing was deleted for that reason (or the
+  /// row is gone).
+  Future<bool> deleteUnsyncedTransaction(int userId, String clientId) async {
+    final deleted = await _localStore.deleteFailedTransaction(userId, clientId);
+    if (deleted == 0) return false;
     _notifyOutboxChanged();
+    return true;
   }
 
   /// One attempt to send a transaction that is already in the local table, after which its flag says how it went. Only a
   /// refusal is thrown (a duplicate receipt as [DuplicateReceiptException]); any other failure of the request is an
   /// outcome ([SyncStatus.error]), not an exception.
-  Future<SyncStatus> _send(
-    int userId,
-    TransactionModel transaction, {
-    bool allowDuplicate = false,
-  }) async {
+  Future<SyncStatus> _send(int userId, TransactionModel transaction) async {
     final clientId = _clientIdOf(transaction);
     try {
       await RemoteApiHelper.instance.addTransaction(
-        transaction.toCheckoutJson(allowDuplicate: allowDuplicate),
+        transaction.toCheckoutJson(),
       );
     } on DioException catch (e) {
       debugPrint('Lỗi gửi giao dịch $clientId: $e');
@@ -314,10 +320,10 @@ class AppRepository {
     return SyncStatus.synced;
   }
 
-  /// The outbox changed. After a send this repeats what addTransaction announced, because that came before the row was
-  /// flagged synced and a reload started then would still list the row as waiting.
+  /// The outbox changed. After a send it is the only announcement of the write: addTransaction makes none, because a
+  /// reload started before the row is flagged synced would still list the row as waiting.
   static void _notifyOutboxChanged() {
-    RemoteApiHelper.instance.dataChangedNotifier.value++;
+    RemoteApiHelper.instance.notifyDataChanged();
   }
 
   static String _clientIdOf(TransactionModel transaction) {

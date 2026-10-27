@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -1140,6 +1141,10 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get ledgerDeletedUnsynced => 'Đã xóa giao dịch chưa gửi';
+
+  @override
+  String get ledgerDeleteWhileSending =>
+      'Giao dịch đang được gửi, hãy thử lại sau ít phút.';
 
   @override
   String get ledgerLoadFailedNotice =>
