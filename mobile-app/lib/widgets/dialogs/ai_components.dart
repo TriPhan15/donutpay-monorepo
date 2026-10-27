@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/spending_analysis.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 
 /// Sections of the AI tab. Each builder takes the colour scheme that the calling screen read once in its build, and the
@@ -17,52 +18,17 @@ class AiComponents {
   /// Prefix the AI service puts in front of its advice summary; it is not meant for the user.
   static const String _summaryPrefix = '(AI dùng Luật Khai Phá Chung) ';
 
-  /// Data: spelling-free category tokens the AI service may send, and the category name each stands for.
-  static const Map<String, String> _aiTokenNames = {
-    'an uong': TransactionCategories.food,
-    'di lai': 'Đi lại',
-    'hoa don': 'Hóa đơn',
-    'suc khoe': 'Sức khỏe',
-    'giao duc': 'Giáo dục',
-    'nha o': 'Nhà ở',
-    'dien nuoc': 'Điện nước',
-    'internet': 'Internet',
-    'xang': 'Xăng',
-    'y te': 'Y tế',
-    'du lich': 'Du lịch',
-    'giai tri': 'Giải trí',
-    'mua sam': 'Mua sắm',
-    'ca phe': 'Cà phê',
-    'an vat': 'Ăn vặt',
-    'lam dep': 'Làm đẹp',
-    'game': 'Game',
-    'shopping': 'Shopping',
-    'quan ao': 'Quần áo',
-    'do choi': 'Đồ chơi',
-    'khac': TransactionCategories.otherExpense,
-  };
-
   static String _money(AppLocalizations loc, double amount) =>
       CurrencyHelper.formatVND(amount, loc, showSign: amount < 0);
 
-  /// One category of a pattern as the user should read it: an AI token becomes its category name, and a default
-  /// category is shown in the language of [loc].
-  static String _categoryOf(AppLocalizations loc, String item) {
-    final trimmed = item.trim();
-    return TransactionCategories.displayName(
-      loc,
-      _aiTokenNames[trimmed] ?? trimmed,
-    );
-  }
-
-  /// A pattern of the AI service ("a+b → c") with each category in the language of [loc].
-  static String formatAiPattern(AppLocalizations loc, String rawPattern) =>
-      rawPattern
-          .split(_sequenceSeparator)
+  /// A pattern of the AI service as the user reads it: "a+b → c", each category in the language of [loc].
+  static String formatPattern(AppLocalizations loc, SpendingPattern pattern) =>
+      pattern.itemsets
           .map(
             (step) => step
-                .split(_itemSeparator)
-                .map((item) => _categoryOf(loc, item))
+                .map(
+                  (item) => TransactionCategories.displayName(loc, item.trim()),
+                )
                 .join(_itemSeparator),
           )
           .join(_sequenceSeparator);
@@ -71,7 +37,7 @@ class AiComponents {
   static Widget buildSpadeSection(
     ColorScheme colors,
     AppLocalizations loc,
-    List<Map<String, dynamic>> spadePatterns,
+    List<SpendingPattern> spadePatterns,
     bool isLoading, {
     bool hasError = false,
   }) {
@@ -178,10 +144,7 @@ class AiComponents {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            formatAiPattern(
-                              loc,
-                              p['pattern']?.toString() ?? '',
-                            ),
+                            formatPattern(loc, p),
                             style: const TextStyle(
                               fontWeight: FontWeight.w500,
                               fontSize: 15,
@@ -190,8 +153,8 @@ class AiComponents {
                           const SizedBox(height: 4),
                           Text(
                             loc.aiSpadeDetail(
-                              '${p['count']}',
-                              '${p['wsupport']}',
+                              '${p.support}',
+                              p.weightedSupport.toStringAsFixed(2),
                             ),
                             style: detailStyle,
                           ),
@@ -422,12 +385,14 @@ class AiComponents {
   static Widget buildBudgetGuardSection(
     ColorScheme colors,
     AppLocalizations loc,
-    List<Map<String, dynamic>> spadePatterns,
+    List<SpendingPattern> spadePatterns,
     List<TransactionModel> transactions,
   ) {
     final now = DateTime.now();
     final recentCats = transactions
-        .where((tx) => tx.countsAsSpending && now.difference(tx.date).inDays < 7)
+        .where(
+          (tx) => tx.countsAsSpending && now.difference(tx.date).inDays < 7,
+        )
         .map((t) => t.category)
         .toSet();
     final spadeWarnings = <Widget>[];
@@ -447,11 +412,10 @@ class AiComponents {
 
     for (final p in spadePatterns) {
       if (spadeWarnings.length >= 2) break;
-      final parts = (p['pattern']?.toString() ?? '').split(' → ');
-      if (parts.length < 2) continue;
+      if (p.itemsets.length < 2 || p.itemsets.last.isEmpty) continue;
 
-      final antes = parts.first.split('+').map((s) => s.trim()).toList();
-      final cons = parts.last.split('+').first.trim();
+      final antes = p.itemsets.first.map((s) => s.trim()).toList();
+      final cons = p.itemsets.last.first.trim();
       final hitAnte = antes.firstWhere(
         (a) => recentCats.contains(a),
         orElse: () => '',
@@ -465,8 +429,8 @@ class AiComponents {
       }
 
       final txt = loc.aiGuardRule(
-        _categoryOf(loc, hitAnte),
-        _categoryOf(loc, cons),
+        TransactionCategories.displayName(loc, hitAnte),
+        TransactionCategories.displayName(loc, cons),
       );
 
       spadeWarnings.add(
@@ -559,7 +523,9 @@ class AiComponents {
     if (monthIncome <= 0) return const SizedBox.shrink();
 
     final shares = shares503020(monthTxs, monthIncome, monthExpense);
-    final needsPct = shares.needs, wantsPct = shares.wants, savePct = shares.save;
+    final needsPct = shares.needs,
+        wantsPct = shares.wants,
+        savePct = shares.save;
 
     // Past its target, a share turns to the error colour; the track is the neutral container colour.
     Widget row(

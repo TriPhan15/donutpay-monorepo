@@ -7,7 +7,9 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/savings_goal_planner.dart';
+import 'package:finance_ai_app/core/utils/spending_history.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/spending_analysis.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -59,7 +61,7 @@ class AITabPage extends StatefulWidget {
 class _AITabPageState extends State<AITabPage> {
   bool _isLoading = true;
   List<TransactionModel> _transactions = [];
-  List<Map<String, dynamic>> _spadePatterns = [];
+  SpendingAnalysis? _analysis;
   List<Map<String, dynamic>> _savingsGoals = [];
 
   bool _spadeLoading = false;
@@ -81,8 +83,9 @@ class _AITabPageState extends State<AITabPage> {
 
   double get _monthIncome =>
       _monthTxs.where((t) => !t.isExpense).fold(0, (s, t) => s + t.amount);
-  double get _monthExpense =>
-      _monthTxs.where((t) => t.countsAsSpending).fold(0, (s, t) => s + t.amount);
+  double get _monthExpense => _monthTxs
+      .where((t) => t.countsAsSpending)
+      .fold(0, (s, t) => s + t.amount);
 
   /// Worked out from the clock each time, so "this week" and "this month" never go stale while the tab stays open.
   SpendingRange get _range =>
@@ -169,7 +172,10 @@ class _AITabPageState extends State<AITabPage> {
         monthsLeft: SavingsGoalPlanner.monthsLeft(goal, today),
       );
       if (mounted) setState(() => _budgetAdvice = advice);
-    } catch (_) {
+    } catch (e) {
+      // Also the 422 of a history that is too short: old advice must not outlive a request that failed.
+      debugPrint('Lỗi lấy gợi ý phân bổ tiền: $e');
+      if (mounted) setState(() => _budgetAdvice = null);
     } finally {
       if (mounted) setState(() => _adviceLoading = false);
     }
@@ -181,8 +187,8 @@ class _AITabPageState extends State<AITabPage> {
       return;
     }
     if (period == _period) return;
+    // The filter only redraws the charts; the analysis always covers the same 26 weeks.
     setState(() => _period = period);
-    _loadSpadePatterns(reportErrors: true);
   }
 
   Future<void> _pickCustomRange() async {
@@ -196,7 +202,6 @@ class _AITabPageState extends State<AITabPage> {
       _period = SpendingPeriod.custom;
       _customRange = SpendingRange.custom(picked.start, picked.end);
     });
-    _loadSpadePatterns(reportErrors: true);
   }
 
   static String _messageOf(Object error, AppLocalizations loc) {
@@ -207,52 +212,48 @@ class _AITabPageState extends State<AITabPage> {
     return loc.aiErrorRejected;
   }
 
-  Future<List<Map<String, dynamic>>> _analyze(
-    List<TransactionModel> txs,
-  ) async {
-    // Nothing to mine in an empty range, so the AI service is not called for it.
-    if (txs.isEmpty) return const [];
-    final data = txs
-        .map(
-          (t) => {
-            'category': t.category,
-            'amount': t.amount,
-            'date': t.date.toIso8601String(),
-            'isExpense': t.isExpense,
-          },
-        )
-        .toList();
-    return RemoteApiHelper.instance.analyzePatterns(data);
-  }
-
-  /// Mines the spending patterns of the days on screen. Only a call the user asked for ([reportErrors]: a filter change, the
-  /// refresh button, a pull to refresh) opens an error dialog. The tab is built at start-up behind the others, so a failure
-  /// of a background load is logged and shown on the card only.
+  /// Mines the spending habits of the last 26 weeks, whatever period the charts show. Only a call the user asked for
+  /// ([reportErrors]: the refresh button, a pull to refresh) opens an error dialog. The tab is built at start-up behind
+  /// the others, so a failure of a background load is logged and shown on the card only.
   Future<void> _loadSpadePatterns({bool reportErrors = false}) async {
     final requestId = ++_spadeRequestId;
-    final range = _range;
-    final rangeTxs = _transactions
-        .where((t) => range.contains(t.date))
-        .toList();
+    final history = SpendingHistory.forAnalysis(_transactions, DateTime.now());
+    // Nothing to mine without spending, so the AI service is not called for it.
+    if (history.isEmpty) {
+      setState(() {
+        _analysis = SpendingAnalysis.empty;
+        _spadeFailed = false;
+        _spadeLoading = false;
+      });
+      return;
+    }
     setState(() {
       _spadeLoading = true;
       _spadeFailed = false;
     });
 
-    List<Map<String, dynamic>>? patterns;
+    SpendingAnalysis? analysis;
     Object? failure;
     try {
-      patterns = await _analyze(rangeTxs);
+      analysis = await RemoteApiHelper.instance.analyzeSpending([
+        for (final t in history)
+          {
+            'category': t.category,
+            'amount': t.amount,
+            'date': t.date.toIso8601String(),
+            'isExpense': t.isExpense,
+          },
+      ]);
     } catch (e) {
       failure = e;
     }
-    // The page is gone, or a newer request has taken over because the filter changed meanwhile: drop this answer.
+    // The page is gone, or a newer request has taken over: drop this answer.
     if (!mounted || requestId != _spadeRequestId) return;
 
-    final loaded = patterns;
+    final loaded = analysis;
     final error = failure;
     setState(() {
-      if (loaded != null) _spadePatterns = loaded;
+      if (loaded != null) _analysis = loaded;
       _spadeFailed = error != null;
       _spadeLoading = false;
     });
@@ -370,7 +371,7 @@ class _AITabPageState extends State<AITabPage> {
         AiComponents.buildSpadeSection(
           colors,
           loc,
-          _spadePatterns,
+          _analysis?.patterns ?? const [],
           _spadeLoading,
           hasError: _spadeFailed,
         ),

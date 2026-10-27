@@ -11,6 +11,7 @@ import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/models/app_notification.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
+import 'package:finance_ai_app/models/spending_analysis.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -519,14 +520,17 @@ class RemoteApiHelper {
     return Map<String, dynamic>.from(res.data);
   }
 
-  Future<List<Map<String, dynamic>>> analyzePatterns(
+  Future<SpendingAnalysis> analyzeSpending(
     List<Map<String, dynamic>> transactions,
   ) async {
     final res = await _mlDio.post(
       '/spade/analyze',
       data: {'transactions': transactions},
     );
-    return List<Map<String, dynamic>>.from(res.data['patterns'] ?? []);
+    final data = res.data;
+    return data is Map
+        ? SpendingAnalysis.fromJson(Map<String, dynamic>.from(data))
+        : SpendingAnalysis.empty;
   }
 
   Future<Map<String, dynamic>> recommendBudget({

@@ -87,8 +87,18 @@ void main() {
       'POST',
       '/spade/analyze',
       (_) => jsonResponse(200, {
+        'status': 'OK',
         'patterns': [
-          {'pattern': 'an uong → giai tri', 'count': 4, 'wsupport': '12.5%'},
+          {
+            'itemsets': [
+              ['Ăn uống'],
+              ['Giải trí'],
+            ],
+            'support': 4,
+            'weight': 1.0,
+            'weightedSupport': 0.125,
+            'weeks': ['2026-W40'],
+          },
         ],
       }),
     );
