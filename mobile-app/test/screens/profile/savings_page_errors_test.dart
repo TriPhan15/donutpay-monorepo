@@ -159,6 +159,9 @@ void main() {
         await tester.drag(find.text('Du lịch'), const Offset(-600, 0));
         await tester.pumpAndSettle();
         await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+        // The first settle runs the Dismissible's resize animation, whose end calls onDismissed; Dio then moves the
+        // DELETE through its interceptors on zero-length timers, which only fire once the fake clock moves again.
+        await settle(tester);
         await settle(tester);
 
         expect(deletes(), hasLength(1));

@@ -180,6 +180,7 @@ void main() {
             'wallet_id',
             'client_id', 'sync_status', // the sync state (Task A8)
             'image_url', 'raw_receipt_data', // the receipt of the outbox (T3b)
+            'allow_duplicate', // a duplicate the user chose to keep (batch 2)
           ]),
         );
         expect(
