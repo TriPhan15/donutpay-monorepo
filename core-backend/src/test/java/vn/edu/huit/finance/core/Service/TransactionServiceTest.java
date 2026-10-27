@@ -1232,7 +1232,8 @@ class TransactionServiceTest {
     void allowDuplicateFalseIsTheSameAsNotSendingIt() {
         aliceScansFoodAs("Bách Hóa Xanh");
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
-        TransactionRequestDto request = checkout(SCAN);
+        // No confirmed date, so the duplicate check runs on the minute the AI read (SCANNED_MINUTE).
+        TransactionRequestDto request = scannedCheckout(null);
         request.setAllowDuplicate(false);
 
         assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(request));
@@ -2218,7 +2219,9 @@ class TransactionServiceTest {
                 .map(Method::getName)
                 .collect(Collectors.toSet());
 
-        // The payment webhook has no SecurityContext, and the two administrator lookups are guarded by their controller.
-        assertEquals(Set.of("createTransaction", "getPopularVendorsOf", "getDashboardOf"), takingAUserId);
+        // The payment webhook has no SecurityContext (createTransaction, and lockWalletAndCheckCovers for a
+        // withdrawal), and the two administrator lookups are guarded by their controller.
+        assertEquals(Set.of("createTransaction", "lockWalletAndCheckCovers", "getPopularVendorsOf", "getDashboardOf"),
+                takingAUserId);
     }
 }

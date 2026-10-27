@@ -251,7 +251,8 @@ class CrossSessionTokenRevocationTest {
         FilterOutcome outcome = protectedRequestWith(accessToken);
 
         assertTrue(outcome.reachedTheEndpoint(), "the request should have reached the endpoint");
-        assertEquals(USERNAME, outcome.caller());
+        // The principal name is the email since the lookup by email first (CustomUserDetailsService).
+        assertEquals(EMAIL, outcome.caller());
     }
 
     /** Refused with a 401 in the JSON ApiResponse envelope, before the endpoint; returns the message. */
