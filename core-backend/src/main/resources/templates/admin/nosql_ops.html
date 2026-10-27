@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Vận hành NoSQL</title>
+</head>
+<body>
+<div th:replace="~{admin/layout/_layout :: main('Vận hành NoSQL', ~{:: #main-content})}">
+    <div id="main-content">
+
+        <div th:if="${message}" class="alert alert-success" role="alert" th:text="${message}"></div>
+        <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+        <div th:if="${monthError}" class="alert alert-warning" role="alert" th:text="${monthError}"></div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 border-top border-4 border-info h-100">
+                    <div class="card-header bg-white pt-3 pb-2">
+                        <h5 class="card-title fw-bold mb-0"><i class="bi bi-search me-2 text-info"></i>Elasticsearch (tìm kiếm giao dịch)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${searchError}" class="alert alert-warning" role="alert" th:text="${searchError}"></div>
+                        <dl class="row mb-3">
+                            <dt class="col-sm-5">Công cụ tìm kiếm hiện tại</dt>
+                            <dd class="col-sm-7"><code th:text="${searchEngine}">postgres</code> <small class="text-muted">(app.search.engine)</small></dd>
+                            <dt class="col-sm-5">Số tài liệu trong chỉ mục</dt>
+                            <dd class="col-sm-7" th:text="${indexedDocuments != null ? #numbers.formatInteger(indexedDocuments, 1, 'POINT') : '-'}">-</dd>
+                        </dl>
+                        <form method="post" th:action="@{/admin/nosql/search/reindex}"
+                              onsubmit="if (!confirm('Dựng lại toàn bộ chỉ mục từ PostgreSQL? Tìm kiếm có thể thiếu kết quả trong lúc chạy.')) return false; this.querySelector('button').disabled = true; return true;">
+                            <button id="reindexButton" type="submit" class="btn btn-info text-white"
+                                    th:disabled="${!searchEnabled or reindexRunning}">
+                                <i class="bi bi-arrow-repeat me-1"></i>Dựng lại chỉ mục
+                            </button>
+                        </form>
+                        <p th:unless="${searchEnabled}" class="text-muted small mt-2 mb-0">
+                            Công cụ tìm kiếm đang là PostgreSQL nên không có chỉ mục Elasticsearch để dựng lại.
+                            Đặt <code>SEARCH_ENGINE=elasticsearch</code> rồi khởi động lại để bật.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 border-top border-4 border-danger h-100">
+                    <div class="card-header bg-white pt-3 pb-2">
+                        <h5 class="card-title fw-bold mb-0"><i class="bi bi-trophy-fill me-2 text-danger"></i>Redis (bảng xếp hạng chi tiêu)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${redisError}" class="alert alert-warning" role="alert" th:text="${redisError}"></div>
+                        <form method="get" th:action="@{/admin/nosql}" class="mb-3">
+                            <label class="form-label small mb-1" for="monthPicker">Tháng</label>
+                            <input id="monthPicker" type="month" name="month" class="form-control form-control-sm w-auto d-inline-block ms-2"
+                                   th:value="${month}" onchange="this.form.submit()">
+                        </form>
+                        <form method="post" th:action="@{/admin/nosql/leaderboard/rebuild}" class="mb-3">
+                            <input type="hidden" name="month" th:value="${month}">
+                            <button type="submit" class="btn btn-danger"><i class="bi bi-arrow-repeat me-1"></i>Dựng lại bảng xếp hạng tháng</button>
+                        </form>
+                        <table class="table table-sm table-striped align-middle mb-0">
+                            <thead class="table-light">
+                            <tr><th class="text-center">Top</th><th>Người dùng</th><th class="text-end">Tổng chi tiêu</th></tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="sp, it : ${topSpenders}">
+                                <td class="text-center fw-bold text-warning" th:text="${'#' + it.count}"></td>
+                                <td th:text="${sp.username}"></td>
+                                <td class="text-end text-success fw-bold" th:text="${#numbers.formatInteger(sp.totalSpent, 1, 'POINT') + ' VNĐ'}"></td>
+                            </tr>
+                            <tr th:if="${topSpenders.isEmpty()}">
+                                <td colspan="3" class="text-center text-muted py-3">Chưa có dữ liệu chi tiêu trong tháng này.</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold"><i class="bi bi-tools me-2"></i>Công cụ xem dữ liệu (hướng dẫn bằng văn bản)</div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li><b>Kibana</b> (Elasticsearch): mở Kibana của máy chủ, vào Stack Management, tạo Data View cho chỉ mục giao dịch rồi xem ở Discover.</li>
+                            <li><b>RedisInsight</b> (Redis): kết nối tới Redis của hệ thống, xem khóa <code>ledgermind:leaderboard:spend:YYYY-MM</code> (sorted set) ở Browser.</li>
+                            <li><b>MongoDB Compass</b> (MongoDB): kết nối tới MongoDB, xem hai collection <code>ocr_logs</code> và <code>ocr_feedbacks</code>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</body>
+</html>

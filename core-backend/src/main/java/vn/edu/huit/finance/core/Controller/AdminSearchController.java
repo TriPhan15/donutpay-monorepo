@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
+import vn.edu.huit.finance.core.Exception.ReindexInProgressException;
 import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchIndexer;
 
@@ -43,6 +44,8 @@ public class AdminSearchController {
         }
         try {
             return ApiResponses.respond(HttpStatus.OK, MSG_REINDEX_OK, available.reindexAll());
+        } catch (ReindexInProgressException e) {
+            return ApiResponses.respond(HttpStatus.CONFLICT, e.getMessage(), null);
         } catch (DataAccessException e) {
             log.warn("Search reindex failed", e);
             return ApiResponses.respond(HttpStatus.SERVICE_UNAVAILABLE, MSG_REINDEX_FAILED, null);

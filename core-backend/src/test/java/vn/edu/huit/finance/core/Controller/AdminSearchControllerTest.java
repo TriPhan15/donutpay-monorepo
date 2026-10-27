@@ -20,6 +20,7 @@ import vn.edu.huit.finance.core.Config.SecurityConfig;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
+import vn.edu.huit.finance.core.Exception.ReindexInProgressException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
 import vn.edu.huit.finance.core.Security.JwtAuthFilter;
@@ -104,6 +105,16 @@ class AdminSearchControllerTest {
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value(503))
                 .andExpect(jsonPath("$.message").value(AdminSearchController.MSG_REINDEX_FAILED));
+    }
+
+    @Test
+    void aReindexWhileAnotherRunsIsA409() throws Exception {
+        when(indexer.reindexAll()).thenThrow(new ReindexInProgressException());
+
+        mockMvc.perform(asAdmin(post(REINDEX)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value(409))
+                .andExpect(jsonPath("$.message").value("Đang dựng lại chỉ mục, vui lòng đợi"));
     }
 
     @Test

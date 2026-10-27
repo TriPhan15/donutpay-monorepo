@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.NoSuchIndexException;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
+import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,12 +23,15 @@ import vn.edu.huit.finance.core.Config.SearchEngineType;
 import vn.edu.huit.finance.core.Document.Search.TransactionSearchDocument;
 import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Exception.ReindexInProgressException;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 
 import java.util.List;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Keeps the Elasticsearch index of the transactions in step with PostgreSQL, which stays the source of truth. Only exists
@@ -57,11 +61,16 @@ public class TransactionSearchIndexer {
     /** Pause between two checks of the index while it has been neither found nor created yet. */
     static final long INDEX_CHECK_DELAY_MS = 15_000;
 
+    /** How long the rebuild after a restore waits for a rebuild already running before giving up. */
+    static final long RESTORE_REBUILD_WAIT_MINUTES = 10;
+
     private final ElasticsearchOperations operations;
     private final TransactionRepository transactionRepo;
     private final Executor backgroundExecutor;
     /** Serialises the creation (and the drop and re-creation) of the index, never the bulk writes that follow. */
     private final Object indexLock = new Object();
+    /** Held for the whole of a full rebuild (drop, create, bulk fill): a second one is refused, never queued. */
+    private final ReentrantLock reindexLock = new ReentrantLock();
     /** Set once the index has been seen or created; the periodic check does nothing from then on. */
     private volatile boolean indexReady;
 
@@ -100,6 +109,11 @@ public class TransactionSearchIndexer {
         return indexReady;
     }
 
+    /** Number of documents in the index now (for the admin page); failures of Elasticsearch propagate to the caller. */
+    public long countDocuments() {
+        return operations.count(Query.findAll(), TransactionSearchDocument.class);
+    }
+
     /** Indexes the transaction as it is now in PostgreSQL, or removes its document when it is gone. */
     @Async("mongoAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -129,11 +143,26 @@ public class TransactionSearchIndexer {
         if (event.change() != StatisticsChange.DATABASE_RESTORED) {
             return;
         }
+        // Waits for a rebuild that is running: it may have read rows from before the restore, so it is not enough.
+        boolean locked = false;
         try {
-            reindexAll();
+            locked = reindexLock.tryLock(RESTORE_REBUILD_WAIT_MINUTES, TimeUnit.MINUTES);
+            if (!locked) {
+                log.warn("Search index rebuild after a restore gave up waiting for the running rebuild, run POST /api/admin/search/reindex, index={}",
+                        TransactionSearchDocument.INDEX);
+                return;
+            }
+            rebuildLocked();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Search index rebuild after a restore interrupted, index={}", TransactionSearchDocument.INDEX);
         } catch (RuntimeException e) {
             log.warn("Search index rebuild after a restore failed, run POST /api/admin/search/reindex, index={}",
                     TransactionSearchDocument.INDEX, e);
+        } finally {
+            if (locked) {
+                reindexLock.unlock();
+            }
         }
     }
 
@@ -144,6 +173,18 @@ public class TransactionSearchIndexer {
      * Failures propagate to the caller.
      */
     public int reindexAll() {
+        if (!reindexLock.tryLock()) {
+            throw new ReindexInProgressException();
+        }
+        try {
+            return rebuildLocked();
+        } finally {
+            reindexLock.unlock();
+        }
+    }
+
+    /** The rebuild itself; the caller holds {@link #reindexLock}. */
+    private int rebuildLocked() {
         synchronized (indexLock) {
             IndexOperations indexOps = indexOps();
             if (indexOps.exists()) {
@@ -155,6 +196,11 @@ public class TransactionSearchIndexer {
         int indexed = indexAllRows();
         log.info("Search index rebuilt from PostgreSQL, index={}, documents={}", TransactionSearchDocument.INDEX, indexed);
         return indexed;
+    }
+
+    /** Whether a full rebuild is running now, whoever started it. */
+    public boolean isReindexing() {
+        return reindexLock.isLocked();
     }
 
     private void sync(TransactionChangedEvent event) {
@@ -204,6 +250,10 @@ public class TransactionSearchIndexer {
     }
 
     private void fillNewIndex() {
+        if (!reindexLock.tryLock()) {
+            log.info("New search index not filled, a full rebuild is running, index={}", TransactionSearchDocument.INDEX);
+            return;
+        }
         try {
             int indexed = indexAllRows();
             log.info("New search index filled from PostgreSQL, index={}, documents={}",
@@ -211,6 +261,8 @@ public class TransactionSearchIndexer {
         } catch (RuntimeException e) {
             log.warn("New search index could not be filled, run POST /api/admin/search/reindex, index={}",
                     TransactionSearchDocument.INDEX, e);
+        } finally {
+            reindexLock.unlock();
         }
     }
 

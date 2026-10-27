@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Phản hồi OCR (MongoDB)</title>
+</head>
+<body>
+<div th:replace="~{admin/layout/_layout :: main('Phản hồi OCR (MongoDB)', ~{:: #main-content})}">
+    <div id="main-content">
+
+        <div th:if="${message}" class="alert alert-success" role="alert" th:text="${message}"></div>
+        <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
+        <div th:if="${filterError}" class="alert alert-warning" role="alert" th:text="${filterError}"></div>
+        <div th:if="${mongoError}" class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${mongoError}"></span>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-lg-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <div class="text-muted small">Tỉ lệ hóa đơn có lỗi</div>
+                        <div class="display-5 fw-bold text-danger" th:text="${errorRate}">0,0%</div>
+                        <div class="text-muted small">Số lần đọc có giao dịch bị sửa / tổng số lần đọc</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white fw-bold">Lỗi theo trường</div>
+                    <div class="card-body"><div style="position: relative; height: 220px;"><canvas id="fieldChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white fw-bold">Lỗi theo phiên bản mô hình</div>
+                    <div class="card-body"><div style="position: relative; height: 220px;"><canvas id="modelChart"></canvas></div></div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white fw-bold">Độ tin cậy trung bình theo tháng</div>
+                    <div class="card-body"><div style="position: relative; height: 240px;"><canvas id="confidenceChart"></canvas></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 border-top border-4 border-success">
+            <div class="card-header bg-white pt-3 pb-2">
+                <h5 class="card-title text-success fw-bold mb-3"><i class="bi bi-chat-square-text me-2"></i>Danh sách phản hồi OCR</h5>
+                <form method="get" th:action="@{/admin/ocr-feedbacks}" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1" for="fieldFilter">Trường</label>
+                        <select id="fieldFilter" name="field" class="form-select form-select-sm">
+                            <option value="">Tất cả</option>
+                            <option th:each="f : ${fields}" th:value="${f.name()}" th:text="${fieldLabels[f.key()]}"
+                                    th:selected="${f.name() == field}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small mb-1" for="resolvedFilter">Trạng thái</label>
+                        <select id="resolvedFilter" name="resolved" class="form-select form-select-sm">
+                            <option value="">Tất cả</option>
+                            <option value="false" th:selected="${resolved == 'false'}">Chưa xử lý</option>
+                            <option value="true" th:selected="${resolved == 'true'}">Đã xử lý</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small mb-1" for="fromFilter">Từ ngày</label>
+                        <input id="fromFilter" type="date" name="from" class="form-control form-control-sm" th:value="${from}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small mb-1" for="toFilter">Đến ngày</label>
+                        <input id="toFilter" type="date" name="to" class="form-control form-control-sm" th:value="${to}">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>Lọc</button>
+                        <a th:href="@{/admin/ocr-feedbacks}" class="btn btn-sm btn-outline-secondary">Bỏ lọc</a>
+                    </div>
+                </form>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Hóa đơn</th>
+                            <th>Trường</th>
+                            <th>AI đọc</th>
+                            <th>Người dùng sửa</th>
+                            <th>Mô hình</th>
+                            <th>Ngày báo</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-center">Hành động</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="f : ${feedbacks.content}">
+                            <td class="ps-3 fw-bold text-muted" th:text="${f.receiptId != null ? '#' + f.receiptId : '-'}"></td>
+                            <td th:text="${fieldLabels[f.field] ?: f.field}"></td>
+                            <td th:text="${f.aiValue}"></td>
+                            <td th:text="${f.expectedValue}"></td>
+                            <td th:text="${f.modelVersion}"></td>
+                            <td class="text-nowrap" th:text="${f.reportedAt != null ? #temporals.format(f.reportedAt, 'dd/MM/yyyy HH:mm') : ''}"></td>
+                            <td class="text-center">
+                                <span th:if="${f.resolved}" class="badge bg-success rounded-pill px-3">Đã xử lý</span>
+                                <span th:unless="${f.resolved}" class="badge bg-warning text-dark rounded-pill px-3">Chưa xử lý</span>
+                            </td>
+                            <td class="text-center text-nowrap">
+                                <form th:unless="${f.resolved}" method="post" th:action="@{/admin/ocr-feedbacks/{id}/resolve(id=${f.id})}" class="d-inline">
+                                    <input type="hidden" name="field" th:value="${field}">
+                                    <input type="hidden" name="resolved" th:value="${resolved}">
+                                    <input type="hidden" name="from" th:value="${from}">
+                                    <input type="hidden" name="to" th:value="${to}">
+                                    <input type="hidden" name="page" th:value="${feedbacks.number}">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Đã xử lý</button>
+                                </form>
+                                <form method="post" th:action="@{/admin/ocr-feedbacks/{id}/delete(id=${f.id})}" class="d-inline"
+                                      onsubmit="return confirm('Xóa phản hồi OCR này?');">
+                                    <input type="hidden" name="field" th:value="${field}">
+                                    <input type="hidden" name="resolved" th:value="${resolved}">
+                                    <input type="hidden" name="from" th:value="${from}">
+                                    <input type="hidden" name="to" th:value="${to}">
+                                    <input type="hidden" name="page" th:value="${feedbacks.number}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${feedbacks.content.isEmpty()}">
+                            <td colspan="8" class="text-center py-4 text-muted">Chưa có phản hồi OCR nào.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+                <span class="text-muted small"
+                      th:text="${'Tổng ' + feedbacks.totalElements + ' phản hồi, trang ' + (feedbacks.number + 1) + '/' + (feedbacks.totalPages == 0 ? 1 : feedbacks.totalPages)}"></span>
+                <div>
+                    <a th:if="${feedbacks.hasPrevious()}" class="btn btn-sm btn-outline-secondary"
+                       th:href="@{/admin/ocr-feedbacks(field=${field},resolved=${resolved},from=${from},to=${to},page=${feedbacks.number - 1})}">Trước</a>
+                    <a th:if="${feedbacks.hasNext()}" class="btn btn-sm btn-outline-secondary"
+                       th:href="@{/admin/ocr-feedbacks(field=${field},resolved=${resolved},from=${from},to=${to},page=${feedbacks.number + 1})}">Sau</a>
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            const fieldLabels = /*[[${fieldChartLabels}]]*/ [];
+            const fieldData = /*[[${fieldChartData}]]*/ [];
+            const modelLabels = /*[[${modelChartLabels}]]*/ [];
+            const modelData = /*[[${modelChartData}]]*/ [];
+            const monthLabels = /*[[${monthChartLabels}]]*/ [];
+            const monthData = /*[[${monthChartData}]]*/ [];
+
+            document.addEventListener('DOMContentLoaded', function () {
+                const barOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } };
+                new Chart(document.getElementById('fieldChart'), {
+                    type: 'bar',
+                    data: { labels: fieldLabels, datasets: [{ label: 'Số lỗi', data: fieldData, backgroundColor: '#dc3545' }] },
+                    options: barOptions
+                });
+                new Chart(document.getElementById('modelChart'), {
+                    type: 'bar',
+                    data: { labels: modelLabels, datasets: [{ label: 'Số lỗi', data: modelData, backgroundColor: '#fd7e14' }] },
+                    options: barOptions
+                });
+                new Chart(document.getElementById('confidenceChart'), {
+                    type: 'line',
+                    data: { labels: monthLabels, datasets: [{ label: 'Độ tin cậy trung bình', data: monthData,
+                        borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.15)', spanGaps: false, tension: 0.2 }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 1 } } }
+                });
+            });
+        </script>
+
+    </div>
+</div>
+</body>
+</html>
