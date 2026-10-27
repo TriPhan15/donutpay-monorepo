@@ -22,6 +22,7 @@ import vn.edu.huit.finance.core.Dto.ReceiptAttemptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptRetryRequestDto;
 import vn.edu.huit.finance.core.Dto.ReceiptUpdateRequestDto;
+import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
@@ -820,7 +821,46 @@ class ReceiptProcessingServiceTest {
         assertEquals("Sửa hóa đơn (tên cửa hàng, tổng tiền, ngày trên hóa đơn): COMPLETED_RAW → EDITED, phiên bản 3",
                 entry.description());
         verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_CONTENT, ALICE_ID));
+        // The seller changed: the search index reads the transaction again once the edit has committed.
+        verify(eventPublisher).publishEvent(TransactionChangedEvent.upserted(TRANSACTION_ID, ALICE_ID, Set.of()));
         verifyNoMoreInteractions(eventPublisher);
+    }
+
+    @Test
+    void anEditOfTheSellerReindexesTheTransactionWithoutTouchingAnyMonthTotal() {
+        signedInAsAlice();
+        repositoryHolds(receipt("COMPLETED_RAW", transactionOf(alice)));
+        savingAnswersWithTheReceipt();
+        ReceiptUpdateRequestDto request = edit(VERSION);
+        request.setVendorName("Highlands Coffee");
+
+        service.editMyReceipt(RECEIPT_ID, request);
+
+        assertEquals(List.of(TransactionChangedEvent.upserted(TRANSACTION_ID, ALICE_ID, Set.of())), publishedTransactionChanges());
+    }
+
+    @Test
+    void anEditThatLeavesTheSellerAsItWasDoesNotReindexTheTransaction() {
+        signedInAsAlice();
+        Receipt receipt = receipt("COMPLETED_RAW", transactionOf(alice));
+        receipt.setVendorName("Highlands Coffee");
+        repositoryHolds(receipt);
+        savingAnswersWithTheReceipt();
+        ReceiptUpdateRequestDto request = edit(VERSION);
+        request.setVendorName("Highlands Coffee");
+        request.setExtractedTotal(new BigDecimal("90000"));
+        request.setExtractedDate(LocalDate.of(2026, 5, 28));
+
+        service.editMyReceipt(RECEIPT_ID, request);
+
+        assertTrue(publishedTransactionChanges().isEmpty());
+    }
+
+    private List<TransactionChangedEvent> publishedTransactionChanges() {
+        ArgumentCaptor<Object> events = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, atLeast(0)).publishEvent(events.capture());
+        return events.getAllValues().stream()
+                .filter(TransactionChangedEvent.class::isInstance).map(TransactionChangedEvent.class::cast).toList();
     }
 
     @Test

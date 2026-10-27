@@ -8,6 +8,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import vn.edu.huit.finance.core.Document.Search.TransactionSearchDocument;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
@@ -331,5 +335,38 @@ class TransactionRepositoryTest {
         assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()),
                 possibleDuplicatesOfAlice(true, "100000").stream().map(Transaction::getId).toList(),
                 "neither the other amount, nor the income, nor Bob's transaction of the same minute");
+    }
+
+    // ------------------------------------------------------------------------------------------- the search index
+
+    @Test
+    void theSearchDocumentOfATransactionIsBuiltFromOneStatement() {
+        forgetLoadedEntities();
+
+        Transaction found = transactionRepository.findForSearchIndex(withReceipt.getId()).orElseThrow();
+        TransactionSearchDocument document = TransactionSearchDocument.from(found);
+
+        assertEquals(String.valueOf(withReceipt.getId()), document.getId());
+        assertEquals(withReceipt.getUser().getId(), document.getUserId());
+        assertEquals("Highlands", document.getVendorName());
+        assertEquals("Ăn uống", document.getCategoryName());
+        assertEquals(1, statistics().getPrepareStatementCount(), "the owner's id must not load the user");
+        assertTrue(transactionRepository.findForSearchIndex(-1L).isEmpty());
+    }
+
+    @Test
+    void theSearchIndexIsRebuiltPageByPageOverEveryUser() {
+        Transaction bobs = newTransaction(persistBob(), withReceipt.getCategory());
+        entityManager.persistAndFlush(bobs);
+        forgetLoadedEntities();
+
+        Page<Transaction> first = transactionRepository.findPageForSearchIndex(PageRequest.of(0, 2, Sort.by("id")));
+        Page<Transaction> second = transactionRepository.findPageForSearchIndex(first.nextPageable());
+
+        assertEquals(3, first.getTotalElements());
+        assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()), first.map(Transaction::getId).getContent());
+        assertEquals("Highlands", first.getContent().get(0).getReceipt().getVendorName());
+        assertEquals(List.of(bobs.getId()), second.map(Transaction::getId).getContent());
+        assertFalse(second.hasNext());
     }
 }

@@ -10,6 +10,7 @@ import vn.edu.huit.finance.core.Dto.ReceiptAttemptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptRetryRequestDto;
 import vn.edu.huit.finance.core.Dto.ReceiptUpdateRequestDto;
+import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Dto.OcrCorrectionEvent;
 import vn.edu.huit.finance.core.Dto.OcrFieldCorrection;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * The life of a receipt after the AI has read it. The AI runs on the mobile app (ai-service, POST /donut/scan): its answer
@@ -265,6 +267,12 @@ public class ReceiptProcessingService {
                 String.format(AUDIT_EDITED, changedFields.isEmpty() ? AUDIT_NO_FIELD_CHANGED : String.join(", ", changedFields),
                         previousStatus, saved.getStatus(), saved.getVersion())));
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_CONTENT, caller.getId()));
+        if (changedFields.contains(AUDIT_FIELD_VENDOR)) {
+            // The seller is searchable text of the transaction (no amount or month changed): the search index reads the
+            // transaction again once this edit has committed.
+            eventPublisher.publishEvent(TransactionChangedEvent.upserted(
+                    receipt.getTransaction().getId(), caller.getId(), Set.of()));
+        }
         String editedVendor = request.getVendorName() == null || request.getVendorName().isBlank() ? null : request.getVendorName();
         latestReading(receipt).ifPresent(ai -> publishCorrections(saved, caller.getId(), ai, editedVendor, total, date));
         log.info("Receipt edited, userId={}, receiptId={}, status={} -> {}, version={}",

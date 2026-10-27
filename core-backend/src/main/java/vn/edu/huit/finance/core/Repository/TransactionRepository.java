@@ -23,6 +23,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findDetailedById(@Param("id") Long id);
 
     /**
+     * One transaction with its receipt, which is all the search document of it needs besides the row itself (the owner's
+     * id comes from the foreign key, without loading the user).
+     */
+    @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt WHERE t.id = :id")
+    Optional<Transaction> findForSearchIndex(@Param("id") Long id);
+
+    /** A page of every user's transactions with their receipts, for a rebuild of the search index. */
+    @Query(value = "SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt",
+           countQuery = "SELECT count(t) FROM Transaction t")
+    org.springframework.data.domain.Page<Transaction> findPageForSearchIndex(org.springframework.data.domain.Pageable pageable);
+
+    /**
      * The transaction this user already created with this client id (the idempotency key of a checkout), if any. Only what
      * the transaction row itself holds is needed to answer a repeated checkout, so nothing is fetched along with it.
      */

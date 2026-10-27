@@ -24,9 +24,10 @@ public class AsyncConfig {
         executor.setMaxPoolSize(20);   // Tối đa khi tải nặng
         executor.setQueueCapacity(500); // Hàng đợi nạp task (quá 500 thì mới spawn thread mới)
         executor.setThreadNamePrefix("MongoAsync-");
-        // Hàng đợi đầy (MongoDB chậm/chết lâu): bỏ bản log thô đó và ghi cảnh báo, không ném lỗi về luồng đã commit PostgreSQL.
+        // Hàng đợi đầy (MongoDB/Redis/Elasticsearch chậm hoặc chết lâu): bỏ tác vụ ghi đó và ghi cảnh báo, không ném lỗi về
+        // luồng đã commit PostgreSQL. Pool này chạy mọi tác vụ NoSQL sau commit (log OCR, bảng xếp hạng, chỉ mục tìm kiếm).
         executor.setRejectedExecutionHandler((task, pool) ->
-                log.warn("MongoAsyncExecutor queue is full, dropping one MongoDB raw-log write"));
+                log.warn("MongoAsyncExecutor queue is full, dropping one NoSQL after-commit write"));
         executor.initialize();
         log.info("Initialized MongoAsyncExecutor for background MongoDB tasks.");
         return executor;

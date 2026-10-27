@@ -135,6 +135,79 @@ services:
     networks:
       - finance-network
 
+  # 0d. SEARCH: Elasticsearch holds only a search index of the transactions (index "transactions"), a copy that can be
+  # rebuilt from PostgreSQL at any time (POST /api/admin/search/reindex). core-api updates it asynchronously after the
+  # PostgreSQL commit and only logs a failure. Off by default: it runs with the "search" profile only
+  # (docker compose --profile search up -d) and core-api uses it only with SEARCH_ENGINE=elasticsearch. Security stays on
+  # (user elastic, ELASTIC_PASSWORD); TLS is off because only finance-network and 127.0.0.1 reach it. Snapshots for the
+  # backup script go to path.repo (volume elasticsearch_snapshots).
+  elasticsearch:
+    image: elasticsearch:8.11.4
+    container_name: finance-elasticsearch
+    profiles: ["search"]
+    ports:
+      - "127.0.0.1:9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      # Not ":?": Compose interpolates this even with the profile off, so a required value would stop the default stack.
+      # Left empty, Elasticsearch starts without a password for elastic and its healthcheck (and Kibana) fail.
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-}
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - path.repo=/usr/share/elasticsearch/snapshots
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsu elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - elasticsearch_snapshots:/usr/share/elasticsearch/snapshots
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - finance-network
+
+  # 0e. KIBANA: a UI over Elasticsearch for admin work only, with the "tools" profile, on 127.0.0.1 (SSH tunnel on the
+  # VPS). Start it with both profiles: docker compose --profile search --profile tools up -d. It logs in as the built-in
+  # user kibana_system, whose password is set once by hand (see KIBANA_PASSWORD in .env.example).
+  kibana:
+    image: kibana:8.11.4
+    container_name: finance-kibana
+    profiles: ["tools"]
+    ports:
+      - "127.0.0.1:5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      # Not ":?": an empty value must not stop the default stack; Kibana then only fails to log in.
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - finance-network
+
   # 1. CORE BACKEND (Spring Boot Java)
   core-api:
     build:
@@ -181,6 +254,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      # Transaction search (core-backend/src/main/resources/search.properties). postgres (default): Elasticsearch is
+      # never contacted. elasticsearch: needs the "search" profile up; core-api still starts and writes without it.
+      - SEARCH_ENGINE=${SEARCH_ENGINE:-postgres}
+      - ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
       interval: 15s
@@ -250,6 +328,9 @@ volumes:
   # All database data lives here and survives rebuilds and restarts. Never run "docker compose down -v": it deletes it.
   postgres_data:
   mongodb_data:
+  # Only a copy of PostgreSQL: losing it costs one reindex. Snapshots live in their own volume.
+  elasticsearch_data:
+  elasticsearch_snapshots:
   core_backups:
   caddy_data:
   caddy_config:
