@@ -771,13 +771,11 @@ class _SavingField {
   final String label;
   final bool isMoney;
   final String initialText;
-  final String? helperText;
 
   const _SavingField(
     this.label, {
     this.isMoney = false,
     this.initialText = '',
-    this.helperText,
   });
 }
 
@@ -866,8 +864,6 @@ class _SavingFormDialogState extends State<_SavingFormDialog> {
           : null,
       decoration: InputDecoration(
         labelText: field.label,
-        helperText: field.helperText,
-        helperMaxLines: 3,
         labelStyle: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
         filled: true,
         border: OutlineInputBorder(
