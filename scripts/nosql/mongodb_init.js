@@ -115,7 +115,7 @@ ensureCollection("ocr_feedbacks", OCR_FEEDBACKS_VALIDATOR);
 print("\n-- BƯỚC 2: index --");
 
 // ocr_logs (OcrRawLog.java)
-// Mỗi giao dịch chỉ có một log; tra cứu log theo transactionId (GET /api/admin/ocr-logs) và ghi trùng bị chặn.
+// Khóa duy nhất: mỗi giao dịch một log, ghi trùng bị chặn; index còn phục vụ tra theo transactionId (Q-01, $lookup Q-13), không phục vụ GET /api/admin/ocr-logs (chỉ phân trang).
 appDb.ocr_logs.createIndex({ transactionId: 1 }, { name: "transactionId", unique: true });          // @Indexed(unique = true)
 appDb.ocr_logs.createIndex({ averageConfidenceScore: 1 }, { name: "averageConfidenceScore" });      // @Indexed
 appDb.ocr_logs.createIndex({ createdAt: 1 }, { name: "createdAt" });                                // @Indexed: lọc khoảng thời gian
