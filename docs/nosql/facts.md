@@ -188,8 +188,8 @@ Trường ĐH Công Thương TP.HCM / Khoa CNTT / "BÁO CÁO MÔN HỌC – DỮ
 | Analyzer `vi_folded` = tokenizer `standard` + `lowercase` + `asciifolding`; `vi_autocomplete` = thêm filter `vi_edge` (`edge_ngram` 2..15) | `R/elasticsearch/transactions-settings.json:4-9` |
 | Mapping: `userId` long; `note`, `vendorName` text `vi_folded` + sub-field `.autocomplete` (index `vi_autocomplete`, search `vi_folded`); `location`, `paymentMethod` text `vi_folded`; `categoryName` text phân tích bằng `vi_folded` + sub-field `.keyword` (kiểu keyword; Q-33 dựa vào `vi_folded`, Q-39 dựa vào `.keyword`); `amount` `scaled_float` ×100; `expense` boolean; `transactionDate` date; `receiptStatus` keyword | `R/elasticsearch/transactions-mapping.json:1-32` |
 | Document = một giao dịch (id = `transactions.id`) + `vendorName` của hóa đơn; không index các dòng món hàng | `J/Document/Search/TransactionSearchDocument.java:19-88` |
-| Truy vấn thật: `bool { filter term userId; should [multi_match EXACT_FIELDS operator AND boost 2; multi_match FUZZY_FIELDS fuzziness AUTO:4,7 prefix_length 1 operator AND]; minimum_should_match 1 }`, sort `_score` desc rồi `transactionDate` desc, phân trang, `track_total_hits` | `J/Service/Search/ElasticsearchTransactionSearchEngine.java:17-78` |
-| EXACT_FIELDS = `vendorName^3, vendorName.autocomplete^2, note^2, note.autocomplete, categoryName, location, paymentMethod`; FUZZY_FIELDS = `vendorName^3, note^2, categoryName, location, paymentMethod` | `J/Service/Search/ElasticsearchTransactionSearchEngine.java:27-39` |
+| Truy vấn thật: `bool { filter term userId; should [multi_match EXACT_FIELDS operator AND boost 2; multi_match FUZZY_FIELDS fuzziness AUTO:4,7 prefix_length 1 operator AND]; minimum_should_match 1 }`, sort `_score` desc rồi `transactionDate` desc, phân trang, `track_total_hits` | `J/Service/Search/ElasticsearchTransactionSearchEngine.java:17-81` |
+| EXACT_FIELDS = `vendorName^3, vendorName.autocomplete^2, note^2, note.autocomplete, categoryName, location, paymentMethod`; FUZZY_FIELDS = `vendorName^3, note^2, categoryName, location, paymentMethod` | `J/Service/Search/ElasticsearchTransactionSearchEngine.java:27-41` |
 | Văn bản người dùng là giá trị của `multi_match`, **không** `query_string` → không có cú pháp truy vấn bị tiêm | `J/Service/Search/ElasticsearchTransactionSearchEngine.java:18-21` |
 | `TransactionSearchService`: ES lỗi (mọi RuntimeException) → log 1 dòng, trả lời bằng PG; kết quả luôn nạp lại từ PG theo id + owner; phản hồi có trường `engine` (`elasticsearch`/`postgres`) | `J/Service/Search/TransactionSearchService.java:22-91` |
 | API `GET /api/transactions/search?q=&page=&size=`: `q` 2..100 ký tự (sau strip), `page` 0..199, `size` 1..50 (mặc định 20) – giới hạn cửa sổ 10 000 | `J/Controller/TransactionController.java:92-95`; `J/Dto/TransactionSearchRequestDto.java:10-44` |
@@ -241,7 +241,7 @@ Trường ĐH Công Thương TP.HCM / Khoa CNTT / "BÁO CÁO MÔN HỌC – DỮ
 | `mongodb_init.js` | 2 collection + `$jsonSchema` + 11 index (chưa kể `_id`), không ghi dữ liệu | `S/mongodb_init.js:1-146` |
 | `mongodb_demo.js` | database riêng `finance_nosql_demo`: **36 ocr_logs + 36 ocr_feedbacks** (3 tháng 2026-08..10, donut-v4/donut-v5, sinh bằng công thức cố định), truy vấn Q-01..Q-16 | `S/mongodb_demo.js:20-107,109-294` |
 | `redis_demo.txt` | Q-17..Q-29 + Q-41, chạy bằng `redis-cli < redis_demo.txt` trong container dùng một lần | `S/redis_demo.txt:1-149` |
-| `elasticsearch/kibana-devtools.txt` | Q-30..Q-40 cho Kibana Dev Tools | `S/elasticsearch/kibana-devtools.txt:1-191` |
+| `elasticsearch/kibana-devtools.txt` | Q-30..Q-40 cho Kibana Dev Tools | `S/elasticsearch/kibana-devtools.txt:1-193` |
 | `elasticsearch/transactions-bulk.ndjson` | **47 giao dịch** tiếng Việt, 3 người dùng, tháng 8–10/2026 (94 dòng NDJSON) | `S/elasticsearch/README.md:9`; `S/elasticsearch/kibana-devtools.txt:12` |
 | `elasticsearch/README.md` | tạo index từ 2 file thật của app, nạp bulk, chạy truy vấn | `S/elasticsearch/README.md:1-65` |
 | `backup_restore.md` | MongoDB (mongodump/mongorestore, mongoexport/mongoimport, trang admin), Redis (RDB SAVE, `--rdb`), Elasticsearch (snapshot/restore, `_search`/`_bulk`, reindex từ PG) | `S/backup_restore.md:1-188` |
@@ -319,7 +319,7 @@ docker với CSDL, 1 luồng, p95) theo phương pháp Task 3 trừ khi cột gh
 | AP-33 | Dựng lại toàn bộ chỉ mục | PostgreSQL + Elasticsearch | Ghi | – | Rất thấp | < 60 s cho 100k (mục tiêu) | Eventual | drop → create từ file → bulk 500/lần → refresh | §1.4 |
 | AP-34 | Tạo chỉ mục khi thiếu | Elasticsearch | Ghi | – | Lúc khởi động / 15 s | < 5 s | – | `indexOps.exists` / `createWithMapping` | §1.4 |
 | AP-35 | Đếm document của chỉ mục | Elasticsearch | Đọc | – | Thấp | < 50 ms | Eventual | `count` (`_count`) | §1.4 |
-| AP-36 | Thống kê chi tiêu theo danh mục / tháng trên ES (**chỉ trong script, chưa có API**) | Elasticsearch | Đọc | userId, khoảng ngày | – | < 100 ms | Eventual | `terms categoryName.keyword` + `sum`; `date_histogram` | `S/elasticsearch/kibana-devtools.txt:145-191` |
+| AP-36 | Thống kê chi tiêu theo danh mục / tháng trên ES (**chỉ trong script, chưa có API**) | Elasticsearch | Đọc | userId, khoảng ngày | – | < 100 ms | Eventual | `terms categoryName.keyword` + `sum`; `date_histogram` | `S/elasticsearch/kibana-devtools.txt:147-193` |
 | AP-37 | Đối chiếu chỗ sửa với câu trả lời thô; thống kê gộp `$facet` (**chỉ trong script**) | MongoDB | Đọc | fieldError | – | < 50 ms | Eventual | `$lookup` ocr_logs; `$facet` | `S/mongodb_demo.js:230-253` |
 | AP-38 | Tra log OCR của một giao dịch; tìm lần đọc có độ tin cậy thấp (**chỉ trong script, chưa có API**; `findByTransactionIdOrderByCreatedAtDesc`, `findByAverageConfidenceScoreLessThan` khai báo nhưng không dùng) | MongoDB | Đọc | transactionId; ngưỡng | – | < 20 ms | Eventual | `findOne {transactionId}` (index unique `transactionId`); `find {averageConfidenceScore:{$lt}}` + sort `createdAt` (`score_date_idx`) | `S/mongodb_demo.js:112-121` |
 
@@ -384,12 +384,12 @@ CB = cơ bản, NC = nâng cao. Tổng: 19 CB (Mongo 8, Redis 6, ES 5), 22 NC (M
 | Q-32 | CB | Elasticsearch | Giao dịch của một người, mới nhất trước | `bool filter term userId` + `sort transactionDate` | AP-29 | `S/elasticsearch/kibana-devtools.txt:29-39` |
 | Q-33 | CB | Elasticsearch | Gõ "ca phe" ra "Cà phê" | `match categoryName` | AP-29 | `S/elasticsearch/kibana-devtools.txt:41-53` |
 | Q-34 | CB | Elasticsearch | Xem analyzer tách token | `GET transactions/_analyze` (vi_folded, vi_autocomplete) | AP-29 | `S/elasticsearch/kibana-devtools.txt:55-69` |
-| Q-35 | NC | Elasticsearch | Truy vấn thật của app cho "pho" | `bool` + 2 `multi_match` (exact boost 2, fuzzy AUTO:4,7) | AP-29 | `S/elasticsearch/kibana-devtools.txt:71-106` |
-| Q-36 | NC | Elasticsearch | Gõ sai "highlans cofee" vẫn ra | `multi_match fuzziness AUTO:4,7 prefix_length 1` | AP-29 | `S/elasticsearch/kibana-devtools.txt:108-124` |
-| Q-37 | NC | Elasticsearch | Gợi ý khi đang gõ "hig" | `multi_match` trên `.autocomplete` | AP-29 | `S/elasticsearch/kibana-devtools.txt:126-142` |
-| Q-38 | NC | Elasticsearch | Chi tiêu tháng 9/2026 của tôi, theo số tiền | `bool filter term + range` + `sort amount` | AP-36 | `S/elasticsearch/kibana-devtools.txt:144-158` |
-| Q-39 | NC | Elasticsearch | Chi tiêu theo danh mục | `aggs terms categoryName.keyword` + `sum` | AP-36 | `S/elasticsearch/kibana-devtools.txt:160-175` |
-| Q-40 | NC | Elasticsearch | Chi tiêu theo tháng | `aggs date_histogram month` + `sum` | AP-36 | `S/elasticsearch/kibana-devtools.txt:177-191` |
+| Q-35 | NC | Elasticsearch | Truy vấn thật của app cho "pho" | `bool` + 2 `multi_match` (exact boost 2, fuzzy AUTO:4,7) | AP-29 | `S/elasticsearch/kibana-devtools.txt:71-107` |
+| Q-36 | NC | Elasticsearch | Gõ sai "highlans cofee" vẫn ra | `multi_match fuzziness AUTO:4,7 prefix_length 1` | AP-29 | `S/elasticsearch/kibana-devtools.txt:109-126` |
+| Q-37 | NC | Elasticsearch | Gợi ý khi đang gõ "hig" | `multi_match` trên `.autocomplete` | AP-29 | `S/elasticsearch/kibana-devtools.txt:128-144` |
+| Q-38 | NC | Elasticsearch | Chi tiêu tháng 9/2026 của tôi, theo số tiền | `bool filter term + range` + `sort amount` | AP-36 | `S/elasticsearch/kibana-devtools.txt:146-160` |
+| Q-39 | NC | Elasticsearch | Chi tiêu theo danh mục | `aggs terms categoryName.keyword` + `sum` | AP-36 | `S/elasticsearch/kibana-devtools.txt:162-177` |
+| Q-40 | NC | Elasticsearch | Chi tiêu theo tháng | `aggs date_histogram month` + `sum` | AP-36 | `S/elasticsearch/kibana-devtools.txt:179-193` |
 | Q-41 | NC | Redis | Kênh sự kiện realtime cho trang quản trị | `PUBSUB CHANNELS/NUMSUB`, `PUBLISH`, `SUBSCRIBE` (2 cửa sổ) | AP-15, AP-16 | `S/redis_demo.txt:135-146` |
 
 ### 2.5 TC – Ca kiểm thử (Ch.7 dùng)

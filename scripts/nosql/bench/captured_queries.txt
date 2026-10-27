@@ -1,0 +1,295 @@
+-- ### searchIdsByText
+    select
+        t1_0.id 
+    from
+        transactions t1_0 
+    left join
+        receipts r1_0 
+            on r1_0.id=t1_0.receipt_id 
+    where
+        t1_0.user_id=? 
+        and (
+            lower(t1_0.note) like ? escape '\' 
+            or lower(t1_0.category_name) like ? escape '\' 
+            or lower(t1_0.location) like ? escape '\' 
+            or lower(t1_0.payment_method) like ? escape '\' 
+            or lower(r1_0.vendor_name) like ? escape '\'
+        ) 
+    order by
+        t1_0.transaction_date desc,
+        t1_0.id desc 
+    offset
+        ? rows 
+    fetch
+        first ? rows only;
+-- binds: $1 BIGINT=1; $2 VARCHAR=%pho%; $3 VARCHAR=%pho%; $4 VARCHAR=%pho%; $5 VARCHAR=%pho%; $6 VARCHAR=%pho%; $7 INTEGER=0; $8 INTEGER=2
+
+-- ### searchIdsByText
+    select
+        count(t1_0.id) 
+    from
+        transactions t1_0 
+    left join
+        receipts r1_0 
+            on r1_0.id=t1_0.receipt_id 
+    where
+        t1_0.user_id=? 
+        and (
+            lower(t1_0.note) like ? escape '\' 
+            or lower(t1_0.category_name) like ? escape '\' 
+            or lower(t1_0.location) like ? escape '\' 
+            or lower(t1_0.payment_method) like ? escape '\' 
+            or lower(r1_0.vendor_name) like ? escape '\'
+        );
+-- binds: $1 BIGINT=1; $2 VARCHAR=%pho%; $3 VARCHAR=%pho%; $4 VARCHAR=%pho%; $5 VARCHAR=%pho%; $6 VARCHAR=%pho%
+
+-- ### sumExpensesByUserBetween
+    select
+        t1_0.user_id,
+        u1_0.username,
+        sum(t1_0.amount) 
+    from
+        transactions t1_0 
+    join
+        users u1_0 
+            on u1_0.id=t1_0.user_id 
+    where
+        t1_0.is_expense=true 
+        and t1_0.transaction_date>=? 
+        and t1_0.transaction_date<? 
+    group by
+        t1_0.user_id,
+        u1_0.username 
+    order by
+        3 desc;
+-- binds: $1 TIMESTAMP=2026-10-01T00:00; $2 TIMESTAMP=2026-11-01T00:00
+
+-- ### dashboardOf
+    select
+        t1_0.id,
+        t1_0.additional_images,
+        t1_0.amount,
+        t1_0.category_id,
+        t1_0.category_name,
+        t1_0.client_id,
+        t1_0.created_at,
+        t1_0.is_expense,
+        t1_0.location,
+        t1_0.note,
+        t1_0.payment_method,
+        t1_0.raw_receipt_data,
+        t1_0.receipt_id,
+        t1_0.status,
+        t1_0.transaction_date,
+        t1_0.updated_at,
+        t1_0.user_id,
+        t1_0.voucher_code 
+    from
+        transactions t1_0 
+    left join
+        users u1_0 
+            on u1_0.id=t1_0.user_id 
+    where
+        u1_0.id=? 
+    order by
+        t1_0.amount desc 
+    fetch
+        first ? rows only;
+-- binds: $1 BIGINT=1; $2 INTEGER=1
+
+-- ### dashboardOf
+    select
+        t1_0.id,
+        t1_0.additional_images,
+        t1_0.amount,
+        t1_0.category_id,
+        c1_0.id,
+        c1_0.created_at,
+        c1_0.name,
+        c1_0.type,
+        c1_0.updated_at,
+        t1_0.category_name,
+        t1_0.client_id,
+        t1_0.created_at,
+        t1_0.is_expense,
+        t1_0.location,
+        t1_0.note,
+        t1_0.payment_method,
+        t1_0.raw_receipt_data,
+        r1_0.id,
+        r1_0.ai_raw_data,
+        r1_0.created_at,
+        r1_0.error_code,
+        r1_0.extracted_date,
+        r1_0.extracted_total,
+        r1_0.image_url,
+        r1_0.status,
+        r1_0.updated_at,
+        r1_0.vendor_name,
+        r1_0.version,
+        t1_0.status,
+        t1_0.transaction_date,
+        t1_0.updated_at,
+        t1_0.user_id,
+        t1_0.voucher_code 
+    from
+        transactions t1_0 
+    join
+        categories c1_0 
+            on c1_0.id=t1_0.category_id 
+    left join
+        receipts r1_0 
+            on r1_0.id=t1_0.receipt_id 
+    where
+        t1_0.user_id=? 
+    order by
+        t1_0.transaction_date desc 
+    offset
+        ? rows 
+    fetch
+        first ? rows only;
+-- binds: $1 BIGINT=1; $2 INTEGER=0; $3 INTEGER=5
+
+-- ### dashboardOf
+    select
+        t1_0.id,
+        t1_0.additional_images,
+        t1_0.amount,
+        t1_0.category_id,
+        c1_0.id,
+        c1_0.created_at,
+        c1_0.name,
+        c1_0.type,
+        c1_0.updated_at,
+        t1_0.category_name,
+        t1_0.client_id,
+        t1_0.created_at,
+        t1_0.is_expense,
+        t1_0.location,
+        t1_0.note,
+        t1_0.payment_method,
+        t1_0.raw_receipt_data,
+        r1_0.id,
+        r1_0.ai_raw_data,
+        r1_0.created_at,
+        r1_0.error_code,
+        r1_0.extracted_date,
+        r1_0.extracted_total,
+        r1_0.image_url,
+        r1_0.status,
+        r1_0.updated_at,
+        r1_0.vendor_name,
+        r1_0.version,
+        t1_0.status,
+        t1_0.transaction_date,
+        t1_0.updated_at,
+        t1_0.user_id,
+        t1_0.voucher_code 
+    from
+        transactions t1_0 
+    join
+        categories c1_0 
+            on c1_0.id=t1_0.category_id 
+    left join
+        receipts r1_0 
+            on r1_0.id=t1_0.receipt_id 
+    where
+        t1_0.user_id=? 
+        and t1_0.voucher_code is not null;
+-- binds: $1 BIGINT=1
+
+-- ### popularVendorsOf
+    select
+        r1_0.vendor_name,
+        count(t1_0.id) 
+    from
+        transactions t1_0 
+    join
+        receipts r1_0 
+            on r1_0.id=t1_0.receipt_id 
+    where
+        t1_0.user_id=? 
+        and r1_0.vendor_name is not null 
+    group by
+        r1_0.vendor_name 
+    order by
+        2 desc;
+-- binds: $1 BIGINT=1
+
+-- ### getDashboardSummary
+    select
+        sum(t1_0.amount) 
+    from
+        transactions t1_0;
+-- binds: 
+
+-- ### getDashboardSummary
+    select
+        count(*) 
+    from
+        users u1_0;
+-- binds: 
+
+-- ### getDashboardSummary
+    select
+        count(t1_0.id) 
+    from
+        transactions t1_0 
+    where
+        t1_0.transaction_date between ? and ?;
+-- binds: $1 TIMESTAMP=2026-10-01T00:00; $2 TIMESTAMP=2026-10-31T23:59:59
+
+-- ### getDashboardSummary
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.ai_label,
+        u1_0.created_at,
+        u1_0.credentials_version,
+        u1_0.email,
+        u1_0.last_action_time,
+        u1_0.last_login_time,
+        u1_0.password,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.updated_at,
+        u1_0.username,
+        u1_0.wallet_balance 
+    from
+        users u1_0 
+    where
+        u1_0.wallet_balance<?;
+-- binds: $1 NUMERIC=50000
+
+-- ### getDashboardSummary
+    select
+        r1_0.status,
+        count(r1_0.id) 
+    from
+        receipts r1_0 
+    group by
+        r1_0.status;
+-- binds: 
+
+-- ### findAllById
+    select
+        u1_0.id,
+        u1_0.active,
+        u1_0.ai_label,
+        u1_0.created_at,
+        u1_0.credentials_version,
+        u1_0.email,
+        u1_0.last_action_time,
+        u1_0.last_login_time,
+        u1_0.password,
+        u1_0.phone,
+        u1_0.role,
+        u1_0.updated_at,
+        u1_0.username,
+        u1_0.wallet_balance 
+    from
+        users u1_0 
+    where
+        u1_0.id in (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+-- binds: $1 BIGINT=2; $2 BIGINT=3; $3 BIGINT=4; $4 BIGINT=5; $5 BIGINT=6; $6 BIGINT=7; $7 BIGINT=8; $8 BIGINT=9; $9 BIGINT=10; $10 BIGINT=11
+

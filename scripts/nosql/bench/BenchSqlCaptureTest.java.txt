@@ -1,0 +1,115 @@
+package vn.edu.huit.finance.core.Repository;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import vn.edu.huit.finance.core.Entity.Category;
+import vn.edu.huit.finance.core.Entity.Receipt;
+import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Service.AdminStatisticsService;
+import vn.edu.huit.finance.core.Service.UserStatisticsService;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+
+/**
+ * THROWAWAY (Task 3 of the NoSQL report): runs the real repository/service methods against PostgreSQL 15 with
+ * show-sql + bind tracing, so that the benchmark uses the SQL Hibernate really emits and the DDL it really creates.
+ */
+@DataJpaTest(properties = {
+        "spring.jpa.hibernate.ddl-auto=create",
+        "spring.jpa.show-sql=true",
+        "logging.level.org.hibernate.orm.jdbc.bind=trace",
+        "logging.level.org.hibernate.SQL=debug"})
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers(disabledWithoutDocker = true)
+@Import({UserStatisticsService.class, AdminStatisticsService.class})
+class BenchSqlCaptureTest {
+
+    private static final int PORT = 5432;
+    @Container
+    private static final GenericContainer<?> POSTGRES = new GenericContainer<>(DockerImageName.parse("postgres:15-alpine"))
+            .withExposedPorts(PORT)
+            .withEnv("POSTGRES_DB", "bench_capture")
+            .withEnv("POSTGRES_USER", "bench_capture")
+            .withEnv("POSTGRES_PASSWORD", "integration-test-only")
+            .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
+
+    @DynamicPropertySource
+    static void postgres(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url",
+                () -> "jdbc:postgresql://" + POSTGRES.getHost() + ":" + POSTGRES.getMappedPort(PORT) + "/bench_capture");
+        registry.add("spring.datasource.username", () -> "bench_capture");
+        registry.add("spring.datasource.password", () -> "integration-test-only");
+    }
+
+    @Autowired private TransactionRepository transactionRepository;
+    @Autowired private UserStatisticsService userStatistics;
+    @Autowired private AdminStatisticsService adminStatistics;
+    @Autowired private TestEntityManager em;
+    @Autowired private UserRepository userRepository;
+
+    @Test
+    void capture() {
+        User alice = new User();
+        alice.setUsername("alice"); alice.setPassword("h"); alice.setEmail("a@e.com"); alice.setPhone("0900000001");
+        em.persist(alice);
+        Category food = new Category();
+        food.setName("An uong"); food.setType("EXPENSE");
+        em.persist(food);
+        for (int i = 0; i < 8; i++) {
+            Receipt r = new Receipt();
+            r.setVendorName("Pho " + (i % 3));
+            r.setExtractedTotal(new BigDecimal("1000"));
+            em.persist(r);
+            Transaction t = new Transaction();
+            t.setUser(alice); t.setCategory(food); t.setCategoryName("An uong");
+            t.setAmount(new BigDecimal(1000 + i));
+            t.setTransactionDate(LocalDateTime.of(2026, 10, 1 + i, 8, 0));
+            t.setExpense(true);
+            t.setReceipt(r);
+            if (i % 2 == 0) t.setVoucherCode("V" + i);
+            em.persist(t);
+        }
+        em.flush();
+        em.clear();
+        System.out.println("@@@ CAPTURE BEGIN searchIdsByText");
+        transactionRepository.searchIdsByText(alice.getId(), "%pho%", PageRequest.of(0, 2));
+        System.out.println("@@@ CAPTURE BEGIN sumExpensesByUserBetween");
+        transactionRepository.sumExpensesByUserBetween(LocalDateTime.of(2026, 10, 1, 0, 0), LocalDateTime.of(2026, 11, 1, 0, 0));
+        em.clear();
+        System.out.println("@@@ CAPTURE BEGIN dashboardOf");
+        userStatistics.dashboardOf(alice.getId());
+        em.clear();
+        System.out.println("@@@ CAPTURE BEGIN popularVendorsOf");
+        userStatistics.popularVendorsOf(alice.getId());
+        em.clear();
+        System.out.println("@@@ CAPTURE BEGIN getDashboardSummary");
+        adminStatistics.getDashboardSummary(YearMonth.of(2026, 10), new BigDecimal("50000"));
+        java.util.List<Long> ids = new java.util.ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            User u = new User();
+            u.setUsername("u" + i); u.setPassword("h"); u.setEmail("u" + i + "@e.com"); u.setPhone("091000000" + i);
+            em.persist(u);
+            ids.add(u.getId());
+        }
+        em.flush();
+        em.clear();
+        System.out.println("@@@ CAPTURE BEGIN findAllById");
+        userRepository.findAllById(ids);
+        System.out.println("@@@ CAPTURE END");
+    }
+}

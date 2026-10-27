@@ -1,0 +1,226 @@
+{
+  "versions": {
+    "postgres": "PostgreSQL 15.19 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+    "redis": "8.10.2",
+    "redis-py": "5.2.1",
+    "psycopg": "3.2.3"
+  },
+  "rows": {
+    "users": 1000,
+    "categories": 12,
+    "receipts": 34943,
+    "transactions": 100000
+  },
+  "cache_users": 500,
+  "scenarios": {
+    "dashboard/redis_get": {
+      "n": 1200,
+      "p50_ms": 0.054443,
+      "p95_ms": 0.062737,
+      "p99_ms": 0.105245,
+      "max_ms": 0.199245,
+      "min_ms": 0.049899,
+      "mean_ms": 0.055906774166666666,
+      "ops_s": 17886.920054067985,
+      "warmup": 200,
+      "server_usec_per_call": 1.02,
+      "speedup_p50_vs_sql": 39.162445126095186
+    },
+    "dashboard/redis_get_json_loads": {
+      "n": 1200,
+      "p50_ms": 0.092318,
+      "p95_ms": 0.116752,
+      "p99_ms": 0.15998,
+      "max_ms": 0.266066,
+      "min_ms": 0.072991,
+      "mean_ms": 0.09451215833333333,
+      "ops_s": 10580.649279779613,
+      "warmup": 200,
+      "speedup_p50_vs_miss_complete": 25.904731471652333
+    },
+    "dashboard/sql": {
+      "n": 1200,
+      "p50_ms": 2.132121,
+      "p95_ms": 2.493004,
+      "p99_ms": 3.758193,
+      "max_ms": 4.747506,
+      "min_ms": 1.93456,
+      "mean_ms": 2.1954852000000002,
+      "ops_s": 455.4801826949232,
+      "warmup": 200
+    },
+    "dashboard/miss_complete": {
+      "n": 1200,
+      "p50_ms": 2.391473,
+      "p95_ms": 2.678368,
+      "p99_ms": 3.4946,
+      "max_ms": 3.956064,
+      "min_ms": 2.109528,
+      "mean_ms": 2.4263280875000004,
+      "ops_s": 412.1454164223782,
+      "warmup": 200
+    },
+    "popular_vendors/redis_get": {
+      "n": 1200,
+      "p50_ms": 0.052923,
+      "p95_ms": 0.064744,
+      "p99_ms": 0.099968,
+      "max_ms": 0.212609,
+      "min_ms": 0.05057,
+      "mean_ms": 0.05530081416666667,
+      "ops_s": 18082.916410347603,
+      "warmup": 200,
+      "server_usec_per_call": 0.85,
+      "speedup_p50_vs_sql": 10.73434990457835
+    },
+    "popular_vendors/redis_get_json_loads": {
+      "n": 1200,
+      "p50_ms": 0.075894,
+      "p95_ms": 0.099066,
+      "p99_ms": 0.13165,
+      "max_ms": 0.230241,
+      "min_ms": 0.067383,
+      "mean_ms": 0.07848977333333335,
+      "ops_s": 12740.513286401812,
+      "warmup": 200,
+      "speedup_p50_vs_miss_complete": 10.720122802856615
+    },
+    "popular_vendors/sql": {
+      "n": 1200,
+      "p50_ms": 0.568094,
+      "p95_ms": 0.607619,
+      "p99_ms": 0.65272,
+      "max_ms": 0.8666,
+      "min_ms": 0.520835,
+      "mean_ms": 0.5715185275,
+      "ops_s": 1749.7245528929943,
+      "warmup": 200
+    },
+    "popular_vendors/miss_complete": {
+      "n": 1200,
+      "p50_ms": 0.813593,
+      "p95_ms": 0.970239,
+      "p99_ms": 1.118572,
+      "max_ms": 1.367424,
+      "min_ms": 0.653795,
+      "mean_ms": 0.8231542191666666,
+      "ops_s": 1214.8391840988995,
+      "warmup": 200
+    },
+    "admin_summary/redis_get": {
+      "n": 1200,
+      "p50_ms": 0.051455,
+      "p95_ms": 0.059538,
+      "p99_ms": 0.098638,
+      "max_ms": 0.192065,
+      "min_ms": 0.049924,
+      "mean_ms": 0.0530060075,
+      "ops_s": 18865.786109244316,
+      "warmup": 200,
+      "server_usec_per_call": 0.62,
+      "speedup_p50_vs_sql": 529.4109027305412
+    },
+    "admin_summary/redis_get_json_loads": {
+      "n": 1200,
+      "p50_ms": 0.067489,
+      "p95_ms": 0.113677,
+      "p99_ms": 0.127187,
+      "max_ms": 0.215004,
+      "min_ms": 0.064864,
+      "mean_ms": 0.07366187416666667,
+      "ops_s": 13575.543811679423,
+      "warmup": 200,
+      "speedup_p50_vs_miss_complete": 409.8121323474937
+    },
+    "admin_summary/sql": {
+      "n": 1200,
+      "p50_ms": 27.240838,
+      "p95_ms": 30.336633,
+      "p99_ms": 32.853985,
+      "max_ms": 58.670434,
+      "min_ms": 25.987819,
+      "mean_ms": 27.644885884166662,
+      "ops_s": 36.173055811843305,
+      "warmup": 200
+    },
+    "admin_summary/miss_complete": {
+      "n": 1200,
+      "p50_ms": 27.657811,
+      "p95_ms": 30.583055,
+      "p99_ms": 32.241966,
+      "max_ms": 38.41416,
+      "min_ms": 26.528488,
+      "mean_ms": 28.029818999166668,
+      "ops_s": 35.676291738798966,
+      "warmup": 200
+    }
+  },
+  "payload_bytes": {
+    "dashboard": {
+      "mean": 1933.942,
+      "max": 3435,
+      "min": 1153
+    },
+    "popular_vendors": {
+      "mean": 1107.998,
+      "max": 1701,
+      "min": 609
+    },
+    "admin_summary": {
+      "mean": 859.0,
+      "max": 859,
+      "min": 859
+    }
+  },
+  "floor": {
+    "redis_ping": {
+      "n": 1200,
+      "p50_ms": 0.046201,
+      "p95_ms": 0.053073,
+      "p99_ms": 0.097163,
+      "max_ms": 0.183191,
+      "min_ms": 0.04426,
+      "mean_ms": 0.04799067333333333,
+      "ops_s": 20837.38215244879,
+      "warmup": 200
+    },
+    "postgres_select_1": {
+      "n": 1200,
+      "p50_ms": 0.045284,
+      "p95_ms": 0.04954,
+      "p99_ms": 0.061483,
+      "max_ms": 0.188134,
+      "min_ms": 0.044415,
+      "mean_ms": 0.046306435,
+      "ops_s": 21595.270722092944,
+      "warmup": 200
+    }
+  },
+  "explain": {
+    "dashboard/biggest": "Limit  (cost=279.54..279.54 rows=1 width=726) (actual time=0.149..0.150 rows=1 loops=1)\n  Buffers: shared hit=88\n  ->  Sort  (cost=279.54..279.73 rows=79 width=726) (actual time=0.149..0.149 rows=1 loops=1)\n        Sort Key: t1_0.amount DESC\n        Sort Method: top-N heapsort  Memory: 25kB\n        Buffers: shared hit=88\n        ->  Nested Loop  (cost=5.30..279.14 rows=79 width=726) (actual time=0.042..0.104 rows=82 loops=1)\n              Buffers: shared hit=88\n              ->  Index Only Scan using users_pkey on users u1_0  (cost=0.28..8.29 rows=1 width=8) (actual time=0.015..0.015 rows=1 loops=1)\n                    Index Cond: (id = '2'::smallint)\n                    Heap Fetches: 1\n                    Buffers: shared hit=3\n              ->  Bitmap Heap Scan on transactions t1_0  (cost=5.03..270.06 rows=79 width=726) (actual time=0.024..0.070 rows=82 loops=1)\n                    Recheck Cond: (user_id = '2'::smallint)\n                    Heap Blocks: exact=82\n                    Buffers: shared hit=85\n                    ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..5.01 rows=79 width=0) (actual time=0.016..0.016 rows=82 loops=1)\n                          Index Cond: (user_id = '2'::smallint)\n                          Buffers: shared hit=3\nPlanning:\n  Buffers: shared hit=2\nPlanning Time: 0.233 ms\nExecution Time: 0.195 ms",
+    "dashboard/recent": "Limit  (cost=825.30..825.32 rows=5 width=1470) (actual time=0.283..0.284 rows=5 loops=1)\n  Buffers: shared hit=196\n  ->  Sort  (cost=825.30..825.50 rows=79 width=1470) (actual time=0.282..0.283 rows=5 loops=1)\n        Sort Key: t1_0.transaction_date DESC\n        Sort Method: top-N heapsort  Memory: 27kB\n        Buffers: shared hit=196\n        ->  Nested Loop Left Join  (cost=5.46..823.99 rows=79 width=1470) (actual time=0.054..0.226 rows=82 loops=1)\n              Buffers: shared hit=196\n              ->  Nested Loop  (cost=5.17..275.70 rows=79 width=766) (actual time=0.042..0.139 rows=82 loops=1)\n                    Buffers: shared hit=109\n                    ->  Bitmap Heap Scan on transactions t1_0  (cost=5.03..270.06 rows=79 width=726) (actual time=0.028..0.073 rows=82 loops=1)\n                          Recheck Cond: (user_id = '2'::smallint)\n                          Heap Blocks: exact=82\n                          Buffers: shared hit=85\n                          ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..5.01 rows=79 width=0) (actual time=0.015..0.015 rows=82 loops=1)\n                                Index Cond: (user_id = '2'::smallint)\n                                Buffers: shared hit=3\n                    ->  Memoize  (cost=0.15..0.31 rows=1 width=40) (actual time=0.000..0.000 rows=1 loops=82)\n                          Cache Key: t1_0.category_id\n                          Cache Mode: logical\n                          Hits: 70  Misses: 12  Evictions: 0  Overflows: 0  Memory Usage: 2kB\n                          Buffers: shared hit=24\n                          ->  Index Scan using categories_pkey on categories c1_0  (cost=0.14..0.30 rows=1 width=40) (actual time=0.001..0.001 rows=1 loops=12)\n                                Index Cond: (id = t1_0.category_id)\n                                Buffers: shared hit=24\n              ->  Index Scan using receipts_pkey on receipts r1_0  (cost=0.29..6.94 rows=1 width=712) (actual time=0.001..0.001 rows=0 loops=82)\n                    Index Cond: (id = t1_0.receipt_id)\n                    Buffers: shared hit=87\nPlanning:\n  Buffers: shared hit=19\nPlanning Time: 0.402 ms\nExecution Time: 0.370 ms",
+    "dashboard/sale": "Nested Loop Left Join  (cost=5.30..305.12 rows=4 width=1470) (actual time=0.094..0.097 rows=1 loops=1)\n  Buffers: shared hit=86\n  ->  Nested Loop  (cost=5.01..271.89 rows=4 width=766) (actual time=0.084..0.087 rows=1 loops=1)\n        Join Filter: (t1_0.category_id = c1_0.id)\n        Rows Removed by Join Filter: 11\n        Buffers: shared hit=86\n        ->  Seq Scan on categories c1_0  (cost=0.00..1.12 rows=12 width=40) (actual time=0.002..0.003 rows=12 loops=1)\n              Buffers: shared hit=1\n        ->  Materialize  (cost=5.01..270.06 rows=4 width=726) (actual time=0.004..0.007 rows=1 loops=12)\n              Buffers: shared hit=85\n              ->  Bitmap Heap Scan on transactions t1_0  (cost=5.01..270.04 rows=4 width=726) (actual time=0.050..0.076 rows=1 loops=1)\n                    Recheck Cond: (user_id = '2'::smallint)\n                    Filter: (voucher_code IS NOT NULL)\n                    Rows Removed by Filter: 81\n                    Heap Blocks: exact=82\n                    Buffers: shared hit=85\n                    ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..5.01 rows=79 width=0) (actual time=0.015..0.015 rows=82 loops=1)\n                          Index Cond: (user_id = '2'::smallint)\n                          Buffers: shared hit=3\n  ->  Index Scan using receipts_pkey on receipts r1_0  (cost=0.29..8.31 rows=1 width=712) (actual time=0.008..0.008 rows=0 loops=1)\n        Index Cond: (id = t1_0.receipt_id)\nPlanning:\n  Buffers: shared hit=17\nPlanning Time: 0.355 ms\nExecution Time: 0.177 ms",
+    "popular_vendors": "Sort  (cost=824.14..824.30 rows=67 width=23) (actual time=0.163..0.165 rows=22 loops=1)\n  Sort Key: (count(t1_0.id)) DESC\n  Sort Method: quicksort  Memory: 26kB\n  Buffers: shared hit=172\n  ->  GroupAggregate  (cost=820.84..822.11 rows=67 width=23) (actual time=0.146..0.154 rows=22 loops=1)\n        Group Key: r1_0.vendor_name\n        Buffers: shared hit=172\n        ->  Sort  (cost=820.84..821.04 rows=79 width=23) (actual time=0.143..0.144 rows=29 loops=1)\n              Sort Key: r1_0.vendor_name\n              Sort Method: quicksort  Memory: 26kB\n              Buffers: shared hit=172\n              ->  Nested Loop  (cost=5.32..818.35 rows=79 width=23) (actual time=0.040..0.123 rows=29 loops=1)\n                    Buffers: shared hit=172\n                    ->  Bitmap Heap Scan on transactions t1_0  (cost=5.03..270.06 rows=79 width=16) (actual time=0.027..0.061 rows=82 loops=1)\n                          Recheck Cond: (user_id = '2'::smallint)\n                          Heap Blocks: exact=82\n                          Buffers: shared hit=85\n                          ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..5.01 rows=79 width=0) (actual time=0.014..0.014 rows=82 loops=1)\n                                Index Cond: (user_id = '2'::smallint)\n                                Buffers: shared hit=3\n                    ->  Index Scan using receipts_pkey on receipts r1_0  (cost=0.29..6.94 rows=1 width=23) (actual time=0.001..0.001 rows=0 loops=82)\n                          Index Cond: (id = t1_0.receipt_id)\n                          Filter: (vendor_name IS NOT NULL)\n                          Buffers: shared hit=87\nPlanning:\n  Buffers: shared hit=13\nPlanning Time: 0.187 ms\nExecution Time: 0.222 ms",
+    "admin/sum_volume": "Aggregate  (cost=3107.00..3107.01 rows=1 width=32) (actual time=15.801..15.802 rows=1 loops=1)\n  Buffers: shared hit=1857\n  ->  Seq Scan on transactions t1_0  (cost=0.00..2857.00 rows=100000 width=6) (actual time=0.003..4.526 rows=100000 loops=1)\n        Buffers: shared hit=1857\nPlanning Time: 0.029 ms\nExecution Time: 15.813 ms",
+    "admin/count_users": "Aggregate  (cost=29.50..29.51 rows=1 width=8) (actual time=0.128..0.128 rows=1 loops=1)\n  Buffers: shared hit=17\n  ->  Seq Scan on users u1_0  (cost=0.00..27.00 rows=1000 width=0) (actual time=0.005..0.075 rows=1000 loops=1)\n        Buffers: shared hit=17\nPlanning Time: 0.039 ms\nExecution Time: 0.139 ms",
+    "admin/count_period": "Aggregate  (cost=3433.28..3433.29 rows=1 width=8) (actual time=10.885..10.886 rows=1 loops=1)\n  Buffers: shared hit=1857\n  ->  Seq Scan on transactions t1_0  (cost=0.00..3357.00 rows=30511 width=8) (actual time=5.992..9.656 rows=30733 loops=1)\n        Filter: ((transaction_date >= '2026-10-01 00:00:00'::timestamp without time zone) AND (transaction_date <= '2026-10-31 23:59:59'::timestamp without time zone))\n        Rows Removed by Filter: 69267\n        Buffers: shared hit=1857\nPlanning Time: 0.037 ms\nExecution Time: 10.895 ms",
+    "admin/low_balance": "Seq Scan on users u1_0  (cost=0.00..29.50 rows=12 width=222) (actual time=0.005..0.119 rows=12 loops=1)\n  Filter: (wallet_balance < '50000'::numeric)\n  Rows Removed by Filter: 988\n  Buffers: shared hit=17\nPlanning Time: 0.034 ms\nExecution Time: 0.124 ms",
+    "admin/receipt_status": "HashAggregate  (cost=1008.14..1008.17 rows=3 width=17) (actual time=8.601..8.602 rows=3 loops=1)\n  Group Key: status\n  Batches: 1  Memory Usage: 24kB\n  Buffers: shared hit=484\n  ->  Seq Scan on receipts r1_0  (cost=0.00..833.43 rows=34943 width=17) (actual time=0.003..1.556 rows=34943 loops=1)\n        Buffers: shared hit=484\nPlanning Time: 0.031 ms\nExecution Time: 8.615 ms"
+  },
+  "redis_server_usec_per_call_get": null,
+  "pg_statements": {
+    "dashboard": 3,
+    "popular_vendors": 1,
+    "admin_summary": 5
+  },
+  "experiment": "E4",
+  "client_host": {
+    "cpu": "Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz",
+    "mem_total": "15682476 kB",
+    "cpus": 12,
+    "kernel": "7.0.0-38-generic",
+    "python": "3.12.16"
+  },
+  "warmup": 200,
+  "iterations": 1200
+}
