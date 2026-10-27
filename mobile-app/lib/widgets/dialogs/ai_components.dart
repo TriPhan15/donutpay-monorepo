@@ -427,7 +427,7 @@ class AiComponents {
   ) {
     final now = DateTime.now();
     final recentCats = transactions
-        .where((tx) => tx.isExpense && now.difference(tx.date).inDays < 7)
+        .where((tx) => tx.countsAsSpending && now.difference(tx.date).inDays < 7)
         .map((t) => t.category)
         .toSet();
     final spadeWarnings = <Widget>[];

@@ -79,7 +79,7 @@ class _AITabPageState extends State<AITabPage> {
   double get _monthIncome =>
       _monthTxs.where((t) => !t.isExpense).fold(0, (s, t) => s + t.amount);
   double get _monthExpense =>
-      _monthTxs.where((t) => t.isExpense).fold(0, (s, t) => s + t.amount);
+      _monthTxs.where((t) => t.countsAsSpending).fold(0, (s, t) => s + t.amount);
 
   /// Worked out from the clock each time, so "this week" and "this month" never go stale while the tab stays open.
   SpendingRange get _range =>
@@ -421,7 +421,7 @@ class _AITabPageState extends State<AITabPage> {
   List<double> _expensesPerBucket(List<SpendingBucket> buckets) => [
     for (final bucket in buckets)
       _transactions
-          .where((t) => t.isExpense && bucket.contains(t.date))
+          .where((t) => t.countsAsSpending && bucket.contains(t.date))
           .fold(0.0, (s, t) => s + t.amount),
   ];
 
@@ -618,7 +618,9 @@ class _AITabPageState extends State<AITabPage> {
     final lastTotal = _transactions
         .where(
           (t) =>
-              t.isExpense && t.date.year == lm.year && t.date.month == lm.month,
+              t.countsAsSpending &&
+              t.date.year == lm.year &&
+              t.date.month == lm.month,
         )
         .fold(0.0, (s, t) => s + t.amount);
     if (lastTotal == 0) return loc.aiSpentThisMonth(_fmt(loc, _monthExpense));
@@ -631,7 +633,7 @@ class _AITabPageState extends State<AITabPage> {
   String _getTopCategory(AppLocalizations loc) {
     if (_monthExpense <= 0) return loc.aiNoSpendingThisMonth;
     final Map<String, double> totals = {};
-    for (var tx in _monthTxs.where((t) => t.isExpense)) {
+    for (var tx in _monthTxs.where((t) => t.countsAsSpending)) {
       totals[tx.category] = (totals[tx.category] ?? 0) + tx.amount;
     }
     final top = totals.entries.reduce((a, b) => a.value > b.value ? a : b);

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
@@ -365,7 +366,8 @@ class AppRepository {
     final categories = await RemoteApiHelper.instance.fetchCategories();
     return [
       for (final category in categories)
-        if (category['type'] == _serverExpenseType)
+        if (category['type'] == _serverExpenseType &&
+            !TransactionCategories.isSavings(category['name'].toString()))
           (
             id: (category['id'] as num).toInt(),
             name: category['name'].toString(),

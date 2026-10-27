@@ -28,7 +28,7 @@ class BudgetProgress {
 
     var spent = 0.0;
     for (final transaction in transactions) {
-      if (!transaction.isExpense) continue;
+      if (!transaction.countsAsSpending) continue;
       final day = DateTime(
         transaction.date.year,
         transaction.date.month,

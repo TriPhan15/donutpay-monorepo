@@ -55,6 +55,10 @@ void main() {
       expect(AiComponents.needsTotal(txs), 0);
     });
 
+    test('does not count a savings contribution as a need', () {
+      expect(AiComponents.needsTotal([_tx('Tiết kiệm', 2000000)]), 0);
+    });
+
     test('ignores surrounding spaces in the stored name', () {
       expect(AiComponents.needsTotal([_tx(' Siêu thị & Chợ ', 10)]), 10);
     });

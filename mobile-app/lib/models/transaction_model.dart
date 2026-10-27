@@ -100,6 +100,13 @@ class TransactionModel {
 
   IconData get icon => isExpense ? Icons.money_off : Icons.attach_money;
 
+  /// Money moved from the wallet into a savings goal: it leaves the wallet but is not spending.
+  bool get isSavingsContribution =>
+      isExpense && TransactionCategories.isSavings(category);
+
+  /// True when this counts in "spending" totals: an expense that is not a savings contribution.
+  bool get countsAsSpending => isExpense && !isSavingsContribution;
+
   /// True while the server has not confirmed the transaction: it is waiting to be sent, or its last send failed.
   bool get isUnsynced => syncStatus != SyncStatus.synced;
 

@@ -282,7 +282,7 @@ class LedgerPageState extends State<LedgerPage> {
       .fold(0.0, (s, tx) => s + tx.amount);
 
   double get _periodExpense => _periodTransactions
-      .where((tx) => tx.isExpense)
+      .where((tx) => tx.countsAsSpending)
       .fold(0.0, (s, tx) => s + tx.amount);
 
   void _shiftPeriod(int dir) {

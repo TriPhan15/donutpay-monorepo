@@ -431,4 +431,33 @@ void main() {
       },
     );
   });
+
+  group('savings contributions', () {
+    TransactionModel model({required String category, required bool isExpense}) =>
+        TransactionModel(
+          title: 'góp',
+          amount: 100000,
+          date: DateTime(2026, 10, 1),
+          category: category,
+          isExpense: isExpense,
+        );
+
+    test('a savings contribution is an expense of the wallet but not spending', () {
+      final tx = model(category: 'Tiết kiệm', isExpense: true);
+      expect(tx.isSavingsContribution, isTrue);
+      expect(tx.countsAsSpending, isFalse);
+    });
+
+    test('an income named like the savings category is neither', () {
+      final tx = model(category: 'Tiết kiệm', isExpense: false);
+      expect(tx.isSavingsContribution, isFalse);
+      expect(tx.countsAsSpending, isFalse);
+    });
+
+    test('any other expense counts as spending', () {
+      final tx = model(category: 'Ăn uống', isExpense: true);
+      expect(tx.isSavingsContribution, isFalse);
+      expect(tx.countsAsSpending, isTrue);
+    });
+  });
 }

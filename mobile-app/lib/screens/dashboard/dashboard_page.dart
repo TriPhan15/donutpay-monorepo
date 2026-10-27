@@ -125,10 +125,13 @@ class DashboardPageState extends State<DashboardPage>
       for (var tx in txs) {
         if (tx.isExpense) {
           balance -= tx.amount;
-          if (tx.date.year == now.year && tx.date.month == now.month) {
+          if (tx.countsAsSpending &&
+              tx.date.year == now.year &&
+              tx.date.month == now.month) {
             mExp += tx.amount;
           }
-          if (tx.date.year == prevMonth.year &&
+          if (tx.countsAsSpending &&
+              tx.date.year == prevMonth.year &&
               tx.date.month == prevMonth.month) {
             pExp += tx.amount;
           }

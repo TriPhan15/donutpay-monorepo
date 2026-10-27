@@ -284,4 +284,15 @@ void main() {
       },
     );
   });
+
+  group('savings contributions', () {
+    test('a contribution does not use up an all-categories budget', () {
+      final budget = _budget(categoryId: null, categoryName: null, amount: 5000000);
+      final progress = BudgetProgress.of(budget, [
+        _expense(100000, DateTime(2026, 9, 5)),
+        _expense(4500000, DateTime(2026, 9, 6), category: 'Tiết kiệm'),
+      ]);
+      expect(progress.spent, 100000);
+    });
+  });
 }

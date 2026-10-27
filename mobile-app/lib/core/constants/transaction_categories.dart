@@ -24,6 +24,9 @@ class TransactionCategories {
   /// Money moved from the wallet into a savings goal (POST /api/savings/{id}/contributions records it).
   static const String savings = 'Tiết kiệm'; // savings
 
+  /// True when [category] is the savings category (names compare without surrounding spaces).
+  static bool isSavings(String category) => category.trim() == savings;
+
   /// The default expense categories that are needs (the "50" of the 50/30/20 rule): food, home, bills, getting around,
   /// health, schooling, children and insurance. Shopping, entertainment, travel, gifts and "Khác" are wants.
   static const Set<String> essentialExpenses = {
@@ -86,7 +89,8 @@ class TransactionCategories {
         final name = c['name'].toString();
         final type = c['type'].toString();
         if (type == 'EXPENSE') {
-          expenseSelectable.add(name);
+          // Contributions are recorded only through a savings goal, never picked by hand.
+          if (!isSavings(name)) expenseSelectable.add(name);
         } else {
           incomeSelectable.add(name);
         }
