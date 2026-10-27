@@ -168,7 +168,7 @@ class PaymentServiceTest {
     @Test
     void webhook_success_deposit_createsIncomeTransaction() {
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
-        when(orderRepo.findByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
 
         service.handleWebhook(webhook("PAY123", "TXN1", "00", "50000", true));
 
@@ -190,7 +190,7 @@ class PaymentServiceTest {
     @Test
     void webhook_success_withdraw_createsExpenseTransaction() {
         PaymentOrder order = pendingOrder(PaymentType.WITHDRAW, "30000");
-        when(orderRepo.findByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
 
         service.handleWebhook(webhook("PAY123", "TXN1", "00", "30000", true));
 
@@ -204,7 +204,7 @@ class PaymentServiceTest {
     @Test
     void webhook_failResultCode_marksFailed_noTransaction() {
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
-        when(orderRepo.findByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
 
         service.handleWebhook(webhook("PAY123", "TXN1", "99", "50000", true));
 
@@ -213,6 +213,18 @@ class PaymentServiceTest {
         AuditEntry entry = recorded();
         assertEquals(AuditAction.PAYMENT_FAILED, entry.action());
         assertEquals("Cổng MOCK báo thanh toán thất bại (mã kết quả 99), mã đơn PAY123", entry.description());
+    }
+
+    @Test
+    void webhook_readsTheOrderUnderALock() {
+        PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
+        order.setOrderCode("ORD1");
+        when(orderRepo.findLockedByOrderCode("ORD1")).thenReturn(Optional.of(order));
+
+        service.handleWebhook(webhook("ORD1", "TXN1", "00", "50000", true));
+
+        verify(orderRepo).findLockedByOrderCode("ORD1");
+        verify(orderRepo, never()).findByOrderCode(any());
     }
 
     @Test
@@ -235,7 +247,7 @@ class PaymentServiceTest {
     void webhook_idempotent_alreadySuccess_skips() {
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
         order.setStatus(PaymentStatus.SUCCESS); // da xu ly truoc do
-        when(orderRepo.findByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
 
         service.handleWebhook(webhook("PAY123", "TXN1", "00", "50000", true));
 
@@ -248,7 +260,7 @@ class PaymentServiceTest {
     void webhook_amountMismatch_marksFailed_noThrow_noCredit() {
         // KHONG throw: method @Transactional, throw se rollback save(FAILED) -> ket lai PENDING.
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
-        when(orderRepo.findByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
 
         service.handleWebhook(webhook("PAY123", "TXN1", "00", "999", true));
 

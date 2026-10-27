@@ -113,7 +113,8 @@ public class PaymentService {
             throw new RuntimeException("Sai chu ky webhook (HMAC khong khop)");
         }
 
-        PaymentOrder order = orderRepo.findByOrderCode(dto.getOrderCode())
+        // Khóa đơn đến hết giao dịch: webhook phát lại đồng thời phải chờ rồi thấy đơn đã chốt.
+        PaymentOrder order = orderRepo.findLockedByOrderCode(dto.getOrderCode())
                 .orElseThrow(() -> new RuntimeException("Khong tim thay don: " + dto.getOrderCode()));
 
         if (order.getStatus() != PaymentStatus.PENDING) {
