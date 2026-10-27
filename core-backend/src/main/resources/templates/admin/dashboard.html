@@ -169,7 +169,7 @@
 
         <div class="row mt-4">
             <div class="col-12 mb-3 d-flex justify-content-between align-items-center">
-                <h4 class="text-primary fw-bold"><i class="bi bi-cpu-fill me-2"></i>AI Phân Khúc Khách Hàng (Mô hình RFM)</h4>
+                <h4 class="text-primary fw-bold"><i class="bi bi-cpu-fill me-2"></i>Phân khúc khách hàng (RFM)</h4>
                 <button class="btn btn-outline-primary fw-bold" onclick="runAiSegmentation()">
                     <i class="bi bi-magic me-2"></i>Chạy Phân Lớp AI Tự Động
                 </button>
@@ -210,10 +210,7 @@
                                     <td class="fw-bold" th:text="${user.username}"></td>
                                     <td th:text="${user.email}"></td>
                                     <td class="text-end pe-4">
-                                        <span th:if="${user.aiLabel == 'VIP'}" class="badge bg-warning text-dark px-3 py-2">VIP</span>
-                                        <span th:if="${user.aiLabel == 'ACTIVE'}" class="badge bg-success px-3 py-2">ACTIVE</span>
-                                        <span th:if="${user.aiLabel == 'AT-RISK'}" class="badge bg-orange px-3 py-2" style="background-color: #fd7e14; color: white;">AT-RISK</span>
-                                        <span th:if="${user.aiLabel == 'CHURN'}" class="badge bg-danger px-3 py-2">CHURN</span>
+                                        <span th:if="${user.aiLabel != null}" class="badge bg-primary px-3 py-2" th:text="${segmentDisplayNames[user.aiLabel] ?: user.aiLabel}"></span>
                                         <span th:if="${user.aiLabel == null}" class="badge bg-secondary px-3 py-2">Chưa phân lớp</span>
                                     </td>
                                 </tr>
@@ -317,19 +314,17 @@
             });
 
             const segmentPieCanvas = document.getElementById("segmentPieChart");
-            const vipCount = /*[[${vipCount != null ? vipCount : 0}]]*/ 0;
-            const activeCount = /*[[${activeCount != null ? activeCount : 0}]]*/ 0;
-            const atRiskCount = /*[[${atRiskCount != null ? atRiskCount : 0}]]*/ 0;
-            const churnCount = /*[[${churnCount != null ? churnCount : 0}]]*/ 0;
+            const segmentNames = /*[[${segmentNames}]]*/ [];
+            const segmentData = /*[[${segmentData}]]*/ [];
 
             if (segmentPieCanvas) {
                 new Chart(segmentPieCanvas, {
                     type: "pie",
                     data: {
-                        labels: ["VIP", "ACTIVE", "AT-RISK", "CHURN"],
+                        labels: segmentNames,
                         datasets: [{
-                            data: [vipCount, activeCount, atRiskCount, churnCount],
-                            backgroundColor: ["#ffc107", "#198754", "#fd7e14", "#dc3545"],
+                            data: segmentData,
+                            backgroundColor: ["#ffc107", "#198754", "#0dcaf0", "#6f42c1", "#fd7e14", "#6c757d", "#dc3545"],
                             hoverOffset: 4
                         }]
                     },
@@ -345,7 +340,7 @@
             window.runAiSegmentation = function() {
                 Swal.fire({
                     title: 'Chạy phân lớp AI?',
-                    text: "Hệ thống sẽ gửi dữ liệu sang máy chủ Python (K-Means) để phân tích lại toàn bộ User. Việc này có thể mất vài giây.",
+                    text: "Hệ thống sẽ gửi số liệu RFM (12 tháng chi tiêu) sang dịch vụ AI để chấm điểm ngũ phân vị cho toàn bộ người dùng. Việc này có thể mất vài giây.",
                     icon: 'info',
                     showCancelButton: true,
                     confirmButtonColor: '#0d6efd',

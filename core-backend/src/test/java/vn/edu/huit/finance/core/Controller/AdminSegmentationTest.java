@@ -21,7 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -74,6 +76,22 @@ class AdminSegmentationTest {
         assertThrows(AiServiceUnavailableException.class, controller::runAiSegmentation);
 
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void theAjaxRunRecordsHowManyUsersWereLabelled() {
+        AdminController controller = new AdminController();
+        CustomerSegmentationService service = mock(CustomerSegmentationService.class);
+        when(service.runSegmentation()).thenReturn(4);
+        ReflectionTestUtils.setField(controller, "customerSegmentationService", service);
+        ReflectionTestUtils.setField(controller, "eventPublisher", eventPublisher);
+
+        ResponseEntity<ApiResponse<Void>> response = controller.runAiSegmentation();
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("Phân lớp hoàn tất", response.getBody().getMessage());
+        verify(eventPublisher).publishEvent(argThat((Object event) ->
+                event.toString().contains("Chạy phân lớp khách hàng RFM (ngũ phân vị): 4 người dùng được gán nhãn")));
     }
 
     @Test

@@ -46,8 +46,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.aiLabel, COUNT(u) FROM User u WHERE u.aiLabel IS NOT NULL GROUP BY u.aiLabel")
     List<Object[]> countUsersByAiLabel();
 
-    long countByAiLabel(String aiLabel);
-
     /**
      * Records the latest activity of a user: one UPDATE of last_action_time and of nothing else, so a copy of the user
      * read earlier can never write back its balance, profile, role, password or credentials version. Runs in its own

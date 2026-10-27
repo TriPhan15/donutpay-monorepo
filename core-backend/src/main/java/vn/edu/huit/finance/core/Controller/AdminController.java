@@ -45,6 +45,7 @@ import vn.edu.huit.finance.core.Service.UserService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -66,7 +67,7 @@ public class AdminController {
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
     private static final String AUDIT_UNLOCK = "Gỡ khóa đăng nhập sớm cho email: %s / IP: %s";
-    private static final String AUDIT_SEGMENTATION = "Chạy phân lớp khách hàng (RFM): %d người dùng được gán nhãn";
+    private static final String AUDIT_SEGMENTATION = "Chạy phân lớp khách hàng RFM (ngũ phân vị): %d người dùng được gán nhãn";
     private static final String MSG_FILTER_FIELD_INVALID = "Giá trị của %s không hợp lệ";
     private static final String TYPE_MISMATCH = "typeMismatch";
     private static final String MSG_BACKUP_TYPE_INVALID = "Loại sao lưu không hợp lệ (chỉ hỗ trợ FULL, SCHEMA_ONLY, DATA_ONLY).";
@@ -133,10 +134,11 @@ public class AdminController {
 
         model.addAttribute("aiLabels", aiLabels);
         model.addAttribute("aiData", aiData);
-        model.addAttribute("vipCount", userRepo.countByAiLabel("VIP"));
-        model.addAttribute("activeCount", userRepo.countByAiLabel("ACTIVE"));
-        model.addAttribute("atRiskCount", userRepo.countByAiLabel("AT-RISK"));
-        model.addAttribute("churnCount", userRepo.countByAiLabel("CHURN"));
+        Map<CustomerSegment, Long> segmentCounts = customerSegmentationService.countBySegment();
+        model.addAttribute("segmentNames", segmentCounts.keySet().stream().map(CustomerSegment::getDisplayName).toList());
+        model.addAttribute("segmentData", List.copyOf(segmentCounts.values()));
+        model.addAttribute("segmentDisplayNames", Arrays.stream(CustomerSegment.values())
+                .collect(Collectors.toMap(CustomerSegment::name, CustomerSegment::getDisplayName)));
         Page<User> segmentedUsers = userRepo.findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id")));
         model.addAttribute("segmentedUsers", segmentedUsers.getContent());
         return "admin/dashboard";
