@@ -170,7 +170,7 @@ Trường ĐH Công Thương TP.HCM / Khoa CNTT / "BÁO CÁO MÔN HỌC – DỮ
 | Upsert hai bước: (1) `updateFirst` khi (receiptId, fieldError) có giá trị **khác** → ghi đè, `isResolved=false`; (2) không có → `upsert` chỉ với `$setOnInsert`; trùng do 2 luồng → unique `receipt_field_uq` chặn, lỗi chỉ log; trường trả về đúng giá trị AI → `remove` chỗ sửa cũ | `J/Service/OcrMongoService.java:145-216` |
 | Đọc/lọc feedback: `Criteria` field/resolved/khoảng `reportedAt` [from, to+1 ngày), `count` + `find(query.with(pageable))` | `J/Service/OcrMongoService.java:224-255` |
 | Đánh dấu đã xử lý: một `findAndModify` nguyên tử chỉ `$set isResolved` (`returnNew`), không đọc rồi `save` cả document; xóa tài khoản (`ACCOUNT_DELETED`, sau commit, `@Async`) → `remove` các `ocr_feedbacks` theo `userId` (`ocr_logs` không có userId nên giữ) | `J/Service/OcrMongoService.java:260-293 @59983b9` |
-| Đánh dấu đã xử lý: `findById` + `save`; xóa: `existsById` + `deleteById`; không có → `OcrFeedbackNotFoundException` (404) | `J/Service/OcrMongoService.java:257-275` |
+| Đánh dấu đã xử lý: `findAndModify` chỉ `$set isResolved` (từ 59983b9; trước đó `findById` + `save`); xóa: `existsById` + `deleteById`; không có → `OcrFeedbackNotFoundException` (404) | `J/Service/OcrMongoService.java:257-275` |
 | Thống kê `analytics(from,to)`: errorsByField (`$match`/`$group fieldError`/`$sort`), errorsByModel (`$group modelVersion`, null → "unknown"), confidenceByMonth (`$dateToString %Y-%m` theo múi giờ hệ thống, `$avg`), receiptsWithErrorRate (`$match createdAt` → `$lookup ocr_feedbacks` theo transactionId → `$group`) | `J/Service/OcrMongoService.java:277-334` |
 | Phương thức repository khai báo nhưng **không được gọi** ở mã chính: `findByTransactionIdOrderByCreatedAtDesc`, `findByAverageConfidenceScoreLessThan`, `findByIsResolvedFalse`, `countErrorsByField` (@Aggregation) | `J/Repository/Mongo/OcrRawLogRepository.java:9-10`; `J/Repository/Mongo/OcrFeedbackRepository.java:11-14`; `git grep` tại 1cae4de |
 | Seeder demo Mongo (cờ `app.seed.demo`, mặc định tắt `SEED_DEMO=false`): log + feedback cho hóa đơn vừa seed ở PG | `J/Config/MongoDataSeeder.java:21-70`; `docker-compose.yml:256` |
@@ -304,7 +304,7 @@ docker với CSDL, 1 luồng, p95) theo phương pháp Task 3 trừ khi cột gh
 | AP-17 | Ghi log OCR thô sau commit | MongoDB | Ghi | transactionId, JSON | Cao | < 20 ms | Eventual | `insert` `ocr_logs` (unique transactionId) | §1.3 |
 | AP-18 | Upsert chỗ sửa OCR, xóa chỗ sửa lỗi thời | MongoDB | Ghi | receiptId, fieldError | Trung bình | < 20 ms | Eventual (nguyên tử trên một document) | `updateFirst` có điều kiện; `upsert` `$setOnInsert`; unique `receipt_field_uq`; `remove` | §1.3 |
 | AP-19 | Danh sách phản hồi OCR lọc/sắp xếp/phân trang | MongoDB | Đọc | field, resolved, from, to, page, size, sort | Trung bình | < 20 ms | Eventual | `find` + `count`; `status_date_idx`, `reportedAt`, `isResolved` | §1.3 |
-| AP-20 | Đánh dấu phản hồi đã xử lý | MongoDB | Ghi | id | Thấp | < 20 ms | Strong (một document) | `findById` + `save` | §1.3 |
+| AP-20 | Đánh dấu phản hồi đã xử lý | MongoDB | Ghi | id | Thấp | < 20 ms | Strong (một document) | `findAndModify` nguyên tử (`$set isResolved`) | §1.3 |
 | AP-21 | Xóa phản hồi | MongoDB | Ghi | id | Thấp | < 20 ms | Strong (một document) | `deleteById` | §1.3 |
 | AP-22 | Số lỗi theo trường | MongoDB | Đọc | from, to | Thấp | < 50 ms | Eventual | `$match reportedAt` → `$group fieldError` → `$sort` | §1.3 |
 | AP-23 | Số lỗi theo mô hình | MongoDB | Đọc | from, to | Thấp | < 50 ms | Eventual | `$group modelVersion` | §1.3 |

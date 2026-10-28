@@ -680,7 +680,7 @@ AP_DESIGN_ROWS = [  # đủ 38 dòng; Task 9 nhập hằng này cho Phụ lục 
     ["AP-17", "Mongo", "ocr_logs, unique transactionId", "insert"],
     ["AP-18", "Mongo", "ocr_feedbacks, unique receipt_field_uq", "updateFirst có điều kiện; upsert $setOnInsert; remove"],
     ["AP-19", "Mongo", "ocr_feedbacks, status_date_idx", "find + count, sort, skip/limit"],
-    ["AP-20", "Mongo", "ocr_feedbacks theo _id", "findById + save"],
+    ["AP-20", "Mongo", "ocr_feedbacks theo _id", "findAndModify ($set isResolved)"],
     ["AP-21", "Mongo", "ocr_feedbacks theo _id", "deleteById"],
     ["AP-22", "Mongo", "ocr_feedbacks, index reportedAt", "$match → $group fieldError → $sort"],
     ["AP-23", "Mongo", "ocr_feedbacks", "$match → $group modelVersion"],
