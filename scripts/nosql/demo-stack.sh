@@ -92,7 +92,7 @@ REDIS
 set_kibana_password() {
   log "Elasticsearch: password of kibana_system (security API, as user elastic), then Kibana starts with it"
   # Not bin/elasticsearch-reset-password: that tool starts a second JVM inside the Elasticsearch container, which already
-  # uses about 990 MiB of its 1G limit (same limit as docker-compose.yml); on 2026-10-28 it got Elasticsearch OOM-killed
+  # uses about 990 MiB at a 1G limit; on 2026-10-28 it got Elasticsearch OOM-killed
   # (exit 137) twice, even with a 48 MB heap for the tool. The API call below is the way Elastic's own compose example
   # sets this password.
   local answer
@@ -123,7 +123,7 @@ case "${1:-}" in
     wait_healthy nosql-demo-redis 60
     wait_healthy nosql-demo-es 240
     # A new named volume is owned by root, and Elasticsearch (uid 1000) then fails every snapshot with
-    # access_denied_exception. docker-compose.yml mounts its elasticsearch_snapshots volume the same way.
+    # access_denied_exception (docker-compose.yml does the same in its elasticsearch-init-snapshots service).
     "${COMPOSE[@]}" exec -T -u 0 elasticsearch chown 1000:0 /usr/share/elasticsearch/snapshots
     set_kibana_password
     "${COMPOSE[@]}" --profile kibana up -d kibana

@@ -146,10 +146,27 @@ services:
   # (docker compose --profile search up -d) and core-api uses it only with SEARCH_ENGINE=elasticsearch. Security stays on
   # (user elastic, ELASTIC_PASSWORD); TLS is off because only finance-network and 127.0.0.1 reach it. Snapshots for the
   # backup script go to path.repo (volume elasticsearch_snapshots).
+  # 0d'. One-shot: a new named volume is owned by root, and Elasticsearch (uid 1000) then fails every snapshot with
+  # access_denied_exception. Hands the snapshot directory to uid 1000 before Elasticsearch starts (same fix as the demo stack).
+  elasticsearch-init-snapshots:
+    image: elasticsearch:8.11.4
+    container_name: finance-elasticsearch-init
+    profiles: ["search"]
+    user: "0"
+    entrypoint: ["chown", "1000:0", "/usr/share/elasticsearch/snapshots"]
+    volumes:
+      - elasticsearch_snapshots:/usr/share/elasticsearch/snapshots
+    restart: "no"
+    networks:
+      - finance-network
+
   elasticsearch:
     image: elasticsearch:8.11.4
     container_name: finance-elasticsearch
     profiles: ["search"]
+    depends_on:
+      elasticsearch-init-snapshots:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:9200:9200"
     environment:
@@ -159,6 +176,7 @@ services:
       # Not ":?": Compose interpolates this even with the profile off, so a required value would stop the default stack.
       # Left empty, Elasticsearch starts without a password for elastic and its healthcheck (and Kibana) fail.
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-}
+      # Heap 512m of the 1536M limit below: the rest is off-heap, page cache and the JVM of the container.
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
       - path.repo=/usr/share/elasticsearch/snapshots
       - action.auto_create_index=false
@@ -175,7 +193,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          # Not 1G: starting Kibana OOM-kills Elasticsearch at 1 GiB (docs/nosql/bench_results.md, NFR-14).
+          memory: 1536M
     logging:
       driver: "json-file"
       options:
