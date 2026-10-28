@@ -13,6 +13,6 @@ APP -- APP : "5: Tính số dư, tổng thu chi"
 APP -- BE : "2: Lấy hồ sơ, giao dịch, ngân sách ↓\n↑ 4: Hồ sơ, giao dịch, ngân sách\n8: Lấy giao dịch và mục tiêu ↓\n↑ 10: Giao dịch và mục tiêu"
 BE -- GD : "3: Đọc giao dịch ↓"
 BE -- MT : "9: Đọc mục tiêu ↓"
-APP -- AI : "11: Gửi giao dịch trong khoảng ↓\n↑ 13: Các mẫu chi tiêu\n14: [có mục tiêu] Gửi giao dịch và mục tiêu ↓\n↑ 15: Xu hướng, gợi ý"
-AI -- AI : "12: Khai phá mẫu chuỗi"
+APP -- AI : "11: Gửi khoản chi 26 tuần ↓\n↑ 13: Mẫu, luật, thói quen\n14: [có mục tiêu] Gửi thu chi 7 tháng và mục tiêu ↓\n↑ 15: Xu hướng, gợi ý"
+AI -- AI : "12: Khai phá WCM-SPADE"
 @enduml

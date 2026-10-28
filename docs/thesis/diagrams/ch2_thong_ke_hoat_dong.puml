@@ -19,13 +19,13 @@ start
   :Trả về giao dịch và mục tiêu;
   |Ứng dụng di động|
   fork
-    :Gửi giao dịch trong khoảng\nthời gian đang chọn;
+    :Gửi các khoản chi\ncủa 26 tuần gần nhất;
     |AI Service|
-    :Khai phá mẫu chuỗi bằng WCM-SPADE\n(danh sách rỗng nếu có\nít hơn 3 khoản chi hợp lệ);
+    :Dựng chuỗi tuần, khai phá mẫu\nvà luật bằng WCM-SPADE, tính thói quen\n(INSUFFICIENT_DATA nếu có dưới\n8 tuần có chi tiêu);
   fork again
     |Ứng dụng di động|
     if (Có mục tiêu tiết kiệm\nđang theo đuổi?) then (có)
-      :Gửi toàn bộ giao dịch và\nmục tiêu gần hạn nhất;
+      :Gửi thu chi 7 tháng lịch gần nhất\nvà mục tiêu gần hạn nhất;
       |AI Service|
       :Phân tích xu hướng,\nđề xuất ngân sách;
     else (không)
