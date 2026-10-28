@@ -80,10 +80,22 @@ docker network rm nosql-demo
 | T4 | **Chạy lại backup/restore** theo `scripts/nosql/backup_restore.md` cho cả 3 CSDL (đếm, xóa, khôi phục, đếm lại) | Ngay | Ghi số đếm trước và sau vào `ghi_chu_tien/backup.md` + ảnh |
 | T5 | Chạy lại các truy vấn Redis (Q-17..Q-29, Q-41) và Elasticsearch (Q-30..Q-40) trên RedisInsight và Kibana Dev Tools | Ngay | Ghi chú + ảnh |
 | T6 | **Chụp toàn bộ ảnh minh chứng** theo danh sách `docs/nosql/screenshots.md`, đặt tên đúng mã `S-xx.png`. **Cắt ảnh** chỉ giữ khung liên quan (Compass: vùng kết quả/Explain; trang admin: bảng hoặc thẻ đang minh họa, bỏ menu và vùng trống), vì ô ảnh trong báo cáo in chỉ khoảng 10 × 5,6 cm; chữ trong ảnh sau khi in phải đọc được | Khi Trí gửi danh sách | `docs/nosql/screenshots/S-xx.png` |
-| T7 | Soát nội dung Chương 2 và Chương 5 của báo cáo (đúng kiến thức, khớp ảnh), và soát chính tả toàn bộ | Khi có bản báo cáo v1/v4 | `ghi_chu_tien/soat_bao_cao.md` |
-| T8 | **Slide PowerPoint** dựa trên dàn ý `docs/nosql/slides_outline.md` (Trí làm bản đầu, Tiến hoàn thiện và tập thuyết trình) | Khi có dàn ý | File `.pptx` gửi Trí |
+| T7 | Soát nội dung Chương 2 và Chương 5 của báo cáo (đúng kiến thức, khớp ảnh), và soát chính tả toàn bộ (chi tiết ở R1, mục 4b) | Khi có bản báo cáo v1/v4 | `ghi_chu_tien/soat_bao_cao.md` |
+| T8 | **Slide PowerPoint** dựa trên dàn ý `docs/nosql/slides_outline.md` (Trí viết dàn ý, Tiến dựng toàn bộ file .pptx theo R2 ở mục 4b và tập thuyết trình) | Khi có dàn ý | File `.pptx` gửi Trí |
 | T9 | **Quay video demo 5–7 phút** theo `docs/nosql/kich_ban_demo.md` | Khi có kịch bản | Link video |
 | T10 | Đọc `docs/nosql/hoi_dap_bao_ve.md` và tập trả lời, nhất là phần MongoDB và Kibana | Khi có file | Sẵn sàng trả lời GV |
+
+## 4b. Việc còn lại tự làm bằng tay (chia ngày 2026-10-28)
+
+Các việc dưới đây làm tay nhanh và rẻ hơn để agent làm, nên nhóm tự làm. Agent chỉ còn: sửa code theo repo review, cập nhật số liệu trong báo cáo, điền `38_BaoCaoMinhChung.docx`, viết `slides_outline.md` và `hoi_dap_bao_ve.md`, build bản báo cáo cuối.
+
+| # | Việc | Ai | Cách làm | Kết quả |
+|---|---|---|---|---|
+| R1 | **Soát chính tả và câu chữ toàn bộ báo cáo** (tiêu chí 10a) | Tiến | Đọc bản mới nhất `NoSQL_38_BaoCao_v6.docx` (hoặc bản sau đó Trí gửi). Không sửa trong file Word, vì báo cáo được sinh lại từ code. Ghi từng lỗi một dòng: số trang, câu sai, câu đúng. Gom thêm chỗ dùng thuật ngữ không thống nhất (ví dụ "chỉ mục" và "index" lẫn lộn) | `docs/nosql/ghi_chu_tien/soat_bao_cao.md`, Trí sửa trong `docs/nosql/build/content_*.py` rồi build lại |
+| R2 | **Dựng file PowerPoint** (tiêu chí 10b, 10c) | Tiến | Làm theo `docs/nosql/slides_outline.md` (Trí viết: tiêu đề, ý chính, hình, lời nói từng slide). Khung 16:9, một theme đơn giản, chữ tối thiểu 18 pt, hình lấy từ `docs/nosql/diagrams/`, `docs/nosql/screenshots/`, `docs/nosql/bench_raw/`. Xem lại từng slide ở chế độ trình chiếu, không để chữ tràn khung | `38_SlideBaoCao_NoSQL.pptx`, gửi Trí qua Drive/Zalo (không commit) |
+| R3 | **Đọc duyệt bản báo cáo cuối trong Word** | Trí | Mở `38_BaoCao_NoSQL.docx`, Ctrl+A rồi F9 (cập nhật mục lục, danh mục hình/bảng), lưu. Rà mục lục, đánh số hình/bảng, ảnh còn là ô xám "chưa chụp", các ô vàng còn phải điền | Bản nộp |
+| R4 | **Dọn file lẻ ở thư mục gốc máy Trí** | Trí | Gom các file cá nhân (docx mẫu, ghi chú, `Nosql/`, `reports/`, `research_notes/`...) vào một thư mục riêng ngoài repo. Chú ý `vm-finance-backend_key.pem` là khóa bí mật: chuyển ra ngoài repo, `chmod 600`. Đừng chuyển `KhoaLuan_KLCN175_v9.docx` và `Nosql/` trước khi nộp xong, vì script build báo cáo đang đọc theo đường dẫn đó | Thư mục gốc gọn |
+| R5 | **Tài liệu tổng quan repo** (để đọc, viết báo cáo, phỏng vấn) | Trí | Viết dần `docs/overview/*.md`: kiến trúc, core-backend, bảo mật, dữ liệu và NoSQL, mobile, ai-service, vận hành, kiểm thử, câu hỏi phỏng vấn. Mỗi ý trỏ tới file code | `docs/overview/` |
 
 ## 5. Tự kiểm tra hiểu bài (trả lời được thì làm T2–T5 nhanh)
 
