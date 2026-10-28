@@ -1,4 +1,4 @@
-"""Bản sao nguyên văn clean_vietnamese_text từ ai-service/ai_service.py:49-67.
+"""Bản sao nguyên văn hàm clean_vietnamese_text từng nằm trong ai-service/ai_service.py (đã bỏ khỏi đó).
 
 Bundle Kaggle phải tự chứa đủ code nên chép lại ở đây; chỉ dùng khi chấm model V3
 (tokenizer V3 làm sai dấu cách tiếng Việt, V5 không cần hàm này).
