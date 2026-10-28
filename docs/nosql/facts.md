@@ -657,6 +657,13 @@ trước khi đưa vào bảng 7.1 nếu cần chính xác hơn.
 
 Không chạy trong lượt này: widget test mobile `mobile-app/test/screens/ledger/ledger_search_test.dart` (Flutter).
 
+**Lần chạy lại 28/10/2026 tại `59983b9`** (sau khi sửa theo rà soát mã), người dùng chạy trong terminal thường
+(`Nosql/run41.sh`: cùng các lớp trên + `TransactionSearchIndexerPagingTest`, `clean test`, `~/.m2`): **41 lớp, 718 test,
+0 lỗi, 0 bỏ qua**, BUILD SUCCESS. Số thay đổi so với bảng trên: `OcrMongoServiceMongoIntegrationTest` 17,
+`OcrMongoServiceTest` 22, `TransactionSearchServiceTest` 8, `TransactionSearchIndexerPagingTest` 5 (mới); các lớp khác như
+bảng trên (ES tích hợp 14 từ b35cd6e). Cùng ngày, toàn bộ test không cần Docker: 2.177 test, 0 lỗi (135 test cần Docker bỏ
+qua trong sandbox). Widget test `ledger_search_test.dart`: 7/7 xanh.
+
 ---
 
 ## §5. Bảng thuật ngữ (Task 9b bổ sung)

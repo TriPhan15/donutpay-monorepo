@@ -187,7 +187,9 @@ C7_0 = [
 # Elasticsearch (9 → 14); lớp đó chạy lại xanh tại b35cd6e trong một lượt 65 test, 0 lỗi. Từ b35cd6e tới HEAD mã chính chỉ
 # đổi một dòng chú thích. Số đếm từng lớp dưới đây = lần 27/10, trừ lớp tích hợp Elasticsearch = 14.
 RUN1 = dict(date="27/10/2026", sha="1cae4de", tests=702, classes=40)
-RUN2 = dict(date="28/10/2026", sha="b35cd6e", tests=707, classes=40)
+# Lần chạy 41 lớp ngày 28/10/2026 tại 59983b9 (sửa theo rà soát mã, thêm TransactionSearchIndexerPagingTest): 718 test,
+# 0 lỗi, 0 bỏ qua (mọi test dùng Docker chạy thật). Số đếm từng lớp dưới đây = lần chạy này.
+RUN2 = dict(date="28/10/2026", sha="59983b9", tests=718, classes=41)
 # (lớp, số test hiện tại, CSDL thật trong test; "mock" = kho dữ liệu PostgreSQL được giả lập bằng Mockito)
 CLASSES = [
     ("AdminDashboardPageTest", 3, "-"),
@@ -208,8 +210,8 @@ CLASSES = [
     ("MongoBackupServiceTest", 22, "-"),
     ("MongoDataSeederTest", 4, "-"),
     ("OcrCorrectionDetectorTest", 7, "-"),
-    ("OcrMongoServiceMongoIntegrationTest", 15, "MongoDB"),
-    ("OcrMongoServiceTest", 20, "-"),
+    ("OcrMongoServiceMongoIntegrationTest", 17, "MongoDB"),
+    ("OcrMongoServiceTest", 22, "-"),
     ("ReceiptConcurrencyH2Test", 7, "H2"),
     ("ReceiptConcurrencyPostgresTest", 7, "PG 15"),
     ("ReceiptProcessingServiceTest", 125, "-"),
@@ -225,9 +227,10 @@ CLASSES = [
     ("TransactionRepositoryTest", 19, "H2"),
     ("TransactionSearchControllerTest", 7, "-"),
     ("TransactionSearchIndexerIntegrationTest", 12, "ES, mock"),
+    ("TransactionSearchIndexerPagingTest", 5, "-"),
     ("TransactionSearchIndexerReindexLockTest", 2, "-"),
     ("TransactionSearchRepositoryTest", 5, "H2"),
-    ("TransactionSearchServiceTest", 6, "-"),
+    ("TransactionSearchServiceTest", 8, "-"),
     ("TransactionServiceTest", 192, "-"),
     ("UserStatisticsServiceTest", 2, "-"),
 ]
@@ -236,7 +239,7 @@ assert len(CLASSES) == RUN2["classes"] and sum(n for _, n, _ in CLASSES) == RUN2
 CLASS_LISTING = "\n".join(
     [f"{'Lớp kiểm thử':<52}{'Test':>5}  CSDL thật"] +
     [f"{c:<52}{n:>5}  {db}" for c, n, db in CLASSES] +
-    [f"{'Tổng (40 lớp, 0 lỗi)':<52}{RUN2['tests']:>5}"])
+    [f"{'Tổng (' + str(RUN2['classes']) + ' lớp, 0 lỗi)':<52}{RUN2['tests']:>5}"])
 
 OK = "Như mong đợi"
 TC_W = [850, 1150, 1750, 1250, 1650, 1250, 604]
@@ -333,13 +336,14 @@ C7_1 = [
           "trong container dùng một lần hoặc stack demo."),
     ("p", f"**Lần chạy.** Bốn mươi lớp kiểm thử liên quan đến phần NoSQL chạy ngày {RUN1['date']} tại commit {RUN1['sha']} "
           f"bằng Maven 3.9.12, Java 21, ngoại tuyến, cây mã sạch: **{RUN1['tests']} test, 0 lỗi**, mọi test dùng Docker "
-          f"đều chạy thật. Sau đó truy vấn mờ của Elasticsearch được sửa (commit 7f07caa và {RUN2['sha']} ngày "
+          f"đều chạy thật. Sau đó truy vấn mờ của Elasticsearch được sửa (commit 7f07caa và b35cd6e ngày "
           f"{RUN2['date']}, xem mục 7.4); lớp kiểm thử tích hợp Elasticsearch có thêm 5 test và chạy lại xanh tại "
-          f"{RUN2['sha']} (03:34 ngày {RUN2['date']}, lượt 65 test, 0 lỗi). Số đếm đọc từ báo cáo surefire (TEST-∗.xml), không đếm chú thích @Test. "
+          f"b35cd6e (03:34 ngày {RUN2['date']}, lượt 65 test, 0 lỗi). Số đếm đọc từ báo cáo surefire (TEST-∗.xml), không đếm chú thích @Test. "
           f"Ngày {RUN2['date']}, commit 59983b9 sửa năm lỗi do rà soát mã phát hiện (tìm kiếm dùng PostgreSQL khi chỉ mục đang "
           f"dựng lại, phân trang theo khóa khi reindex, dọn Elasticsearch và MongoDB khi xóa tài khoản, đánh dấu phản hồi "
           f"nguyên tử, ô tìm kiếm di động) kèm test mới; sau commit đó toàn bộ kiểm thử không cần Docker của core-backend chạy "
-          f"lại xanh (2.177 test, 0 lỗi), còn các lớp tích hợp dùng Docker ⟦chạy lại sau 59983b9: … test, 0 lỗi⟧. "
+          f"lại xanh (2.177 test, 0 lỗi; 135 test cần Docker bị bỏ qua ở lượt đó), và {RUN2['classes']} lớp của phần NoSQL (thêm TransactionSearchIndexerPagingTest) chạy lại tại {RUN2['sha']}: "
+          f"**{RUN2['tests']} test, 0 lỗi, 0 bỏ qua**, mọi test dùng Docker đều chạy thật. "
           f"Danh sách lớp, số test hiện tại ({RUN2['tests']}) và CSDL thật mà lớp dùng:"),
     ("code", CLASS_LISTING),
     ("p", "Cột CSDL thật: \"-\" là test không cần CSDL (Mockito, MockMvc); \"mock\" là kho dữ liệu PostgreSQL được giả lập "
@@ -849,7 +853,7 @@ BAREM_ROWS = [
     ["Nộp: script cho từng CSDL", "5.2–5.6, Phụ lục C", "mongodb_init.js, mongodb_demo.js, redis_demo.txt, thư mục "
      "elasticsearch, backup_restore.md", "Có"],
     ["Nộp: tài liệu đặc tả, thiết kế", "Chương 3, 4", "SRS, SDS trong báo cáo này", "Có"],
-    ["Nộp: tài liệu kiểm thử", "Chương 7", "55 ca TC, 40 lớp kiểm thử", "Có"],
+    ["Nộp: tài liệu kiểm thử", "Chương 7", f"55 ca TC, {RUN2['classes']} lớp kiểm thử", "Có"],
     ["Nộp: báo cáo kết quả, báo cáo hoạt động nhóm", "Chương 8; 1.6", "8.1–8.3", "Có; tỉ lệ đóng góp chờ nhóm chốt"],
     ["Nộp: video demo", "Phụ lục D", "Kịch bản 4 phần", "Chưa quay"],
 ]
@@ -944,7 +948,7 @@ C9_4 = [
     ("code", "# .env: REDIS_PASSWORD, ELASTIC_PASSWORD, SEARCH_ENGINE=elasticsearch\n"
              "docker compose --profile search up -d\n"
              "docker compose --profile search --profile tools up -d   # thêm Kibana"),
-    ("p", "**4. Kiểm thử.** Bốn mươi lớp kiểm thử của mục 7.1 chạy bằng Maven trong core-backend (cần Docker cho "
+    ("p", f"**4. Kiểm thử.** {RUN2['classes']} lớp kiểm thử của mục 7.1 chạy bằng Maven trong core-backend (cần Docker cho "
           "Testcontainers): mvn test với tham số -Dtest liệt kê tên lớp."),
 ]
 

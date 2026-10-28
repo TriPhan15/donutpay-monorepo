@@ -214,9 +214,9 @@ Tổng cộng 20 slide.
 ## Slide 17. Kiểm thử
 
 - Thời lượng: ngoài video
-- Tiêu đề: Kiểm thử: 707 test, 40 lớp, CSDL thật bằng Testcontainers
+- Tiêu đề: Kiểm thử: 718 test, 41 lớp, CSDL thật bằng Testcontainers
 - Ý chính:
-  - Lần chạy 28/10/2026 tại `b35cd6e`: 707 test, 40 lớp, 0 lỗi (lần 27/10/2026 tại `1cae4de`: 702 test); số đếm đọc từ surefire.
+  - Lần chạy 28/10/2026 tại `59983b9` (sau khi sửa theo rà soát mã): 718 test, 41 lớp, 0 lỗi, 0 bỏ qua (lần 27/10/2026 tại `1cae4de`: 702 test); số đếm đọc từ surefire.
   - Redis, MongoDB, Elasticsearch, PostgreSQL 15 chạy thật bằng Testcontainers (OTP, cache, xếp hạng, upsert OCR, backup, tìm kiếm).
   - 55 ca TC có định danh, truy vết FR → AP → TC; trong đó 6 ca là script (explain, validator, unique, backup, Lua).
   - Tranh chấp có test hai luồng song song (TC-04, TC-54); Redis sập/treo có test riêng (TC-10, TC-11).
