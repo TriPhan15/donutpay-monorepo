@@ -1,9 +1,10 @@
-# Pinned for Python 3.10 (Dockerfile / CI version)
+# Pinned for Python 3.10 (Dockerfile / CI version). torch/torchvision have no +cpu tag so the same pin also
+# resolves on aarch64; on x86_64 pip picks the +cpu build from the extra index (local version sorts higher).
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Core AI Framework
-torch==2.14.0+cpu
-torchvision==0.29.0+cpu
+torch==2.14.0
+torchvision==0.29.0
 
 # Web Framework
 fastapi==0.141.1
@@ -14,4 +15,5 @@ python-multipart==0.0.32
 pillow==12.3.0
 transformers==5.17.0
 sentencepiece==0.2.2
+# 1.7.2: last scikit-learn release that supports Python 3.10 (1.8+ needs 3.11)
 scikit-learn==1.7.2
