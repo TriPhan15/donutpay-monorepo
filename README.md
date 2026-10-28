@@ -34,18 +34,19 @@ app, and AI service developed and deployed as separate components.
 - **Containerization:** Docker & Docker Compose, multi-stage builds using `eclipse-temurin:21-jre-jammy` and `alpine` base images
 - **Process Management:** `tini` as PID 1 for proper signal handling in containers
 - **Security & Ops:** Non-root user execution (`spring:spring`), Spring Boot Actuator healthcheck endpoint, timezone synchronization (`Asia/Ho_Chi_Minh`)
-- **Infrastructure:** Deployed on an Azure VPS behind an Nginx reverse proxy (SSL/TLS), served at `https://ledgermind.dev`
+- **Infrastructure:** Deployed on a Linux VPS (AWS EC2 in [the deploy guide](docs/deploy/DEPLOY_GUIDE.md)) behind a Caddy reverse proxy (`deploy/caddy/Caddyfile`) that obtains and renews the HTTPS certificate for the domain set in `SITE_ADDRESS`, adds security headers and limits request bodies (16 MB for `/ai/*`, 50 MB otherwise)
+- **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs the backend, mobile and AI tests on every push and pull request to `main`, deploys `main` to the VPS over SSH, and builds the signed APK for `v*` tags
 
 ## 3. Key Features
 - **OAuth2 + JWT Authentication:** Google login integrated at the backend, with JWT used for session/API security
 - **Automated Receipt Processing:** Fine-tuned OCR model extracts and structures expense data from receipt images, reducing manual entry
-- **Containerized Deployment:** Backend, AI service, and database run as separate Dockerized services, deployed behind Nginx with HTTPS
+- **Containerized Deployment:** Backend, AI service, PostgreSQL, Redis and MongoDB run as separate Dockerized services; only the Caddy proxy is reachable from the Internet (ports 80/443)
 - **Resource-Aware Backend:** JVM memory limits and healthcheck endpoints configured to run reliably on a constrained VPS
 
 ## 4. System Architecture
 **Data Flow:**
 1. **Client Layer:** Flutter app sends authentication and financial data requests.
-2. **Proxy Layer:** Nginx receives HTTPS traffic and forwards it to the backend.
+2. **Proxy Layer:** Caddy receives HTTPS traffic: `/ai/*` goes to the AI service (`/ai/donut/*` and `/ai/spade/*` only with a valid access token, checked by the backend), everything else to the backend. The backend (8080) and the AI service (8000) have no host port.
 3. **Core Layer:** Java Spring Boot backend handles business logic, validates OAuth2/JWT, and manages the PostgreSQL database.
 4. **AI Layer:** Receipt images are forwarded to the Python OCR service; results are post-processed and returned to the backend for storage.
 
@@ -53,8 +54,9 @@ app, and AI service developed and deployed as separate components.
 
 ### Prerequisites
 - [Docker](https://www.docker.com/get-started) & Docker Compose
-- Java JDK 21 (for local backend development)
+- Java JDK 21 and Maven (for local backend development)
 - Flutter SDK (for local mobile development)
+- Python 3.10 (for local AI service development, same version as the Docker image and CI)
 
 ### Quick Start
 1. **Clone the repository:**
@@ -65,14 +67,28 @@ app, and AI service developed and deployed as separate components.
 2. **Configure environment variables:**
    Create a `.env` file in the root directory with your Google OAuth 
    client ID, database credentials, and other required config.
+   The AI service also needs the Donut weights in `ai-service/Version5/donut_result/` (not in git, see the deploy guide).
 3. **Deploy the stack:**
 ```bash
-   docker-compose up -d --build
+   docker compose up -d --build --wait
 ```
-4. **Verify deployment:**
+4. **Verify deployment** (on a dev machine `SITE_ADDRESS` is empty, so the proxy serves plain HTTP on port 80):
 ```bash
-   curl -f http://localhost:8080/actuator/health
+   curl -f http://localhost/actuator/health
+   curl -f http://localhost/ai/health
 ```
+
+### Running the tests
+`make check` runs the three suites in turn, the same commands as CI:
+```bash
+   cd ai-service && python3.10 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt   # once
+   make check
+```
+- **AI service:** `pytest test_*.py` in `ai-service/` (`requirements.txt` holds the pinned runtime packages, `requirements-dev.txt` adds the test tools).
+- **Backend:** `mvn -B clean test -Dtest=!CoreBackendApplicationTests` in `core-backend/` (Testcontainers tests need Docker and are skipped without it).
+- **Mobile:** `flutter test` in `mobile-app/` (CI also runs `flutter analyze`).
+
+API collections and load tests are described in [docs/testing/README.md](docs/testing/README.md).
 
 ## 6. Database (PostgreSQL on the VPS)
 PostgreSQL runs as the `db` service of `docker-compose.yml` (`postgres:15-alpine`) on the same VPS as the backend and
@@ -96,7 +112,7 @@ the AI service. No cloud-hosted database is used.
 ```bash
    docker compose ps                                             # db, redis and core-api should be "healthy"
    docker compose exec db pg_isready -U "$DB_USERNAME" -d finance_db
-   curl -f http://localhost:8080/actuator/health
+   curl -f http://localhost/actuator/health                     # through the proxy; use https://<domain> on the VPS
 ```
 
 ### Backup and restore (manual)
