@@ -817,7 +817,7 @@ C6_2 += [
           "chính gọi tới; các truy vấn lọc, phân trang, thống kê và upsert dùng MongoTemplate với Criteria, như danh sách "
           "phản hồi của trang quản trị:"),
 ]
-C6_2 += code(J + "Service/OcrMongoService.java", 225, 230, "Danh sách phản hồi theo bộ lọc")
+C6_2 += code(J + "Service/OcrMongoService.java", 228, 233, "Danh sách phản hồi theo bộ lọc")
 C6_2 += [
     ("p", "**Xử lý lỗi kết nối.** Mọi lần ghi MongoDB chạy sau commit trên pool mongoAsyncExecutor, nên MongoDB chậm hay sập "
           "không giữ request của người dùng. Lỗi chỉ được ghi log, không ném về luồng gọi; hóa đơn và giao dịch đã nằm an "
@@ -838,15 +838,16 @@ C6_2 += [
 C6_2 += code(J + "Document/Search/TransactionSearchDocument.java", 28, 33, "Document của index transactions")
 C6_2 += [
     ("p", "**Xử lý lỗi kết nối.** Khi tìm kiếm, mọi lỗi của Elasticsearch (sập, chậm quá socket timeout 2 s, trả kết quả "
-          "không dùng được) chuyển sang PostgreSQL và phản hồi ghi engine=postgres; kết quả của cả hai công cụ luôn được nạp "
+          "không dùng được) chuyển sang PostgreSQL và phản hồi ghi engine=postgres; lúc chỉ mục đang dựng lại hoặc chưa sẵn sàng "
+          "(indexIsUsable trả false) thì PostgreSQL trả lời ngay từ đầu; kết quả của cả hai công cụ luôn được nạp "
           "lại từ PostgreSQL theo id và chủ sở hữu, nên index cũ không làm hiện dòng đã xóa hay dòng của người khác:"),
 ]
-C6_2 += code(J + "Service/Search/TransactionSearchService.java", 57, 70, "Tìm bằng Elasticsearch, lỗi thì PostgreSQL")
+C6_2 += code(J + "Service/Search/TransactionSearchService.java", 60, 75, "Tìm bằng Elasticsearch, lỗi thì PostgreSQL")
 C6_2 += [
     ("p", "Khi cập nhật index sau commit, lỗi chỉ được ghi log; document giữ bản cũ tới lần đổi kế tiếp của giao dịch đó hoặc "
           "lần reindex, còn PostgreSQL đã commit không bị ảnh hưởng:"),
 ]
-C6_2 += code(J + "Service/Search/TransactionSearchIndexer.java", 125, 133, "Cập nhật index sau commit")
+C6_2 += code(J + "Service/Search/TransactionSearchIndexer.java", 157, 165, "Cập nhật index sau commit")
 
 # --------------------------------------------------------------------------------------------------------------------
 # 6.3 Demo các chức năng

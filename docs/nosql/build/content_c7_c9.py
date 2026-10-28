@@ -596,6 +596,14 @@ LIMITS = [
     ["L14", "Index đơn receiptId của ocr_feedbacks là dư (là tiền tố của receipt_field_uq)"],
     ["L15", "Chưa triển khai lên server thật; chưa có số đo mức ứng dụng (JMeter chưa chạy)"],
     ["L16", "Xử lý lỗi cache là dự phòng, không ngắt mạch: trong lúc Redis treo, mỗi request vẫn trả tối đa timeout lệnh"],
+    ["L17", "Lần dựng lại chỉ mục chạy song song với các lần ghi: một trang vừa đọc có thể ghi đè bản mới hơn mà sự kiện sau "
+            "commit vừa ghi (chưa dùng version ngoài); chỉ mục được chữa ở lần đổi kế tiếp của dòng đó hoặc lần reindex sau"],
+    ["L18", "Bảng xếp hạng dựng lại khi đọc có thể bỏ lỡ một lần ghi xen giữa (đọc tổng từ PostgreSQL rồi mới ZADD), sai tới "
+            "lần chi tiêu kế tiếp trong tháng của người đó hoặc khi hết TTL 62 ngày"],
+    ["L19", "Chỉ mục đã có lúc khởi động được tin luôn: dòng ghi khi SEARCH_ENGINE=postgres hoặc bởi bộ nạp dữ liệu demo "
+            "chỉ vào chỉ mục sau một lần reindex"],
+    ["L20", "Một luồng nền dùng chung cho ghi Elasticsearch, Redis và MongoDB: khi một CSDL treo, hàng đợi đầy làm rơi cả "
+            "tác vụ của CSDL khác (L3)"],
 ]
 
 C7_4 = [
@@ -769,7 +777,9 @@ C8_5 = [
     ("b1", "**Tìm kiếm bỏ dấu ở chế độ PostgreSQL:** dùng extension unaccent và index trigram để chế độ mặc định không còn "
            "giới hạn L1."),
     ("b1", "**Độ bền của bản sao:** ghi sự kiện vào bảng outbox trong cùng giao dịch PostgreSQL rồi phát lại, để thay đổi "
-           "không mất khi JVM dừng (L2, L3) và cập nhật index lỗi được thử lại (L4)."),
+           "không mất khi JVM dừng (L2, L3) và cập nhật index lỗi được thử lại (L4); dựng chỉ mục mới rồi đổi alias, ghi "
+           "với version ngoài (L17); bộ đếm thế hệ cho bảng xếp hạng (L18); so số document với PostgreSQL lúc khởi động "
+           "(L19); mỗi CSDL một luồng nền riêng (L20)."),
     ("b1", "**API còn thiếu:** đưa Q-13, Q-14 và thống kê Elasticsearch theo danh mục, tháng (Q-38..Q-40) thành API và "
            "biểu đồ; bỏ index dư của ocr_feedbacks (L12–L14)."),
     ("b1", "**Triển khai và đo mức ứng dụng:** chạy hệ thống trên server thật, chạy JMeter để có độ trễ đầu-cuối (L15); có "

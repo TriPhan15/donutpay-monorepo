@@ -334,7 +334,7 @@ C4_4 += [
           "pipeline tỉ lệ lần đọc bị sửa: $match theo createdAt, $lookup sang ocr_feedbacks theo transactionId (có index), "
           "rồi $project và $group để đếm."),
 ]
-C4_4 += code(J + "Service/OcrMongoService.java", 318, 327, "Pipeline receiptsWithErrorRate")
+C4_4 += code(J + "Service/OcrMongoService.java", 345, 354, "Pipeline receiptsWithErrorRate")
 C4_4 += [
     ("p", "[[bang_explain]] chép kết quả explain(\"executionStats\") của E1 trên dữ liệu tổng hợp 100k (sinh bằng "
           "gen_data.py). Có index thì kế hoạch là IXSCAN và độ trễ p50 giảm 60× đến 106× so với COLLSCAN."),
@@ -418,7 +418,9 @@ C4_5 += [
     ("p", "Elasticsearch chỉ trả về danh sách id; TransactionSearchService nạp lại các dòng từ PostgreSQL bằng "
           "một truy vấn JPA theo id **và** chủ sở hữu (findAllByIdInAndUserIdWithReceipt, AP-30), nên một document cũ trong chỉ mục không làm "
           "lộ hay hiện sai dữ liệu (TC-37). Elasticsearch lỗi thì cùng request được trả lời bằng PostgreSQL "
-          "(searchIdsByText, LOWER(col) LIKE … ESCAPE), trường engine của phản hồi cho biết bên nào đã trả lời (TC-36)."),
+          "(searchIdsByText, LOWER(col) LIKE … ESCAPE), trường engine của phản hồi cho biết bên nào đã trả lời (TC-36). Lúc chỉ mục đang được dựng lại, đang nạp hoặc "
+          "chưa sẵn sàng (isReindexing, isIndexReady của TransactionSearchIndexer), Elasticsearch chỉ trả được một phần kết quả, "
+          "nên yêu cầu đi thẳng sang PostgreSQL."),
     ("h3", "Nhất quán với PostgreSQL"),
     ("b1", "**Sau commit:** TransactionSearchIndexer.onTransactionChanged chạy sau commit trên luồng nền, đọc lại dòng từ "
            "PostgreSQL rồi ghi đè cả document (hoặc xóa), không vá theo nội dung sự kiện, nên sự kiện lặp hay đến muộn đều vô "
@@ -429,7 +431,12 @@ C4_5 += [
     ("b1", "**Thử lại việc tạo chỉ mục:** @Scheduled mỗi 15 s cho tới khi tạo hoặc thấy được chỉ mục một lần; chỉ mục vừa "
            "tạo được nạp nền từ PostgreSQL. @Scheduled này không thử lại các lần cập nhật document bị hỏng."),
     ("b1", "**Dựng lại:** reindexAll xóa chỉ mục, tạo lại từ tệp và nạp bulk 500 dòng một lần, có khóa để lần thứ hai bị từ "
-           "chối (409); khôi phục CSDL PostgreSQL thì chỉ mục được dựng lại nền (TC-42)."),
+           "chối (409); khôi phục CSDL PostgreSQL thì chỉ mục được dựng lại nền (TC-42). Các trang được đọc theo khóa "
+           "(id > id cuối của trang trước), không dùng OFFSET, nên một dòng bị xóa giữa hai trang không làm trang sau bỏ sót "
+           "dòng; mỗi trang đọc trong một transaction chỉ đọc rồi xóa persistence context, nên bộ nhớ không tăng theo bảng."),
+    ("b1", "**Xóa tài khoản:** các giao dịch đi theo tài khoản qua cascade, không phát sự kiện từng giao dịch; sự kiện "
+           "ACCOUNT_DELETED sau commit xóa mọi document của người dùng đó (delete-by-query theo userId) và các ocr_feedbacks "
+           "của họ trong MongoDB."),
     ("table", "Thiết kế cụm Elasticsearch (chưa triển khai)", 4, [1800, 6704],
      ["Hạng mục", "Thiết kế"],
      [
@@ -749,7 +756,7 @@ C4_13 = [
     ("p", "**Giải pháp.** Bộ nghe chỉ chạy sau commit, trên pool mongoAsyncExecutor (5 luồng thường trực, tối đa 20, hàng đợi "
           "500); hàng đợi đầy thì bỏ tác vụ và ghi cảnh báo thay vì ném lỗi về luồng đã commit."),
 ]
-C4_13 += code(J + "Service/OcrMongoService.java", 95, 97, "Bộ nghe ghi ocr_logs")
+C4_13 += code(J + "Service/OcrMongoService.java", 98, 100, "Bộ nghe ghi ocr_logs")
 C4_13 += short_code(J + "Config/AsyncConfig.java", [(23, 26), (29, 30)], "Pool luồng nền")
 C4_13 += [
     ("p", "**Bằng chứng và kiểm thử.** Trước: không có số đo độ trễ của kiểu ghi đồng bộ (thiết kế cũ không được dựng lại để "
@@ -769,7 +776,7 @@ C4_13 += [
           "ngừng. Một tác vụ khác gửi dòng chú thích heartbeat mỗi 25 s trên các luồng SSE để proxy không đóng luồng nhàn "
           "rỗi và để dọn các trình duyệt đã đóng."),
 ]
-C4_13 += code(J + "Service/Search/TransactionSearchIndexer.java", 99, 105, "Thử lại việc tạo chỉ mục")
+C4_13 += code(J + "Service/Search/TransactionSearchIndexer.java", 131, 137, "Thử lại việc tạo chỉ mục")
 C4_13 += [
     ("p", "**Bằng chứng và kiểm thử.** Trước: lần tạo hỏng lúc khởi động không được thử lại. Sau: một phương thức của lớp "
           "TransactionSearchIndexerIntegrationTest (tên phương thức ở khối dưới) chứng minh tác vụ thử cho tới khi chỉ mục có rồi dừng; "
@@ -805,7 +812,7 @@ C4_13 += [
           "tạo mới khi chưa có, bằng $setOnInsert nên không đụng document đã có cùng giá trị (gửi lại y nguyên giữ trạng thái "
           "đã xử lý, TC-21)."),
 ]
-C4_13 += code(J + "Service/OcrMongoService.java", 193, 205, "Upsert hai bước")
+C4_13 += code(J + "Service/OcrMongoService.java", 196, 208, "Upsert hai bước")
 C4_13 += [
     ("p", "**Ví và checkout lặp.** TransactionService luôn khóa ví trước khi đọc số dư, kể cả khi không có clientId, rồi trong "
           "khóa đó tra findByUserIdAndClientId: clientId đã có thì trả lại giao dịch gốc (J/Service/TransactionService.java:"
