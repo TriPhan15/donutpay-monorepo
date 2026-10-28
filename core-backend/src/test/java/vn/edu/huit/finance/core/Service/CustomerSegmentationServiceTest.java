@@ -72,6 +72,7 @@ class CustomerSegmentationServiceTest {
     private void assertRejectedAndNothingWritten() {
         assertThrows(AiServiceUnavailableException.class, service::runSegmentation);
         verify(userRepo, never()).updateAiLabelForUsers(any(), any());
+        verify(userRepo, never()).clearAiLabelForUsers(any());
     }
 
     @Test
@@ -92,7 +93,20 @@ class CustomerSegmentationServiceTest {
 
         verify(userRepo).updateAiLabelForUsers("CHAMPIONS", Set.of(1L, 2L));
         verify(userRepo).updateAiLabelForUsers("LOST", Set.of(3L));
+        verify(userRepo, never()).clearAiLabelForUsers(any());
         assertEquals(3, count);
+    }
+
+    @Test
+    void aPartialAnswer_clearsTheLabelsOfUsersLeftOut() {
+        aiAnswers(new SegmentAssignment("1", "LOYAL"), new SegmentAssignment("2", "LOST"));
+
+        int count = service.runSegmentation();
+
+        verify(userRepo).updateAiLabelForUsers("LOYAL", Set.of(1L));
+        verify(userRepo).updateAiLabelForUsers("LOST", Set.of(2L));
+        verify(userRepo).clearAiLabelForUsers(Set.of(3L));
+        assertEquals(2, count);
     }
 
     @Test

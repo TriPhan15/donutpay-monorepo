@@ -120,4 +120,13 @@ class CustomerSegmentationRollbackTest {
 
         assertEquals(List.of("CHAMPIONS", "LOST"), labelsInDatabase());
     }
+
+    @Test
+    void aUserTheAiLeftOutLosesTheOldLabel() {
+        when(client.requestSegments(any())).thenReturn(List.of(new SegmentAssignment(aliceId.toString(), "CHAMPIONS")));
+
+        assertEquals(1, service.runSegmentation());
+
+        assertEquals(java.util.Arrays.asList("CHAMPIONS", null), labelsInDatabase());
+    }
 }

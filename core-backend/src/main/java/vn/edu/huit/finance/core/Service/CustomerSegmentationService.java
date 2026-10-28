@@ -23,7 +23,8 @@ import java.util.Set;
 
 /**
  * Phân lớp khách hàng: tính RFM chuẩn (chỉ khoản chi, 12 tháng gần nhất), nhờ dịch vụ AI gán nhóm, rồi ghi mọi nhãn
- * trong MỘT giao dịch. Câu trả lời sai (user_id null/lạ/trùng, nhãn lạ) bị từ chối nguyên khối, không ghi gì.
+ * trong MỘT giao dịch. Câu trả lời sai (user_id null/lạ/trùng, nhãn lạ) bị từ chối nguyên khối, không ghi gì. Người
+ * dùng đã gửi đi mà AI không trả lời bị xóa nhãn (không giữ nhãn của lần chạy trước).
  */
 @Slf4j
 @Service
@@ -56,9 +57,14 @@ public class CustomerSegmentationService {
 
         Integer assigned = transactionTemplate.execute(status -> {
             int count = 0;
+            Set<Long> leftOut = new HashSet<>(sentIds);
             for (Map.Entry<CustomerSegment, Set<Long>> entry : idsBySegment.entrySet()) {
                 userRepository.updateAiLabelForUsers(entry.getKey().name(), entry.getValue());
                 count += entry.getValue().size();
+                leftOut.removeAll(entry.getValue());
+            }
+            if (!leftOut.isEmpty()) {
+                userRepository.clearAiLabelForUsers(leftOut);
             }
             return count;
         });

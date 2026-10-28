@@ -43,6 +43,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     int updateAiLabelForUsers(@org.springframework.data.repository.query.Param("label") String label,
                               @org.springframework.data.repository.query.Param("ids") Collection<Long> ids);
 
+    /** Xóa nhãn của những người dùng mà dịch vụ AI không trả lời; cùng giao dịch với updateAiLabelForUsers. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE User u SET u.aiLabel = NULL WHERE u.id IN :ids")
+    int clearAiLabelForUsers(@org.springframework.data.repository.query.Param("ids") Collection<Long> ids);
+
     @Query("SELECT u.aiLabel, COUNT(u) FROM User u WHERE u.aiLabel IS NOT NULL GROUP BY u.aiLabel")
     List<Object[]> countUsersByAiLabel();
 
