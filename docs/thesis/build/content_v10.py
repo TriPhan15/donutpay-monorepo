@@ -26,7 +26,7 @@ ABBREVIATIONS = [
     ("CMAP", "Co-occurrence MAP", "Bản đồ đồng xuất hiện của các item"),
     ("CV", "Coefficient of Variation", "Hệ số biến thiên (độ lệch chuẩn chia trung bình)"),
     ("SPADE", "Sequential PAttern Discovery using Equivalence classes", "Khai phá mẫu tuần tự bằng lớp tương đương"),
-    ("WCM-SPADE", "Weighted CM-SPADE", "SPADE kèm bản đồ đồng xuất hiện, có trọng số chi tiêu và lọc mẫu đóng"),
+    ("WCM-SPADE", "Weighted CM-SPADE (tên do nhóm đặt)", "SPADE kèm bản đồ đồng xuất hiện, có trọng số chi tiêu và lọc mẫu đóng"),
 ]
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -35,8 +35,8 @@ ABBREVIATIONS = [
 CH2 = [
     ("h2", "PHÂN TÍCH BÀI TOÁN PHÂN TÍCH CHI TIÊU"),
     ("p", "Mục này phân tích phần thứ hai của AI Service, tức các chức năng phục vụ use case UC13 (xem báo cáo thói quen chi "
-          "tiêu) và UC21 (phân khúc khách hàng). Khác với mô hình DONUT ở mục 2.5, các chức năng này không dùng mạng nơ-ron "
-          "mà dùng thuật toán khai phá dữ liệu và luật thống kê đơn giản, cài đặt bằng Python thuần. Mọi ngưỡng được nêu "
+          "tiêu) và UC21 (xem thống kê hệ thống, gồm chạy phân khúc khách hàng). Khác với mô hình DONUT ở mục 2.5, các chức năng này không dùng mạng nơ-ron "
+          "mà dùng thuật toán khai phá dữ liệu và luật thống kê đơn giản, cài đặt bằng Python, không dùng thư viện học máy. Mọi ngưỡng được nêu "
           "trong mục là lựa chọn thiết kế của đề tài, trừ chỗ có trích dẫn tài liệu; nhóm nói rõ điều này để không gán cho "
           "tài liệu những giá trị mà tài liệu không đưa ra."),
 
@@ -71,8 +71,8 @@ CH2 = [
           "tự được hiểu theo định nghĩa của Agrawal và Srikant [87]: một dãy itemset là mẫu của chuỗi nếu các itemset của "
           "nó xuất hiện đúng thứ tự trong chuỗi."),
     ("p", "Đề tài chọn tuần thay vì tháng vì hai lý do. Thứ nhất, số chuỗi quyết định độ tin cậy của phép đếm support: cửa "
-          "sổ 26 tuần cho tối đa 26 chuỗi, trong khi cùng khoảng đó chỉ cho khoảng sáu chuỗi nếu mỗi tháng là một chuỗi, "
-          "quá ít để phân biệt thói quen với sự trùng hợp. Thứ hai, nhịp sinh hoạt như đi chợ, đi lại, ăn uống lặp lại theo "
+          "sổ 26 tuần cho tối đa 26 chuỗi, trong khi cùng khoảng đó (khoảng sáu tháng) chỉ cho khoảng sáu chuỗi nếu mỗi tháng là một chuỗi, "
+          "quá ít để phân biệt thói quen với sự trùng hợp. Thứ hai, theo nhận định của nhóm, nhịp sinh hoạt như đi chợ, đi lại, ăn uống lặp lại theo "
           "tuần nên một tuần đủ ngắn để mẫu mang nghĩa “sau khi chi A thì chi B”. Việc cắt chuỗi theo tuần là một xấp xỉ "
           "lấy cảm hứng từ khai phá episode theo cửa sổ [82], không phải là cài đặt của thuật toán WINEPI."),
     ("p", "Dữ liệu được chuẩn bị theo các quy tắc sau. Chỉ khoản chi được dùng: khoản thu, khoản có danh mục “Tiết kiệm” "
@@ -102,7 +102,7 @@ CH2 = [
           "0,9 và 0,3, trung bình bằng 1. Mẫu gồm hai danh mục đầu có trọng số (1,8 + 0,9) / 2 = 1,35."),
     ("p", "Vì w(P) không vượt quá trọng số lớn nhất maxW nên wsup(P) ≤ sup(P) × maxW / N. Do đó chỉ cần xét các mẫu có "
           "support thô không nhỏ hơn raw_bound = max(1, ⌈min_sup × N / maxW⌉); đây là cận trên, nên việc tỉa không làm mất "
-          "mẫu hợp lệ. Cả DFS và CMAP đều dùng ngưỡng thô này. Kết quả được lọc đóng: bỏ mẫu P khi có mẫu Q khác P với cùng "
+          "mẫu hợp lệ. Cả bước duyệt theo chiều sâu (DFS) và CMAP đều dùng ngưỡng thô này. Kết quả được lọc đóng: bỏ mẫu P khi có mẫu Q khác P với cùng "
           "support thô mà P là mẫu con của Q. Đây là hậu lọc theo tinh thần khai phá mẫu đóng của BIDE [78], không phải "
           "thuật toán BIDE, và chỉ so sánh trong tập mẫu đã đạt support có trọng số."),
     ("p", "Độ dài tối đa của mẫu (DEFAULT_MAX_PATTERN_LENGTH = 4) được đếm theo số item, không theo số itemset: một mẫu "
@@ -112,7 +112,7 @@ CH2 = [
 
     ("h3", "Luật tuần tự"),
     ("p", "Luật tuần tự A ⇒ B có nghĩa: trong một tuần, nếu có A (các danh mục của A chi trong cùng một ngày) thì sau đó, "
-          "cũng trong tuần ấy, có B. A và B là các itemset cùng ngày, rời nhau, mỗi bên có thể gồm nhiều danh mục, với "
+          "cũng trong tuần ấy, có B; cách hiểu luật tuần tự kèm độ tin cậy theo [79]. A và B là các itemset cùng ngày, rời nhau, mỗi bên có thể gồm nhiều danh mục, với "
           "|A| + |B| ≤ 4. Các đại lượng đều đếm theo số tuần:"),
     ("b1", "sup(A): số tuần có A trong một ngày; sup(B): số tuần có B ở bất kỳ đâu trong tuần; sup(A ⇒ B): số tuần có B "
            "ở một ngày sau lần đầu A xuất hiện trong tuần đó."),
@@ -157,7 +157,7 @@ CH2 = [
           "định kỳ trưởng thành [85]; ngưỡng CV 0,5 là lựa chọn của đề tài, còn khái niệm mẫu xuất hiện định kỳ có nền "
           "trong khai phá mẫu định kỳ [83], [84] mà đề tài dùng bản đơn giản hơn nhiều."),
     ("p", "Ngày kế tiếp là ngày gần nhất cộng thêm μ làm tròn ngày; ứng dụng hiển thị nó là “khoảng” và dùng câu khác khi "
-          "ngày ấy đã qua. Đây chỉ là mô tả khoảng cách đã xảy ra chứ không phải mô hình dự báo. Thói quen được xếp theo CV "
+          "ngày ấy đã qua. Đây là phép ngoại suy đơn giản từ khoảng cách đã xảy ra, không phải mô hình dự báo. Thói quen được xếp theo CV "
           "tăng dần (đều nhất trước) và tính trên toàn bộ khoản chi của cửa sổ, không cần đủ 8 tuần. Ví dụ minh họa: một "
           "danh mục có bốn ngày chi cách nhau 7, 7 và 8 ngày cho μ ≈ 7,33, σ ≈ 0,47 và CV ≈ 0,06, nên được giữ với chu kỳ "
           "khoảng 7 ngày."),
@@ -182,7 +182,7 @@ CH2 = [
     ("h3", "Phân khúc khách hàng theo mô hình RFM"),
     ("p", "Phân khúc RFM [49] chấm mỗi người dùng theo ba chỉ số trong 12 tháng gần nhất, chỉ tính khoản chi và bỏ khoản "
           "góp tiết kiệm: Recency R là số ngày từ lần chi gần nhất, Frequency F là số khoản chi và Monetary M là tổng tiền "
-          "chi. Phương pháp RFM bắt nguồn từ tiếp thị trực tiếp [88]; cách chấm điểm bằng ngũ phân vị dưới đây là lựa chọn "
+          "chi. RFM là kỹ thuật quen thuộc trong tiếp thị trực tiếp [88]; cách chấm điểm bằng ngũ phân vị dưới đây là lựa chọn "
           "của đề tài, vì ngũ phân vị là cách chấm phổ biến trong thực hành RFM."),
     ("p", "Mỗi chỉ số được chấm từ 1 đến 5 theo thứ hạng phần trăm trung điểm: điểm = min(5, 1 + ⌊5 × (less + 0,5 × equal) / "
           "n⌋), trong đó less là số người có giá trị thấp hơn, equal là số người có giá trị bằng nhau và n là số người "
@@ -345,6 +345,10 @@ PARA_REPLACE = [
 ]
 
 TEXT_REPLACE = [
+    # Chương 3 – Web Admin: nhãn RFM cũ (review cuối, C1)
+    ("với nút Chạy phân lớp AI tự động, biểu đồ tỉ trọng các nhãn VIP, ACTIVE, AT-RISK, CHURN.",
+     "với nút Chạy Phân Lớp AI Tự Động và biểu đồ tỉ trọng bảy nhóm CHAMPIONS, LOYAL, NEW, NEED_ATTENTION, AT_RISK, "
+     "HIBERNATING, LOST.", 1),
     # Chương 2: giới thiệu
     ("Mục 2.5 phân tích bài toán trích xuất bốn trường thông tin và kiến trúc của mô hình DONUT.",
      "Mục 2.5 phân tích bài toán trích xuất bốn trường thông tin và kiến trúc của mô hình DONUT. Mục 2.6 phân tích bài toán "
