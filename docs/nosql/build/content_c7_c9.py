@@ -336,6 +336,10 @@ C7_1 = [
           f"đều chạy thật. Sau đó truy vấn mờ của Elasticsearch được sửa (commit 7f07caa và {RUN2['sha']} ngày "
           f"{RUN2['date']}, xem mục 7.4); lớp kiểm thử tích hợp Elasticsearch có thêm 5 test và chạy lại xanh tại "
           f"{RUN2['sha']} (03:34 ngày {RUN2['date']}, lượt 65 test, 0 lỗi). Số đếm đọc từ báo cáo surefire (TEST-∗.xml), không đếm chú thích @Test. "
+          f"Ngày {RUN2['date']}, commit 59983b9 sửa năm lỗi do rà soát mã phát hiện (tìm kiếm dùng PostgreSQL khi chỉ mục đang "
+          f"dựng lại, phân trang theo khóa khi reindex, dọn Elasticsearch và MongoDB khi xóa tài khoản, đánh dấu phản hồi "
+          f"nguyên tử, ô tìm kiếm di động) kèm test mới; sau commit đó toàn bộ kiểm thử không cần Docker của core-backend chạy "
+          f"lại xanh (2.177 test, 0 lỗi), còn các lớp tích hợp dùng Docker ⟦chạy lại sau 59983b9: … test, 0 lỗi⟧. "
           f"Danh sách lớp, số test hiện tại ({RUN2['tests']}) và CSDL thật mà lớp dùng:"),
     ("code", CLASS_LISTING),
     ("p", "Cột CSDL thật: \"-\" là test không cần CSDL (Mockito, MockMvc); \"mock\" là kho dữ liệu PostgreSQL được giả lập "
