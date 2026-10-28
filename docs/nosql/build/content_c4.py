@@ -252,7 +252,7 @@ LOG_SAMPLE = """{
   "transactionId": 1001,
   "rawJsonData": {
     "seller": {
-      "seller_name": "Highlands Coffee",
+      "seller_name": "Hlghlands C0ffee",
       "address": "TP. Hồ Chí Minh",
       "timestamp": "2026-08-01",
       "total_cost": "35,000",
@@ -262,7 +262,7 @@ LOG_SAMPLE = """{
   },
   "modelVersion": "donut-v4",
   "aiReading": {
-    "sellerName": "Highlands Coffee",
+    "sellerName": "Hlghlands C0ffee",
     "totalCost": "35000",
     "receiptDate": "2026-08-01"
   },

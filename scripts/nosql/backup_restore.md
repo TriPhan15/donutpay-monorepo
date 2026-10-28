@@ -120,10 +120,10 @@ bài tập sao lưu cho môn học, chạy trên container demo có RDB bật; *
 
 ```bash
 docker run --rm --network none -v "$PWD/scripts/nosql:/s:ro" redis:8.10-alpine sh -c '
-  redis-server --daemonize yes --dir /tmp/bk --dbfilename dump.rdb >/dev/null; sleep 1
+  mkdir -p /tmp/bk; redis-server --daemonize yes --dir /tmp/bk --dbfilename dump.rdb >/dev/null; sleep 1
   redis-cli < /s/redis_demo.txt >/dev/null                         # nạp dữ liệu demo
   redis-cli ZADD ledgermind:leaderboard:spend:2026-10 4200000 1 6850000 2 9100000 4
-  redis-cli SAVE && cp /tmp/bk/dump.rdb /tmp/bk/backup.rdb         # SAO LƯU
+  sleep 3; redis-cli SAVE && cp /tmp/bk/dump.rdb /tmp/bk/backup.rdb # SAO LƯU (đợi BGSAVE của Q-29 xong)
   redis-cli FLUSHALL                                               # XÓA (chỉ được vì là container demo)
   redis-cli SHUTDOWN NOSAVE; cp /tmp/bk/backup.rdb /tmp/bk/dump.rdb
   redis-server --daemonize yes --dir /tmp/bk --dbfilename dump.rdb # KHÔI PHỤC = khởi động lại với file RDB
@@ -132,13 +132,13 @@ docker run --rm --network none -v "$PWD/scripts/nosql:/s:ro" redis:8.10-alpine s
 
 | Bước | DBSIZE | ZCARD leaderboard | đứng đầu |
 |---|---|---|---|
-| 1. đếm trước | 5 | 3 | user 4, 9100000 |
+| 1. đếm trước | 4 | 3 | user 4, 9100000 |
 | 2. sau `FLUSHALL` | 0 | - | - |
-| 3. đếm sau khi khôi phục | **5** | **3** | **user 4, 9100000** |
+| 3. đếm sau khi khôi phục | **4** | **3** | **user 4, 9100000** |
 
 TTL được giữ: `ledgermind:default:v1:user-dashboard:1` đặt `EX 285`, sau khôi phục còn `TTL = 281`.
 
-Lưu ý khi chạy lệnh trong `redis_demo.txt` ngay trước `SAVE`: file đó kết thúc bằng `BGSAVE`, lệnh `SAVE` ngay sau sẽ báo
+Lưu ý khi chạy lệnh trong `redis_demo.txt` ngay trước `SAVE`: file đó gọi `BGSAVE` ở Q-29 (sau đó chỉ còn Q-41), nên `SAVE` ngay sau có thể báo
 "Background save already in progress"; đợi vài giây hoặc kiểm tra `INFO persistence`.
 
 ### 2b. Xuất RDB qua mạng không cần vào máy chủ: `redis-cli --rdb`

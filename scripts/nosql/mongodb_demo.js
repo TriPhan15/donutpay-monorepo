@@ -44,7 +44,7 @@ print("========================================================");
 const SELLERS = ["Highlands Coffee", "Phúc Long", "KFC Hai Bà Trưng", "Circle K", "WinMart", "Phở Thìn", "The Coffee House", "GS25"];
 const MISREAD = ["Hlghlands C0ffee", "Phuc L0ng", "KEC Ha1 Ba Trung", "Circ1e K", "W1nMart", "Ph0 Th1n", "The C0ffee House", "G525"];
 const FIELD_ORDER = ["total_cost", "seller_name", "total_cost", "receipt_date"];   // total_cost bị sửa nhiều nhất
-
+function corrected(i, field) { return field === "seller_name" ? (i < 12 || (i < 24 && i % 4 === 1) || i === 29) : (i < 24 && i % 4 === 3) || (i < 12 && i % 4 === 1); }   // hóa đơn i bị sửa trường này (addFeedback, Q-09): lần đọc AI giữ giá trị sai
 function logTime(i) {                       // i = 0..35: 12 log mỗi tháng
   const month = 7 + Math.floor(i / 12);     // JS tháng bắt đầu từ 0: 7 = tháng 8
   const day = 1 + (i % 12) * 2;
@@ -57,8 +57,8 @@ for (let i = 0; i < 36; i++) {
   const total = 35000 + 15000 * ((i * 7) % 20);
   const score = Math.round(((v5 ? 0.86 : 0.68) + ((i * 7) % 11) / 100) * 100) / 100;                 // v4: 0.68-0.78, v5: 0.86-0.96
   const when = logTime(i);
-  const seller = SELLERS[i % SELLERS.length];
-  const dateText = when.toISOString().slice(0, 10);
+  const seller = (corrected(i, "seller_name") ? MISREAD : SELLERS)[i % SELLERS.length];   // AI đọc sai thì log giữ chữ sai
+  const dateText = corrected(i, "receipt_date") ? "2026-01-01" : when.toISOString().slice(0, 10);
   logs.push({
     _class: "vn.edu.huit.finance.core.Document.OcrRawLog",
     transactionId: L(1001 + i),
@@ -81,7 +81,7 @@ function addFeedback(receiptIndex, field) {          // receiptIndex 0..23 -> re
   const values = {
     seller_name: [seller, MISREAD[receiptIndex % MISREAD.length]],
     total_cost: [String(log.rawJsonData.seller.total_cost_number * 10), String(log.rawJsonData.seller.total_cost_number)],
-    receipt_date: [log.aiReading.receiptDate, "2026-01-01"]
+    receipt_date: [log.createdAt.toISOString().slice(0, 10), "2026-01-01"]
   }[field];
   feedbacks.push({
     _class: "vn.edu.huit.finance.core.Document.OcrFeedback",
@@ -192,11 +192,11 @@ function upsertCorrection(receiptId, transactionId, userId, field, aiValue, expe
   const inserted = d.ocr_feedbacks.updateOne(key, { $setOnInsert: Object.assign({ reportedAt: now }, fields) }, { upsert: true });
   return inserted.upsertedCount === 1 ? "thêm mới" : "không đổi";
 }
-print("lần 1: " + upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25", ISODate("2026-10-20T08:00:00Z")));
+print("lần 1: " + upsertCorrection(530, 1030, 2, "seller_name", "Ph0 Th1n", "Phở Thìn", ISODate("2026-10-20T08:00:00Z")));
 d.ocr_feedbacks.updateOne({ receiptId: L(530), fieldError: "seller_name" }, { $set: { isResolved: true } });   // admin xử lý
-print("lần 2 (cùng giá trị): " + upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25", ISODate("2026-10-20T12:00:00Z"))
+print("lần 2 (cùng giá trị): " + upsertCorrection(530, 1030, 2, "seller_name", "Ph0 Th1n", "Phở Thìn", ISODate("2026-10-20T12:00:00Z"))
   + ", isResolved=" + d.ocr_feedbacks.findOne({ receiptId: L(530), fieldError: "seller_name" }).isResolved);
-print("lần 3 (giá trị khác): " + upsertCorrection(530, 1030, 2, "seller_name", "G525", "GS25 Cầu Giấy", ISODate("2026-10-21T09:00:00Z")));
+print("lần 3 (giá trị khác): " + upsertCorrection(530, 1030, 2, "seller_name", "Ph0 Th1n", "Phở Thìn Bờ Hồ", ISODate("2026-10-21T09:00:00Z")));
 printjson(d.ocr_feedbacks.findOne({ receiptId: L(530), fieldError: "seller_name" }, { _id: 0, expectedValue: 1, isResolved: 1, reportedAt: 1, updatedAt: 1 }));
 print("số document của (530, seller_name): " + d.ocr_feedbacks.countDocuments({ receiptId: L(530), fieldError: "seller_name" }));
 
