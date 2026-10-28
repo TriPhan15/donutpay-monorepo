@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:finance_ai_app/models/scan_queue_item.dart';
-import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 
@@ -266,33 +265,6 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
         );
       }
     }
-  }
-
-  Future<int> updateUser(UserModel user) async {
-    final id = user.id;
-    if (id == null) {
-      throw ArgumentError('UserModel.id is required for update');
-    }
-
-    final db = await database;
-    return db.update(
-      usersTable,
-      user.toMap(),
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  Future<UserModel?> getUserById(int id) async {
-    final db = await database;
-    final rows = await db.query(
-      usersTable,
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return UserModel.fromMap(rows.first);
   }
 
   Future<int> insertTransaction(
