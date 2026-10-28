@@ -74,12 +74,12 @@ docker network rm nosql-demo
 
 | # | Việc | Bắt đầu được khi nào | Kết quả nộp |
 |---|---|---|---|
-| T1 | Đọc hiểu hệ thống: file `docs/superpowers/specs/2026-10-26-nosql-report-and-elasticsearch-design.md`, thư mục `scripts/nosql/`, và 40 truy vấn Q-01..Q-40. Nắm vai trò của từng CSDL: MongoDB lưu bản sao phân tích lỗi AI; Redis lo cache, OTP, bảng xếp hạng (và sắp có Pub/Sub); Elasticsearch lo tìm kiếm tiếng Việt. | Ngay | Tự trả lời được các câu ở mục 5 |
+| T1 | Đọc hiểu hệ thống: file `docs/superpowers/specs/2026-10-26-nosql-report-and-elasticsearch-design.md`, thư mục `scripts/nosql/`, và 41 truy vấn Q-01..Q-41. Nắm vai trò của từng CSDL: MongoDB lưu bản sao phân tích lỗi AI; Redis lo cache, OTP, bảng xếp hạng và Pub/Sub cho sự kiện admin realtime (Q-41); Elasticsearch lo tìm kiếm tiếng Việt. | Ngay | Tự trả lời được các câu ở mục 5 |
 | T2 | **MongoDB:** chạy `mongodb_init.js` và `mongodb_demo.js`, xem từng truy vấn Q-01..Q-16 trên Compass (tab Documents, Aggregations, Explain Plan, Indexes, Validation) | Ngay | Ghi chú `docs/nosql/ghi_chu_tien/mongodb.md`; ảnh chụp theo danh sách ở T6 |
 | T3 | **Tìm hiểu Kibana và Elasticvue** (mục 2.5 của báo cáo, 2 điểm), theo 4 tiêu chí: (1) lý thuyết, kiến trúc, phiên bản, các bước cài đặt kèm ảnh; (2) các chức năng: quản lý index, Dev Tools, import/export, snapshot/restore, phân quyền, giám sát; (3) bảng so sánh: chức năng, giao diện, hỗ trợ truy vấn, hiệu năng, giấy phép, nền tảng, cộng đồng (có nguồn hoặc số đo, ví dụ RAM bằng `docker stats`); (4) phù hợp với loại ứng dụng nào và lý do, gắn với đề tài | Ngay | `docs/nosql/tim_hieu_tool/kibana_vs_elasticvue.md` + ảnh. Trí đưa vào báo cáo |
 | T4 | **Chạy lại backup/restore** theo `scripts/nosql/backup_restore.md` cho cả 3 CSDL (đếm, xóa, khôi phục, đếm lại) | Ngay | Ghi số đếm trước và sau vào `ghi_chu_tien/backup.md` + ảnh |
-| T5 | Chạy lại các truy vấn Redis (Q-17..Q-29) và Elasticsearch (Q-30..Q-40) trên RedisInsight và Kibana Dev Tools | Ngay | Ghi chú + ảnh |
-| T6 | **Chụp toàn bộ ảnh minh chứng** theo danh sách `docs/nosql/screenshots.md`, đặt tên đúng mã `S-xx.png` | Khi Trí gửi danh sách | `docs/nosql/screenshots/S-xx.png` |
+| T5 | Chạy lại các truy vấn Redis (Q-17..Q-29, Q-41) và Elasticsearch (Q-30..Q-40) trên RedisInsight và Kibana Dev Tools | Ngay | Ghi chú + ảnh |
+| T6 | **Chụp toàn bộ ảnh minh chứng** theo danh sách `docs/nosql/screenshots.md`, đặt tên đúng mã `S-xx.png`. **Cắt ảnh** chỉ giữ khung liên quan (Compass: vùng kết quả/Explain; trang admin: bảng hoặc thẻ đang minh họa, bỏ menu và vùng trống), vì ô ảnh trong báo cáo in chỉ khoảng 10 × 5,6 cm; chữ trong ảnh sau khi in phải đọc được | Khi Trí gửi danh sách | `docs/nosql/screenshots/S-xx.png` |
 | T7 | Soát nội dung Chương 2 và Chương 5 của báo cáo (đúng kiến thức, khớp ảnh), và soát chính tả toàn bộ | Khi có bản báo cáo v1/v4 | `ghi_chu_tien/soat_bao_cao.md` |
 | T8 | **Slide PowerPoint** dựa trên dàn ý `docs/nosql/slides_outline.md` (Trí làm bản đầu, Tiến hoàn thiện và tập thuyết trình) | Khi có dàn ý | File `.pptx` gửi Trí |
 | T9 | **Quay video demo 5–7 phút** theo `docs/nosql/kich_ban_demo.md` | Khi có kịch bản | Link video |
