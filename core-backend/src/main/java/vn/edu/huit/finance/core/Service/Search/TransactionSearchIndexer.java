@@ -1,23 +1,27 @@
 package vn.edu.huit.finance.core.Service.Search;
 
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.NoSuchIndexException;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
+import org.springframework.data.elasticsearch.core.query.Criteria;
+import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 import vn.edu.huit.finance.core.Config.SearchConfig;
 import vn.edu.huit.finance.core.Config.SearchEngineType;
 import vn.edu.huit.finance.core.Document.Search.TransactionSearchDocument;
@@ -45,7 +49,8 @@ import java.util.concurrent.locks.ReentrantLock;
  *       retried once;</li>
  *   <li>an index this class has just created is filled from PostgreSQL in the background, and a restore of the database
  *       rebuilds it from scratch, so neither leaves it empty or stale;</li>
- *   <li>{@link #reindexAll} rebuilds it from scratch, for an administrator.</li>
+ *   <li>{@link #reindexAll} rebuilds it from scratch, for an administrator;</li>
+ *   <li>the deletion of an account removes that user's documents, which no per-transaction event announces.</li>
  * </ul>
  * A failure of Elasticsearch in all but the last is logged and goes no further: it never reaches the PostgreSQL write that
  * caused it, nor stops the application from starting.
@@ -67,6 +72,10 @@ public class TransactionSearchIndexer {
     private final ElasticsearchOperations operations;
     private final TransactionRepository transactionRepo;
     private final Executor backgroundExecutor;
+    /** Runs the read of one page of rows (a read-only transaction in the application). */
+    private final TransactionOperations pageTransaction;
+    /** Detaches every entity read so far; run at the end of each page. */
+    private final Runnable clearPersistenceContext;
     /** Serialises the creation (and the drop and re-creation) of the index, never the bulk writes that follow. */
     private final Object indexLock = new Object();
     /** Held for the whole of a full rebuild (drop, create, bulk fill): a second one is refused, never queued. */
@@ -74,11 +83,34 @@ public class TransactionSearchIndexer {
     /** Set once the index has been seen or created; the periodic check does nothing from then on. */
     private volatile boolean indexReady;
 
+    @Autowired
     public TransactionSearchIndexer(ElasticsearchOperations operations, TransactionRepository transactionRepo,
-                                    @Qualifier("mongoAsyncExecutor") Executor backgroundExecutor) {
+                                    @Qualifier("mongoAsyncExecutor") Executor backgroundExecutor,
+                                    PlatformTransactionManager transactionManager,
+                                    EntityManager entityManager) {
+        this(operations, transactionRepo, backgroundExecutor, readOnly(transactionManager), entityManager::clear);
+    }
+
+    TransactionSearchIndexer(ElasticsearchOperations operations, TransactionRepository transactionRepo,
+                             Executor backgroundExecutor, TransactionOperations pageTransaction,
+                             Runnable clearPersistenceContext) {
         this.operations = operations;
         this.transactionRepo = transactionRepo;
         this.backgroundExecutor = backgroundExecutor;
+        this.pageTransaction = pageTransaction;
+        this.clearPersistenceContext = clearPersistenceContext;
+    }
+
+    /** For tests that read from a mocked repository: no transaction, nothing to clear. */
+    TransactionSearchIndexer(ElasticsearchOperations operations, TransactionRepository transactionRepo,
+                             Executor backgroundExecutor) {
+        this(operations, transactionRepo, backgroundExecutor, TransactionOperations.withoutTransaction(), () -> { });
+    }
+
+    private static TransactionTemplate readOnly(PlatformTransactionManager transactionManager) {
+        TransactionTemplate template = new TransactionTemplate(transactionManager);
+        template.setReadOnly(true);
+        return template;
     }
 
     /**
@@ -140,6 +172,10 @@ public class TransactionSearchIndexer {
     @Async("mongoAsyncExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onStatisticsChanged(StatisticsChangedEvent event) {
+        if (event.change() == StatisticsChange.ACCOUNT_DELETED) {
+            deleteDocumentsOf(event.userId());
+            return;
+        }
         if (event.change() != StatisticsChange.DATABASE_RESTORED) {
             return;
         }
@@ -163,6 +199,24 @@ public class TransactionSearchIndexer {
             if (locked) {
                 reindexLock.unlock();
             }
+        }
+    }
+
+    /**
+     * Removes every document of a deleted account (its transactions went with it through a cascade, which publishes no
+     * per-transaction event). A failure is logged: the documents stay until the next reindex, and are never served, because
+     * a search filters on the caller's id and reads the rows back from PostgreSQL.
+     */
+    private void deleteDocumentsOf(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        try {
+            operations.delete(new CriteriaQuery(new Criteria("userId").is(userId)), TransactionSearchDocument.class);
+            log.info("Search documents of a deleted account removed, userId={}, index={}", userId, TransactionSearchDocument.INDEX);
+        } catch (RuntimeException e) {
+            log.warn("Search documents of a deleted account could not be removed, run POST /api/admin/search/reindex, userId={}, index={}",
+                    userId, TransactionSearchDocument.INDEX, e);
         }
     }
 
@@ -268,24 +322,40 @@ public class TransactionSearchIndexer {
 
     /** Indexes every transaction of PostgreSQL into the existing index, {@value #PAGE_SIZE} per bulk request. */
     private int indexAllRows() {
+        return indexAllRows(PAGE_SIZE);
+    }
+
+    /**
+     * Keyset paging ({@code id > lastId}, in the order of the ids), not OFFSET: a row deleted between two pages cannot make
+     * the next one skip a row. Each page is read in its own read-only transaction and the persistence context is cleared at
+     * its end, so a rebuild on a request thread (open-session-in-view) does not keep the whole table managed.
+     */
+    int indexAllRows(int pageSize) {
         int indexed = 0;
-        Pageable pageable = PageRequest.of(0, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id"));
+        long lastId = 0;
         while (true) {
-            Page<Transaction> page = transactionRepo.findPageForSearchIndex(pageable);
-            List<TransactionSearchDocument> documents = page.getContent().stream()
-                    .map(TransactionSearchDocument::from)
-                    .toList();
-            if (!documents.isEmpty()) {
-                operations.save(documents);
-                indexed += documents.size();
+            long after = lastId;
+            RowPage page = pageTransaction.execute(status -> {
+                List<Transaction> rows = transactionRepo.findNextForSearchIndex(after, PageRequest.of(0, pageSize));
+                RowPage read = new RowPage(rows.stream().map(TransactionSearchDocument::from).toList(),
+                        rows.isEmpty() ? after : rows.get(rows.size() - 1).getId(), rows.size());
+                clearPersistenceContext.run();
+                return read;
+            });
+            if (!page.documents().isEmpty()) {
+                operations.save(page.documents());
+                indexed += page.documents().size();
             }
-            if (!page.hasNext()) {
+            if (page.rowCount() < pageSize) {
                 break;
             }
-            pageable = page.nextPageable();
+            lastId = page.lastId();
         }
         indexOps().refresh();
         return indexed;
+    }
+
+    private record RowPage(List<TransactionSearchDocument> documents, long lastId, int rowCount) {
     }
 
     /** Elasticsearch answered index_not_found_exception, whether Spring Data translated it or not. */

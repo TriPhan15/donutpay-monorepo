@@ -2,6 +2,8 @@ package vn.edu.huit.finance.core.Config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import jakarta.persistence.EntityManager;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchIndexer;
@@ -27,6 +29,8 @@ class SearchConfigTest {
             .withUserConfiguration(SearchConfig.class, TransactionSearchIndexer.class)
             .withBean(ElasticsearchOperations.class, () -> operations)
             .withBean(TransactionRepository.class, () -> mock(TransactionRepository.class))
+            .withBean(PlatformTransactionManager.class, () -> mock(PlatformTransactionManager.class))
+            .withBean(EntityManager.class, () -> mock(EntityManager.class))
             .withBean("mongoAsyncExecutor", Executor.class, () -> Runnable::run);
 
     @Test

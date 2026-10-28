@@ -1,8 +1,6 @@
 package vn.edu.huit.finance.core.Service.Search;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.IndexOperations;
 import vn.edu.huit.finance.core.Exception.ReindexInProgressException;
@@ -10,7 +8,6 @@ import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -37,7 +33,6 @@ class TransactionSearchIndexerReindexLockTest {
         IndexOperations indexOps = mock(IndexOperations.class);
         TransactionRepository repo = mock(TransactionRepository.class);
         when(operations.indexOps(TransactionSearchDocument_CLASS())).thenReturn(indexOps);
-        when(repo.findPageForSearchIndex(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         CountDownLatch inside = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         when(indexOps.exists()).thenAnswer(call -> {
@@ -71,7 +66,6 @@ class TransactionSearchIndexerReindexLockTest {
         IndexOperations indexOps = mock(IndexOperations.class);
         TransactionRepository repo = mock(TransactionRepository.class);
         when(operations.indexOps(TransactionSearchDocument_CLASS())).thenReturn(indexOps);
-        when(repo.findPageForSearchIndex(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         CountDownLatch inside = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         when(indexOps.exists()).thenAnswer(call -> {

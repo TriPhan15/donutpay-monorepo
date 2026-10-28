@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Service.Search;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,17 +35,21 @@ public class TransactionSearchService {
     private final SearchEngineType configuredEngine;
     private final PostgresTransactionSearchEngine postgresEngine;
     private final Optional<ElasticsearchTransactionSearchEngine> elasticsearchEngine;
+    /** Absent unless Elasticsearch is the configured engine. */
+    private final ObjectProvider<TransactionSearchIndexer> indexer;
 
     public TransactionSearchService(CurrentUserProvider currentUserProvider,
                                     TransactionRepository transactionRepo,
                                     SearchEngineType configuredEngine,
                                     PostgresTransactionSearchEngine postgresEngine,
-                                    Optional<ElasticsearchTransactionSearchEngine> elasticsearchEngine) {
+                                    Optional<ElasticsearchTransactionSearchEngine> elasticsearchEngine,
+                                    ObjectProvider<TransactionSearchIndexer> indexer) {
         this.currentUserProvider = currentUserProvider;
         this.transactionRepo = transactionRepo;
         this.configuredEngine = configuredEngine;
         this.postgresEngine = postgresEngine;
         this.elasticsearchEngine = elasticsearchEngine;
+        this.indexer = indexer;
     }
 
     public TransactionSearchResponseDto search(TransactionSearchRequestDto request) {
@@ -54,7 +59,7 @@ public class TransactionSearchService {
 
         SearchEngineType answeredBy = SearchEngineType.POSTGRES;
         TransactionSearchEngine.SearchHits hits = null;
-        if (configuredEngine == SearchEngineType.ELASTICSEARCH && elasticsearchEngine.isPresent()) {
+        if (configuredEngine == SearchEngineType.ELASTICSEARCH && elasticsearchEngine.isPresent() && indexIsUsable()) {
             try {
                 hits = elasticsearchEngine.get().hits(userId, q, page);
                 answeredBy = SearchEngineType.ELASTICSEARCH;
@@ -74,6 +79,15 @@ public class TransactionSearchService {
                 .total(hits.total())
                 .engine(answeredBy.name().toLowerCase(Locale.ROOT))
                 .build();
+    }
+
+    /**
+     * False while the index is being rebuilt or filled, or has not been found or created yet: it then answers with no hits
+     * or only part of them, which is worse than the slower PostgreSQL search.
+     */
+    private boolean indexIsUsable() {
+        TransactionSearchIndexer current = indexer.getIfAvailable();
+        return current == null || (current.isIndexReady() && !current.isReindexing());
     }
 
     /** The caller's rows for {@code ids} in the order of {@code ids}; an id without a row of the caller is dropped. */

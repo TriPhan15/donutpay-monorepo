@@ -273,7 +273,8 @@ class LedgerPageState extends State<LedgerPage> {
           q.isEmpty ||
           tx.title.toLowerCase().contains(q) ||
           tx.category.toLowerCase().contains(q);
-      // The server only adds matches the device cannot find (no accents, typos). A transaction not sent yet is not
+      // The server only adds matches the device cannot find (no accents, typos); its ids are cleared as soon as the text
+      // changes, so a row that matched the previous text is not shown under the new one. A transaction not sent yet is not
       // in the server index: only the device can match it. The id is text on the device, a number on the server.
       final serverId = tx.id == null ? null : int.tryParse(tx.id!);
       final matchSearch =
@@ -301,7 +302,8 @@ class LedgerPageState extends State<LedgerPage> {
     final query = value.trim();
     setState(() {
       _searchQuery = value;
-      if (query.length < _minServerQueryLength) _serverMatchIds = null;
+      // The ids belong to the previous text: until the answer for this one arrives only the device matches.
+      _serverMatchIds = null;
     });
     if (query.length < _minServerQueryLength) return;
     _searchTimer = Timer(_searchDebounce, () => _searchOnServer(query));

@@ -35,6 +35,8 @@ public final class ElasticsearchTestContainers {
                 .withEnv("xpack.security.enabled", "false")
                 // As in docker-compose.yml: a write into a missing index fails instead of creating it with a dynamic mapping.
                 .withEnv("action.auto_create_index", "false")
+                // A host disk over 90% full would keep the shards unassigned (high watermark): irrelevant for a throwaway test cluster.
+                .withEnv("cluster.routing.allocation.disk.threshold_enabled", "false")
                 .withEnv("ES_JAVA_OPTS", "-Xms256m -Xmx256m")
                 .waitingFor(Wait.forHttp("/_cluster/health").forPort(PORT).forStatusCode(200)
                         .withStartupTimeout(Duration.ofMinutes(2)));

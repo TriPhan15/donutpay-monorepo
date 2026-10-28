@@ -8,9 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import vn.edu.huit.finance.core.Document.Search.TransactionSearchDocument;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.Receipt;
@@ -360,13 +358,11 @@ class TransactionRepositoryTest {
         entityManager.persistAndFlush(bobs);
         forgetLoadedEntities();
 
-        Page<Transaction> first = transactionRepository.findPageForSearchIndex(PageRequest.of(0, 2, Sort.by("id")));
-        Page<Transaction> second = transactionRepository.findPageForSearchIndex(first.nextPageable());
+        List<Transaction> first = transactionRepository.findNextForSearchIndex(0L, PageRequest.of(0, 2));
+        List<Transaction> second = transactionRepository.findNextForSearchIndex(first.get(1).getId(), PageRequest.of(0, 2));
 
-        assertEquals(3, first.getTotalElements());
-        assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()), first.map(Transaction::getId).getContent());
-        assertEquals("Highlands", first.getContent().get(0).getReceipt().getVendorName());
-        assertEquals(List.of(bobs.getId()), second.map(Transaction::getId).getContent());
-        assertFalse(second.hasNext());
+        assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()), first.stream().map(Transaction::getId).toList());
+        assertEquals("Highlands", first.get(0).getReceipt().getVendorName());
+        assertEquals(List.of(bobs.getId()), second.stream().map(Transaction::getId).toList());
     }
 }

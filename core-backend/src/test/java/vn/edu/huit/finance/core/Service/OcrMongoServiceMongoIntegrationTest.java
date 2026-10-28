@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,8 @@ import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
 import vn.edu.huit.finance.core.Exception.OcrFeedbackNotFoundException;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrFeedbackRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -124,6 +127,37 @@ class OcrMongoServiceMongoIntegrationTest {
         assertFalse(doc.isResolved(), "a new correction needs a new look");
         assertEquals(first.getReportedAt(), doc.getReportedAt(), "reportedAt stays the day of the first report");
         assertTrue(doc.getUpdatedAt().isAfter(doc.getReportedAt()));
+    }
+
+    @Test
+    void resolve_doesNotOverwriteACorrectionReopenedMeanwhile() {
+        service.onOcrCorrectionEvent(total(1, "120000", "150000"));
+        String id = feedbackRepository.findAll().get(0).getId();
+        // What resolveFeedback used to hold in hand between its read and its save.
+        OcrFeedback stale = feedbackRepository.findById(id).orElseThrow();
+        service.onOcrCorrectionEvent(total(1, "120000", "160000"));
+
+        OcrFeedbackResponseDto resolved = service.resolveFeedback(id);
+
+        assertEquals("150000", stale.getExpectedValue());
+        OcrFeedback stored = feedbackRepository.findById(id).orElseThrow();
+        assertEquals("160000", stored.getExpectedValue(), "the newer correction survives");
+        assertTrue(stored.isResolved());
+        assertEquals("160000", resolved.getExpectedValue());
+        assertThrows(OcrFeedbackNotFoundException.class, () -> service.resolveFeedback(new ObjectId().toHexString()));
+    }
+
+    @Test
+    void accountDeleted_removesOnlyThatUsersFeedback() {
+        service.onOcrCorrectionEvent(total(1, "1", "2"));
+        service.onOcrCorrectionEvent(new OcrCorrectionEvent(2L, 20L, 9L,
+                List.of(new OcrFieldCorrection(OcrField.TOTAL_COST, "3", "4"))));
+
+        service.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED, 5L));
+
+        List<OcrFeedback> left = feedbackRepository.findAll();
+        assertEquals(1, left.size());
+        assertEquals(9L, left.get(0).getUserId());
     }
 
     @Test

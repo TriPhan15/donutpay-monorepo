@@ -29,10 +29,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt WHERE t.id = :id")
     Optional<Transaction> findForSearchIndex(@Param("id") Long id);
 
-    /** A page of every user's transactions with their receipts, for a rebuild of the search index. */
-    @Query(value = "SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt",
-           countQuery = "SELECT count(t) FROM Transaction t")
-    org.springframework.data.domain.Page<Transaction> findPageForSearchIndex(org.springframework.data.domain.Pageable pageable);
+    /**
+     * The next page of every user's transactions with their receipts, ordered by id, for a rebuild of the search index:
+     * the rows after {@code lastId} (keyset paging, so a row deleted meanwhile cannot make a later page skip one).
+     */
+    @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt WHERE t.id > :lastId ORDER BY t.id")
+    java.util.List<Transaction> findNextForSearchIndex(@Param("lastId") Long lastId, org.springframework.data.domain.Pageable pageable);
 
     /**
      * The transaction this user already created with this client id (the idempotency key of a checkout), if any. Only what

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
@@ -39,6 +40,8 @@ import vn.edu.huit.finance.core.Dto.OcrRawLogResponseDto;
 import vn.edu.huit.finance.core.Exception.OcrFeedbackNotFoundException;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrFeedbackRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
 import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
 
@@ -254,15 +257,39 @@ public class OcrMongoService {
         return criteria;
     }
 
+    /**
+     * Đánh dấu đã xử lý bằng một findAndModify nguyên tử chỉ đặt isResolved: không đọc rồi lưu cả document, nên một chỗ
+     * sửa mới vừa mở lại document (upsertCorrection) không bị ghi đè bằng giá trị cũ.
+     */
     public OcrFeedbackResponseDto resolveFeedback(String feedbackId) {
-        OcrFeedback feedback = ocrFeedbackRepository.findById(feedbackId).orElseThrow(() -> {
+        OcrFeedback resolved = mongoTemplate.findAndModify(new Query(Criteria.where(GROUP_KEY).is(feedbackId)),
+                new Update().set(FIELD_RESOLVED, true), FindAndModifyOptions.options().returnNew(true), OcrFeedback.class);
+        if (resolved == null) {
             log.warn("OCR feedback not found for resolve: {}", feedbackId);
-            return new OcrFeedbackNotFoundException(MSG_FEEDBACK_NOT_FOUND);
-        });
-        feedback.setResolved(true);
-        OcrFeedback saved = ocrFeedbackRepository.save(feedback);
+            throw new OcrFeedbackNotFoundException(MSG_FEEDBACK_NOT_FOUND);
+        }
         log.info("Resolved OCR feedback: {}", feedbackId);
-        return OcrFeedbackResponseDto.from(saved);
+        return OcrFeedbackResponseDto.from(resolved);
+    }
+
+    /**
+     * Xóa phản hồi OCR của người dùng vừa xóa tài khoản (sau khi PostgreSQL commit). ocr_logs không có userId (chỉ có
+     * transactionId của giao dịch đã bị xóa theo), nên không xóa theo người dùng được. Lỗi MongoDB chỉ được ghi log.
+     */
+    @Async("mongoAsyncExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onStatisticsChanged(StatisticsChangedEvent event) {
+        if (event.change() != StatisticsChange.ACCOUNT_DELETED || event.userId() == null) {
+            return;
+        }
+        try {
+            long removed = mongoTemplate.remove(new Query(Criteria.where(FIELD_USER_ID).is(event.userId())), OcrFeedback.class)
+                    .getDeletedCount();
+            log.info("Removed {} OCR feedback(s) of a deleted account in MongoDB, userId={}", removed, event.userId());
+        } catch (Exception e) {
+            log.error("Failed to remove OCR feedback of a deleted account from MongoDB, userId={}. Error: {}",
+                    event.userId(), e.getMessage(), e);
+        }
     }
 
     public void deleteFeedback(String feedbackId) {

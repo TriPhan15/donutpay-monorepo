@@ -215,4 +215,30 @@ void main() {
     expect(find.text('Phở Hùng'), findsOneWidget);
     expect(find.text('Cà phê sáng'), findsNothing);
   });
+
+  testWidgets('serverMatchesOfThePreviousText_goAsSoonAsTheTextChanges', (
+    tester,
+  ) async {
+    final slow = Completer<ResponseBody>();
+    backend.on('GET', _search, (options) {
+      if (options.queryParameters['q'] == 'phox') return slow.future;
+      return _found([1]);
+    });
+    await openSearch(tester);
+
+    await type(tester, 'pho');
+    expect(find.text('Phở Hùng'), findsOneWidget);
+
+    // The answer for "phox" is still on its way: row 1 only matched "pho" on the server.
+    await type(tester, 'phox');
+    expect(searchQueries(), ['pho', 'phox']);
+    expect(find.text('Phở Hùng'), findsNothing);
+
+    slow.complete(_found([2]));
+    for (var i = 0; i < _requestSteps; i++) {
+      await tester.pump(_requestStep);
+    }
+    expect(find.text('Phở Hùng'), findsNothing);
+    expect(find.text('Cà phê sáng'), findsOneWidget);
+  });
 }

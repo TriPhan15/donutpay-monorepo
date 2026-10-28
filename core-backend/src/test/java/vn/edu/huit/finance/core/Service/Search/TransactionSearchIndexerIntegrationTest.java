@@ -5,8 +5,6 @@ import co.elastic.clients.elasticsearch.indices.analyze.AnalyzeToken;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchTemplate;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
@@ -44,6 +42,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -80,8 +80,6 @@ class TransactionSearchIndexerIntegrationTest {
             indexOps.delete();
         }
         transactionRepo = mock(TransactionRepository.class);
-        when(transactionRepo.findPageForSearchIndex(any(Pageable.class)))
-                .thenAnswer(invocation -> Page.empty(invocation.getArgument(0)));
         // Runs the background rebuild on the calling thread, so the test sees it finished.
         indexer = new TransactionSearchIndexer(template, transactionRepo, Runnable::run);
     }
@@ -139,8 +137,8 @@ class TransactionSearchIndexerIntegrationTest {
 
     @Test
     void ensureIndex_creatingTheIndex_fillsItFromPostgres() {
-        when(transactionRepo.findPageForSearchIndex(any(Pageable.class))).thenAnswer(invocation ->
-                new PageImpl<>(List.of(transaction(48L, 7L, "Circle K")), invocation.getArgument(0), 1));
+        when(transactionRepo.findNextForSearchIndex(eq(0L), any(Pageable.class)))
+                .thenReturn(List.of(transaction(48L, 7L, "Circle K")));
 
         indexer.ensureIndex();
 
@@ -155,7 +153,7 @@ class TransactionSearchIndexerIntegrationTest {
         indexer.ensureIndex();
 
         assertTrue(indexer.isIndexReady());
-        verify(transactionRepo, never()).findPageForSearchIndex(any(Pageable.class));
+        verify(transactionRepo, never()).findNextForSearchIndex(anyLong(), any(Pageable.class));
     }
 
     @Test
@@ -163,12 +161,12 @@ class TransactionSearchIndexerIntegrationTest {
         indexer.ensureIndex();
         clearInvocations(transactionRepo); // the fill of the new index
         template.save(document("999998")); // gone from the restored PostgreSQL
-        when(transactionRepo.findPageForSearchIndex(any(Pageable.class))).thenAnswer(invocation ->
-                new PageImpl<>(List.of(transaction(49L, 7L, "Bách Hóa Xanh")), invocation.getArgument(0), 1));
+        when(transactionRepo.findNextForSearchIndex(eq(0L), any(Pageable.class)))
+                .thenReturn(List.of(transaction(49L, 7L, "Bách Hóa Xanh")));
 
         indexer.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_TOTALS, 7L));
         assertNotNull(template.get("999998", TransactionSearchDocument.class));
-        verify(transactionRepo, never()).findPageForSearchIndex(any(Pageable.class));
+        verify(transactionRepo, never()).findNextForSearchIndex(anyLong(), any(Pageable.class));
 
         indexer.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.DATABASE_RESTORED));
 
@@ -261,25 +259,21 @@ class TransactionSearchIndexerIntegrationTest {
         List<Transaction> firstPage = LongStream.rangeClosed(1, 500)
                 .mapToObj(id -> transaction(id, 7L, "Cửa hàng " + id)).toList();
         List<Transaction> secondPage = List.of(transaction(501L, 8L, "Cửa hàng 501"));
+        List<Long> after = new ArrayList<>();
         List<Pageable> requested = new ArrayList<>();
-        when(transactionRepo.findPageForSearchIndex(any(Pageable.class))).thenAnswer(invocation -> {
-            Pageable pageable = invocation.getArgument(0);
-            requested.add(pageable);
-            List<Transaction> rows = pageable.getPageNumber() == 0 ? firstPage : secondPage;
-            Page<Transaction> page = new PageImpl<>(rows, pageable, 501);
-            return page;
+        when(transactionRepo.findNextForSearchIndex(anyLong(), any(Pageable.class))).thenAnswer(invocation -> {
+            after.add(invocation.getArgument(0));
+            requested.add(invocation.getArgument(1));
+            return after.size() == 1 ? firstPage : secondPage;
         });
 
         int indexed = indexer.reindexAll();
 
         assertEquals(501, indexed);
-        assertEquals(2, requested.size());
+        assertEquals(List.of(0L, 500L), after, "each page starts after the last id of the previous one");
         assertAll(
-                () -> assertEquals(0, requested.get(0).getPageNumber()),
-                () -> assertEquals(1, requested.get(1).getPageNumber()),
                 () -> assertEquals(TransactionSearchIndexer.PAGE_SIZE, requested.get(0).getPageSize()),
-                () -> assertEquals(500, TransactionSearchIndexer.PAGE_SIZE),
-                () -> assertTrue(requested.get(0).getSort().isSorted(), "pages must have a stable order"));
+                () -> assertEquals(500, TransactionSearchIndexer.PAGE_SIZE));
         assertEquals(501, template.count(Query.findAll(), TransactionSearchDocument.class));
         assertNull(template.get("999999", TransactionSearchDocument.class));
         assertEquals("Cửa hàng 501", template.get("501", TransactionSearchDocument.class).getVendorName());

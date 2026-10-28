@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.PageRequest;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +45,7 @@ class TransactionSearchServiceTest {
     private TransactionRepository transactionRepo;
     private ElasticsearchTransactionSearchEngine elasticsearch;
     private PostgresTransactionSearchEngine postgres;
+    private TransactionSearchIndexer indexer;
 
     @BeforeEach
     void setUp() {
@@ -51,6 +53,9 @@ class TransactionSearchServiceTest {
         transactionRepo = mock(TransactionRepository.class);
         elasticsearch = mock(ElasticsearchTransactionSearchEngine.class);
         postgres = mock(PostgresTransactionSearchEngine.class);
+        indexer = mock(TransactionSearchIndexer.class);
+        when(indexer.isIndexReady()).thenReturn(true);
+        when(indexer.isReindexing()).thenReturn(false);
         User caller = new User();
         caller.setId(USER_ID);
         when(currentUser.getCurrentUser()).thenReturn(caller);
@@ -58,7 +63,14 @@ class TransactionSearchServiceTest {
 
     private TransactionSearchService service(SearchEngineType type) {
         return new TransactionSearchService(currentUser, transactionRepo, type, postgres,
-                type == SearchEngineType.ELASTICSEARCH ? Optional.of(elasticsearch) : Optional.empty());
+                type == SearchEngineType.ELASTICSEARCH ? Optional.of(elasticsearch) : Optional.empty(), provider(indexer));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ObjectProvider<TransactionSearchIndexer> provider(TransactionSearchIndexer indexer) {
+        ObjectProvider<TransactionSearchIndexer> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(indexer);
+        return provider;
     }
 
     private static TransactionSearchRequestDto request(String q) {
@@ -92,6 +104,31 @@ class TransactionSearchServiceTest {
         assertEquals(13, response.getTotal());
         assertEquals("elasticsearch", response.getEngine());
         verify(elasticsearch).hits(USER_ID, QUERY, PageRequest.of(1, 5));
+    }
+
+    @Test
+    void whileTheIndexIsRebuilt_postgresAnswers_andElasticsearchIsNotAsked() {
+        when(indexer.isReindexing()).thenReturn(true);
+        stubPostgresHit();
+
+        assertEquals("postgres", service(SearchEngineType.ELASTICSEARCH).search(request(QUERY)).getEngine());
+        verifyNoInteractions(elasticsearch);
+    }
+
+    @Test
+    void whileTheIndexIsNotReady_postgresAnswers_andElasticsearchIsNotAsked() {
+        when(indexer.isIndexReady()).thenReturn(false);
+        stubPostgresHit();
+
+        assertEquals("postgres", service(SearchEngineType.ELASTICSEARCH).search(request(QUERY)).getEngine());
+        verifyNoInteractions(elasticsearch);
+    }
+
+    private void stubPostgresHit() {
+        when(postgres.hits(eq(USER_ID), eq(QUERY), any(Pageable.class)))
+                .thenReturn(new TransactionSearchEngine.SearchHits(List.of(5L), 1));
+        when(transactionRepo.findAllByIdInAndUserIdWithReceipt(anyCollection(), eq(USER_ID)))
+                .thenReturn(List.of(row(5)));
     }
 
     @Test

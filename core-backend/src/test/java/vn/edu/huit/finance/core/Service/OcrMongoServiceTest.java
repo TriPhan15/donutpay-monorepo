@@ -12,7 +12,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.mongodb.client.result.DeleteResult;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.query.Update;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -244,30 +249,61 @@ class OcrMongoServiceTest {
     class ResolveFeedbackTests {
 
         @Test
-        @DisplayName("Cập nhật isResolved=true và trả về DTO khi feedback tồn tại")
+        @DisplayName("findAndModify nguyên tử chỉ đặt isResolved=true và trả về DTO khi feedback tồn tại")
         void returnsDtoAndUpdatesWhenFeedbackExists() {
-            String feedbackId = "fb-001";
-            OcrFeedback existingFeedback = new OcrFeedback();
-            existingFeedback.setResolved(false);
-            given(ocrFeedbackRepository.findById(feedbackId)).willReturn(Optional.of(existingFeedback));
-            given(ocrFeedbackRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            OcrFeedback after = new OcrFeedback();
+            after.setResolved(true);
+            given(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class),
+                    eq(OcrFeedback.class))).willReturn(after);
 
-            OcrFeedbackResponseDto result = ocrMongoService.resolveFeedback(feedbackId);
+            OcrFeedbackResponseDto result = ocrMongoService.resolveFeedback("fb-001");
 
             assertThat(result.isResolved()).isTrue();
-            ArgumentCaptor<OcrFeedback> captor = ArgumentCaptor.forClass(OcrFeedback.class);
-            then(ocrFeedbackRepository).should().save(captor.capture());
-            assertThat(captor.getValue().isResolved()).isTrue();
+            ArgumentCaptor<Update> update = ArgumentCaptor.forClass(Update.class);
+            ArgumentCaptor<FindAndModifyOptions> options = ArgumentCaptor.forClass(FindAndModifyOptions.class);
+            then(mongoTemplate).should().findAndModify(any(Query.class), update.capture(), options.capture(), eq(OcrFeedback.class));
+            assertThat(update.getValue().getUpdateObject()).isEqualTo(new org.bson.Document("$set", new org.bson.Document("isResolved", true)));
+            assertThat(options.getValue().isReturnNew()).isTrue();
+            then(ocrFeedbackRepository).should(never()).save(any());
         }
 
         @Test
-        @DisplayName("Ném OcrFeedbackNotFoundException và không gọi save khi feedback không tồn tại")
-        void throwsAndSkipsSaveWhenFeedbackNotFound() {
-            given(ocrFeedbackRepository.findById("not-exist")).willReturn(Optional.empty());
+        @DisplayName("Ném OcrFeedbackNotFoundException khi findAndModify không tìm thấy document")
+        void throwsWhenFeedbackNotFound() {
+            given(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class),
+                    eq(OcrFeedback.class))).willReturn(null);
 
             org.assertj.core.api.Assertions.assertThatThrownBy(() -> ocrMongoService.resolveFeedback("not-exist"))
                     .isInstanceOf(OcrFeedbackNotFoundException.class);
             then(ocrFeedbackRepository).should(never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("onStatisticsChanged — xóa tài khoản")
+    class AccountDeleted {
+
+        @Test
+        @DisplayName("ACCOUNT_DELETED xóa phản hồi OCR theo userId")
+        void removesTheFeedbackOfTheDeletedUser() {
+            given(mongoTemplate.remove(any(Query.class), eq(OcrFeedback.class))).willReturn(DeleteResult.acknowledged(3));
+
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED, 7L));
+
+            ArgumentCaptor<Query> query = ArgumentCaptor.forClass(Query.class);
+            then(mongoTemplate).should().remove(query.capture(), eq(OcrFeedback.class));
+            assertThat(query.getValue().getQueryObject()).isEqualTo(new org.bson.Document("userId", 7L));
+        }
+
+        @Test
+        @DisplayName("Sự kiện khác, hoặc không có userId, không đụng tới MongoDB; lỗi MongoDB không ném ra ngoài")
+        void ignoresOtherEventsAndSwallowsMongoFailures() {
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.DATABASE_RESTORED));
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED));
+            then(mongoTemplate).should(never()).remove(any(Query.class), eq(OcrFeedback.class));
+
+            given(mongoTemplate.remove(any(Query.class), eq(OcrFeedback.class))).willThrow(new RuntimeException("mongo down"));
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED, 7L));
         }
     }
 
