@@ -1,21 +1,17 @@
+# Pinned for Python 3.10 (Dockerfile / CI version)
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# Core AI Framework 
-torch
-torchvision
+# Core AI Framework
+torch==2.14.0+cpu
+torchvision==0.29.0+cpu
 
 # Web Framework
-fastapi
-uvicorn[standard]
-python-multipart
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+python-multipart==0.0.32
 
 # AI Libraries
-pillow
-transformers
-sentencepiece
-scikit-learn
-
-# Testing
-pytest
-pytest-mock
-httpx
+pillow==12.3.0
+transformers==5.17.0
+sentencepiece==0.2.2
+scikit-learn==1.7.2
