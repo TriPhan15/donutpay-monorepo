@@ -390,7 +390,7 @@ NFR_ROWS = [
     ["NFR-11", "Bảo mật dữ liệu", "Không bao giờ trả giao dịch của người khác qua tìm kiếm; cache theo userId không lẫn",
      "TC-07, TC-35, TC-37, TC-44", "Kiểm chứng bằng test"],
     ["NFR-12", "Bảo mật", "API và trang quản trị chỉ ROLE_ADMIN (2 lớp); Redis có mật khẩu, không mở cổng; MongoDB, "
-                          "Elasticsearch có mật khẩu, cổng chỉ 127.0.0.1; Elasticsearch chặn tự tạo index",
+                          "Elasticsearch có mật khẩu, cổng chỉ 127.0.0.1; Elasticsearch chặn tự tạo chỉ mục",
      "TC-19, TC-31, TC-45; đọc file compose", "Kiểm chứng bằng test và cấu hình"],
     ["NFR-13", "Sao lưu", "MongoDB: dump → xóa → khôi phục → đếm lại khớp 100 %, khôi phục < 5 phút (dữ liệu demo); Redis "
                           "dựng lại từ PostgreSQL; Elasticsearch: snapshot hoặc reindex", "TC-29, TC-49, TC-50; đo trên stack demo",
@@ -664,7 +664,7 @@ TRACE_ROWS = [
     ["FR-15", "AP-27, AP-28", "MongoDB: mongodump, mongorestore 2 collection; PostgreSQL: pg_dump",
      "TC-29, TC-31, TC-49; liên quan: TC-16, TC-50"],
     ["FR-16", "AP-15, AP-16", "Redis: kênh ledgermind:admin-events; SSE", "TC-17, TC-18, TC-19"],
-    ["NFR", "NFR-08, NFR-10", "Elasticsearch lỗi khi index: chỉ log; rollback không xóa cache", "TC-09, TC-40"],
+    ["NFR", "NFR-08, NFR-10", "Elasticsearch lỗi khi lập chỉ mục: chỉ log; rollback không xóa cache", "TC-09, TC-40"],
     ["Chỉ trong script", "AP-36, AP-37, AP-38", "Elasticsearch: terms, date_histogram; MongoDB: $lookup, $facet, index "
                                                 "transactionId, score_date_idx", "Q-38..Q-40, Q-13, Q-14, Q-01, Q-02"],
 ]

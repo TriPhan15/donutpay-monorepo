@@ -556,7 +556,7 @@ C7_3 = [
           "ý không dự phòng, vì một mã OTP không thể dựng lại từ PostgreSQL; RedisPasswordResetOtpStoreIntegrationTest kiểm "
           "rằng thông báo lỗi cố định và không chứa mã hay email."),
     ("p", f"**Elasticsearch.** Khi engine Elasticsearch ném bất kỳ lỗi nào, dịch vụ tìm kiếm ghi một dòng log và trả lời bằng "
-          f"PostgreSQL (TC-36); việc cập nhật index sau commit gặp Elasticsearch dừng chỉ log (TC-40). {FIG_S82} ở mục 6.4 "
+          f"PostgreSQL (TC-36); việc cập nhật chỉ mục sau commit gặp Elasticsearch dừng chỉ log (TC-40). {FIG_S82} ở mục 6.4 "
           f"cho thấy cùng một yêu cầu trả engine=elasticsearch rồi engine=postgres sau khi dừng container. Kết quả lúc "
           f"Elasticsearch dừng là của chế độ PostgreSQL, nên gõ không dấu sẽ ra ít kết quả hơn (mục 7.4)."),
     ("p", "**MongoDB.** Lần ghi log OCR và phản hồi OCR chạy sau commit trên luồng nền; lỗi chỉ được log và không về tới "
@@ -808,7 +808,7 @@ BAREM_ROWS = [
      shot_status(sids(67, 70))],
     ["Tiêu chí 9, nhóm 2: thao tác trên CSDL", "6.3, 5.6", "Đọc, lọc, đánh dấu, xóa phản hồi; sao lưu, khôi phục MongoDB "
      "trên web; S-71..S-73, S-65, S-66", shot_status(sids(71, 73) + ["S-65", "S-66"])],
-    ["Tiêu chí 9, nhóm 3: nghiệp vụ", "6.3", "Tìm kiếm tiếng Việt, đồng bộ index, sửa kết quả AI; S-74..S-76",
+    ["Tiêu chí 9, nhóm 3: nghiệp vụ", "6.3", "Tìm kiếm tiếng Việt, đồng bộ chỉ mục, sửa kết quả AI; S-74..S-76",
      shot_status(sids(74, 76))],
     ["Tiêu chí 9, nhóm 4: chức năng hỗ trợ", "6.3, 6.4", "Thống kê, bảng xếp hạng, realtime, cache; S-77..S-81",
      shot_status(sids(77, 81))],

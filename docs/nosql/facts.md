@@ -663,3 +663,6 @@ Không chạy trong lượt này: widget test mobile `mobile-app/test/screens/le
 | bản sao phân tích (MongoDB) | "CQRS read model" (chỉ dùng như phép so sánh) |
 | cơ chế dự phòng (fallback) | "Circuit Breaker" |
 | sau commit, bất đồng bộ, nhất quán cuối cùng | "đồng bộ thời gian thực" cho ghi NoSQL |
+| chỉ mục: nói chung và chỉ mục tìm kiếm của Elasticsearch (lần đầu ghi "chỉ mục (index)") | "index" làm danh từ chung trong lời văn |
+| index, database, collection, shard, mapping: giữ tiếng Anh khi gọi tên một đối tượng của sản phẩm (index transactions, database finance_nosql, 13 index của MongoDB) hoặc theo nhãn của GUI tool | dịch các tên đối tượng này |
+| ThS. (học vị của GVHD) | "Ths." |
