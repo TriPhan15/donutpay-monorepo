@@ -41,12 +41,28 @@ class AnalysisStatus(str, Enum):
     INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
 
 
+# Trường chỉ dành cho APK trước đợt 3 (đọc chuỗi "A+B → C", số lần, tỷ lệ tuần); mobile mới không đọc.
+LEGACY_PATTERN_FIELDS = ("pattern", "count", "wsupport")
+
+
 class PatternOut(_CamelModel):
     itemsets: List[List[str]]
     support: int
     weight: float
     weighted_support: float
     weeks: List[str]
+    pattern: str
+    count: int
+    wsupport: str
+
+
+def _legacy_pattern_fields(itemsets: List[List[str]], support: int, weeks_with_data: int) -> dict:
+    cover = support / weeks_with_data * 100 if weeks_with_data else 0.0
+    return {
+        "pattern": " → ".join("+".join(itemset) for itemset in itemsets),
+        "count": support,
+        "wsupport": f"{cover:.1f}%",
+    }
 
 
 class RuleOut(_CamelModel):
@@ -161,6 +177,7 @@ def analyze_spending(
                 weight=_round(p.weight),
                 weighted_support=_round(p.wsup),
                 weeks=[db.labels[sid] for sid in p.sids],
+                **_legacy_pattern_fields(p.itemsets, p.raw_sup, weeks_with_data),
             )
             for p in mined[:top_n]
         ]

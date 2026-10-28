@@ -3,7 +3,7 @@ import re
 from datetime import date, timedelta
 from typing import List
 
-from spending_analysis import MIN_PATTERN_ITEMS, analyze_spending
+from spending_analysis import LEGACY_PATTERN_FIELDS, MIN_PATTERN_ITEMS, analyze_spending
 from spending_data import Expense
 from test_spade_rules import _planted_weeks
 
@@ -50,9 +50,21 @@ def test_patterns_are_structured_and_have_at_least_two_items():
     for p in out["patterns"]:
         assert isinstance(p["itemsets"][0], list)
         assert sum(len(i) for i in p["itemsets"]) >= MIN_PATTERN_ITEMS
-        assert "→" not in str(p) and "+" not in "".join(sum(p["itemsets"], []))
+        structured = {k: v for k, v in p.items() if k not in LEGACY_PATTERN_FIELDS}
+        assert "→" not in str(structured) and "+" not in "".join(sum(p["itemsets"], []))
     ws = [p["weightedSupport"] for p in out["patterns"]]
     assert ws == sorted(ws, reverse=True)
+
+
+def test_patterns_carry_legacy_fields_for_old_apk():
+    out = analyze_spending(_planted_expenses()).model_dump(by_alias=True)
+    weeks = out["meta"]["weeksWithData"]
+    assert out["patterns"]
+    for p in out["patterns"]:
+        assert p["pattern"] == " → ".join("+".join(i) for i in p["itemsets"])
+        assert p["count"] == p["support"]
+        assert p["wsupport"] == f"{p['support'] / weeks * 100:.1f}%"
+        assert {"itemsets", "weightedSupport", "weeks"} <= p.keys()
 
 
 def test_top_n_caps_patterns_rules_and_habits():
