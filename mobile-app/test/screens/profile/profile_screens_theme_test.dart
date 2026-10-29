@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/theme/band_colors.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/linked/linked_services_page.dart';
 import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
@@ -11,8 +13,12 @@ import 'package:finance_ai_app/screens/profile/account_info_screen.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/profile/savings_page.dart';
 import 'package:finance_ai_app/screens/profile/user_info_screen.dart';
+import 'package:finance_ai_app/screens/savings/widgets/contribute_goal_card.dart';
+import 'package:finance_ai_app/screens/savings/widgets/quick_amount_grid.dart';
+import 'package:finance_ai_app/screens/savings/widgets/savings_goal_list.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/common/app_state_view.dart';
 
 import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
@@ -40,6 +46,13 @@ Color _dividerColor(WidgetTester tester, Finder divider) {
           as BoxDecoration;
   return (line.border! as Border).bottom.color;
 }
+
+/// The colour of the nearest [Material] around what [finder] finds.
+Color? _materialAround(WidgetTester tester, Finder finder) => tester
+    .widget<Material>(
+      find.ancestor(of: finder, matching: find.byType(Material)).first,
+    )
+    .color;
 
 /// The colours of every decorated [Container] inside what [finder] finds.
 Set<Color?> _fills(WidgetTester tester, Finder finder) => tester
@@ -194,107 +207,82 @@ void main() {
       );
 
       testWidgets(
-        'SavingsPage: page, shortcuts, goal, progress and the add dialog follow the theme',
+        'SavingsPage: band, toggle, total card, goal row and the Góp tiền sheet follow the theme',
         (tester) async {
           await start(tester, const SavingsPage(), mode);
-          final colors = themeOf(tester, SavingsPage).colorScheme;
-          expect(
-            _fills(tester, find.byType(SavingsPage)),
-            contains(colors.surface.withValues(alpha: 0.6)),
-            reason: 'the loading skeleton',
-          );
+          final theme = themeOf(tester, SavingsPage);
+          final colors = theme.colorScheme;
+          expect(find.byType(AppStateView), findsOneWidget);
 
-          // The page waits 300 ms before it loads.
-          await tester.pump(const Duration(milliseconds: 350));
+          await tester.pump(const Duration(milliseconds: 100));
           await tester.pumpAndSettle();
 
-          expect(materialColor(tester, find.byType(Scaffold)), colors.surface);
           expect(
-            tester.widget<AppBar>(find.byType(AppBar)).backgroundColor,
-            Colors.transparent,
+            boxDecoration(tester, find.text('Sổ tiết kiệm')).gradient,
+            theme.semanticColors.headerGradient,
           );
           expect(
             paintedColor(tester, find.text('Sổ tiết kiệm')),
-            colors.onSurface,
+            BandColors.primary,
           );
           expect(
-            paintedColor(tester, find.byIcon(Icons.add_rounded)),
-            colors.primary,
+            _materialAround(tester, find.byKey(SavingsPage.addKey)),
+            BandColors.tint,
+          );
+          expect(
+            paintedColor(tester, find.text('Đang thực hiện')),
+            colors.onPrimary,
+          );
+          expect(
+            paintedColor(tester, find.text('Đã xong')),
+            colors.onSurfaceVariant,
+          );
+
+          expect(
+            boxColor(tester, find.text('Tổng đã tiết kiệm')),
+            colors.surface,
           );
           expect(
             paintedColor(tester, find.text('Tổng đã tiết kiệm')),
-            Colors.white70,
-            reason: 'the brand card keeps white text in both themes',
-          );
-
-          final addGoal = find.byIcon(Icons.add_circle_rounded);
-          expect(boxColor(tester, addGoal), colors.surface);
-          expect(paintedColor(tester, addGoal), colors.primary);
-          expect(
-            paintedColor(tester, find.text('Thêm\nmục tiêu')),
             colors.onSurfaceVariant,
           );
-
-          expect(boxColor(tester, find.text('Du lịch')), colors.surface);
-          expect(paintedColor(tester, find.text('Du lịch')), colors.onSurface);
           expect(
-            paintedColor(tester, find.text('Ngày đạt mục tiêu: 31/12/2026')),
-            colors.onSurfaceVariant,
-          );
-          final saved = find.descendant(
-            of: find.byType(Dismissible),
-            matching: find.text(vnd(2500000)),
-          );
-          expect(paintedColor(tester, saved.first), colors.primary);
-          expect(paintedColor(tester, saved.last), colors.onSurfaceVariant);
-          expect(paintedColor(tester, find.text('Cập nhật')), colors.primary);
-          expect(
-            boxColor(tester, find.text('Cập nhật')),
-            colors.primary.withValues(alpha: 0.12),
-          );
-          final progress = tester
-              .widgetList<LinearProgressIndicator>(
-                find.byType(LinearProgressIndicator),
-              )
-              .last;
-          expect(
-            progress.backgroundColor,
-            colors.onSurfaceVariant.withValues(alpha: 0.2),
-          );
-          expect(progress.valueColor?.value, Colors.orangeAccent);
-
-          await tester.tap(find.byIcon(Icons.add_rounded));
-          await tester.pumpAndSettle();
-
-          expect(
-            materialColor(tester, find.byType(AlertDialog)),
-            colors.surface,
-          );
-          expect(
-            paintedColor(tester, find.text('Thêm mục tiêu tiết kiệm')),
+            paintedColor(tester, find.text(vnd(2500000))),
             colors.onSurface,
           );
-          expect(
-            paintedColor(tester, find.text('Tên mục tiêu')),
-            colors.onSurfaceVariant,
-          );
-          expect(
-            tester
-                .widget<InputDecorator>(find.byType(InputDecorator).first)
-                .decoration
-                .fillColor,
-            colors.surface,
-          );
-          expect(
-            paintedColor(tester, find.text('Hủy')),
-            colors.onSurfaceVariant,
-          );
-          expect(materialColor(tester, _button('Thêm')), colors.primary);
-          expect(paintedColor(tester, find.text('Thêm')), colors.onPrimary);
 
-          await tester.tap(find.text('Hủy'));
+          expect(paintedColor(tester, find.text('Du lịch')), colors.onSurface);
+          expect(
+            paintedColor(tester, find.text('Còn thiếu')),
+            colors.onSurfaceVariant,
+          );
+          final bar = tester.widget<LinearProgressIndicator>(
+            find.byKey(SavingsGoalList.barKey('1')),
+          );
+          expect(bar.color, colors.primary);
+          expect(bar.backgroundColor, colors.surfaceContainerHighest);
+
+          await tester.tap(find.text('Du lịch'));
+          await tester.pump(const Duration(milliseconds: 100));
           await tester.pumpAndSettle();
-          expect(find.byType(AlertDialog), findsNothing);
+          await tester.tap(find.byKey(QuickAmountGrid.tileKey(5e5)));
+          await tester.pump();
+
+          final added = tester.widget<FractionallySizedBox>(
+            find.byKey(ContributeGoalCard.addedSegmentKey),
+          );
+          expect(
+            (added.child! as ColoredBox).color,
+            theme.semanticColors.pendingProgressColor,
+          );
+          expect(
+            _materialAround(tester, find.byKey(QuickAmountGrid.tileKey(5e5))),
+            colors.primaryContainer,
+          );
+          expect(
+            paintedColor(tester, find.textContaining('Trừ từ ví')),
+            colors.onPrimaryContainer,
+          );
         },
       );
 

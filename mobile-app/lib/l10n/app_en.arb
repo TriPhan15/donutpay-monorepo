@@ -1112,15 +1112,6 @@
   "@savingsTitle": {
     "description": "Title of the savings screen and its profile row."
   },
-  "savingsLoadFailed": "Could not load your savings. {reason}",
-  "@savingsLoadFailed": {
-    "description": "Snackbar when the savings cannot be loaded; reason is the error text.",
-    "placeholders": {
-      "reason": {
-        "type": "String"
-      }
-    }
-  },
   "savingsDeleteFailed": "Could not delete the goal. {reason}",
   "@savingsDeleteFailed": {
     "description": "Snackbar when a goal cannot be deleted; reason is the error text.",
@@ -1168,30 +1159,9 @@
       }
     }
   },
-  "savingsAddTitle": "Add a savings goal",
-  "@savingsAddTitle": {
-    "description": "Title of the add goal dialog."
-  },
-  "savingsAdd": "Add",
-  "@savingsAdd": {
-    "description": "Submit button of the add goal dialog."
-  },
   "savingsGoalName": "Goal name",
   "@savingsGoalName": {
     "description": "Field of the add goal dialog."
-  },
-  "savingsTargetAmount": "Target amount (₫)",
-  "@savingsTargetAmount": {
-    "description": "Field of the add goal dialog."
-  },
-  "savingsEditTitle": "Edit goal {title}",
-  "@savingsEditTitle": {
-    "description": "Title of the edit goal dialog (name, target and deadline only).",
-    "placeholders": {
-      "title": {
-        "type": "String"
-      }
-    }
   },
   "ledgerSavingsManagedByGoal": "Savings contributions are managed on the Savings page.",
   "@ledgerSavingsManagedByGoal": {
@@ -1218,26 +1188,6 @@
         "type": "String"
       }
     }
-  },
-  "savingsAddGoalAction": "Add\ngoal",
-  "@savingsAddGoalAction": {
-    "description": "Two-line label of the add goal shortcut."
-  },
-  "savingsGoalList": "Goals",
-  "@savingsGoalList": {
-    "description": "Heading of the goal list."
-  },
-  "savingsEmpty": "No goals yet.",
-  "@savingsEmpty": {
-    "description": "Shown when there is no goal."
-  },
-  "savingsEmptyHint": "Tap \"+\" to create a savings goal.",
-  "@savingsEmptyHint": {
-    "description": "Hint under the empty goal list."
-  },
-  "savingsUpdate": "Update",
-  "@savingsUpdate": {
-    "description": "Button that opens the update goal dialog."
   },
   "commonSessionExpiredTitle": "Session expired",
   "@commonSessionExpiredTitle": {
@@ -2657,51 +2607,13 @@
   "@categorySavings": {
     "description": "Default expense category 'savings': money moved into a savings goal."
   },
-  "savingsTargetDateField": "Target date",
-  "@savingsTargetDateField": {
-    "description": "Label of the optional target date of a goal."
-  },
-  "savingsTargetDateAdd": "Add a target date (optional)",
-  "@savingsTargetDateAdd": {
-    "description": "Button that adds the optional target date."
-  },
   "savingsTargetDateClear": "Remove the target date",
   "@savingsTargetDateClear": {
     "description": "Tooltip of the button that removes the target date."
   },
-  "savingsTargetDateShown": "Target date: {date}",
-  "@savingsTargetDateShown": {
-    "description": "Target date under a goal's name.",
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
-  },
   "savingsContribute": "Add money",
   "@savingsContribute": {
     "description": "Button of a goal that moves money from the wallet into it."
-  },
-  "savingsContributeTitle": "Add money: {title}",
-  "@savingsContributeTitle": {
-    "description": "Title of the add money sheet.",
-    "placeholders": {
-      "title": {
-        "type": "String"
-      }
-    }
-  },
-  "savingsContributeAmount": "Amount (₫)",
-  "@savingsContributeAmount": {
-    "description": "Amount field of the add money sheet."
-  },
-  "savingsContributeHelper": "Taken from your wallet and recorded as a \"Savings\" expense",
-  "@savingsContributeHelper": {
-    "description": "Helper of the add money amount."
-  },
-  "savingsContributeInvalidAmount": "Enter an amount greater than 0",
-  "@savingsContributeInvalidAmount": {
-    "description": "Toast when the add money amount is empty or zero."
   },
   "savingsContributeFailed": "Could not add the money. {reason}",
   "@savingsContributeFailed": {
@@ -3278,5 +3190,225 @@
   "statsNoMatch": "No transaction matches the filter",
   "@statsNoMatch": {
     "description": "Statistics list when the filter or the search hides every transaction of the period."
+  },
+  "savingsTabActive": "In progress",
+  "@savingsTabActive": {
+    "description": "Savings screen toggle: goals still being funded."
+  },
+  "savingsTabDone": "Done",
+  "@savingsTabDone": {
+    "description": "Savings screen toggle: reached goals."
+  },
+  "savingsMissing": "Still needed",
+  "@savingsMissing": {
+    "description": "Caption above the amount a savings goal still misses."
+  },
+  "savingsDaysLeft": "{days, plural, =1{1 day left} other{{days} days left}} · {date}",
+  "@savingsDaysLeft": {
+    "description": "Row of a savings goal: days to its target date, then the date.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsDueToday": "Due today · {date}",
+  "@savingsDueToday": {
+    "description": "Row of a savings goal whose target date is today.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsOverdue": "Overdue · {date}",
+  "@savingsOverdue": {
+    "description": "Row of an unfinished savings goal whose target date is past.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsNoDeadline": "No target date",
+  "@savingsNoDeadline": {
+    "description": "Row of a savings goal without a target date."
+  },
+  "savingsReached": "Goal reached",
+  "@savingsReached": {
+    "description": "Row of a reached savings goal."
+  },
+  "savingsEmptyActiveTitle": "No goals in progress",
+  "@savingsEmptyActiveTitle": {
+    "description": "Empty state of the In progress tab."
+  },
+  "savingsEmptyActiveHint": "Tap + to create a savings goal.",
+  "@savingsEmptyActiveHint": {
+    "description": "Empty state of the In progress tab."
+  },
+  "savingsEmptyDoneTitle": "No goals reached yet",
+  "@savingsEmptyDoneTitle": {
+    "description": "Empty state of the Done tab."
+  },
+  "savingsEmptyDoneHint": "Goals you fully fund show up here.",
+  "@savingsEmptyDoneHint": {
+    "description": "Empty state of the Done tab."
+  },
+  "savingsLoadFailedTitle": "Could not load your savings",
+  "@savingsLoadFailedTitle": {
+    "description": "Title of the error state of the savings screen."
+  },
+  "savingsCreate": "Add goal",
+  "@savingsCreate": {
+    "description": "Title of the new goal form and tooltip of the + button."
+  },
+  "savingsEditGoal": "Edit goal",
+  "@savingsEditGoal": {
+    "description": "Title of the goal form when editing."
+  },
+  "savingsFormGoalCard": "Goal",
+  "@savingsFormGoalCard": {
+    "description": "Header of the first card of the goal form."
+  },
+  "savingsFormDeadlineCard": "Deadline",
+  "@savingsFormDeadlineCard": {
+    "description": "Header of the target date card of the goal form."
+  },
+  "savingsTargetAmountLabel": "Target amount",
+  "@savingsTargetAmountLabel": {
+    "description": "Label of the target amount field."
+  },
+  "savingsSavedLabel": "Saved",
+  "@savingsSavedLabel": {
+    "description": "Read-only saved amount in the goal form."
+  },
+  "savingsSavedHint": "Changes only through Add money.",
+  "@savingsSavedHint": {
+    "description": "Why the saved amount cannot be typed in the goal form."
+  },
+  "savingsDeadlineLabel": "Target date (optional)",
+  "@savingsDeadlineLabel": {
+    "description": "Label of the target date field."
+  },
+  "savingsDeadlinePick": "Pick a date",
+  "@savingsDeadlinePick": {
+    "description": "Target date field without a date."
+  },
+  "savingsSaveGoal": "Save goal",
+  "@savingsSaveGoal": {
+    "description": "Button of the goal form."
+  },
+  "savingsCreated": "Goal added: {title}",
+  "@savingsCreated": {
+    "description": "Toast after a goal is created.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsUpdated": "Goal saved: {title}",
+  "@savingsUpdated": {
+    "description": "Toast after a goal is edited.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsSaveFailedTitle": "Could not save the goal",
+  "@savingsSaveFailedTitle": {
+    "description": "Error dialog of the goal form."
+  },
+  "savingsContributeAmountLabel": "Amount",
+  "@savingsContributeAmountLabel": {
+    "description": "Label of the amount field of the Add money sheet."
+  },
+  "savingsContributeAddition": "{saved} + {added} =",
+  "@savingsContributeAddition": {
+    "description": "Head card of the Add money sheet: saved amount plus the amount typed.",
+    "placeholders": {
+      "saved": {
+        "type": "String"
+      },
+      "added": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsAmountsOf": "{saved} / {target}",
+  "@savingsAmountsOf": {
+    "description": "Saved amount over the target.",
+    "placeholders": {
+      "saved": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsSuggestedBadge": "Suggested",
+  "@savingsSuggestedBadge": {
+    "description": "Badge on the suggested quick amount."
+  },
+  "savingsSuggestionHint": "Suggestion: add {amount} a month to reach it by {date}.",
+  "@savingsSuggestionHint": {
+    "description": "Line under the quick amounts when the goal has a target date.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsWalletLine": "Taken from your wallet (balance {balance}) and recorded as a \"Savings\" expense.",
+  "@savingsWalletLine": {
+    "description": "Add money sheet: where the money comes from.",
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsWalletLineNoBalance": "Taken from your wallet and recorded as a \"Savings\" expense.",
+  "@savingsWalletLineNoBalance": {
+    "description": "Add money sheet when the balance could not be read."
+  },
+  "savingsContributeButton": "Add {amount}",
+  "@savingsContributeButton": {
+    "description": "Button of the Add money sheet with the amount.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsReloadFailed": "Could not reload your savings. {reason}",
+  "@savingsReloadFailed": {
+    "description": "Toast when a reload fails while goals are already shown; reason is the error text.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsNoTarget": "No amount set",
+  "@savingsNoTarget": {
+    "description": "Row of a savings goal whose target is 0."
+  },
+  "savingsOverfillHint": "The goal only misses {missing}. The extra still goes into the goal.",
+  "@savingsOverfillHint": {
+    "description": "Add money sheet when the amount typed is above what the goal misses.",
+    "placeholders": {
+      "missing": {
+        "type": "String"
+      }
+    }
   }
 }

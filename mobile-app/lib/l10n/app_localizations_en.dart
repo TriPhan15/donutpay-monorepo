@@ -859,11 +859,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get savingsTitle => 'Savings';
 
   @override
-  String savingsLoadFailed(String reason) {
-    return 'Could not load your savings. $reason';
-  }
-
-  @override
   String savingsDeleteFailed(String reason) {
     return 'Could not delete the goal. $reason';
   }
@@ -890,21 +885,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get savingsAddTitle => 'Add a savings goal';
-
-  @override
-  String get savingsAdd => 'Add';
-
-  @override
   String get savingsGoalName => 'Goal name';
-
-  @override
-  String get savingsTargetAmount => 'Target amount (₫)';
-
-  @override
-  String savingsEditTitle(String title) {
-    return 'Edit goal $title';
-  }
 
   @override
   String get ledgerSavingsManagedByGoal =>
@@ -928,21 +909,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String savingsTarget(String amount) {
     return 'Target: $amount';
   }
-
-  @override
-  String get savingsAddGoalAction => 'Add\ngoal';
-
-  @override
-  String get savingsGoalList => 'Goals';
-
-  @override
-  String get savingsEmpty => 'No goals yet.';
-
-  @override
-  String get savingsEmptyHint => 'Tap \"+\" to create a savings goal.';
-
-  @override
-  String get savingsUpdate => 'Update';
 
   @override
   String get commonSessionExpiredTitle => 'Session expired';
@@ -1968,36 +1934,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categorySavings => 'Savings';
 
   @override
-  String get savingsTargetDateField => 'Target date';
-
-  @override
-  String get savingsTargetDateAdd => 'Add a target date (optional)';
-
-  @override
   String get savingsTargetDateClear => 'Remove the target date';
 
   @override
-  String savingsTargetDateShown(String date) {
-    return 'Target date: $date';
-  }
-
-  @override
   String get savingsContribute => 'Add money';
-
-  @override
-  String savingsContributeTitle(String title) {
-    return 'Add money: $title';
-  }
-
-  @override
-  String get savingsContributeAmount => 'Amount (₫)';
-
-  @override
-  String get savingsContributeHelper =>
-      'Taken from your wallet and recorded as a \"Savings\" expense';
-
-  @override
-  String get savingsContributeInvalidAmount => 'Enter an amount greater than 0';
 
   @override
   String savingsContributeFailed(String reason) {
@@ -2404,4 +2344,146 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsNoMatch => 'No transaction matches the filter';
+
+  @override
+  String get savingsTabActive => 'In progress';
+
+  @override
+  String get savingsTabDone => 'Done';
+
+  @override
+  String get savingsMissing => 'Still needed';
+
+  @override
+  String savingsDaysLeft(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days left',
+      one: '1 day left',
+    );
+    return '$_temp0 · $date';
+  }
+
+  @override
+  String savingsDueToday(String date) {
+    return 'Due today · $date';
+  }
+
+  @override
+  String savingsOverdue(String date) {
+    return 'Overdue · $date';
+  }
+
+  @override
+  String get savingsNoDeadline => 'No target date';
+
+  @override
+  String get savingsReached => 'Goal reached';
+
+  @override
+  String get savingsEmptyActiveTitle => 'No goals in progress';
+
+  @override
+  String get savingsEmptyActiveHint => 'Tap + to create a savings goal.';
+
+  @override
+  String get savingsEmptyDoneTitle => 'No goals reached yet';
+
+  @override
+  String get savingsEmptyDoneHint => 'Goals you fully fund show up here.';
+
+  @override
+  String get savingsLoadFailedTitle => 'Could not load your savings';
+
+  @override
+  String get savingsCreate => 'Add goal';
+
+  @override
+  String get savingsEditGoal => 'Edit goal';
+
+  @override
+  String get savingsFormGoalCard => 'Goal';
+
+  @override
+  String get savingsFormDeadlineCard => 'Deadline';
+
+  @override
+  String get savingsTargetAmountLabel => 'Target amount';
+
+  @override
+  String get savingsSavedLabel => 'Saved';
+
+  @override
+  String get savingsSavedHint => 'Changes only through Add money.';
+
+  @override
+  String get savingsDeadlineLabel => 'Target date (optional)';
+
+  @override
+  String get savingsDeadlinePick => 'Pick a date';
+
+  @override
+  String get savingsSaveGoal => 'Save goal';
+
+  @override
+  String savingsCreated(String title) {
+    return 'Goal added: $title';
+  }
+
+  @override
+  String savingsUpdated(String title) {
+    return 'Goal saved: $title';
+  }
+
+  @override
+  String get savingsSaveFailedTitle => 'Could not save the goal';
+
+  @override
+  String get savingsContributeAmountLabel => 'Amount';
+
+  @override
+  String savingsContributeAddition(String saved, String added) {
+    return '$saved + $added =';
+  }
+
+  @override
+  String savingsAmountsOf(String saved, String target) {
+    return '$saved / $target';
+  }
+
+  @override
+  String get savingsSuggestedBadge => 'Suggested';
+
+  @override
+  String savingsSuggestionHint(String amount, String date) {
+    return 'Suggestion: add $amount a month to reach it by $date.';
+  }
+
+  @override
+  String savingsWalletLine(String balance) {
+    return 'Taken from your wallet (balance $balance) and recorded as a \"Savings\" expense.';
+  }
+
+  @override
+  String get savingsWalletLineNoBalance =>
+      'Taken from your wallet and recorded as a \"Savings\" expense.';
+
+  @override
+  String savingsContributeButton(String amount) {
+    return 'Add $amount';
+  }
+
+  @override
+  String savingsReloadFailed(String reason) {
+    return 'Could not reload your savings. $reason';
+  }
+
+  @override
+  String get savingsNoTarget => 'No amount set';
+
+  @override
+  String savingsOverfillHint(String missing) {
+    return 'The goal only misses $missing. The extra still goes into the goal.';
+  }
 }
