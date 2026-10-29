@@ -451,6 +451,54 @@ class TransactionControllerTest {
         verifyNoInteractions(transactionService);
     }
 
+    // ------------------------------------------------------------- POST /checkout: field limits (A11)
+
+    @ParameterizedTest
+    @ValueSource(strings = {"note", "location", "paymentMethod", "categoryName"})
+    void aTextLongerThanItsColumnIsRejectedWith400(String field) throws Exception {
+        String tooLong = "x".repeat(256);
+        String body = "{\"amount\":10000,\"location\":\"Quán A\",\"paymentMethod\":\"Ví chính\","
+                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true,"
+                + "\"" + field + "\":\"" + tooLong + "\"}";
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value(startsWith(VALIDATION_PREFIX)));
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @Test
+    void aNoteOf300CharactersIsA400() throws Exception {
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout",
+                        checkoutBodyWith(",\"note\":\"" + "n".repeat(300) + "\""))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("Ghi chú tối đa 255 ký tự")));
+    }
+
+    @Test
+    void anAmountWithThreeDecimalsIsA400_soTheWalletNeverMovesByAnUnroundedAmount() throws Exception {
+        String body = "{\"amount\":10000.555,\"location\":\"Quán A\",\"paymentMethod\":\"Ví chính\","
+                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true}";
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @Test
+    void textsOfExactly255CharactersAndTwoDecimalsAreAccepted() throws Exception {
+        when(transactionService.createMyTransaction(any())).thenReturn(Map.of("transactionId", 5));
+        String widest = "x".repeat(255);
+        String body = "{\"amount\":10000.55,\"location\":\"" + widest + "\",\"paymentMethod\":\"" + widest + "\","
+                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true,\"note\":\"" + widest + "\"}";
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isOk());
+    }
+
     // ------------------------------------------------------------- POST /checkout: the receipt image link (A9)
 
     @ParameterizedTest
