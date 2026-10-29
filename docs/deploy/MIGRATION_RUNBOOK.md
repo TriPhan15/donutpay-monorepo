@@ -71,6 +71,27 @@ Cả 4 file đều idempotent: chạy lần hai không đổi gì.
 
 Không file nào nới CHECK của `notifications.type`. Nếu DB local báo lỗi CHECK ở bảng `notifications`, dùng cách 1.
 
-## 3. Không cần chạy thử migration trên dữ liệu cũ
+## 3. Cột mới sau đợt sửa schema (A6, A7)
+
+Server mới không cần làm gì. Với DB local còn dữ liệu cũ, `ddl-auto=update` tự thêm cột khi `core-api` khởi động, nhưng
+không điền dữ liệu cũ và không thêm CHECK cho cột đã có. Nếu muốn tự làm (hoặc khi `update` báo lỗi), chạy bằng `psql`
+như mục 2, sau khi backup:
+
+```sql
+BEGIN;
+
+-- A6: nguồn của giao dịch. GOAL_REFUND là tiền của mục tiêu tiết kiệm đã xóa quay về ví, không tính là thu nhập.
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS source varchar(16) NOT NULL DEFAULT 'NORMAL'
+    CHECK (source IN ('NORMAL', 'GOAL_REFUND'));
+ALTER TABLE transactions_aud ADD COLUMN IF NOT EXISTS source varchar(16)
+    CHECK (source IN ('NORMAL', 'GOAL_REFUND'));
+-- Các khoản hoàn tiền tạo trước cột này: nhận ra qua ghi chú mà SavingGoalService luôn ghi.
+UPDATE transactions SET source = 'GOAL_REFUND'
+WHERE is_expense = FALSE AND note LIKE 'Hoàn tiền từ mục tiêu tiết kiệm đã xóa:%' AND source = 'NORMAL';
+
+COMMIT;
+```
+
+## 4. Không cần chạy thử migration trên dữ liệu cũ
 
 Server deploy bắt đầu từ DB trống, nên không cần chạy thử 4 file migration trên bản sao dữ liệu cũ.

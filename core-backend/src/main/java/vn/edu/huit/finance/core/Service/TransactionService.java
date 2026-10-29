@@ -24,6 +24,7 @@ import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.TransactionSortField;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
@@ -162,14 +163,14 @@ public class TransactionService {
      */
     @Transactional
     public Map<String, Object> createTransaction(TransactionRequestDto request, Long userId) {
-        return create(request, userId, AuditActor.system(), false);
+        return create(request, userId, AuditActor.system(), false, TransactionSource.NORMAL);
     }
 
     /** Same as {@link #createTransaction} for the signed-in caller. Transactional itself, because it calls that method directly. */
     @Transactional
     public Map<String, Object> createMyTransaction(TransactionRequestDto request) {
         User caller = currentUserProvider.getCurrentUser();
-        return create(request, caller.getId(), AuditActor.of(caller), false);
+        return create(request, caller.getId(), AuditActor.of(caller), false, TransactionSource.NORMAL);
     }
 
     /**
@@ -180,15 +181,25 @@ public class TransactionService {
      */
     @Transactional
     public Map<String, Object> recordSavingsMovement(TransactionRequestDto request) {
+        return recordSavingsMovement(request, TransactionSource.NORMAL);
+    }
+
+    /**
+     * {@link #recordSavingsMovement(TransactionRequestDto)} with the source of the row: GOAL_REFUND for the refund of a
+     * deleted goal, so that income totals can leave it out. Never taken from a request.
+     */
+    @Transactional
+    public Map<String, Object> recordSavingsMovement(TransactionRequestDto request, TransactionSource source) {
         User caller = currentUserProvider.getCurrentUser();
-        return create(request, caller.getId(), AuditActor.of(caller), true);
+        return create(request, caller.getId(), AuditActor.of(caller), true, source);
     }
 
     /**
      * The checkout itself. A replay of an id already recorded writes no audit row: it changes nothing. Otherwise the rows
      * (the transaction; the receipt and the AI's reading when one came with it; a category created by name) commit with it.
      */
-    private Map<String, Object> create(TransactionRequestDto request, Long userId, AuditActor actor, boolean savingsAllowed) {
+    private Map<String, Object> create(TransactionRequestDto request, Long userId, AuditActor actor, boolean savingsAllowed,
+                                       TransactionSource source) {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(MSG_USER_NOT_FOUND));
 
@@ -224,6 +235,7 @@ public class TransactionService {
         transaction.setTransactionDate(request.getTransactionDate());
         transaction.setExpense(request.isExpense());
         transaction.setClientId(clientId);
+        transaction.setSource(source);
 
         transaction.setUser(user);
         transaction.setCategory(category);

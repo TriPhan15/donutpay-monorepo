@@ -482,3 +482,11 @@ def test_recommend_and_segment_declare_their_response_models():
         assert "$ref" in ok, path
     goal = schema["components"]["schemas"]["GoalOut"]["properties"]
     assert {"neededMonthly", "monthlyIncome", "monthlyExpense", "surplus", "gap", "hasDeadline"} == set(goal)
+
+
+def test_recommend_accepts_the_source_field_and_leaves_goal_refunds_out_of_income():
+    txs = [_tx("Ăn uống", 3_000_000, _prev_month_day(1)),
+           {"category": "Thu khác", "amount": 9_000_000, "date": _prev_month_day(1, 15), "isExpense": False,
+            "source": "GOAL_REFUND"}]
+    r = client.post("/spade/recommend", json={"transactions": txs})
+    assert r.status_code == 200 and r.json()["goal"]["monthlyIncome"] == 0

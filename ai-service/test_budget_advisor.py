@@ -124,3 +124,18 @@ def test_rows_with_an_unreadable_date_are_counted_in_meta():
     out = advise(_two_full_months() + [_exp("Ăn uống", 1, "31/02/2026"), _exp("Ăn uống", 1, "không phải ngày")],
                  today=TODAY)
     assert out["meta"]["skippedRows"] == 2
+
+
+def test_a_goal_refund_is_no_income():
+    """A6: tiền mục tiêu tiết kiệm đã xóa quay về ví (source GOAL_REFUND) không làm phồng thu nhập tháng."""
+    refund = TransactionIn(category="Thu khác", amount=50_000_000, date="2026-09-20", isExpense=False, source="GOAL_REFUND")
+    with_refund = advise(_two_full_months() + [refund], today=TODAY)
+    without = advise(_two_full_months(), today=TODAY)
+    assert with_refund["goal"]["monthlyIncome"] == without["goal"]["monthlyIncome"] == 3_000_000
+
+
+def test_rows_without_a_source_count_as_before():
+    plain = TransactionIn(category="Thu khác", amount=2_000_000, date="2026-09-20", isExpense=False)
+    normal = TransactionIn(category="Thu khác", amount=2_000_000, date="2026-09-21", isExpense=False, source="NORMAL")
+    out = advise(_two_full_months() + [plain, normal], today=TODAY)
+    assert out["goal"]["monthlyIncome"] == 5_000_000

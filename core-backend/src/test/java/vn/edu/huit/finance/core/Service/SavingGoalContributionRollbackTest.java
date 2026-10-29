@@ -15,6 +15,8 @@ import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
+import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -131,6 +133,31 @@ class SavingGoalContributionRollbackTest {
         assertEquals("Mua xe", expense.getNote());
         assertEquals(SavingGoalService.CONTRIBUTION_PAYMENT_METHOD, expense.getPaymentMethod());
         assertNull(expense.getReceipt());
+    }
+
+    @Test
+    void deletingAGoalThatHoldsMoneyCreditsTheWalletWithARefundThatIsNoIncome() {
+        // A6: the 1,000,000 the goal holds goes back to the wallet, marked GOAL_REFUND so no income total counts it.
+        service.deleteSaving(alicesGoalId);
+
+        assertMoney("2000000", walletInDatabase());
+        assertFalse(savingGoalRepository.existsById(alicesGoalId));
+        List<Transaction> transactions = transactionRepository.findByUserIdOrderByTransactionDateDesc(aliceId);
+        assertEquals(1, transactions.size());
+        Transaction refund = transactions.get(0);
+        assertFalse(refund.isExpense());
+        assertMoney("1000000", refund.getAmount());
+        assertEquals(TransactionSource.GOAL_REFUND, refund.getSource());
+        assertEquals("GOAL_REFUND", TransactionResponseDto.from(refund).getSource());
+    }
+
+    @Test
+    void aContributionIsAnOrdinaryTransaction() {
+        service.contributeToMySaving(alicesGoalId, new BigDecimal("300000"));
+
+        Transaction expense = transactionRepository.findByUserIdOrderByTransactionDateDesc(aliceId).get(0);
+        assertEquals(TransactionSource.NORMAL, expense.getSource());
+        assertEquals("NORMAL", TransactionResponseDto.from(expense).getSource());
     }
 
     @Test

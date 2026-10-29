@@ -18,6 +18,8 @@ MAX_TRANSACTIONS = 5000
 MAX_CATEGORY_LENGTH = 255  # backend category name is varchar(255)
 MAX_AMOUNT = 1e12
 MAX_DATE_LENGTH = 40
+MAX_SOURCE_LENGTH = 20
+GOAL_REFUND_SOURCE = "GOAL_REFUND"
 WINDOW_WEEKS = 26
 MIN_WEEKS_WITH_DATA = 8
 # Expenses dated later than local today + this many days are ignored (clock skew).
@@ -30,6 +32,9 @@ class TransactionIn(BaseModel):
     amount: float = Field(0.0, ge=0, le=MAX_AMOUNT)
     date: str = Field("", max_length=MAX_DATE_LENGTH)
     isExpense: bool = True
+    # Tùy chọn (TransactionResponseDto.source của core-backend). GOAL_REFUND là tiền của mục tiêu tiết kiệm đã xóa quay về
+    # ví: không phải thu nhập, nên bị bỏ khỏi incomes_from. APK cũ không gửi field này, khi đó mọi dòng tính như cũ.
+    source: Optional[str] = Field(None, max_length=MAX_SOURCE_LENGTH)
 
 
 @dataclass(frozen=True)
@@ -76,10 +81,15 @@ def expenses_from(txs: Iterable[TransactionIn]) -> List[Expense]:
     return out
 
 
+def is_goal_refund(tx: TransactionIn) -> bool:
+    return tx.source is not None and tx.source.strip().upper() == GOAL_REFUND_SOURCE
+
+
 def incomes_from(txs: Iterable[TransactionIn]) -> List[Income]:
+    """Incomes only, without the refunds of deleted savings goals (GOAL_REFUND) and unparseable dates, sorted by day."""
     out: List[Income] = []
     for tx in txs:
-        if tx.isExpense:
+        if tx.isExpense or is_goal_refund(tx):
             continue
         day = parse_local_date(tx.date)
         if day is None:

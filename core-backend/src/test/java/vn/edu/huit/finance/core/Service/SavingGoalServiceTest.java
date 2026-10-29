@@ -13,6 +13,7 @@ import vn.edu.huit.finance.core.Dto.SavingGoalDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
@@ -30,6 +31,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -171,11 +173,11 @@ class SavingGoalServiceTest {
     void deletingAGoalWithMoney_refundsTheWalletAsOtherIncomeNamingTheGoal() {
         SavingGoal goal = lockedGoalOf(alice);
         goal.setCurrentAmount(new BigDecimal("3000000"));
-        theCheckoutRecordsTransaction(901L);
+        theRefundRecordsTransaction(901L);
 
         service.deleteSaving(6L);
 
-        TransactionRequestDto refund = checkoutSent();
+        TransactionRequestDto refund = refundSent();
         assertFalse(refund.isExpense());
         assertEquals("Thu khác", refund.getCategoryName());
         assertEquals(0, new BigDecimal("3000000").compareTo(refund.getAmount()));
@@ -197,6 +199,7 @@ class SavingGoalServiceTest {
         service.deleteSaving(6L);
 
         verify(transactionService, never()).recordSavingsMovement(any());
+        verify(transactionService, never()).recordSavingsMovement(any(), any());
         verify(repository).delete(goal);
         assertEquals("Xóa mục tiêu tiết kiệm", recorded().description());
     }
@@ -204,13 +207,13 @@ class SavingGoalServiceTest {
     @Test
     void deleteLocksTheGoalBeforeTheWalletIsCreditedAndDeletesAfterIt() {
         SavingGoal goal = lockedGoalOf(alice);
-        theCheckoutRecordsTransaction(901L);
+        theRefundRecordsTransaction(901L);
 
         service.deleteSaving(6L);
 
         InOrder order = inOrder(repository, transactionService);
         order.verify(repository).findLockedById(6L);
-        order.verify(transactionService).recordSavingsMovement(any());
+        order.verify(transactionService).recordSavingsMovement(any(), eq(TransactionSource.GOAL_REFUND));
         order.verify(repository).delete(goal);
         verify(repository, never()).findById(any());
     }
@@ -218,7 +221,7 @@ class SavingGoalServiceTest {
     @Test
     void whenTheRefundFailsTheGoalIsNotDeleted() {
         lockedGoalOf(alice);
-        when(transactionService.recordSavingsMovement(any())).thenThrow(new IllegalStateException("boom"));
+        when(transactionService.recordSavingsMovement(any(), any())).thenThrow(new IllegalStateException("boom"));
 
         assertThrows(IllegalStateException.class, () -> service.deleteSaving(6L));
 
@@ -269,6 +272,19 @@ class SavingGoalServiceTest {
     private void theCheckoutRecordsTransaction(long transactionId) {
         when(transactionService.recordSavingsMovement(any(TransactionRequestDto.class)))
                 .thenReturn(Map.of("transactionId", transactionId));
+    }
+
+    /** A6: the refund of a deleted goal is recorded as GOAL_REFUND, never as a plain income. */
+    private void theRefundRecordsTransaction(long transactionId) {
+        when(transactionService.recordSavingsMovement(any(TransactionRequestDto.class), eq(TransactionSource.GOAL_REFUND)))
+                .thenReturn(Map.of("transactionId", transactionId));
+    }
+
+    private TransactionRequestDto refundSent() {
+        ArgumentCaptor<TransactionRequestDto> sent = ArgumentCaptor.forClass(TransactionRequestDto.class);
+        verify(transactionService).recordSavingsMovement(sent.capture(), eq(TransactionSource.GOAL_REFUND));
+        verify(transactionService, never()).recordSavingsMovement(any());
+        return sent.getValue();
     }
 
     private TransactionRequestDto checkoutSent() {

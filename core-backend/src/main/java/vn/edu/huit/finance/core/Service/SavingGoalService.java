@@ -9,6 +9,7 @@ import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.SavingGoalNotFoundException;
 import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
@@ -168,8 +169,9 @@ public class SavingGoalService {
 
         String audit = AUDIT_DELETED;
         if (refund.signum() > 0) {
-            Object transactionId = transactionService.recordSavingsMovement(refundTransaction(goal, refund))
-                    .get(KEY_TRANSACTION_ID);
+            // GOAL_REFUND: the wallet gets the money back, but it is no income for the statistics or the AI.
+            Object transactionId = transactionService.recordSavingsMovement(refundTransaction(goal, refund),
+                    TransactionSource.GOAL_REFUND).get(KEY_TRANSACTION_ID);
             audit = String.format(AUDIT_DELETED_WITH_REFUND, refund.toPlainString(), transactionId);
             log.info("Saving goal refunded to the wallet, userId={}, goalId={}, amount={}", caller.getId(), goalId, refund);
         }

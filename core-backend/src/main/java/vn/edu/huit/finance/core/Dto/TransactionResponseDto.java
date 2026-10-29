@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -35,6 +36,11 @@ public class TransactionResponseDto {
      * its own pending copy when the server list already holds one with the same clientId.
      */
     private String clientId;
+    /**
+     * NORMAL, or GOAL_REFUND for the money of a deleted savings goal going back to the wallet: an income for the wallet
+     * that is no income (clients leave it out of their income totals).
+     */
+    private String source;
 
     /** The title is the note when there is one, otherwise the name of the category. */
     public static TransactionResponseDto from(Transaction transaction) {
@@ -54,6 +60,7 @@ public class TransactionResponseDto {
                 .imageUrl(imageUrl)
                 .receiptStatus(receiptStatus)
                 .clientId(transaction.getClientId())
+                .source(transaction.getSource() == null ? TransactionSource.NORMAL.name() : transaction.getSource().name())
                 .build();
     }
 }
