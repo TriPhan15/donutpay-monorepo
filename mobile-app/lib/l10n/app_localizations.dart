@@ -266,12 +266,6 @@ abstract class AppLocalizations {
   /// **'Forgot password'**
   String get forgotPasswordTitle;
 
-  /// Heading of the forgot-password screen, above its description.
-  ///
-  /// In en, this message translates to:
-  /// **'Get a verification code'**
-  String get forgotPasswordHeading;
-
   /// Explains on the forgot-password screen that a one-time code will be emailed to the address typed below.
   ///
   /// In en, this message translates to:
@@ -302,6 +296,12 @@ abstract class AppLocalizations {
   /// **'Please enter a valid email address.'**
   String get forgotPasswordEmailInvalid;
 
+  /// Forgot-password footer, before the bold sign-in link
+  ///
+  /// In en, this message translates to:
+  /// **'Remembered it? '**
+  String get forgotPasswordRemembered;
+
   /// Button of the forgot-password screen that asks the server to email a one-time code.
   ///
   /// In en, this message translates to:
@@ -326,12 +326,6 @@ abstract class AppLocalizations {
   /// **'Reset password'**
   String get resetPasswordTitle;
 
-  /// Heading of the reset-password screen, above its description.
-  ///
-  /// In en, this message translates to:
-  /// **'Create a new password'**
-  String get resetPasswordHeading;
-
   /// Description of the reset-password screen. The email is shown partly hidden.
   ///
   /// In en, this message translates to:
@@ -343,12 +337,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verification code (OTP)'**
   String get resetPasswordOtpLabel;
-
-  /// Hint inside the empty one-time code field.
-  ///
-  /// In en, this message translates to:
-  /// **'{length}-digit code'**
-  String resetPasswordOtpHint(int length);
 
   /// Error under the one-time code field when it is empty.
   ///
@@ -1034,12 +1022,6 @@ abstract class AppLocalizations {
   /// **'Or log in with'**
   String get loginOrContinueWith;
 
-  /// App bar title of the register screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign up'**
-  String get registerTitle;
-
   /// Heading of the register screen.
   ///
   /// In en, this message translates to:
@@ -1081,6 +1063,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create account'**
   String get registerSubmit;
+
+  /// Register footer, before the bold sign-in link
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? '**
+  String get registerHaveAccount;
 
   /// Divider text above the social sign-up buttons.
   ///

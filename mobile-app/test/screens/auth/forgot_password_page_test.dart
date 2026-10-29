@@ -12,6 +12,8 @@ import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/auth/reset_password_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
+import 'package:finance_ai_app/widgets/auth/otp_input.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 
 import '../../helpers/app_settings_scope.dart';
@@ -24,7 +26,6 @@ const String _email = 'an@example.com';
 
 const String _forgotLink = 'Quên mật khẩu?';
 const String _title = 'Quên mật khẩu';
-const String _heading = 'Nhận mã OTP';
 const String _description =
     'Nhập email tài khoản của bạn. Chúng tôi sẽ gửi mã OTP để bạn đặt mật khẩu mới.';
 const String _emailHint = 'Nhập địa chỉ email';
@@ -109,13 +110,13 @@ void main() {
       expect(find.byType(ForgotPasswordScreen), findsOneWidget);
       expect(find.byType(AlertDialog), findsNothing, reason: 'no old dialog');
       expect(find.text(_title), findsOneWidget);
-      expect(find.text(_heading), findsOneWidget);
+      expect(find.text('Nhận mã OTP'), findsNothing, reason: 'no heading');
       expect(find.text(_description), findsOneWidget);
       expect(find.text('Email'), findsOneWidget);
       expect(find.text(_emailHint), findsOneWidget);
       expect(find.text(_sendOtp), findsOneWidget);
 
-      await tester.tap(find.byType(BackButton));
+      await tester.tap(find.byKey(AuthFormLayout.backKey));
       await tester.pumpAndSettle();
 
       expect(find.byType(ForgotPasswordScreen), findsNothing);
@@ -327,10 +328,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ResetPasswordScreen), findsOneWidget);
 
-      final fields = find.byType(TextFormField);
-      await tester.enterText(fields.at(0), '123456');
-      await tester.enterText(fields.at(1), 'NewPass456');
-      await tester.enterText(fields.at(2), 'NewPass456');
+      // The OTP is typed into the hidden field under its boxes; the two passwords follow.
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(OtpInput),
+          matching: find.byType(EditableText),
+        ),
+        '123456',
+      );
+      final passwords = find.byType(TextFormField);
+      await tester.enterText(passwords.at(0), 'NewPass456');
+      await tester.enterText(passwords.at(1), 'NewPass456');
       await tester.tap(
         find.descendant(
           of: find.byType(PrimaryButton),
@@ -370,6 +378,22 @@ void main() {
       expect(SessionService.currentUserId, isNull);
       expect(SessionService.currentToken, isNull);
       expect(SessionService.currentRefreshToken, isNull);
+    },
+  );
+
+  testWidgets(
+    'the white "Sign in" link under the card goes back to the login screen',
+    (tester) async {
+      await open(tester, const LoginScreen());
+      await tester.tap(find.text(_forgotLink));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(AuthFooterLink));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ForgotPasswordScreen), findsNothing);
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(backend.requests, isEmpty);
     },
   );
 }

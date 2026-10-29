@@ -99,9 +99,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forgotPasswordTitle => 'Forgot password';
 
   @override
-  String get forgotPasswordHeading => 'Get a verification code';
-
-  @override
   String get forgotPasswordDescription =>
       'Enter the email of your account. We\'ll send you a one-time code (OTP) to set a new password.';
 
@@ -119,6 +116,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please enter a valid email address.';
 
   @override
+  String get forgotPasswordRemembered => 'Remembered it? ';
+
+  @override
   String get forgotPasswordSendOtp => 'Send code';
 
   @override
@@ -132,20 +132,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resetPasswordTitle => 'Reset password';
 
   @override
-  String get resetPasswordHeading => 'Create a new password';
-
-  @override
   String resetPasswordDescription(String email) {
     return 'Enter the code we sent to $email, then choose a new password.';
   }
 
   @override
   String get resetPasswordOtpLabel => 'Verification code (OTP)';
-
-  @override
-  String resetPasswordOtpHint(int length) {
-    return '$length-digit code';
-  }
 
   @override
   String get resetPasswordOtpRequired => 'Please enter the code.';
@@ -527,9 +519,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginOrContinueWith => 'Or log in with';
 
   @override
-  String get registerTitle => 'Sign up';
-
-  @override
   String get registerHeading => 'Create an account';
 
   @override
@@ -550,6 +539,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get registerSubmit => 'Create account';
+
+  @override
+  String get registerHaveAccount => 'Already have an account? ';
 
   @override
   String get registerOrContinueWith => 'Or sign up with';

@@ -98,9 +98,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get forgotPasswordTitle => 'Quên mật khẩu';
 
   @override
-  String get forgotPasswordHeading => 'Nhận mã OTP';
-
-  @override
   String get forgotPasswordDescription =>
       'Nhập email tài khoản của bạn. Chúng tôi sẽ gửi mã OTP để bạn đặt mật khẩu mới.';
 
@@ -117,6 +114,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get forgotPasswordEmailInvalid => 'Email không hợp lệ.';
 
   @override
+  String get forgotPasswordRemembered => 'Nhớ ra rồi? ';
+
+  @override
   String get forgotPasswordSendOtp => 'Gửi mã OTP';
 
   @override
@@ -130,20 +130,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get resetPasswordTitle => 'Đặt lại mật khẩu';
 
   @override
-  String get resetPasswordHeading => 'Tạo mật khẩu mới';
-
-  @override
   String resetPasswordDescription(String email) {
     return 'Nhập mã OTP đã được gửi tới $email, sau đó đặt mật khẩu mới.';
   }
 
   @override
   String get resetPasswordOtpLabel => 'Mã OTP';
-
-  @override
-  String resetPasswordOtpHint(int length) {
-    return 'Mã gồm $length chữ số';
-  }
 
   @override
   String get resetPasswordOtpRequired => 'Vui lòng nhập mã OTP.';
@@ -523,9 +515,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get loginOrContinueWith => 'Hoặc đăng nhập với';
 
   @override
-  String get registerTitle => 'Đăng ký';
-
-  @override
   String get registerHeading => 'Tạo tài khoản';
 
   @override
@@ -546,6 +535,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get registerSubmit => 'Tạo tài khoản';
+
+  @override
+  String get registerHaveAccount => 'Đã có tài khoản? ';
 
   @override
   String get registerOrContinueWith => 'Hoặc đăng ký với';

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/email_format.dart';
@@ -12,6 +11,8 @@ import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/auth/password_recovery_errors.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
+import 'package:finance_ai_app/widgets/auth/auth_text_field.dart';
+import 'package:finance_ai_app/widgets/auth/otp_input.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
@@ -90,8 +91,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
   }
 
-  String? _validateOtp(String? value) {
-    final otp = value ?? '';
+  String? _validateOtp(String otp) {
     if (otp.isEmpty) return context.loc.resetPasswordOtpRequired;
     if (!_otpPattern.hasMatch(otp)) {
       return context.loc.resetPasswordOtpInvalid(ResetPasswordScreen.otpLength);
@@ -207,7 +207,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       canPop: !_isResetting,
       child: AuthFormLayout(
         title: loc.resetPasswordTitle,
-        heading: loc.resetPasswordHeading,
         description: loc.resetPasswordDescription(
           EmailFormat.mask(widget.email),
         ),
@@ -217,58 +216,48 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AuthFieldLabel(loc.resetPasswordOtpLabel),
-              TextFormField(
+              OtpInput(
                 controller: _otpController,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.oneTimeCode],
-                autocorrect: false,
-                enableSuggestions: false,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(
-                    ResetPasswordScreen.otpLength,
-                  ),
-                ],
+                length: ResetPasswordScreen.otpLength,
+                semanticsLabel: loc.resetPasswordOtpLabel,
                 validator: _validateOtp,
-                decoration: InputDecoration(
-                  hintText: loc.resetPasswordOtpHint(
-                    ResetPasswordScreen.otpLength,
-                  ),
-                ),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: _ResendOtpButton(
-                  secondsLeft: _resendSecondsLeft,
-                  isSending: _isResending,
-                  onPressed: _isBusy ? null : _resendOtp,
-                ),
-              ),
-              const SizedBox(height: 8),
-              AuthFieldLabel(loc.resetPasswordNewPasswordLabel),
-              _PasswordField(
+              const SizedBox(height: 20),
+              AuthTextField(
                 controller: _passwordController,
+                label: loc.resetPasswordNewPasswordLabel,
                 hint: loc.resetPasswordNewPasswordHint,
+                icon: Icons.lock_outline_rounded,
+                isPassword: true,
                 helperText: _passwordRules(loc),
                 validator: _validateNewPassword,
+                textInputAction: TextInputAction.next,
               ),
-              const SizedBox(height: 18),
-              AuthFieldLabel(loc.resetPasswordConfirmPasswordLabel),
-              _PasswordField(
+              const SizedBox(height: 16),
+              AuthTextField(
                 controller: _confirmationController,
+                label: loc.resetPasswordConfirmPasswordLabel,
                 hint: loc.resetPasswordConfirmPasswordHint,
+                icon: Icons.lock_outline_rounded,
+                isPassword: true,
                 validator: _validateConfirmation,
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _resetPassword(),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 16),
               PrimaryButton(
                 text: _isResetting
                     ? loc.resetPasswordSubmitting
                     : loc.resetPasswordSubmit,
                 onPressed: _isBusy ? null : _resetPassword,
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: _ResendOtpButton(
+                  secondsLeft: _resendSecondsLeft,
+                  isSending: _isResending,
+                  onPressed: _isBusy ? null : _resendOtp,
+                ),
               ),
             ],
           ),
@@ -311,68 +300,6 @@ class _ResendOtpButton extends StatelessWidget {
           child: Text(label),
         );
       },
-    );
-  }
-}
-
-/// A password field with its own show/hide button, so toggling it rebuilds this field only. Text, hint, fill and
-/// outline come from the theme, like the password field of the login screen.
-class _PasswordField extends StatefulWidget {
-  const _PasswordField({
-    required this.controller,
-    required this.hint,
-    required this.validator,
-    this.helperText,
-    this.textInputAction = TextInputAction.next,
-    this.onFieldSubmitted,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final FormFieldValidator<String> validator;
-  final String? helperText;
-  final TextInputAction textInputAction;
-  final ValueChanged<String>? onFieldSubmitted;
-
-  @override
-  State<_PasswordField> createState() => _PasswordFieldState();
-}
-
-class _PasswordFieldState extends State<_PasswordField> {
-  // Room for the password rules under the field on a narrow phone.
-  static const int _supportingTextMaxLines = 3;
-
-  bool _obscure = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    final colors = Theme.of(context).colorScheme;
-    return TextFormField(
-      controller: widget.controller,
-      obscureText: _obscure,
-      enableSuggestions: false,
-      autocorrect: false,
-      textInputAction: widget.textInputAction,
-      onFieldSubmitted: widget.onFieldSubmitted,
-      validator: widget.validator,
-      decoration: InputDecoration(
-        hintText: widget.hint,
-        helperText: widget.helperText,
-        helperMaxLines: _supportingTextMaxLines,
-        errorMaxLines: _supportingTextMaxLines,
-        suffixIcon: IconButton(
-          tooltip: _obscure ? loc.passwordShow : loc.passwordHide,
-          icon: Icon(
-            _obscure
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
-            color: colors.onSurfaceVariant,
-            size: 20,
-          ),
-          onPressed: () => setState(() => _obscure = !_obscure),
-        ),
-      ),
     );
   }
 }

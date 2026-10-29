@@ -6,6 +6,7 @@ import 'package:finance_ai_app/screens/auth/password_recovery_errors.dart';
 import 'package:finance_ai_app/screens/auth/reset_password_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
+import 'package:finance_ai_app/widgets/auth/auth_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 
@@ -82,28 +83,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final loc = context.loc;
     return AuthFormLayout(
       title: loc.forgotPasswordTitle,
-      heading: loc.forgotPasswordHeading,
       description: loc.forgotPasswordDescription,
+      footer: AuthFooterLink(
+        question: loc.forgotPasswordRemembered,
+        action: loc.loginSubmit,
+        onTap: () => Navigator.maybePop(context),
+      ),
       child: Form(
         key: _formKey,
         autovalidateMode: _autovalidateMode,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AuthFieldLabel(loc.forgotPasswordEmailLabel),
-            TextFormField(
+            const SizedBox(height: 4),
+            AuthTextField(
               controller: _emailController,
+              label: loc.forgotPasswordEmailLabel,
+              hint: loc.forgotPasswordEmailHint,
+              icon: Icons.mail_outline_rounded,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
-              autocorrect: false,
               textInputAction: TextInputAction.send,
               onFieldSubmitted: (_) => _sendOtp(),
               validator: _validateEmail,
-              decoration: InputDecoration(
-                hintText: loc.forgotPasswordEmailHint,
-              ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 16),
             PrimaryButton(
               text: _isSending
                   ? loc.passwordRecoverySending
