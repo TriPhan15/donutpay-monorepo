@@ -31,6 +31,8 @@ public class Receipt extends BaseEntity {
     public static final int AI_RAW_DATA_MAX_LENGTH = 32768;
     /** Width of the column behind {@link #errorCode}. */
     public static final int ERROR_CODE_MAX_LENGTH = 40;
+    /** Width of the column behind {@link #imageUrl}. */
+    public static final int IMAGE_URL_MAX_LENGTH = 2048;
 
     private static final String MSG_MOVE_NOT_ALLOWED = "Không thể chuyển hóa đơn từ trạng thái %s sang trạng thái %s";
     private static final String MSG_NOT_A_NEW_RECEIPT = "Lần đọc đầu tiên chỉ được ghi cùng với hóa đơn mới";
@@ -45,7 +47,7 @@ public class Receipt extends BaseEntity {
 
     private LocalDate extractedDate;
 
-    @Column(name = "image_url", length = 2048)
+    @Column(name = "image_url", length = IMAGE_URL_MAX_LENGTH)
     private String imageUrl;
 
     @Column(nullable = false)

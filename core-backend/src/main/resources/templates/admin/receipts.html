@@ -41,10 +41,10 @@
                         <td class="fw-bold text-primary" th:text="${receipt.vendorName}"></td>
                         <td class="text-end fw-bold text-danger fs-6" th:text="${#numbers.formatInteger(receipt.extractedTotal, 1, 'POINT') + ' VNĐ'}"></td>
                         <td class="text-center">
-                            <a th:if="${receipt.imageUrl != null and !receipt.imageUrl.isEmpty()}" th:href="${receipt.imageUrl}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold">
+                            <a th:if="${receipt.imageUrl != null and (#strings.startsWith(#strings.toLowerCase(receipt.imageUrl), 'https://') or #strings.startsWith(#strings.toLowerCase(receipt.imageUrl), 'http://'))}" th:href="${receipt.imageUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold">
                                 <i class="bi bi-image me-1"></i> Xem ảnh
                             </a>
-                            <span th:unless="${receipt.imageUrl != null and !receipt.imageUrl.isEmpty()}" class="text-muted small badge bg-light text-dark">Chưa có ảnh</span>
+                            <span th:unless="${receipt.imageUrl != null and (#strings.startsWith(#strings.toLowerCase(receipt.imageUrl), 'https://') or #strings.startsWith(#strings.toLowerCase(receipt.imageUrl), 'http://'))}" class="text-muted small badge bg-light text-dark">Chưa có ảnh</span>
                         </td>
                         <td class="text-center">
                             <span th:if="${receipt.legacyStatus == 'SUCCESS'}" class="badge bg-success rounded-pill px-3 py-2 w-100">Thành công</span>

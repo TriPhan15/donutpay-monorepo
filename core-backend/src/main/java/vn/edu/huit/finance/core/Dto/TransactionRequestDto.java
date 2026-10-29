@@ -3,11 +3,13 @@ package vn.edu.huit.finance.core.Dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Util.ImageUrls;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -42,6 +44,9 @@ public class TransactionRequestDto {
     /** What the AI answered for the scanned receipt, as one JSON text; it is kept as the receipt's first attempt, never on the transaction. */
     @Size(max = Receipt.AI_RAW_DATA_MAX_LENGTH, message = "Dữ liệu AI của hóa đơn (rawReceiptData) tối đa {max} ký tự")
     private String rawReceiptData;
+    /** Link ảnh hóa đơn (từ POST /api/upload). Chỉ nhận https://, vì trang admin hiện nó thành một link bấm được. */
+    @Size(max = ImageUrls.MAX_LENGTH, message = "Link ảnh hóa đơn tối đa {max} ký tự")
+    @Pattern(regexp = ImageUrls.HTTPS_OR_BLANK_REGEX, message = ImageUrls.MSG_INVALID)
     private String imageUrl;
     private List<String> additionalImages;
 

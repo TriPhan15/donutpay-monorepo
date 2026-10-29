@@ -29,6 +29,7 @@ import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
 import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.InvalidImageUrlException;
 import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -481,6 +482,16 @@ class ReceiptProcessingServiceTest {
         assertNotNull(first.getCompletedAt());
         // Nothing is saved here: the transaction is saved by its caller and cascades to the receipt and the attempt.
         verifyNoInteractions(receiptRepo, attemptRepo);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"javascript:alert(document.cookie)", " data:text/html,<script>x</script>", "http://img.example.com/1.jpg"})
+    void aReceiptImageLinkThatIsNotHttpsIsRefusedEvenWhenItGetsPastTheDto(String imageUrl) {
+        Transaction transaction = transactionOf(alice);
+
+        assertThrows(InvalidImageUrlException.class, () -> service.attachReceipt(transaction, FULL_SCAN, imageUrl));
+
+        assertNull(transaction.getReceipt());
     }
 
     @Test
