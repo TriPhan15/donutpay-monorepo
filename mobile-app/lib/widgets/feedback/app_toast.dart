@@ -217,8 +217,14 @@ class _ToastStackViewState extends State<_ToastStackView>
     end: Offset.zero,
   ).animate(_curve);
 
+  /// How often the ages in the open list are worked out again.
+  static const Duration _ageRefresh = Duration(seconds: 1);
+
   final Map<int, _PausableTimer> _timers = {};
   int? _frontId;
+
+  /// Runs while the list is open, so "2 phút trước" keeps up with the clock.
+  Timer? _ageTicker;
 
   ToastStack get _stack => widget.stack;
 
@@ -236,12 +242,14 @@ class _ToastStackViewState extends State<_ToastStackView>
       timer.cancel();
     }
     _timers.clear();
+    _ageTicker?.cancel();
     _curve.dispose();
     _slide.dispose();
     super.dispose();
   }
 
-  /// Keeps one timer per toast on screen, all stopped while the list is open, and slides a new front toast in.
+  /// Keeps one timer per toast on screen, all stopped while the list is open, and slides a new front toast in. A toast
+  /// that comes to the front because the one over it went (a swipe, its timer) is already in place: it does not slide.
   void _sync() {
     final items = _stack.items;
     final ids = {for (final item in items) item.id};
@@ -260,10 +268,20 @@ class _ToastStackViewState extends State<_ToastStackView>
       _stack.expanded ? timer.pause() : timer.resume();
     }
     final front = items.isEmpty ? null : items.first.id;
-    if (front != null && front != _frontId) {
+    final previous = _frontId;
+    // Ids only grow, so a newer front toast is a new one.
+    if (front != null && (previous == null || front > previous)) {
       _slide.forward(from: 0);
     }
     _frontId = front;
+    if (_stack.expanded) {
+      _ageTicker ??= Timer.periodic(_ageRefresh, (_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      _ageTicker?.cancel();
+      _ageTicker = null;
+    }
   }
 
   /// A lone toast slides out before it goes; one with others behind it simply goes.
@@ -377,15 +395,15 @@ class _ToastStackViewState extends State<_ToastStackView>
           const SizedBox(height: 8),
           DecoratedBox(
             decoration: BoxDecoration(
-              color: colors.scrim.withValues(alpha: 0.75),
+              color: colors.inverseSurface,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               child: Text(
                 context.locOrDefault.toastStackCount(items.length),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: colors.onInverseSurface,
                   fontSize: AppTextSize.caption,
                 ),
               ),
@@ -399,7 +417,7 @@ class _ToastStackViewState extends State<_ToastStackView>
   Widget _list(List<ToastEntryData> items) {
     final loc = context.locOrDefault;
     final colors = Theme.of(context).colorScheme;
-    final now = DateTime.now();
+    final now = ToastStack.now();
     final linkStyle = TextStyle(
       color: colors.primary,
       fontSize: AppTextSize.secondary,

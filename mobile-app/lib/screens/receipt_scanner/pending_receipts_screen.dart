@@ -53,6 +53,14 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
   bool _selecting = false;
   final Set<int> _selected = {};
 
+  /// Swiped away and still being removed from the queue: a reload that read the queue before the removal must not bring
+  /// the card back.
+  final Set<int> _dropping = {};
+
+  /// How many times the removal of a card failed: a card that comes back takes a new key, since its old Dismissible
+  /// counts as dismissed.
+  final Map<int, int> _failedDrops = {};
+
   @override
   void initState() {
     super.initState();
@@ -80,7 +88,10 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
     }
     if (!mounted || seq != _loadSeq) return;
     setState(() {
-      _items = items;
+      _items = [
+        for (final item in items)
+          if (!_dropping.contains(item.id)) item,
+      ];
       // A receipt saved or dropped meanwhile cannot stay selected.
       final savable = {
         for (final item in PendingQueueView.of(items).quickSavable) item.id,
@@ -145,9 +156,23 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
   }
 
   /// The card is already gone from the screen (the swipe); the queue follows.
-  Future<void> _discard(ScanQueueItem item) {
-    setState(() => _items = [...?_items]..remove(item));
-    return _change(() => _queue.remove(item.id));
+  Future<void> _discard(ScanQueueItem item) async {
+    setState(() {
+      _dropping.add(item.id);
+      _items = [...?_items]..remove(item);
+    });
+    try {
+      await _queue.remove(item.id);
+    } on DatabaseException catch (e) {
+      debugPrint('Không cập nhật được hàng đợi quét: $e');
+      _failedDrops.update(item.id, (n) => n + 1, ifAbsent: () => 1);
+      if (mounted) AppToast.error(context, context.loc.scanQueueStorageFailed);
+    } finally {
+      // Over before the reload: a card that could not be removed comes back.
+      _dropping.remove(item.id);
+    }
+    if (!mounted) return;
+    await _reload();
   }
 
   Future<void> _retry(ScanQueueItem item) =>
@@ -173,6 +198,12 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
     });
     _showConfirmOutcome(result);
     await _reload();
+    // A tab the save emptied would show nothing: the screen goes back to the first tab that has receipts.
+    final picked = _tab;
+    if (!mounted || picked == null) return;
+    if (PendingQueueView.of(_items ?? const []).inTab(picked).isEmpty) {
+      setState(() => _tab = null);
+    }
   }
 
   Future<void> _confirmAll(int count) async {
@@ -255,7 +286,7 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
     // A receipt being read is still the queue's: only a ready or failed one can be dropped.
     if (_selecting || _confirming || !(ready || failed)) return card;
     return Dismissible(
-      key: ValueKey('pending-${item.id}'),
+      key: ValueKey('pending-${item.id}-${_failedDrops[item.id] ?? 0}'),
       direction: DismissDirection.endToStart,
       background: const _DiscardBackground(),
       confirmDismiss: (_) => _askDiscard(),

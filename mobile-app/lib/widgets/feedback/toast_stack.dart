@@ -41,6 +41,9 @@ class ToastEntryData {
 class ToastStack extends ChangeNotifier {
   static const int maxLayers = 3;
 
+  /// The clock that stamps a toast and that the open list measures its age with; tests move it by hand.
+  static DateTime Function() now = DateTime.now;
+
   final List<ToastEntryData> _items = [];
   bool _expanded = false;
   int _nextId = 0;
@@ -60,7 +63,7 @@ class ToastStack extends ChangeNotifier {
       id: _nextId++,
       kind: kind,
       message: message,
-      shownAt: DateTime.now(),
+      shownAt: now(),
       actionLabel: actionLabel,
       onAction: onAction,
     );

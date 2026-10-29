@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,4 +75,35 @@ void main() {
       expect(region.value.systemNavigationBarColor, AppTheme.gradientEnd);
     });
   }
+
+  // The native launch window hands over to StartupSplashScreen: its navigation bar must already have the colour the
+  // Flutter screen gives it, or the bar changes colour at the hand-over (backlog line 1).
+  test(
+    'every LaunchTheme gives the navigation bar the bottom colour of the gradient',
+    () {
+      final hex = AppTheme.gradientEnd
+          .toARGB32()
+          .toRadixString(16)
+          .substring(2)
+          .toUpperCase();
+      for (final folder in [
+        'values',
+        'values-night',
+        'values-v31',
+        'values-night-v31',
+      ]) {
+        final xml = File(
+          'android/app/src/main/res/$folder/styles.xml',
+        ).readAsStringSync();
+        final launch = RegExp(
+          r'<style name="LaunchTheme"[^>]*>([\s\S]*?)</style>',
+        ).firstMatch(xml)!.group(1)!;
+        expect(
+          launch,
+          contains('<item name="android:navigationBarColor">#$hex</item>'),
+          reason: folder,
+        );
+      }
+    },
+  );
 }

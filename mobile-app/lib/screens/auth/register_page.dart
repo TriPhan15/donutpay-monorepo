@@ -157,102 +157,106 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
-    return AuthFormLayout(
-      title: loc.registerHeading,
-      description: loc.registerDescription,
-      footer: AuthFooterLink(
-        question: loc.registerHaveAccount,
-        action: loc.loginSubmit,
-        onTap: () => Navigator.maybePop(context),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 4),
-          AuthTextField(
-            controller: _fullNameController,
-            label: loc.registerFullNameLabel,
-            hint: loc.registerFullNameHint,
-            icon: Icons.person_outline_rounded,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 16),
-          AuthTextField(
-            controller: _emailController,
-            label: loc.authEmailLabel,
-            hint: loc.authEmailHint,
-            icon: Icons.mail_outline_rounded,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 16),
-          AuthTextField(
-            controller: _phoneController,
-            label: loc.registerPhoneLabel,
-            hint: loc.registerPhoneHint,
-            icon: Icons.phone_outlined,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 16),
-          AuthTextField(
-            controller: _passwordController,
-            label: loc.authPasswordLabel,
-            hint: loc.authPasswordHint,
-            icon: Icons.lock_outline_rounded,
-            isPassword: true,
-            textInputAction: TextInputAction.done,
-            onChanged: _checkPassword,
-          ),
-          const SizedBox(height: 10),
-          PasswordRuleList(password: _password),
-          const SizedBox(height: 16),
-          PrimaryButton(
-            text: _isSubmitting ? loc.authProcessing : loc.registerSubmit,
-            onPressed: _isBusy ? null : _handleRegister,
-          ),
-          AuthSocialButtons(
-            dividerText: loc.registerOrContinueWith,
-            onGoogle: _isBusy
-                ? null
-                : () => _handleSocial(
-                    SocialAuthService.instance.signInWithGoogle,
-                  ),
-            onFacebook: _isBusy
-                ? null
-                : () => _handleSocial(
-                    SocialAuthService.instance.signInWithFacebook,
-                  ),
-          ),
-          const SizedBox(height: 12),
-          Text.rich(
-            TextSpan(
-              text: loc.registerTermsPrefix,
-              style: TextStyle(
-                color: colors.onSurfaceVariant,
-                fontSize: AppTextSize.caption,
-              ),
-              children: [
-                TextSpan(
-                  text: loc.registerTerms,
-                  style: TextStyle(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                TextSpan(text: loc.registerTermsAnd),
-                TextSpan(
-                  text: loc.registerConditions,
-                  style: TextStyle(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+    // Leaving while the account is being created would hide whether it was: Back waits for the answer.
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: AuthFormLayout(
+        title: loc.registerHeading,
+        description: loc.registerDescription,
+        footer: AuthFooterLink(
+          question: loc.registerHaveAccount,
+          action: loc.loginSubmit,
+          onTap: () => Navigator.maybePop(context),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 4),
+            AuthTextField(
+              controller: _fullNameController,
+              label: loc.registerFullNameLabel,
+              hint: loc.registerFullNameHint,
+              icon: Icons.person_outline_rounded,
+              textInputAction: TextInputAction.next,
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 16),
+            AuthTextField(
+              controller: _emailController,
+              label: loc.authEmailLabel,
+              hint: loc.authEmailHint,
+              icon: Icons.mail_outline_rounded,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            AuthTextField(
+              controller: _phoneController,
+              label: loc.registerPhoneLabel,
+              hint: loc.registerPhoneHint,
+              icon: Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            AuthTextField(
+              controller: _passwordController,
+              label: loc.authPasswordLabel,
+              hint: loc.authPasswordHint,
+              icon: Icons.lock_outline_rounded,
+              isPassword: true,
+              textInputAction: TextInputAction.done,
+              onChanged: _checkPassword,
+            ),
+            const SizedBox(height: 10),
+            PasswordRuleList(password: _password),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              text: _isSubmitting ? loc.authProcessing : loc.registerSubmit,
+              onPressed: _isBusy ? null : _handleRegister,
+            ),
+            AuthSocialButtons(
+              dividerText: loc.registerOrContinueWith,
+              onGoogle: _isBusy
+                  ? null
+                  : () => _handleSocial(
+                      SocialAuthService.instance.signInWithGoogle,
+                    ),
+              onFacebook: _isBusy
+                  ? null
+                  : () => _handleSocial(
+                      SocialAuthService.instance.signInWithFacebook,
+                    ),
+            ),
+            const SizedBox(height: 12),
+            Text.rich(
+              TextSpan(
+                text: loc.registerTermsPrefix,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: AppTextSize.caption,
+                ),
+                children: [
+                  TextSpan(
+                    text: loc.registerTerms,
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(text: loc.registerTermsAnd),
+                  TextSpan(
+                    text: loc.registerConditions,
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
@@ -147,4 +148,23 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'an amount stays on one line in a narrow cell (320 px, text scale 1.3)',
+    (tester) async {
+      await pump(tester, size: const Size(320, 1200), textScale: 1.3);
+      for (final amount in ['18,5 tr', '350k', '97k']) {
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.text(amount),
+        );
+        final lines = paragraph
+            .getBoxesForSelection(
+              TextSelection(baseOffset: 0, extentOffset: amount.length),
+            )
+            .map((box) => box.top)
+            .toSet();
+        expect(lines, hasLength(1), reason: amount);
+      }
+    },
+  );
 }

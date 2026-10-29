@@ -3305,6 +3305,10 @@
   "@statsNoMatch": {
     "description": "Statistics list when the filter or the search hides every transaction of the period."
   },
+  "statsCategoriesFilterHint": "Filter and search only narrow the transaction list of Chart and Calendar.",
+  "@statsCategoriesFilterHint": {
+    "description": "Under the Categories view of the statistics tab while a filter or a search is active: they do not change the category shares."
+  },
   "savingsTabActive": "In progress",
   "@savingsTabActive": {
     "description": "Savings screen toggle: goals still being funded."

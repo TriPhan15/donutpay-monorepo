@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart' show DatabaseException;
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
@@ -659,4 +660,97 @@ void main() {
       expect(find.byType(PendingReceiptsScreen), findsOneWidget);
     });
   }
+
+  testWidgets(
+    'after "Xác nhận tất cả" empties the picked tab, the screen moves to a tab that has receipts',
+    (tester) async {
+      queue.queueItems.addAll([
+        _item(1, ScanQueueStatus.ready, result: _result(storeName: 'A')),
+        _item(2, ScanQueueStatus.ready, result: _result(storeName: 'B')),
+        _item(3, ScanQueueStatus.ready, result: _result(storeName: 'C')),
+        _item(4, ScanQueueStatus.queued),
+        _item(5, ScanQueueStatus.reading),
+        _item(6, ScanQueueStatus.queued),
+        _item(7, ScanQueueStatus.failed, error: ScanQueueError.server),
+        _item(8, ScanQueueStatus.failed, error: ScanQueueError.server),
+        _item(9, ScanQueueStatus.failed, error: ScanQueueError.server),
+      ]);
+      queue.bulkResult = const BulkConfirmResult(
+        saved: 3,
+        duplicates: 0,
+        notSaved: 0,
+      );
+      await openScreen(tester);
+      await tester.tap(find.text('Lỗi 3'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sẵn sàng 3'));
+      await tester.pumpAndSettle();
+
+      // The real queue drops what it saved.
+      queue.queueItems.removeWhere((item) => item.id <= 3);
+      await tester.tap(find.text('Xác nhận tất cả'));
+      await tester.pumpAndSettle();
+      await tester.tap(inDialog('Đồng ý'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đang đọc…'), findsWidgets);
+      await tester.pump(
+        AppToast.displayDuration + AppToast.transitionDuration * 2,
+      );
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'a swiped card does not come back from a reload that started before it was dropped',
+    (tester) async {
+      queue.queueItems.add(_item(3, ScanQueueStatus.ready, result: _result()));
+      await openScreen(tester);
+
+      // A reload reads the queue while the card is still in it, and answers late.
+      queue.itemsGate = Completer<void>();
+      queue.progressNotifier.value = const ScanQueueProgress(ready: 1);
+      await tester.pump();
+      queue.removeGate = Completer<void>();
+
+      await swipeAway(tester, 'Highlands');
+      await tester.tap(inDialog('Bỏ'));
+      await tester.pumpAndSettle();
+      expect(find.text('Highlands'), findsNothing);
+
+      queue.itemsGate!.complete();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Highlands'), findsNothing);
+
+      queue.removeGate!.complete();
+      await tester.pumpAndSettle();
+      expect(queue.removed, [3]);
+      expect(find.text('Highlands'), findsNothing);
+    },
+  );
+
+  testWidgets('a card whose removal failed comes back with the error toast', (
+    tester,
+  ) async {
+    queue.queueItems.add(_item(3, ScanQueueStatus.ready, result: _result()));
+    queue.removeError = _DiskFull();
+    await openScreen(tester);
+
+    await swipeAway(tester, 'Highlands');
+    await tester.tap(inDialog('Bỏ'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Highlands'), findsOneWidget);
+    await tester.pump(
+      AppToast.displayDuration + AppToast.transitionDuration * 2,
+    );
+    await tester.pumpAndSettle();
+  });
+}
+
+/// A storage failure of the queue.
+class _DiskFull implements DatabaseException {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

@@ -51,8 +51,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   /// "Khác" until the categories of the server are known, so the form can be saved at once, even offline.
   String _selectedCategory = TransactionCategories.otherExpense;
 
-  /// Once the user picked a category, a late answer of the server neither changes the choice nor moves the tiles.
-  bool _categoryTouched = false;
+  /// The category the user picked for each type (true: expense). Switching Chi → Thu → Chi brings the pick back, and
+  /// once there is one a late answer of the server neither changes the choice nor moves the tiles.
+  final Map<bool, String> _picked = {};
+
+  bool get _categoryTouched => _picked.containsKey(_isExpense);
 
   @override
   void initState() {
@@ -96,31 +99,32 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
-  /// The often used categories of the current type, the first one selected. Without any category from the server the
-  /// form falls back to "Khác", so a transaction can still be recorded.
+  /// The often used categories of the current type, with the one the user picked for it selected, else the first.
+  /// Without any category from the server the form falls back to "Khác", so a transaction can still be recorded.
   void _offerDefaultCategories() {
     _shortcuts = CategoryShortcuts.pick(
       available: TransactionCategories.forType(isExpense: _isExpense),
       history: _history,
       isExpense: _isExpense,
     );
-    _selectedCategory = _shortcuts.isNotEmpty
-        ? _shortcuts.first
-        : TransactionCategories.otherExpense;
+    _selectedCategory =
+        _picked[_isExpense] ??
+        (_shortcuts.isNotEmpty
+            ? _shortcuts.first
+            : TransactionCategories.otherExpense);
   }
 
   void _setIsExpense(bool isExpense) {
     if (_isExpense == isExpense) return;
     setState(() {
       _isExpense = isExpense;
-      _categoryTouched = false;
       _offerDefaultCategories();
     });
   }
 
   void _selectCategory(String category) {
     setState(() {
-      _categoryTouched = true;
+      _picked[_isExpense] = category;
       _selectedCategory = category;
     });
   }
@@ -241,80 +245,88 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
-    return Scaffold(
-      body: Column(
-        children: [
-          PageBand(
-            title: loc.addTransactionTitle,
-            action: PageBandAction.close,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: _gutter),
-            child: EntryModeTabs(onScan: _openScanner),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(_gutter, 12, _gutter, _gutter),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TransactionTypeTabs(
-                    isExpense: _isExpense,
-                    onChanged: _setIsExpense,
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(_gutter),
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(_cardRadius),
+    // Closing while a save runs would drop its outcome: the dialog, and the Ledger moving to the saved day.
+    return PopScope(
+      canPop: !_isSaving,
+      child: Scaffold(
+        body: Column(
+          children: [
+            PageBand(
+              title: loc.addTransactionTitle,
+              action: PageBandAction.close,
+            ),
+            Expanded(
+              // The mode tabs scroll with the form: on a small phone with the keyboard up, the fields keep the room.
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  _gutter,
+                  0,
+                  _gutter,
+                  _gutter,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    EntryModeTabs(onScan: _openScanner),
+                    const SizedBox(height: 12),
+                    TransactionTypeTabs(
+                      isExpense: _isExpense,
+                      onChanged: _setIsExpense,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(_gutter),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(_cardRadius),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          AmountField(controller: _amountController),
+                          const SizedBox(height: _gutter),
+                          FormFieldLabel(
+                            loc.transactionCategoryLabel,
+                            required: true,
+                          ),
+                          const SizedBox(height: 8),
+                          CategoryShortcutGrid(
+                            shortcuts: _shortcuts,
+                            selected: _selectedCategory,
+                            onSelected: _selectCategory,
+                            onMore: _pickCategory,
+                          ),
+                          const SizedBox(height: _gutter),
+                          FormFieldLabel(loc.transactionDateLabel),
+                          const SizedBox(height: 8),
+                          DateField(
+                            forTransaction: true,
+                            value: _selectedDate,
+                            onChanged: (date) =>
+                                setState(() => _selectedDate = date),
+                          ),
+                          const SizedBox(height: _gutter),
+                          NoteField(
+                            controller: _noteController,
+                            hintText: loc.addTransactionNoteHint,
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        AmountField(controller: _amountController),
-                        const SizedBox(height: _gutter),
-                        FormFieldLabel(
-                          loc.transactionCategoryLabel,
-                          required: true,
-                        ),
-                        const SizedBox(height: 8),
-                        CategoryShortcutGrid(
-                          shortcuts: _shortcuts,
-                          selected: _selectedCategory,
-                          onSelected: _selectCategory,
-                          onMore: _pickCategory,
-                        ),
-                        const SizedBox(height: _gutter),
-                        FormFieldLabel(loc.transactionDateLabel),
-                        const SizedBox(height: 8),
-                        DateField(
-                          forTransaction: true,
-                          value: _selectedDate,
-                          onChanged: (date) =>
-                              setState(() => _selectedDate = date),
-                        ),
-                        const SizedBox(height: _gutter),
-                        NoteField(
-                          controller: _noteController,
-                          hintText: loc.addTransactionNoteHint,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          FormSubmitBar(
-            label: _isExpense
-                ? loc.addTransactionSubmitExpense
-                : loc.addTransactionSubmitIncome,
-            busy: _isSaving,
-            onPressed: _isValid ? _saveTransaction : null,
-          ),
-        ],
+            FormSubmitBar(
+              label: _isExpense
+                  ? loc.addTransactionSubmitExpense
+                  : loc.addTransactionSubmitIncome,
+              busy: _isSaving,
+              onPressed: _isValid ? _saveTransaction : null,
+            ),
+          ],
+        ),
       ),
     );
   }

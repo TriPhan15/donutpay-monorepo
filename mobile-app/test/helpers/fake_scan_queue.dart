@@ -31,6 +31,15 @@ class FakeScanQueue implements ReceiptScanQueue {
   /// When set, [confirmAllValid] waits for it: a test can act while a bulk save runs.
   Completer<void>? confirmGate;
 
+  /// When set, [items] takes its copy of the queue at once and answers only once this completes: a slow read.
+  Completer<void>? itemsGate;
+
+  /// When set, [remove] waits for it before it drops the item.
+  Completer<void>? removeGate;
+
+  /// When set, [remove] throws it instead of dropping the item.
+  Object? removeError;
+
   /// What [confirmAllValid] and [confirmItems] answer.
   BulkConfirmResult bulkResult = BulkConfirmResult.none;
 
@@ -46,6 +55,9 @@ class FakeScanQueue implements ReceiptScanQueue {
     confirmAllCalls = 0;
     confirmedItems.clear();
     confirmGate = null;
+    itemsGate = null;
+    removeGate = null;
+    removeError = null;
     resumeCalls = 0;
     acceptedOf = _all;
     bulkResult = BulkConfirmResult.none;
@@ -64,13 +76,19 @@ class FakeScanQueue implements ReceiptScanQueue {
   Future<void> resume() async => resumeCalls++;
 
   @override
-  Future<List<ScanQueueItem>> items() async => List.of(queueItems);
+  Future<List<ScanQueueItem>> items() async {
+    final copy = List.of(queueItems);
+    await itemsGate?.future;
+    return copy;
+  }
 
   @override
   Future<void> retry(int id) async => retried.add(id);
 
   @override
   Future<void> remove(int id) async {
+    await removeGate?.future;
+    if (removeError case final Object error) throw error;
     removed.add(id);
     queueItems.removeWhere((item) => item.id == id);
   }

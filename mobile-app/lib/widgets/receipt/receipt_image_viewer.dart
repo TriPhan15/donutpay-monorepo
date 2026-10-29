@@ -116,7 +116,7 @@ class ReceiptImageViewerPage extends StatefulWidget {
 
   /// Replace the system share sheet and the download in tests.
   @visibleForTesting
-  final Future<void> Function(String filePath)? shareFile;
+  final Future<void> Function(ShareParams params)? shareFile;
   @visibleForTesting
   final Future<String?> Function(String url)? download;
 
@@ -129,8 +129,18 @@ class _ReceiptImageViewerPageState extends State<ReceiptImageViewerPage> {
 
   bool _sharing = false;
 
-  static Future<void> _systemShare(String path) =>
-      SharePlus.instance.share(ShareParams(files: [XFile(path)]));
+  /// The share button: an iPad opens the share sheet as a popover pointing at it.
+  final GlobalKey _shareKey = GlobalKey();
+
+  static Future<void> _systemShare(ShareParams params) =>
+      SharePlus.instance.share(params);
+
+  /// Where the share button is on screen; null when it is not laid out.
+  Rect? get _shareOrigin {
+    final box = _shareKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
 
   Future<void> _share() async {
     setState(() => _sharing = true);
@@ -144,7 +154,9 @@ class _ReceiptImageViewerPageState extends State<ReceiptImageViewerPage> {
       return;
     }
     try {
-      await (widget.shareFile ?? _systemShare)(path);
+      await (widget.shareFile ?? _systemShare)(
+        ShareParams(files: [XFile(path)], sharePositionOrigin: _shareOrigin),
+      );
     } catch (e) {
       debugPrint('Không chia sẻ được ảnh hóa đơn: $e');
       if (mounted) {
@@ -173,6 +185,7 @@ class _ReceiptImageViewerPageState extends State<ReceiptImageViewerPage> {
         ),
         actions: [
           IconButton(
+            key: _shareKey,
             tooltip: loc.receiptViewerShare,
             onPressed: _sharing ? null : _share,
             icon: _sharing

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
+import 'package:finance_ai_app/widgets/feedback/toast_stack.dart';
 
 const String _message = 'Đã lưu';
 const String _show = 'show';
@@ -391,4 +392,93 @@ void main() {
       expect(find.text(_message), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'swiping the front toast away shows the one behind in place, without a second slide in',
+    (tester) async {
+      var count = 0;
+      await tester.pumpWidget(
+        _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
+      );
+      await _tapShow(tester);
+      await _tapShow(tester);
+
+      await tester.fling(find.text('Toast 2'), const Offset(0, -300), 1000);
+      // Frame by frame until the swiped toast is gone: the one behind must be in place from that frame on.
+      for (
+        var i = 0;
+        i < 100 && find.text('Toast 2').evaluate().isNotEmpty;
+        i++
+      ) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(find.text('Toast 2'), findsNothing);
+      expect(find.text('Toast 1'), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 16));
+      final slide = tester.widget<SlideTransition>(
+        find
+            .ancestor(
+              of: find.text('Toast 1'),
+              matching: find.byType(SlideTransition),
+            )
+            .first,
+      );
+      expect(slide.position.value, Offset.zero);
+      expect(tester.hasRunningAnimations, isFalse);
+    },
+  );
+
+  for (final brightness in Brightness.values) {
+    testWidgets('the count label uses the inverse surface ($brightness)', (
+      tester,
+    ) async {
+      final theme = ThemeData(brightness: brightness);
+      var count = 0;
+      await tester.pumpWidget(
+        _app(
+          theme: theme,
+          onShow: (context) => AppToast.info(context, 'Toast ${++count}'),
+        ),
+      );
+      await _tapShow(tester);
+      await _tapShow(tester);
+
+      final label = find.text('2 thông báo · chạm để xem');
+      expect(
+        tester.widget<Text>(label).style?.color,
+        theme.colorScheme.onInverseSurface,
+      );
+      final box = tester.widget<DecoratedBox>(
+        find.ancestor(of: label, matching: find.byType(DecoratedBox)).first,
+      );
+      expect(
+        (box.decoration as BoxDecoration).color,
+        theme.colorScheme.inverseSurface,
+      );
+    });
+  }
+
+  testWidgets('the ages in the open list keep up with the clock', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 10, 30, 9);
+    ToastStack.now = () => now;
+    addTearDown(() => ToastStack.now = DateTime.now);
+    var count = 0;
+    await tester.pumpWidget(
+      _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
+    );
+    await _tapShow(tester);
+    await _tapShow(tester);
+    await tester.tap(find.text('2 thông báo · chạm để xem'));
+    await tester.pumpAndSettle();
+    expect(find.text('vừa xong'), findsNWidgets(2));
+
+    now = now.add(const Duration(minutes: 2));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('vừa xong'), findsNothing);
+    expect(find.text('2 phút trước'), findsNWidgets(2));
+  });
 }

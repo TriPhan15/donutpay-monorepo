@@ -144,4 +144,28 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a long press selects without painting over the boxes', (
+    tester,
+  ) async {
+    await show(tester);
+    await tester.tap(field());
+    await tester.pump();
+    final editable = tester.widget<EditableText>(field());
+    expect(editable.selectionColor?.a, 0);
+  });
+
+  testWidgets('screen readers hear the code once, from the field', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await show(tester);
+    await tester.enterText(field(), '48');
+    await tester.pump();
+
+    final node = tester.getSemantics(find.byType(OtpInput));
+    expect(node.label, _label, reason: 'the boxes add no digits to the label');
+    expect(node.value, '48');
+    semantics.dispose();
+  });
 }

@@ -2323,6 +2323,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get statsNoMatch => 'Không có giao dịch khớp bộ lọc';
 
   @override
+  String get statsCategoriesFilterHint =>
+      'Lọc và tìm kiếm chỉ áp dụng cho danh sách giao dịch ở Biểu đồ và Lịch.';
+
+  @override
   String get savingsTabActive => 'Đang thực hiện';
 
   @override

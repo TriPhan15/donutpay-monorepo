@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -313,4 +315,67 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(EditTransactionPage), findsOneWidget);
   });
+
+  testWidgets('Back waits while a delete runs, so its outcome is still shown', (
+    tester,
+  ) async {
+    final answer = Completer<void>();
+    backend.on('DELETE', '/api/transactions/5', (_) async {
+      await answer.future;
+      return okResponse(null);
+    });
+    Object? popped = 'not popped';
+    await tester.pumpWidget(
+      withAppSettings(
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                popped = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TransactionDetailPage(transaction: _tx()),
+                  ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Xóa'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Xóa ngay'));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byKey(TransactionDetailPage.backKey));
+    await tester.pumpAndSettle();
+    expect(find.byType(TransactionDetailPage), findsOneWidget);
+
+    answer.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(TransactionDetailPage), findsNothing);
+    expect(popped, isTrue);
+    expect(find.text('Đã xóa giao dịch và hoàn tiền'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets(
+    'the receipt photo shows the whole receipt, with a placeholder while it loads',
+    (tester) async {
+      await pump(tester, _tx(imageUrl: 'https://example.com/r.jpg'));
+      final image = tester.widget<Image>(
+        find.descendant(
+          of: find.byKey(TransactionDetailPage.photoKey),
+          matching: find.byType(Image),
+        ),
+      );
+      expect(image.fit, BoxFit.contain);
+      expect(image.loadingBuilder, isNotNull);
+    },
+  );
 }

@@ -2424,6 +2424,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsNoMatch => 'No transaction matches the filter';
 
   @override
+  String get statsCategoriesFilterHint =>
+      'Filter and search only narrow the transaction list of Chart and Calendar.';
+
+  @override
   String get savingsTabActive => 'In progress';
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -52,7 +53,7 @@ void main() {
       tester,
       ReceiptImageViewerPage(
         imagePath: _localPhoto,
-        shareFile: (path) async => shared.add(path),
+        shareFile: (params) async => shared.add(params.files!.single.path),
       ),
     );
 
@@ -73,7 +74,7 @@ void main() {
           downloads.add(url);
           return '/tmp/receipt_copy.jpg';
         },
-        shareFile: (path) async => shared.add(path),
+        shareFile: (params) async => shared.add(params.files!.single.path),
       ),
     );
 
@@ -93,7 +94,7 @@ void main() {
       ReceiptImageViewerPage.network(
         imageUrl: _savedPhoto,
         download: (_) async => null,
-        shareFile: (path) async => shared.add(path),
+        shareFile: (params) async => shared.add(params.files!.single.path),
       ),
     );
 
@@ -105,4 +106,26 @@ void main() {
     await tester.pump(AppToast.displayDuration);
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    'the share sheet is anchored on the share button, as an iPad needs it',
+    (tester) async {
+      final shared = <ShareParams>[];
+      await pump(
+        tester,
+        ReceiptImageViewerPage(
+          imagePath: _localPhoto,
+          shareFile: (params) async => shared.add(params),
+        ),
+      );
+      final button = tester.getRect(find.byTooltip('Chia sẻ'));
+
+      await tester.tap(find.byTooltip('Chia sẻ'));
+      await tester.pumpAndSettle();
+
+      final origin = shared.single.sharePositionOrigin;
+      expect(origin, isNotNull);
+      expect(origin!.contains(button.center), isTrue);
+    },
+  );
 }

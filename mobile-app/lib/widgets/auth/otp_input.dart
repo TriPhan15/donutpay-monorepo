@@ -99,60 +99,67 @@ class _OtpInputState extends State<OtpInput> {
               height: OtpInput.boxHeight,
               child: Stack(
                 children: [
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final fit =
-                          (constraints.maxWidth -
-                              OtpInput.gap * (widget.length - 1)) /
-                          widget.length;
-                      final width = math.min(OtpInput.boxMaxWidth, fit);
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          for (var i = 0; i < widget.length; i++) ...[
-                            if (i > 0) const SizedBox(width: OtpInput.gap),
-                            _OtpBox(
-                              key: OtpInput.boxKey(i),
-                              width: width,
-                              digit: i < digits.length ? digits[i] : null,
-                              border: field.hasError
-                                  ? colors.error
-                                  : (_focusNode.hasFocus && i == active
-                                        ? colors.primary
-                                        : colors.outlineVariant),
-                              ring: _focusNode.hasFocus && i == active
-                                  ? colors.primaryContainer
-                                  : null,
-                            ),
+                  // The field already reads the code out: the digits in the boxes would be heard a second time.
+                  ExcludeSemantics(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final fit =
+                            (constraints.maxWidth -
+                                OtpInput.gap * (widget.length - 1)) /
+                            widget.length;
+                        final width = math.min(OtpInput.boxMaxWidth, fit);
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (var i = 0; i < widget.length; i++) ...[
+                              if (i > 0) const SizedBox(width: OtpInput.gap),
+                              _OtpBox(
+                                key: OtpInput.boxKey(i),
+                                width: width,
+                                digit: i < digits.length ? digits[i] : null,
+                                border: field.hasError
+                                    ? colors.error
+                                    : (_focusNode.hasFocus && i == active
+                                          ? colors.primary
+                                          : colors.outlineVariant),
+                                ring: _focusNode.hasFocus && i == active
+                                    ? colors.primaryContainer
+                                    : null,
+                              ),
+                            ],
                           ],
-                        ],
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
                   // The field takes every tap on the boxes; its text and caret are invisible, the boxes show them.
                   Positioned.fill(
                     child: Semantics(
                       label: widget.semanticsLabel,
-                      child: TextField(
-                        controller: widget.controller,
-                        focusNode: _focusNode,
-                        keyboardType: TextInputType.number,
-                        textInputAction: widget.textInputAction,
-                        autofillHints: const [AutofillHints.oneTimeCode],
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        showCursor: false,
-                        cursorColor: Colors.transparent,
-                        style: const TextStyle(color: Colors.transparent),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(widget.length),
-                        ],
-                        decoration: const InputDecoration.collapsed(
-                          hintText: null,
+                      // A long press still offers Paste, but its selection does not paint over the boxes.
+                      child: DefaultSelectionStyle(
+                        selectionColor: Colors.transparent,
+                        child: TextField(
+                          controller: widget.controller,
+                          focusNode: _focusNode,
+                          keyboardType: TextInputType.number,
+                          textInputAction: widget.textInputAction,
+                          autofillHints: const [AutofillHints.oneTimeCode],
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          showCursor: false,
+                          cursorColor: Colors.transparent,
+                          style: const TextStyle(color: Colors.transparent),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(widget.length),
+                          ],
+                          decoration: const InputDecoration.collapsed(
+                            hintText: null,
+                          ),
+                          onTap: _focus,
+                          onSubmitted: widget.onSubmitted,
                         ),
-                        onTap: _focus,
-                        onSubmitted: widget.onSubmitted,
                       ),
                     ),
                   ),
