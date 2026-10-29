@@ -1,0 +1,76 @@
+# Runbook: schema PostgreSQL và 4 file migration
+
+Các file migration nằm ở `core-backend/src/main/resources/db/`. Tài liệu này chỉ ra lúc nào cần chạy, lúc nào không.
+
+## 1. Server mới (deploy): không chạy migration
+
+Server deploy dùng DB **trống**. Khi `core-api` chạy lần đầu, Hibernate (`ddl-auto`) tự tạo toàn bộ schema theo entity,
+gồm các ràng buộc CHECK của cột enum và các bảng `*_aud` của Envers.
+
+- Không chạy file nào trong `db/`. Hai file `action-log-audit-migration.sql` và `budget-period-year-migration.sql` cố ý
+  `RAISE EXCEPTION` hoặc dừng khi không thấy bảng cũ.
+- Test `SchemaEnumConstraintsPostgresTest` (Testcontainers, PostgreSQL 15) dựng đúng một DB mới như vậy và kiểm tra:
+  mỗi CHECK của cột enum chứa đủ giá trị enum Java, các cột lưu tên enum dạng chuỗi đủ dài, và insert được từng giá trị.
+  Chạy lại test này sau mỗi lần thêm giá trị enum:
+
+  ```bash
+  cd core-backend && mvn -B test -Dtest=SchemaEnumConstraintsPostgresTest
+  ```
+
+## 2. DB local còn dữ liệu cũ
+
+`ddl-auto=update` chỉ **thêm** bảng và cột, không bao giờ sửa CHECK đã có. Vì vậy DB local tạo từ bản code cũ có thể
+từ chối giá trị enum mới (ví dụ ngân sách `YEAR`), với lỗi dạng `violates check constraint "..._check"`, hoặc API trả
+409 chung. Có hai cách xử lý.
+
+### Cách 1 (khuyên dùng): xóa DB và tạo lại
+
+Mất toàn bộ dữ liệu PostgreSQL local. Mongo, Redis và Elasticsearch không bị đụng tới.
+
+```bash
+docker compose stop core-api db
+docker compose rm -f db
+docker volume ls | grep postgres_data          # tìm tên volume, ví dụ donutpay-monorepo_postgres_data
+docker volume rm <tên volume postgres_data>
+# Muốn có dữ liệu mẫu: đặt SEED_DEMO=true trong .env
+docker compose up -d db core-api
+```
+
+Không dùng `docker compose down -v`: lệnh này xóa **mọi** volume, gồm cả Mongo, Elasticsearch và chứng chỉ của Caddy.
+
+Sau khi tạo lại, chỉ mục tìm kiếm Elasticsearch còn chứa giao dịch của DB cũ. Dựng lại chỉ mục từ trang admin
+(Vận hành NoSQL) nếu cần.
+
+### Cách 2: chạy 4 file migration
+
+Dùng khi muốn giữ dữ liệu local. Trước khi chạy:
+
+1. Backup trước: `docker exec finance-postgres pg_dump -U "$DB_USERNAME" -d finance_db -Fc > before-migration.dump`.
+2. Chạy bằng `psql` với role sở hữu bảng (`DB_USERNAME` trong `.env`). Các file dùng lệnh meta của psql, không chạy
+   được bằng DBeaver hay pgAdmin.
+3. Không thêm `-1` hay `--single-transaction`. Mỗi file tự mở và commit transaction của nó, và
+   `CREATE INDEX CONCURRENTLY` không chạy được trong transaction.
+
+Lệnh chung, chạy từ thư mục gốc repo (Git Bash hoặc Linux), sau khi `set -a; . ./.env; set +a`:
+
+```bash
+docker exec -i finance-postgres psql -X -v ON_ERROR_STOP=1 -U "$DB_USERNAME" -d finance_db \
+  < core-backend/src/main/resources/db/<tên file>.sql
+```
+
+Thứ tự chạy, theo ngày ghi ở đầu mỗi file:
+
+| # | File | Làm gì | Lưu ý |
+|---|---|---|---|
+| 1 | `action-log-audit-migration.sql` | Thêm `target_type`, `target_id`, `result` vào `action_logs` và 5 index | Báo lỗi nếu không có bảng `action_logs`, vì DB mới không cần file này. Nếu báo index INVALID: `DROP INDEX CONCURRENTLY <tên>;` rồi chạy lại. |
+| 2 | `receipt-workflow-migration.sql` | Thêm bảng `receipt_processing_attempts` và các cột mới của `receipts`, đổi trạng thái cũ (`SUCCESS`…) sang tên mới | **Dừng `core-api` trước**: `docker compose stop core-api`. Có `lock_timeout` 10 giây. Lỗi giữa chừng thì không có gì được áp dụng. |
+| 3 | `budget-period-year-migration.sql` | Nới CHECK của `budgets.period_type` và `budgets_aud.period_type` để nhận `YEAR` | Báo lỗi nếu có dòng mang giá trị lạ. |
+| 4 | `username-email-collision-check.sql` | Chỉ `SELECT`: liệt kê tài khoản có username dạng email của người khác | Không sửa dữ liệu. Có dòng nào thì xử lý tay. |
+
+Cả 4 file đều idempotent: chạy lần hai không đổi gì.
+
+Không file nào nới CHECK của `notifications.type`. Nếu DB local báo lỗi CHECK ở bảng `notifications`, dùng cách 1.
+
+## 3. Không cần chạy thử migration trên dữ liệu cũ
+
+Server deploy bắt đầu từ DB trống, nên không cần chạy thử 4 file migration trên bản sao dữ liệu cũ.
