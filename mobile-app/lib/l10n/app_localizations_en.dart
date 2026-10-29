@@ -812,52 +812,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get helpDashboardTitle => 'Dashboard';
-
-  @override
-  String get helpDashboardBody =>
-      'See your assets, the month\'s income and spending and the cash flow chart.';
-
-  @override
-  String get helpLedgerTitle => 'Ledger';
-
-  @override
-  String get helpLedgerBody =>
-      'Add, filter and view transactions by day, calendar or month.';
-
-  @override
-  String get helpScanTitle => 'Receipt scan';
-
-  @override
-  String get helpScanBody =>
-      'Tap the round button in the middle of the navigation bar to scan a receipt with AI.';
-
-  @override
-  String get helpAiTitle => 'AI analysis';
-
-  @override
-  String get helpAiBody =>
-      'See spending trends and financial habits analysed automatically.';
-
-  @override
-  String get helpTransferTitle => 'Transfers';
-
-  @override
-  String get helpTransferBody =>
-      'Send or receive money by phone number or QR code.';
-
-  @override
   String get feedbackTitle => 'Rate the app';
 
   @override
-  String get feedbackDescription =>
-      'Your feedback helps us keep improving the app!';
-
-  @override
   String get feedbackHint => 'Share your thoughts or suggestions...';
-
-  @override
-  String get feedbackLater => 'Later';
 
   @override
   String get feedbackSubmit => 'Send now';
@@ -872,6 +830,109 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutDescription =>
       'A smart personal finance app with AI spending analysis.';
+
+  @override
+  String get appearanceLanguageTitle => 'Appearance and language';
+
+  @override
+  String get themeCardSystem => 'System';
+
+  @override
+  String languageConfirmTitle(String language) {
+    return 'Switch to $language?';
+  }
+
+  @override
+  String get languageConfirmMessage =>
+      'All text in the app will switch to this language.';
+
+  @override
+  String get languageConfirmAction => 'Switch';
+
+  @override
+  String get notificationSettingsPushDescription =>
+      'Get notifications on this phone';
+
+  @override
+  String get notificationSettingsBudgetAlertDescription =>
+      'Alerts at 80% of a budget and when it is exceeded';
+
+  @override
+  String get moneySourcesTotal => 'Total';
+
+  @override
+  String get securityChangePasswordDescription =>
+      'Other devices will have to sign in again';
+
+  @override
+  String get guideHomeTitle => 'Home';
+
+  @override
+  String get guideHomeBody =>
+      'See your balance, this month\'s income and spending, your budget and recent transactions.';
+
+  @override
+  String get guideStatsTitle => 'Statistics';
+
+  @override
+  String get guideStatsBody =>
+      'See spending as a chart, a month calendar or by category; filter and export to Excel.';
+
+  @override
+  String get guideScanTitle => 'Scan receipts';
+
+  @override
+  String get guideScanBody =>
+      'Tap the round button in the middle of the bottom bar and take or pick a photo. The AI reads the store, the date and the total for you to check and save.';
+
+  @override
+  String get guideAnalysisTitle => 'Spending analysis';
+
+  @override
+  String get guideAnalysisBody =>
+      'See what you can spend each day, highlights, spending habits and balance tips.';
+
+  @override
+  String get guideBudgetSavingsTitle => 'Budgets and savings';
+
+  @override
+  String get guideBudgetSavingsBody =>
+      'Set spending limits per category and follow your savings goals.';
+
+  @override
+  String get feedbackChipEasy => 'Easy to use';
+
+  @override
+  String get feedbackChipScan => 'Accurate receipt scanning';
+
+  @override
+  String get feedbackChipLooks => 'Nice design';
+
+  @override
+  String get feedbackChipMore => 'Needs more features';
+
+  @override
+  String feedbackStarLabel(int count) {
+    return '$count of 5 stars';
+  }
+
+  @override
+  String get aboutVersion => 'Version';
+
+  @override
+  String get aboutDeveloper => 'Developed by';
+
+  @override
+  String get aboutDeveloperValue => 'Team 7';
+
+  @override
+  String get aboutSchool => 'School';
+
+  @override
+  String get aboutSchoolValue => 'HUIT';
+
+  @override
+  String get aboutLicenses => 'Open source licenses';
 
   @override
   String get savingsTitle => 'Savings';
