@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Dto.AppDashboardResponseDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
@@ -232,7 +233,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void sendingTheSameAmountAndTypeAgainDoesNotTouchTheWallet() {
+    void sendingTheSameAmountAndTypeAgainDoesNotMoveTheWallet() {
         aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         TransactionUpdateRequestDto request = updateAmount("100000.00");
         request.setExpense(true);
@@ -241,7 +242,8 @@ class TransactionServiceTest {
 
         assertMoney("1000000", alice.getWalletBalance());
         verify(userRepo, never()).saveAndFlush(any());
-        verifyWalletNotLocked();
+        // A10: the wallet is still locked first, so the amount saved is the one read after any concurrent edit committed.
+        verify(entityManager).find(eq(User.class), any(), eq(LockModeType.PESSIMISTIC_WRITE));
     }
 
     @Test
@@ -256,7 +258,8 @@ class TransactionServiceTest {
 
         assertMoney("1000000", alice.getWalletBalance());
         verify(userRepo, never()).saveAndFlush(any());
-        verifyWalletNotLocked();
+        // A10: saving the row writes the amount column too, so the wallet is locked and the row read again first.
+        verify(entityManager).find(eq(User.class), any(), eq(LockModeType.PESSIMISTIC_WRITE));
         verify(transactionRepo).save(transaction);
     }
 
@@ -768,7 +771,7 @@ class TransactionServiceTest {
         Receipt receipt = receipt(status, transaction(alice, HUNDRED_THOUSAND, true));
         when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt));
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class, () -> service.cancelMyReceipt(7L));
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class, () -> service.cancelMyReceipt(7L));
 
         assertTrue(refused.getMessage().contains("Chờ xử lý"));
         assertEquals(status, receipt.getStatus());
@@ -871,7 +874,7 @@ class TransactionServiceTest {
         Receipt receipt = receiptToApprove(true, status, "120000");
         Transaction transaction = receipt.getTransaction();
 
-        assertThrows(IllegalStateException.class, () -> service.approveReceipt(RECEIPT_ID));
+        assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(RECEIPT_ID));
 
         assertEquals(status, receipt.getStatus());
         assertMoney("100000", transaction.getAmount());
@@ -989,7 +992,7 @@ class TransactionServiceTest {
         orphan.setExtractedTotal(new BigDecimal("120000"));
         when(receiptRepo.findDetailedById(RECEIPT_ID)).thenReturn(Optional.of(orphan));
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class, () -> service.approveReceipt(RECEIPT_ID));
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(RECEIPT_ID));
 
         assertTrue(refused.getMessage().contains("giao dịch"));
         assertEquals("WAITING_FOR_REVIEW", orphan.getStatus());
@@ -1002,7 +1005,7 @@ class TransactionServiceTest {
         Receipt canceled = receiptToApprove(true, "CANCELED", "120000");
         Transaction transaction = canceled.getTransaction();
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class, () -> service.approveReceipt(RECEIPT_ID));
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(RECEIPT_ID));
 
         assertTrue(refused.getMessage().contains("hủy"));
         assertEquals("CANCELED", canceled.getStatus());
@@ -1020,7 +1023,7 @@ class TransactionServiceTest {
         Receipt receipt = receiptToApprove(true, "WAITING_FOR_REVIEW", total);
         Transaction transaction = receipt.getTransaction();
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class, () -> service.approveReceipt(RECEIPT_ID));
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(RECEIPT_ID));
 
         assertTrue(refused.getMessage().contains("tổng tiền"));
         assertEquals("WAITING_FOR_REVIEW", receipt.getStatus());
@@ -2039,7 +2042,7 @@ class TransactionServiceTest {
     void aRefusedApprovalReportsNothing() {
         receiptToApprove(true, "CANCELED", "120000");
 
-        assertThrows(IllegalStateException.class, () -> service.approveReceipt(RECEIPT_ID));
+        assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(RECEIPT_ID));
 
         verifyNoInteractions(eventPublisher);
     }
