@@ -42,6 +42,7 @@ import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
 import vn.edu.huit.finance.core.Service.SubscriptionPlanService;
 import vn.edu.huit.finance.core.Service.TransactionService;
+import vn.edu.huit.finance.core.Service.UserDeletionOutcome;
 import vn.edu.huit.finance.core.Service.UserService;
 
 import java.math.BigDecimal;
@@ -67,6 +68,9 @@ public class AdminController {
     private static final int TOP_SPENDERS_LIMIT = 5;
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
+    private static final String MSG_USER_DELETED = "Đã xóa vĩnh viễn tài khoản";
+    private static final String MSG_USER_LOCKED_INSTEAD =
+            "Tài khoản đã có dữ liệu (giao dịch, ngân sách...) nên đã được khóa thay vì xóa vĩnh viễn";
     private static final String AUDIT_UNLOCK = "Gỡ khóa đăng nhập sớm cho email: %s / IP: %s";
     private static final String AUDIT_SEGMENTATION = "Chạy phân lớp khách hàng RFM (ngũ phân vị): %d người dùng được gán nhãn";
     private static final String MSG_FILTER_FIELD_INVALID = "Giá trị của %s không hợp lệ";
@@ -281,40 +285,26 @@ public class AdminController {
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUserAjax(@PathVariable Long id) {
-        try {
-            // Recorded by UserService (USER_DELETED) in the transaction of the deletion.
-            userService.deleteUser(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Xóa tài khoản thành công")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_DELETED, or USER_STATUS_CHANGED when it only locks) in its transaction.
+        // An ADMIN account or an unknown id is answered by GlobalExceptionHandler (403 / 404).
+        UserDeletionOutcome outcome = userService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message(outcome == UserDeletionOutcome.DELETED ? MSG_USER_DELETED : MSG_USER_LOCKED_INSTEAD)
+                .build());
     }
 
     @PutMapping("/ajax/users/{id}/toggle-status")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> toggleUserStatusAjax(@PathVariable Long id) {
-        try {
-            // Recorded by UserService (USER_STATUS_CHANGED) in the transaction of the change.
-            userService.toggleUserStatus(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Cập nhật trạng thái thành công")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_STATUS_CHANGED) in the transaction of the change. An ADMIN account or an unknown
+        // id is answered by GlobalExceptionHandler (403 / 404).
+        userService.toggleUserStatus(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Cập nhật trạng thái thành công")
+                .build());
     }
 
     @GetMapping("/backup")

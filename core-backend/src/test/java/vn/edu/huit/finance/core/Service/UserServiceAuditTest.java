@@ -15,6 +15,7 @@ import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
@@ -199,9 +200,23 @@ class UserServiceAuditTest {
         loaded(alice());
         doThrow(new DataIntegrityViolationException("fk_transactions_user")).when(userRepository).flush();
 
-        assertThrows(RuntimeException.class, () -> service.deleteUser(ID));
+        assertThrows(DataIntegrityViolationException.class, () -> service.deleteUser(ID));
 
         verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void anAccountWithDataIsRecordedAsLocked_notAsDeleted() {
+        loaded(alice());
+        savingAnswersWithTheUser();
+        when(userRepository.existsLinkedRecords(ID)).thenReturn(true);
+
+        service.deleteUser(ID);
+
+        AuditEntry entry = recorded().get(0);
+        assertByTheCallerAbout(entry, AuditAction.USER_STATUS_CHANGED, ID);
+        assertEquals("Khóa tài khoản thay vì xóa vì đã có dữ liệu (active true → false)", entry.description());
+        assertEquals(1, recorded().size());
     }
 
     @Test
@@ -209,7 +224,7 @@ class UserServiceAuditTest {
         when(userRepository.findById(ID)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.updateUser(ID, new UserUpdateDto()));
-        assertThrows(EntityNotFoundException.class, () -> service.deleteUser(ID));
+        assertThrows(UserNotFoundException.class, () -> service.deleteUser(ID));
 
         verifyNoInteractions(auditLogService);
     }

@@ -15,7 +15,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.AdminAccountProtectedException;
 import vn.edu.huit.finance.core.Exception.InvalidRoleException;
+import vn.edu.huit.finance.core.Exception.ProfileAccessDeniedException;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
@@ -351,9 +354,68 @@ class UserServiceRoleTest {
         when(userRepository.findById(ID)).thenReturn(Optional.of(user("ROLE_USER", true)));
         doThrow(new DataIntegrityViolationException("transactions reference the user")).when(userRepository).flush();
 
-        assertThrows(RuntimeException.class, () -> service.deleteUser(ID));
+        assertThrows(DataIntegrityViolationException.class, () -> service.deleteUser(ID));
 
         verifyNoInteractions(eventPublisher);
+    }
+
+    // ---- deleteUser (A1) ----
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ROLE_ADMIN", "ADMIN", " role_admin "})
+    void anAdministratorAccountIsNeverDeleted(String storedRole) {
+        when(userRepository.findById(ID)).thenReturn(Optional.of(user(storedRole, true)));
+
+        assertThrows(AdminAccountProtectedException.class, () -> service.deleteUser(ID));
+
+        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher, auditLogService);
+    }
+
+    @Test
+    void aUserWithTransactionsIsLockedAndTheLockIsReallySaved_neverDeleted() {
+        User alice = whenLoaded(user("ROLE_USER", true));
+        when(userRepository.existsLinkedRecords(ID)).thenReturn(true);
+
+        assertEquals(UserDeletionOutcome.LOCKED, service.deleteUser(ID));
+
+        assertFalse(alice.isActive());
+        verify(userRepository).save(alice);
+        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).flush();
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void aUserWithoutLinkedRecordsIsDeleted() {
+        User alice = user("ROLE_USER", true);
+        when(userRepository.findById(ID)).thenReturn(Optional.of(alice));
+        when(userRepository.existsLinkedRecords(ID)).thenReturn(false);
+
+        assertEquals(UserDeletionOutcome.DELETED, service.deleteUser(ID));
+
+        verify(userRepository).delete(alice);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void deletingAnUnknownUserIsNotFound() {
+        when(userRepository.findById(ID)).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> service.deleteUser(ID));
+    }
+
+    // ---- updateOwnProfile with the caller (A3) ----
+
+    @Test
+    void aUserEditingAnotherAccountIsRefusedBeforeItIsRead() {
+        User caller = user("ROLE_USER", true);
+
+        assertThrows(ProfileAccessDeniedException.class, () -> service.updateOwnProfile(caller, ID + 1, new UserUpdateDto()));
+
+        verify(userRepository, never()).findById(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test

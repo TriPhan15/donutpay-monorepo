@@ -162,6 +162,19 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
 
+    // 403: PUT /api/users/{id} with another user's id. Recorded like any other 403 about somebody else's data.
+    @ExceptionHandler(ProfileAccessDeniedException.class)
+    public Object handleProfileAccessDenied(ProfileAccessDeniedException ex, HttpServletRequest request) {
+        eventPublisher.publishEvent(SecurityAuditEvent.accessDenied(REASON_NOT_OWNER, request.getMethod(), request.getRequestURI()));
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
+    // 403: an ADMIN account cannot be locked, unlocked or deleted from the admin pages; nothing was written.
+    @ExceptionHandler(AdminAccountProtectedException.class)
+    public Object handleAdminAccountProtected(AdminAccountProtectedException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
     // 409: the receipt is not in a state that allows the request, or another request changed it first; nothing was written.
     @ExceptionHandler(ReceiptConflictException.class)
     public Object handleReceiptConflict(ReceiptConflictException ex, HttpServletRequest request) {

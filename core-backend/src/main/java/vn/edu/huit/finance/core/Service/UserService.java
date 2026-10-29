@@ -14,7 +14,10 @@ import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.AdminAccountProtectedException;
+import vn.edu.huit.finance.core.Exception.ProfileAccessDeniedException;
 import vn.edu.huit.finance.core.Exception.ProfileUpdateRefusedException;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Security.UsernamePolicy;
@@ -51,6 +54,11 @@ public class UserService {
     private static final String AUDIT_DELETED = "Xóa vĩnh viễn tài khoản %s";
     private static final String AUDIT_LOCKED = "Khóa tài khoản (active true → false)";
     private static final String AUDIT_UNLOCKED = "Mở khóa tài khoản (active false → true)";
+    private static final String AUDIT_LOCKED_INSTEAD_OF_DELETED =
+            "Khóa tài khoản thay vì xóa vì đã có dữ liệu (active true → false)";
+    private static final String MSG_USER_NOT_FOUND = "Không tìm thấy người dùng với ID: %d";
+    private static final String MSG_ADMIN_PROTECTED = "Không được phép tác động hoặc thay đổi trạng thái của ADMIN hệ thống!";
+    private static final String MSG_NOT_OWN_PROFILE = "Bạn không có quyền chỉnh sửa tài khoản của người khác!";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -85,6 +93,19 @@ public class UserService {
      */
     @Transactional
     public User updateOwnProfile(Long id, UserUpdateDto dto) {
+        return update(id, dto, false);
+    }
+
+    /**
+     * PUT /api/users/{id} của chính người gọi: id trên đường dẫn phải là id của {@code caller}, nếu không thì từ chối
+     * (403) trước khi đọc tài khoản kia.
+     */
+    @Transactional
+    public User updateOwnProfile(User caller, Long id, UserUpdateDto dto) {
+        if (!Objects.equals(caller.getId(), id)) {
+            log.warn("Profile update of another account refused, callerId={}, targetId={}", caller.getId(), id);
+            throw new ProfileAccessDeniedException(MSG_NOT_OWN_PROFILE);
+        }
         return update(id, dto, false);
     }
 
@@ -144,20 +165,34 @@ public class UserService {
         }
     }
 
+    /**
+     * Xóa vĩnh viễn một tài khoản không có dữ liệu liên quan. Tài khoản đã có giao dịch (hoặc ngân sách, mục tiêu, thông
+     * báo, đánh giá) chỉ bị khóa: kiểm tra trước khi xóa, vì khi DELETE đã lỗi khóa ngoại thì transaction bị đánh dấu
+     * rollback-only và việc khóa trong cùng transaction sẽ không bao giờ được lưu. Tài khoản ADMIN bị từ chối.
+     */
     @Transactional
-    public void deleteUser(Long id) {
+    public UserDeletionOutcome deleteUser(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
-        try {
-            userRepository.delete(user);
-            userRepository.flush();
-        } catch (Exception e) {
-            user.setActive(false);
-            userRepository.save(user);
-            throw new RuntimeException("Tài khoản đang có giao dịch. Hệ thống đã tự động vô hiệu hóa (Khóa) thay vì xóa vĩnh viễn để bảo toàn dữ liệu.");
+                .orElseThrow(() -> new UserNotFoundException(String.format(MSG_USER_NOT_FOUND, id)));
+        if (Roles.isAdmin(user.getRole())) {
+            log.warn("Deletion of an administrator account refused, userId={}", id);
+            throw new AdminAccountProtectedException(MSG_ADMIN_PROTECTED);
         }
+        if (userRepository.existsLinkedRecords(id)) {
+            if (user.isActive()) {
+                user.setActive(false);
+                userRepository.save(user);
+                record(AuditAction.USER_STATUS_CHANGED, id, AUDIT_LOCKED_INSTEAD_OF_DELETED);
+            }
+            log.info("User has linked records, locked instead of deleted, userId={}", id);
+            return UserDeletionOutcome.LOCKED;
+        }
+        userRepository.delete(user);
+        userRepository.flush();
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED, id));
         record(AuditAction.USER_DELETED, id, String.format(AUDIT_DELETED, user.getEmail()));
+        log.info("User deleted, userId={}", id);
+        return UserDeletionOutcome.DELETED;
     }
 
     private String buildAdminPlaceholderPhone(String username) {
@@ -167,10 +202,10 @@ public class UserService {
     @org.springframework.transaction.annotation.Transactional
     public void toggleUserStatus(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với ID: " + userId));
+                .orElseThrow(() -> new UserNotFoundException(String.format(MSG_USER_NOT_FOUND, userId)));
 
         if (Roles.isAdmin(user.getRole())) {
-            throw new RuntimeException("Không được phép tác động hoặc thay đổi trạng thái của ADMIN hệ thống!");
+            throw new AdminAccountProtectedException(MSG_ADMIN_PROTECTED);
         }
 
         user.setActive(!user.isActive());

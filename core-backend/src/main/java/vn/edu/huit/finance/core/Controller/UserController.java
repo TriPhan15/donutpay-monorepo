@@ -49,12 +49,8 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateDto dto) {
 
-        User current = currentUserProvider.getCurrentUser();
-        if (!current.getId().equals(id)) {
-            throw new RuntimeException("Lỗi: Bạn không có quyền chỉnh sửa tài khoản của người khác!");
-        }
-        // Recorded by UserService (USER_UPDATED) in the transaction of the update: no profile change without its row.
-        User updatedUser = userService.updateOwnProfile(id, dto);
+        // UserService refuses (403) an id that is not the caller's, and records the update (USER_UPDATED) in its transaction.
+        User updatedUser = userService.updateOwnProfile(currentUserProvider.getCurrentUser(), id, dto);
 
         ApiResponse<UserResponseDto> response = ApiResponse.<UserResponseDto>builder()
                 .code(200)
