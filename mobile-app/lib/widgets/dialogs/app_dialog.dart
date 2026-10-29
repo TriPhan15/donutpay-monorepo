@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 
 /// What a dialog tells the user; its accent colour is read from the theme when the dialog is built.
 enum _Tone { success, error, warning, info }
 
-/// Unset button texts default to the app's own (OK, Got it, Confirm, Cancel) in the language the app shows.
+/// Two layouts (T9 spec 3.11): a message (success, error, warning, info) shows a large ring with its icon and one wide
+/// button; a question (confirm, choose) has no icon and two text buttons split by a line.
+///
+/// Unset button texts default to the app's own (Done, Got it, Confirm, Cancel) in the language the app shows.
 class AppDialog {
   static Future<void> success(
     BuildContext context, {
@@ -18,7 +22,7 @@ class AppDialog {
     tone: _Tone.success,
     title: title,
     message: message,
-    confirmText: buttonText ?? context.locOrDefault.dialogOk,
+    confirmText: buttonText ?? context.locOrDefault.dialogDone,
   ).then((_) {});
 
   static Future<void> error(
@@ -60,7 +64,7 @@ class AppDialog {
     tone: _Tone.info,
     title: title,
     message: message,
-    confirmText: buttonText ?? context.locOrDefault.dialogOk,
+    confirmText: buttonText ?? context.locOrDefault.dialogGotIt,
   ).then((_) {});
 
   static Future<bool> confirm(
@@ -72,14 +76,14 @@ class AppDialog {
     bool danger = false,
   }) async {
     final loc = context.locOrDefault;
-    final r = await _show(
+    final r = await _ask(
       context,
-      icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
-      tone: danger ? _Tone.error : _Tone.info,
       title: title,
       message: message,
       confirmText: confirmText ?? loc.dialogConfirm,
       cancelText: cancelText ?? loc.dialogCancel,
+      danger: danger,
+      dismissible: false,
     );
     return r == true;
   }
@@ -93,14 +97,13 @@ class AppDialog {
     required String confirmText,
     required String cancelText,
   }) {
-    return _show(
+    return _ask(
       context,
-      icon: Icons.help_outline_rounded,
-      tone: _Tone.info,
       title: title,
       message: message,
       confirmText: confirmText,
       cancelText: cancelText,
+      danger: false,
       dismissible: true,
     );
   }
@@ -112,19 +115,27 @@ class AppDialog {
     _Tone.info => theme.colorScheme.primary,
   };
 
-  static Future<bool?> _show(
+  static const double _messageRadius = 24;
+  static const double _questionRadius = 16;
+  static const double _ringSize = 72;
+  static const double _ringIconSize = 38;
+  static const double _lineHeight = 1.55;
+
+  static TextStyle _messageStyle(ColorScheme colors) => TextStyle(
+    color: colors.onSurfaceVariant,
+    fontSize: AppTextSize.body,
+    height: _lineHeight,
+  );
+
+  /// Opens [dialog] with the app's dialog transition: a short fade and a scale from 0.85.
+  static Future<bool?> _open(
     BuildContext context, {
-    required IconData icon,
-    required _Tone tone,
-    required String title,
-    String? message,
-    required String confirmText,
-    String? cancelText,
-    bool dismissible = false,
+    required bool dismissible,
+    required Widget Function(BuildContext ctx) dialog,
   }) {
     return showGeneralDialog<bool>(
       context: context,
-      barrierDismissible: dismissible || cancelText == null,
+      barrierDismissible: dismissible,
       barrierLabel: 'dialog',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 240),
@@ -138,7 +149,22 @@ class AppDialog {
           ),
         );
       },
-      pageBuilder: (ctx, _, _) {
+      pageBuilder: (ctx, _, _) => dialog(ctx),
+    );
+  }
+
+  static Future<bool?> _show(
+    BuildContext context, {
+    required IconData icon,
+    required _Tone tone,
+    required String title,
+    String? message,
+    required String confirmText,
+  }) {
+    return _open(
+      context,
+      dismissible: true,
+      dialog: (ctx) {
         final theme = Theme.of(ctx);
         final colors = theme.colorScheme;
         final accent = _accentOf(tone, theme);
@@ -146,30 +172,33 @@ class AppDialog {
         return Dialog(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(_messageRadius),
           ),
           insetPadding: const EdgeInsets.symmetric(horizontal: 32),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
+                Center(
+                  child: Container(
+                    width: _ringSize,
+                    height: _ringSize,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: accent, size: _ringIconSize),
                   ),
-                  child: Icon(icon, color: accent, size: 34),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 Text(
                   title,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: AppTextSize.pageTitle,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 if (message != null) ...[
@@ -177,57 +206,149 @@ class AppDialog {
                   Text(
                     message,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
+                    style: _messageStyle(colors),
                   ),
                 ],
                 const SizedBox(height: 24),
-                Row(
-                  children: [
-                    if (cancelText != null) ...[
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: colors.onSurfaceVariant,
-                            side: BorderSide(color: colors.outlineVariant),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child: Text(cancelText),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        // The label takes the dialog's surface colour: white in light mode as before, dark on the
-                        // light accents of the dark theme, which keeps them at 4.5:1 or more against that surface.
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: accent,
-                          foregroundColor: colors.surface,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: Text(confirmText),
-                      ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  // The label takes the dialog's surface colour: white in light mode, dark on the light accents of
+                  // the dark theme, which keeps them at 4.5:1 or more against that surface.
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    textStyle: const TextStyle(
+                      fontSize: AppTextSize.title,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(confirmText),
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  /// A question: no icon, the text centred, Cancel and the action as two text buttons split by a line.
+  static Future<bool?> _ask(
+    BuildContext context, {
+    required String title,
+    String? message,
+    required String confirmText,
+    required String cancelText,
+    required bool danger,
+    required bool dismissible,
+  }) {
+    return _open(
+      context,
+      dismissible: dismissible,
+      dialog: (ctx) {
+        final colors = Theme.of(ctx).colorScheme;
+        final divider = colors.outlineVariant;
+        return Dialog(
+          elevation: 0,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_questionRadius),
+          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: AppTextSize.title,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (message != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: _messageStyle(colors),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Divider(height: 1, thickness: 1, color: divider),
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _QuestionButton(
+                        label: cancelText,
+                        color: colors.primary,
+                        bold: false,
+                        onPressed: () => Navigator.pop(ctx, false),
+                      ),
+                    ),
+                    VerticalDivider(width: 1, thickness: 1, color: divider),
+                    Expanded(
+                      child: _QuestionButton(
+                        label: confirmText,
+                        color: danger ? colors.error : colors.primary,
+                        bold: true,
+                        onPressed: () => Navigator.pop(ctx, true),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// One of the two answers at the bottom of a question dialog.
+class _QuestionButton extends StatelessWidget {
+  const _QuestionButton({
+    required this.label,
+    required this.color,
+    required this.bold,
+    required this.onPressed,
+  });
+
+  final String label;
+  final Color color;
+  final bool bold;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: color,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: const RoundedRectangleBorder(),
+        textStyle: TextStyle(
+          fontSize: AppTextSize.title,
+          fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+      child: Text(label, textAlign: TextAlign.center),
     );
   }
 }

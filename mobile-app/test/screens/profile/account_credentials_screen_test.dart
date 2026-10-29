@@ -140,7 +140,7 @@ void main() {
         });
         expect(find.text('Đổi mật khẩu thành công'), findsOneWidget);
 
-        await dismissDialog(tester, 'OK');
+        await dismissDialog(tester, 'Xong');
 
         expect(find.byType(TextField), findsNothing);
         expect(SessionService.currentUserId, 1);

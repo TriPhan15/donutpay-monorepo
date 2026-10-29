@@ -227,7 +227,7 @@ void main() {
         );
         await tester.enterText(find.byType(TextField).first, '50000');
         await tapText(tester, 'Lưu thay đổi');
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         final puts = backend.requests.where((r) => r.method == 'PUT').toList();
         expect(puts, hasLength(1));

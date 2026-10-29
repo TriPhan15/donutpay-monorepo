@@ -45,6 +45,15 @@ class FakeSettingsRepository implements SettingsRepository {
     return _save(language);
   }
 
+  @override
+  DateTime? lastRecordedDay;
+
+  @override
+  Future<bool> setLastRecordedDay(DateTime day) {
+    lastRecordedDay = DateTime(day.year, day.month, day.day);
+    return _save(day);
+  }
+
   Future<bool> _save(Object value) {
     saved.add(value);
     return pendingSave?.future ?? Future.value(saveResult);

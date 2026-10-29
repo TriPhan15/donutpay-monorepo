@@ -277,7 +277,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please check the app\'s photo access and try again.';
 
   @override
-  String get dialogOk => 'OK';
+  String get dialogDone => 'Done';
 
   @override
   String get dialogConfirm => 'Confirm';
@@ -1837,9 +1837,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dateFieldYesterday => 'Yesterday';
 
   @override
-  String get dateFieldBackToToday => 'Back to today';
-
-  @override
   String get dateFieldPick => 'Choose a date';
 
   @override
@@ -2089,4 +2086,79 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pendingErrorMissingImage =>
       'The photo is no longer on this device.';
+
+  @override
+  String toastStackCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count notifications · tap to see',
+      one: '1 notification · tap to see',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get toastCollapse => 'Collapse';
+
+  @override
+  String get toastCloseAll => 'Close all';
+
+  @override
+  String get toastDismiss => 'Dismiss';
+
+  @override
+  String get toastJustNow => 'just now';
+
+  @override
+  String toastSecondsAgo(int count) {
+    return '${count}s ago';
+  }
+
+  @override
+  String toastMinutesAgo(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String get receiptViewerTitle => 'Receipt photo';
+
+  @override
+  String get receiptViewerShare => 'Share';
+
+  @override
+  String get receiptViewerShareFailed => 'Could not share the photo';
+
+  @override
+  String get datePickerTransactionTitle => 'Choose the transaction date';
+
+  @override
+  String get datePickerTitle => 'Choose a date';
+
+  @override
+  String get datePickerLastRecorded => 'Last used';
+
+  @override
+  String datePickerMonthTitle(String month, String year, String monthName) {
+    return '$monthName $year';
+  }
+
+  @override
+  String get datePickerWeekdays => 'Mo,Tu,We,Th,Fr,Sa,Su';
+
+  @override
+  String get datePickerPreviousMonth => 'Previous month';
+
+  @override
+  String get datePickerNextMonth => 'Next month';
+
+  @override
+  String dateFieldTodayValue(String date) {
+    return 'Today, $date';
+  }
+
+  @override
+  String dateFieldYesterdayValue(String date) {
+    return 'Yesterday, $date';
+  }
 }

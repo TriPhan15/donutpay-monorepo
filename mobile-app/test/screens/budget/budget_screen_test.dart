@@ -227,7 +227,7 @@ void main() {
         await tapText(tester, 'Lưu ngân sách');
 
         expect(find.text('Đã lưu ngân sách'), findsOneWidget);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         final month = BudgetPeriodType.rangeContaining(
           BudgetPeriodType.month,
@@ -355,7 +355,7 @@ void main() {
 
         await tester.enterText(find.byType(TextField), '2500000');
         await tapText(tester, 'Lưu ngân sách');
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         final put = backend.requests.singleWhere((r) => r.method == 'PUT');
         expect(put.path, '/api/budgets/7');
@@ -395,7 +395,7 @@ void main() {
 
         await tapText(tester, 'Xóa');
         expect(find.text('Đã xóa ngân sách'), findsOneWidget);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         expect(backend.calls, ['GET /api/budgets', 'DELETE /api/budgets/7']);
         expect(find.text('Ăn uống'), findsNothing);

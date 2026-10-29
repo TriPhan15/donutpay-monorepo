@@ -354,9 +354,9 @@
   "@scanGalleryFailedMessage": {
     "description": "Error dialog text when the photo gallery fails to open."
   },
-  "dialogOk": "OK",
-  "@dialogOk": {
-    "description": "Default button of a success or info dialog."
+  "dialogDone": "Done",
+  "@dialogDone": {
+    "description": "Default button of a success dialog."
   },
   "dialogConfirm": "Confirm",
   "@dialogConfirm": {
@@ -2483,10 +2483,6 @@
   "@dateFieldYesterday": {
     "description": "Chip of the shared date field that picks yesterday."
   },
-  "dateFieldBackToToday": "Back to today",
-  "@dateFieldBackToToday": {
-    "description": "Tooltip of the button that puts the shared date field back on today; shown only when another day is picked."
-  },
   "dateFieldPick": "Choose a date",
   "@dateFieldPick": {
     "description": "Accessibility label of the shared date field, which opens the date picker."
@@ -2822,5 +2818,117 @@
   "pendingErrorMissingImage": "The photo is no longer on this device.",
   "@pendingErrorMissingImage": {
     "description": "Why a receipt failed: the image copy is gone."
+  },
+  "toastStackCount": "{count, plural, =1{1 notification · tap to see} other{{count} notifications · tap to see}}",
+  "@toastStackCount": {
+    "description": "Label under a stack of toasts: how many there are and that a tap opens the list.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "toastCollapse": "Collapse",
+  "@toastCollapse": {
+    "description": "Button under the open list of toasts that folds it back into a stack."
+  },
+  "toastCloseAll": "Close all",
+  "@toastCloseAll": {
+    "description": "Button under the open list of toasts that closes every toast."
+  },
+  "toastDismiss": "Dismiss",
+  "@toastDismiss": {
+    "description": "Tooltip of the cross that closes one toast in the open list."
+  },
+  "toastJustNow": "just now",
+  "@toastJustNow": {
+    "description": "Age of a toast shown less than five seconds ago."
+  },
+  "toastSecondsAgo": "{count}s ago",
+  "@toastSecondsAgo": {
+    "description": "Age of a toast in seconds.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "toastMinutesAgo": "{count} min ago",
+  "@toastMinutesAgo": {
+    "description": "Age of a toast in minutes.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "receiptViewerTitle": "Receipt photo",
+  "@receiptViewerTitle": {
+    "description": "Title of the full-screen receipt photo viewer."
+  },
+  "receiptViewerShare": "Share",
+  "@receiptViewerShare": {
+    "description": "Tooltip of the share button of the receipt photo viewer (the system sheet also offers saving to Photos)."
+  },
+  "receiptViewerShareFailed": "Could not share the photo",
+  "@receiptViewerShareFailed": {
+    "description": "Toast when the receipt photo could not be downloaded or shared."
+  },
+  "datePickerTransactionTitle": "Choose the transaction date",
+  "@datePickerTransactionTitle": {
+    "description": "Title of the date picker sheet opened from a transaction form."
+  },
+  "datePickerTitle": "Choose a date",
+  "@datePickerTitle": {
+    "description": "Title of the date picker sheet opened from any other form."
+  },
+  "datePickerLastRecorded": "Last used",
+  "@datePickerLastRecorded": {
+    "description": "Quick choice of the date picker: the day of the transaction recorded last."
+  },
+  "datePickerMonthTitle": "{monthName} {year}",
+  "@datePickerMonthTitle": {
+    "description": "Month shown above the calendar of the date picker sheet.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      },
+      "monthName": {
+        "type": "String"
+      }
+    }
+  },
+  "datePickerWeekdays": "Mo,Tu,We,Th,Fr,Sa,Su",
+  "@datePickerWeekdays": {
+    "description": "Short weekday names, Monday first, separated by commas, above the calendar."
+  },
+  "datePickerPreviousMonth": "Previous month",
+  "@datePickerPreviousMonth": {
+    "description": "Tooltip of the button that shows the previous month."
+  },
+  "datePickerNextMonth": "Next month",
+  "@datePickerNextMonth": {
+    "description": "Tooltip of the button that shows the next month."
+  },
+  "dateFieldTodayValue": "Today, {date}",
+  "@dateFieldTodayValue": {
+    "description": "What a date field shows when its day is today.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dateFieldYesterdayValue": "Yesterday, {date}",
+  "@dateFieldYesterdayValue": {
+    "description": "What a date field shows when its day is yesterday.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   }
 }

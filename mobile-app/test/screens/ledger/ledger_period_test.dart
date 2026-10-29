@@ -185,7 +185,7 @@ void main() {
       await tester.tap(find.text('Lưu giao dịch'));
       await tester.pump(_requestStep);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('OK'));
+      await tester.tap(find.text('Xong'));
       await tester.pumpAndSettle();
 
       expect(

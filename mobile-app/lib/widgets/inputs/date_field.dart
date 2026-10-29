@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/di/injection_container.dart';
+import 'package:finance_ai_app/repositories/settings_repository.dart';
+import 'package:finance_ai_app/widgets/inputs/date_picker_sheet.dart';
 
-/// The day of a form: a box that opens the date picker, a "Today" and a "Yesterday" chip, and a button back to today
-/// while another day is picked. Only the day changes: the value given to [onChanged] keeps the time of [value], so a
-/// form that stores a moment (a transaction) keeps its hour.
+/// The day of a form: a box that reads "Today, 27/10/2026", "Yesterday, ..." or the date, and opens the date picker
+/// sheet ([showDatePickerSheet]), which holds the quick choices. Only the day changes: the value given to [onChanged]
+/// keeps the time of [value], so a form that stores a moment (a transaction) keeps its hour.
+///
+/// [forTransaction] titles the sheet for a transaction and offers the day of the transaction recorded last.
 ///
 /// [errorText] outlines the box in the error colour and is shown under it, like the error of a text field;
 /// [helperText] is shown there otherwise, in [helperColor].
@@ -19,6 +24,7 @@ class DateField extends StatelessWidget {
     this.errorText,
     this.helperText,
     this.helperColor,
+    this.forTransaction = false,
   });
 
   static const String displayPattern = 'dd/MM/yyyy';
@@ -35,6 +41,7 @@ class DateField extends StatelessWidget {
   final String? errorText;
   final String? helperText;
   final Color? helperColor;
+  final bool forTransaction;
 
   static final DateTime defaultFirstDate = DateTime(2000);
   static final DateTime defaultLastDate = DateTime(2100);
@@ -68,11 +75,18 @@ class DateField extends StatelessWidget {
     var initial = _dayOf(value);
     if (initial.isBefore(first)) initial = _dayOf(first);
     if (initial.isAfter(last)) initial = _dayOf(last);
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial,
+    final loc = context.loc;
+    final picked = await showDatePickerSheet(
+      context,
+      initial: initial,
       firstDate: first,
       lastDate: last,
+      title: forTransaction
+          ? loc.datePickerTransactionTitle
+          : loc.datePickerTitle,
+      lastRecordedDay: forTransaction && sl.isRegistered<SettingsRepository>()
+          ? sl<SettingsRepository>().lastRecordedDay
+          : null,
     );
     if (picked == null || !context.mounted) return;
     _select(picked);
@@ -84,8 +98,12 @@ class DateField extends StatelessWidget {
     final loc = context.loc;
     final today = _dayOf(DateTime.now());
     final yesterday = DateTime(today.year, today.month, today.day - 1);
-    final isToday = _sameDay(value, today);
-    final isYesterday = _sameDay(value, yesterday);
+    final shown = DateFormat(displayPattern).format(value);
+    final label = _sameDay(value, today)
+        ? loc.dateFieldTodayValue(shown)
+        : _sameDay(value, yesterday)
+        ? loc.dateFieldYesterdayValue(shown)
+        : shown;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,18 +132,7 @@ class DateField extends StatelessWidget {
                     size: _iconSize,
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(DateFormat(displayPattern).format(value)),
-                  ),
-                  if (!isToday)
-                    IconButton(
-                      tooltip: loc.dateFieldBackToToday,
-                      icon: Icon(
-                        Icons.restart_alt_rounded,
-                        color: colors.primary,
-                      ),
-                      onPressed: () => _select(today),
-                    ),
+                  Expanded(child: Text(label)),
                   Icon(
                     Icons.chevron_right_rounded,
                     color: colors.onSurfaceVariant,
@@ -148,53 +155,7 @@ class DateField extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _DayChip(
-              label: loc.dateFieldToday,
-              selected: isToday,
-              onSelected: () => _select(today),
-            ),
-            _DayChip(
-              label: loc.dateFieldYesterday,
-              selected: isYesterday,
-              onSelected: () => _select(yesterday),
-            ),
-          ],
-        ),
       ],
-    );
-  }
-}
-
-class _DayChip extends StatelessWidget {
-  const _DayChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      showCheckmark: false,
-      onSelected: (_) => onSelected(),
-      selectedColor: colors.primary,
-      backgroundColor: colors.surface,
-      side: BorderSide(color: colors.onSurfaceVariant.withValues(alpha: 0.3)),
-      labelStyle: TextStyle(
-        color: selected ? colors.onPrimary : colors.onSurface,
-      ),
     );
   }
 }

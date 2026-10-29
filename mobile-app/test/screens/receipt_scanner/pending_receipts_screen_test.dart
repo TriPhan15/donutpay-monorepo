@@ -251,7 +251,7 @@ void main() {
       await tester.pump();
       await settle(tester, () => find.byType(Dialog).evaluate().isNotEmpty);
       expect(find.text('Thành công'), findsOneWidget);
-      await tester.tap(find.text('OK'));
+      await tester.tap(find.text('Xong'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ReviewFormPage), findsNothing);

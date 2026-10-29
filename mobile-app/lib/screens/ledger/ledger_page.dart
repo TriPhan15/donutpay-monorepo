@@ -23,6 +23,7 @@ import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 import 'package:finance_ai_app/widgets/budget/budget_section.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
+import 'package:finance_ai_app/widgets/receipt/receipt_image_viewer.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
 
@@ -1353,19 +1354,8 @@ class LedgerPageState extends State<LedgerPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => Scaffold(
-                              backgroundColor: Colors.black,
-                              appBar: AppBar(
-                                backgroundColor: Colors.black,
-                                iconTheme: const IconThemeData(
-                                  color: Colors.white,
-                                ),
-                              ),
-                              body: Center(
-                                child: InteractiveViewer(
-                                  child: Image.network(tx.imageUrl!),
-                                ),
-                              ),
+                            builder: (_) => ReceiptImageViewerPage.network(
+                              imageUrl: tx.imageUrl!,
                             ),
                           ),
                         );

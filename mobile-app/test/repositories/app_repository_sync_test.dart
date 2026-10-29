@@ -6,16 +6,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/repositories/settings_repository.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 
 import '../helpers/captured_logs.dart';
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_local_store.dart';
+import '../helpers/fake_settings_repository.dart';
 
 const int _userId = 1;
 const String _checkout = '/api/transactions/checkout';
@@ -76,6 +79,58 @@ void main() {
   ];
 
   group('createTransaction', () {
+    group('the last recorded day', () {
+      late FakeSettingsRepository settings;
+
+      setUp(() {
+        settings = FakeSettingsRepository();
+        sl.registerSingleton<SettingsRepository>(settings);
+      });
+      tearDown(() => sl.unregister<SettingsRepository>());
+
+      test('a created transaction becomes the last recorded day', () async {
+        backend.on('POST', _checkout, (_) => _created());
+
+        await AppRepository.instance.createTransaction(_userId, _draft());
+
+        expect(settings.lastRecordedDay, DateTime(2026, 9, 20));
+      });
+
+      test('a transaction kept offline counts too', () {
+        return withCapturedLogs((_) async {
+          backend.on('POST', _checkout, _noNetwork);
+
+          await AppRepository.instance.createTransaction(_userId, _draft());
+
+          expect(settings.lastRecordedDay, DateTime(2026, 9, 20));
+        });
+      });
+
+      test(
+        'a refused transaction leaves the last recorded day alone',
+        () async {
+          backend.on('POST', _checkout, (_) => jsonResponse(422, {}));
+
+          await expectLater(
+            AppRepository.instance.createTransaction(_userId, _draft()),
+            throwsA(isA<TransactionRefusedException>()),
+          );
+
+          expect(settings.lastRecordedDay, isNull);
+        },
+      );
+    });
+
+    test('without settings registered, create still works', () async {
+      backend.on('POST', _checkout, (_) => _created());
+      expect(sl.isRegistered<SettingsRepository>(), isFalse);
+
+      expect(
+        await AppRepository.instance.createTransaction(_userId, _draft()),
+        SyncStatus.synced,
+      );
+    });
+
     test(
       'sends the transaction with its clientId and leaves it flagged synced',
       () async {

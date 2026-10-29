@@ -2,21 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 
+import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/repositories/settings_repository.dart';
 import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 
-const String _today = 'Hôm nay';
-const String _yesterday = 'Hôm qua';
-const String _backToToday = 'Về hôm nay';
+import '../../helpers/fake_settings_repository.dart';
 
 String _shown(DateTime date) => DateFormat('dd/MM/yyyy').format(date);
 
 /// Holds the value the way a form does and records each change.
 class _Host extends StatefulWidget {
-  const _Host({required this.initial, required this.changes});
+  const _Host({
+    required this.initial,
+    required this.changes,
+    this.forTransaction = false,
+    this.errorText,
+  });
 
   final DateTime initial;
   final List<DateTime> changes;
+  final bool forTransaction;
+  final String? errorText;
 
   @override
   State<_Host> createState() => _HostState();
@@ -32,6 +39,8 @@ class _HostState extends State<_Host> {
         padding: const EdgeInsets.all(16),
         child: DateField(
           value: _value,
+          forTransaction: widget.forTransaction,
+          errorText: widget.errorText,
           onChanged: (date) {
             widget.changes.add(date);
             setState(() => _value = date);
@@ -44,7 +53,6 @@ class _HostState extends State<_Host> {
 
 void main() {
   final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
   final yesterday = DateTime(now.year, now.month, now.day - 1);
 
   late List<DateTime> changes;
@@ -55,104 +63,150 @@ void main() {
     WidgetTester tester,
     DateTime initial, {
     Locale locale = const Locale('vi'),
+    bool forTransaction = false,
+    String? errorText,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: _Host(initial: initial, changes: changes),
+        home: _Host(
+          initial: initial,
+          changes: changes,
+          forTransaction: forTransaction,
+          errorText: errorText,
+        ),
       ),
     );
   }
 
-  bool selected(WidgetTester tester, String label) => tester
-      .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, label))
-      .selected;
-
-  testWidgets('on today: the Today chip is selected and there is no reset', (
-    tester,
-  ) async {
+  testWidgets('today reads Hôm nay, dd/MM/yyyy', (tester) async {
     await pump(tester, now);
 
-    expect(find.text(_shown(now)), findsOneWidget);
+    expect(find.text('Hôm nay, ${_shown(now)}'), findsOneWidget);
     expect(find.byIcon(Icons.calendar_today_rounded), findsOneWidget);
-    expect(selected(tester, _today), isTrue);
-    expect(selected(tester, _yesterday), isFalse);
-    expect(find.byTooltip(_backToToday), findsNothing);
+    expect(
+      find.byType(ChoiceChip),
+      findsNothing,
+      reason: 'the quick days live in the sheet',
+    );
+  });
+
+  testWidgets('yesterday reads Hôm qua, dd/MM/yyyy', (tester) async {
+    await pump(tester, yesterday);
+
+    expect(find.text('Hôm qua, ${_shown(yesterday)}'), findsOneWidget);
+  });
+
+  testWidgets('another day reads dd/MM/yyyy', (tester) async {
+    await pump(tester, DateTime(2026, 3, 15));
+
+    expect(find.text('15/03/2026'), findsOneWidget);
   });
 
   testWidgets(
-    'the Yesterday chip moves the day and keeps the time, then the reset goes back to today',
+    'a tap opens the sheet; a picked day keeps the time of the value',
     (tester) async {
-      final start = DateTime(today.year, today.month, today.day, 8, 30);
-      await pump(tester, start);
+      await pump(tester, DateTime(2026, 3, 15, 18, 40));
 
-      await tester.tap(find.text(_yesterday));
+      await tester.tap(find.text('15/03/2026'));
+      await tester.pumpAndSettle();
+      expect(find.text('Chọn ngày'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('day-20')));
       await tester.pumpAndSettle();
 
-      expect(
-        changes.single,
-        DateTime(yesterday.year, yesterday.month, yesterday.day, 8, 30),
-      );
-      expect(find.text(_shown(yesterday)), findsOneWidget);
-      expect(selected(tester, _yesterday), isTrue);
-      expect(find.byTooltip(_backToToday), findsOneWidget);
-
-      await tester.tap(find.byTooltip(_backToToday));
-      await tester.pumpAndSettle();
-
-      expect(changes.last, start);
-      expect(find.byTooltip(_backToToday), findsNothing);
+      expect(changes.single, DateTime(2026, 3, 20, 18, 40));
+      expect(find.text('20/03/2026'), findsOneWidget);
     },
   );
 
-  testWidgets('choosing the day that is already shown changes nothing', (
-    tester,
-  ) async {
-    await pump(tester, now);
+  testWidgets('choosing the shown day changes nothing', (tester) async {
+    await pump(tester, DateTime(2026, 3, 15, 9));
 
-    await tester.tap(find.text(_today));
+    await tester.tap(find.text('15/03/2026'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('day-15')));
     await tester.pumpAndSettle();
 
     expect(changes, isEmpty);
   });
 
-  testWidgets('a tap on the field opens the date picker on the shown day', (
+  group('with settings', () {
+    late FakeSettingsRepository settings;
+
+    setUp(() {
+      settings = FakeSettingsRepository();
+      sl.registerSingleton<SettingsRepository>(settings);
+    });
+    tearDown(() => sl.unregister<SettingsRepository>());
+
+    testWidgets('forTransaction offers the last recorded day from settings', (
+      tester,
+    ) async {
+      settings.lastRecordedDay = DateTime(now.year, now.month, now.day - 4);
+      await pump(tester, now, forTransaction: true);
+
+      await tester.tap(find.byIcon(Icons.calendar_today_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chọn ngày giao dịch'), findsOneWidget);
+      await tester.tap(find.text('Ngày vừa ghi'));
+      await tester.pumpAndSettle();
+      expect(
+        changes.single,
+        DateTime(
+          now.year,
+          now.month,
+          now.day - 4,
+          now.hour,
+          now.minute,
+          now.second,
+          now.millisecond,
+          now.microsecond,
+        ),
+      );
+    });
+
+    testWidgets(
+      'a plain date field titles the sheet Chọn ngày and offers no last recorded day',
+      (tester) async {
+        settings.lastRecordedDay = DateTime(now.year, now.month, now.day - 4);
+        await pump(tester, now);
+
+        await tester.tap(find.byIcon(Icons.calendar_today_rounded));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Chọn ngày'), findsOneWidget);
+        expect(find.text('Ngày vừa ghi'), findsNothing);
+      },
+    );
+  });
+
+  testWidgets('forTransaction without settings registered still opens', (
     tester,
   ) async {
-    final shown = DateTime(2026, 3, 15, 9);
-    await pump(tester, shown);
+    await pump(tester, now, forTransaction: true);
 
-    await tester.tap(find.text(_shown(shown)));
+    await tester.tap(find.byIcon(Icons.calendar_today_rounded));
     await tester.pumpAndSettle();
 
-    final picker = tester.widget<DatePickerDialog>(
-      find.byType(DatePickerDialog),
-    );
-    expect(picker.initialDate, DateTime(2026, 3, 15));
+    expect(find.text('Chọn ngày giao dịch'), findsOneWidget);
+    expect(find.text('Ngày vừa ghi'), findsNothing);
+  });
 
-    await tester.tap(find.text('20'));
-    // Cancel, then OK, in the language of the picker.
-    await tester.tap(
-      find
-          .descendant(
-            of: find.byType(DatePickerDialog),
-            matching: find.byType(TextButton),
-          )
-          .last,
-    );
-    await tester.pumpAndSettle();
+  testWidgets('an error outlines the field and is shown under it', (
+    tester,
+  ) async {
+    await pump(tester, now, errorText: 'Ngày không hợp lệ');
 
-    expect(changes.single, DateTime(2026, 3, 20, 9));
-    expect(find.text('20/03/2026'), findsOneWidget);
+    expect(find.text('Ngày không hợp lệ'), findsOneWidget);
   });
 
   testWidgets('speaks English', (tester) async {
-    await pump(tester, DateTime(2026, 3, 15), locale: const Locale('en'));
+    await pump(tester, now, locale: const Locale('en'));
 
-    expect(find.text('Today'), findsOneWidget);
-    expect(find.text('Yesterday'), findsOneWidget);
-    expect(find.byTooltip('Back to today'), findsOneWidget);
+    expect(find.text('Today, ${_shown(now)}'), findsOneWidget);
   });
 }

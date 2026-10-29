@@ -97,7 +97,7 @@ void main() {
     await withCapturedLogs((logs) async {
       await tester.longPress(find.text('Du lịch'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+      await tester.tap(find.widgetWithText(TextButton, 'Xóa'));
       await settle(tester);
     });
 
@@ -127,7 +127,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text(refundQuestion), findsOneWidget);
 
-        await tester.tap(find.widgetWithText(OutlinedButton, 'Hủy'));
+        await tester.tap(find.widgetWithText(TextButton, 'Hủy'));
         await settle(tester);
 
         expect(deletes(), isEmpty);
@@ -144,7 +144,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(refundQuestion), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Hủy'));
+      await tester.tap(find.widgetWithText(TextButton, 'Hủy'));
       await settle(tester);
 
       expect(deletes(), isEmpty);
@@ -158,7 +158,7 @@ void main() {
 
         await tester.drag(find.text('Du lịch'), const Offset(-600, 0));
         await tester.pumpAndSettle();
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+        await tester.tap(find.widgetWithText(TextButton, 'Xóa'));
         // The first settle runs the Dismissible's resize animation, whose end calls onDismissed; Dio then moves the
         // DELETE through its interceptors on zero-length timers, which only fire once the fake clock moves again.
         await settle(tester);
@@ -166,7 +166,9 @@ void main() {
 
         expect(deletes(), hasLength(1));
         expect(
-          find.text('Đã xóa mục tiêu: Du lịch. 2.500.000 đ đã được hoàn vào ví.'),
+          find.text(
+            'Đã xóa mục tiêu: Du lịch. 2.500.000 đ đã được hoàn vào ví.',
+          ),
           findsOneWidget,
         );
         // Lets the toast end, so no timer is left when the test is over.
@@ -196,7 +198,7 @@ void main() {
         await tester.longPress(find.text('Du lịch'));
         await tester.pumpAndSettle();
         expect(find.text('Xóa mục tiêu này?'), findsOneWidget);
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+        await tester.tap(find.widgetWithText(TextButton, 'Xóa'));
         await settle(tester);
 
         expect(deletes(), hasLength(1));

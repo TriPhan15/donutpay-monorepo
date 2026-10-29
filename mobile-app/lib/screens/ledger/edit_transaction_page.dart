@@ -254,6 +254,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
             _SectionLabel(loc.transactionDateLabel),
             const SizedBox(height: 8),
             DateField(
+              forTransaction: true,
               value: _date,
               onChanged: (date) => setState(() => _date = date),
             ),

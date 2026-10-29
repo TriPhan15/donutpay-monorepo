@@ -56,6 +56,8 @@ class RemoteApiHelper {
   late final Dio _mlDio;
   // No interceptors: a 401 of the refresh itself must never come back into the renewal.
   late final Dio _refreshDio;
+  // No interceptors and no base URL: files from other hosts (receipt photos) must never receive the login token.
+  late final Dio _externalDio;
 
   bool _initialized = false;
   bool _languageInterceptorAttached = false;
@@ -125,6 +127,17 @@ class RemoteApiHelper {
     _refreshDio = Dio(coreApiOptions.copyWith());
     if (httpClientAdapter != null) {
       _refreshDio.httpClientAdapter = httpClientAdapter;
+    }
+
+    _externalDio = Dio(
+      BaseOptions(
+        connectTimeout: coreApiOptions.connectTimeout,
+        receiveTimeout: coreApiOptions.receiveTimeout,
+        responseType: ResponseType.bytes,
+      ),
+    );
+    if (httpClientAdapter != null) {
+      _externalDio.httpClientAdapter = httpClientAdapter;
     }
 
     _dio.interceptors.add(_sessionInterceptor(_dio));
@@ -492,6 +505,21 @@ class RemoteApiHelper {
   Future<void> updateTransaction(String id, Map<String, dynamic> data) async {
     await _dio.put('/api/transactions/$id', data: data);
     notifyDataChanged();
+  }
+
+  /// Downloads a file of another host (a receipt photo on the image CDN) into the temporary directory, without the
+  /// login token, and returns its path; null when it could not be downloaded. The same URL lands in the same file.
+  Future<String?> downloadToTemp(String url) async {
+    final name = 'receipt_${url.hashCode.toUnsigned(32).toRadixString(16)}.jpg';
+    final path = '${Directory.systemTemp.path}${Platform.pathSeparator}$name';
+    try {
+      final res = await _externalDio.get<List<int>>(url);
+      await File(path).writeAsBytes(res.data!, flush: true);
+      return path;
+    } catch (e) {
+      debugPrint('Không tải được ảnh $url: $e');
+      return null;
+    }
   }
 
   Future<String?> uploadImage(String imagePath) async {

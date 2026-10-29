@@ -195,8 +195,8 @@ void main() {
         await openForm(tester, _tx(category: 'Khác', title: 'Khác'));
 
         expect(chip(tester, 'Khác').selected, isTrue);
-        // Khác, Ăn uống, Di chuyển, and the Hôm nay / Hôm qua chips of the date field.
-        expect(find.byType(ChoiceChip), findsNWidgets(5));
+        // Khác, Ăn uống, Di chuyển.
+        expect(find.byType(ChoiceChip), findsNWidgets(3));
       },
     );
 
@@ -208,8 +208,8 @@ void main() {
 
           await openForm(tester, _tx());
 
-          // The category, and the Hôm nay / Hôm qua chips of the date field.
-          expect(find.byType(ChoiceChip), findsNWidgets(3));
+          // The category alone.
+          expect(find.byType(ChoiceChip), findsNWidgets(1));
           expect(chip(tester, 'Ăn uống').selected, isTrue);
           expect(
             find.text(
@@ -266,7 +266,7 @@ void main() {
           isFalse,
           reason: 'the form stays until the user has read the confirmation',
         );
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         expect(puts(), hasLength(1));
         expect(puts().single.path, _putPath);
@@ -289,7 +289,7 @@ void main() {
       expect(chip(tester, 'Ăn uống').selected, isFalse);
       await typeNote(tester, '  Grab đi làm  ');
       await tapText(tester, _saveLabel);
-      await tapText(tester, 'OK');
+      await tapText(tester, 'Xong');
 
       expect(puts().single.data, {
         'categoryName': 'Di chuyển',
@@ -306,7 +306,7 @@ void main() {
 
         await typeNote(tester, '');
         await tapText(tester, _saveLabel);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         expect(puts().single.data, {'note': ''});
       },
@@ -320,7 +320,7 @@ void main() {
       await tapText(tester, 'Di chuyển');
       await typeNote(tester, 'Đi sân bay');
       await tapText(tester, _saveLabel);
-      await tapText(tester, 'OK');
+      await tapText(tester, 'Xong');
 
       expect(puts().single.data, {
         'amount': 120000.0,
@@ -336,9 +336,11 @@ void main() {
         await openForm(tester, _tx());
         expect(find.text('20/09/2026'), findsOneWidget);
 
+        // The quick choices live in the date sheet.
+        await tapText(tester, '20/09/2026');
         await tapText(tester, 'Hôm nay');
         await tapText(tester, _saveLabel);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         final now = DateTime.now();
         expect(puts().single.data, {
@@ -361,7 +363,7 @@ void main() {
       await tapText(tester, _saveLabel);
 
       expect(find.text('Chưa có thay đổi'), findsOneWidget);
-      await tapText(tester, 'OK');
+      await tapText(tester, 'Đã hiểu');
       expect(puts(), isEmpty);
       expect(closed, isFalse);
     });
@@ -375,7 +377,7 @@ void main() {
       await tapText(tester, _saveLabel);
 
       expect(find.text('Chưa có thay đổi'), findsOneWidget);
-      await tapText(tester, 'OK');
+      await tapText(tester, 'Đã hiểu');
       expect(puts(), isEmpty);
     });
 
@@ -388,7 +390,7 @@ void main() {
         await tapText(tester, _saveLabel);
 
         expect(find.text('Chưa có thay đổi'), findsOneWidget);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Đã hiểu');
         expect(puts(), isEmpty);
       },
     );
@@ -565,7 +567,7 @@ void main() {
         pending.complete(okResponse({'id': 5}));
         await tester.pumpAndSettle();
         expect(find.text('Đã lưu thay đổi'), findsOneWidget);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
         expect(puts(), hasLength(1));
       },
     );

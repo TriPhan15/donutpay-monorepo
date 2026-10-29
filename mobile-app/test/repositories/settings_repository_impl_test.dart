@@ -259,4 +259,41 @@ void main() {
       });
     });
   });
+
+  group('last recorded day', () {
+    const key = SettingsRepositoryImpl.lastRecordedDayKey;
+
+    test('is null on a new device', () async {
+      expect(repository(await preferences()).lastRecordedDay, isNull);
+    });
+
+    test('keeps only the day and survives a reload', () async {
+      final prefs = await preferences();
+      final saved = await repository(
+        prefs,
+      ).setLastRecordedDay(DateTime(2026, 10, 23, 18, 40));
+
+      expect(saved, isTrue);
+      expect(prefs.getString(key), '2026-10-23');
+      expect(repository(prefs).lastRecordedDay, DateTime(2026, 10, 23));
+    });
+
+    test('reads at once from memory after a write', () async {
+      final settings = repository(await preferences());
+      final write = settings.setLastRecordedDay(DateTime(2026, 10, 2, 7));
+
+      expect(settings.lastRecordedDay, DateTime(2026, 10, 2));
+      await write;
+    });
+
+    test('a malformed stored value reads as null', () async {
+      for (final stored in ['23/10/2026', 'abc', '2026-13-40']) {
+        expect(
+          repository(await preferences({key: stored})).lastRecordedDay,
+          isNull,
+          reason: stored,
+        );
+      }
+    });
+  });
 }

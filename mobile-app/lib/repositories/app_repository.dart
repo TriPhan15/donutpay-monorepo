@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
+import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
@@ -12,6 +14,7 @@ import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
+import 'package:finance_ai_app/repositories/settings_repository.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/sqflite_helper.dart';
 
@@ -229,12 +232,22 @@ class AppRepository {
       stored.withSyncStatus(SyncStatus.pending),
       userId,
     );
+    final SyncStatus status;
     try {
-      return await _send(userId, stored);
+      status = await _send(userId, stored);
     } on TransactionRefusedException {
       await _localStore.deleteTransactionByClientId(userId, clientId);
       rethrow;
     }
+    // Kept on the device either way (sent or waiting in the outbox), so its day is the one recorded last.
+    _rememberDay(draft.date);
+    return status;
+  }
+
+  /// Offered by the date picker as "last recorded day"; a failed write only loses that shortcut.
+  void _rememberDay(DateTime day) {
+    if (!sl.isRegistered<SettingsRepository>()) return;
+    unawaited(sl<SettingsRepository>().setLastRecordedDay(day));
   }
 
   /// Sends a transaction that the server has not confirmed again, with the same clientId: when the first send did arrive

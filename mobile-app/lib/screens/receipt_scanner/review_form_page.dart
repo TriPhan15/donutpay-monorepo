@@ -644,6 +644,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       const SizedBox(height: 16),
       _buildFieldLabel(colors, loc.transactionDateLabel),
       DateField(
+        forTransaction: true,
         value: _selectedDate,
         onChanged: _onDatePicked,
         helperText: _dateIsFallback ? loc.reviewDateFallback : null,

@@ -310,6 +310,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             Text(loc.transactionDateLabel, style: labelStyle),
             const SizedBox(height: 8),
             DateField(
+              forTransaction: true,
               value: _selectedDate,
               onChanged: (date) => setState(() => _selectedDate = date),
             ),

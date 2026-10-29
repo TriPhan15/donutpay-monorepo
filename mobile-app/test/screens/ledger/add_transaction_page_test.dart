@@ -143,7 +143,7 @@ void main() {
         await tapText(tester, _saveLabel);
 
         expect(find.text('Đã thêm giao dịch mới.'), findsOneWidget);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         final body = sentBodies().single;
         expect(body['clientId'], matches(_uuidV4));
@@ -261,7 +261,7 @@ void main() {
 
         answer.complete(okResponse({'transactionId': 5}));
         await tester.pumpAndSettle();
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         expect(sentBodies(), hasLength(1));
         expect(store.rows, hasLength(1));
@@ -291,14 +291,10 @@ void main() {
       await openForm(tester);
 
       final today = DateTime.now();
-      expect(find.text(DateFormat('dd/MM/yyyy').format(today)), findsOneWidget);
       expect(
-        tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Hôm nay'))
-            .selected,
-        isTrue,
+        find.text('Hôm nay, ${DateFormat('dd/MM/yyyy').format(today)}'),
+        findsOneWidget,
       );
-      expect(find.byTooltip('Về hôm nay'), findsNothing);
 
       await typeAmount(tester, '1250000');
       expect(find.text('1.250.000'), findsOneWidget);
@@ -311,10 +307,13 @@ void main() {
         await openForm(tester);
 
         await typeAmount(tester, '45000');
+        await tester.tap(find.byIcon(Icons.calendar_today_rounded));
+        await tester.pumpAndSettle();
+        expect(find.text('Chọn ngày giao dịch'), findsOneWidget);
         await tapText(tester, 'Hôm qua');
-        expect(find.byTooltip('Về hôm nay'), findsOneWidget);
+        expect(find.textContaining('Hôm qua, '), findsOneWidget);
         await tapText(tester, _saveLabel);
-        await tapText(tester, 'OK');
+        await tapText(tester, 'Xong');
 
         final body = sentBodies().single;
         expect(body['amount'], 45000.0);

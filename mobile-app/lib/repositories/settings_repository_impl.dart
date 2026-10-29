@@ -1,6 +1,7 @@
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/models/app_language.dart';
@@ -12,16 +13,20 @@ class SettingsRepositoryImpl implements SettingsRepository {
     this._preferences, {
     Locale Function() deviceLocale = _platformLocale,
   }) : _themeMode = _readThemeMode(_preferences),
-       _language = _readLanguage(_preferences, deviceLocale);
+       _language = _readLanguage(_preferences, deviceLocale),
+       _lastRecordedDay = _readDay(_preferences, lastRecordedDayKey);
 
   static const String themeModeKey = 'app_theme';
   static const String languageKey = 'app_language';
+  static const String lastRecordedDayKey = 'last_recorded_day';
+  static const String _dayPattern = 'yyyy-MM-dd';
   // With no saved choice the app follows the device's light or dark mode.
   static const ThemeMode defaultThemeMode = ThemeMode.system;
 
   final SharedPreferences _preferences;
   ThemeMode _themeMode;
   AppLanguage _language;
+  DateTime? _lastRecordedDay;
 
   @override
   ThemeMode get themeMode => _themeMode;
@@ -47,6 +52,16 @@ class SettingsRepositoryImpl implements SettingsRepository {
     return _write(languageKey, language.languageCode);
   }
 
+  @override
+  DateTime? get lastRecordedDay => _lastRecordedDay;
+
+  @override
+  Future<bool> setLastRecordedDay(DateTime day) {
+    final only = DateTime(day.year, day.month, day.day);
+    _lastRecordedDay = only;
+    return _write(lastRecordedDayKey, DateFormat(_dayPattern).format(only));
+  }
+
   Future<bool> _write(String key, String value) async {
     try {
       final saved = await _preferences.setString(key, value);
@@ -63,6 +78,17 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static String? _readString(SharedPreferences preferences, String key) {
     final value = preferences.get(key);
     return value is String ? value : null;
+  }
+
+  /// Null for anything but a real day in [_dayPattern] (a value from an older build, a corrupted file).
+  static DateTime? _readDay(SharedPreferences preferences, String key) {
+    final value = _readString(preferences, key);
+    if (value == null) return null;
+    try {
+      return DateFormat(_dayPattern).parseStrict(value);
+    } on FormatException {
+      return null;
+    }
   }
 
   static ThemeMode _readThemeMode(SharedPreferences preferences) =>

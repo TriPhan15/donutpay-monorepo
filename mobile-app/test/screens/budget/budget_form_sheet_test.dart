@@ -172,8 +172,11 @@ void main() {
       },
     );
 
-    // The "Yesterday" chip of the DateField: on the 1st of a month it is in the previous month.
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Hôm qua'));
+    // The "Yesterday" choice of the date sheet: on the 1st of a month it is in the previous month.
+    await tester.tap(find.byIcon(Icons.calendar_today_rounded));
+    await tester.pumpAndSettle();
+    expect(find.text('Chọn ngày'), findsOneWidget);
+    await tester.tap(find.text('Hôm qua'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '2000000');
     await _tapSave(tester);
@@ -368,7 +371,7 @@ void main() {
         isNull,
         reason: 'the sheet stays until the success dialog is dismissed',
       );
-      await tester.tap(find.text('OK'));
+      await tester.tap(find.text('Xong'));
       await tester.pumpAndSettle();
       expect(closedWith, isTrue);
       expect(find.text('Lưu ngân sách'), findsNothing);

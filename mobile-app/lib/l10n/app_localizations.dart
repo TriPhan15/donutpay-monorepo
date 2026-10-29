@@ -578,11 +578,11 @@ abstract class AppLocalizations {
   /// **'Please check the app\'s photo access and try again.'**
   String get scanGalleryFailedMessage;
 
-  /// Default button of a success or info dialog.
+  /// Default button of a success dialog.
   ///
   /// In en, this message translates to:
-  /// **'OK'**
-  String get dialogOk;
+  /// **'Done'**
+  String get dialogDone;
 
   /// Default confirm button of a confirmation dialog.
   ///
@@ -3258,12 +3258,6 @@ abstract class AppLocalizations {
   /// **'Yesterday'**
   String get dateFieldYesterday;
 
-  /// Tooltip of the button that puts the shared date field back on today; shown only when another day is picked.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to today'**
-  String get dateFieldBackToToday;
-
   /// Accessibility label of the shared date field, which opens the date picker.
   ///
   /// In en, this message translates to:
@@ -3617,6 +3611,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The photo is no longer on this device.'**
   String get pendingErrorMissingImage;
+
+  /// Label under a stack of toasts: how many there are and that a tap opens the list.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 notification · tap to see} other{{count} notifications · tap to see}}'**
+  String toastStackCount(int count);
+
+  /// Button under the open list of toasts that folds it back into a stack.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get toastCollapse;
+
+  /// Button under the open list of toasts that closes every toast.
+  ///
+  /// In en, this message translates to:
+  /// **'Close all'**
+  String get toastCloseAll;
+
+  /// Tooltip of the cross that closes one toast in the open list.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get toastDismiss;
+
+  /// Age of a toast shown less than five seconds ago.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get toastJustNow;
+
+  /// Age of a toast in seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}s ago'**
+  String toastSecondsAgo(int count);
+
+  /// Age of a toast in minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min ago'**
+  String toastMinutesAgo(int count);
+
+  /// Title of the full-screen receipt photo viewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photo'**
+  String get receiptViewerTitle;
+
+  /// Tooltip of the share button of the receipt photo viewer (the system sheet also offers saving to Photos).
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get receiptViewerShare;
+
+  /// Toast when the receipt photo could not be downloaded or shared.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not share the photo'**
+  String get receiptViewerShareFailed;
+
+  /// Title of the date picker sheet opened from a transaction form.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the transaction date'**
+  String get datePickerTransactionTitle;
+
+  /// Title of the date picker sheet opened from any other form.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date'**
+  String get datePickerTitle;
+
+  /// Quick choice of the date picker: the day of the transaction recorded last.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used'**
+  String get datePickerLastRecorded;
+
+  /// Month shown above the calendar of the date picker sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'{monthName} {year}'**
+  String datePickerMonthTitle(String month, String year, String monthName);
+
+  /// Short weekday names, Monday first, separated by commas, above the calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Mo,Tu,We,Th,Fr,Sa,Su'**
+  String get datePickerWeekdays;
+
+  /// Tooltip of the button that shows the previous month.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get datePickerPreviousMonth;
+
+  /// Tooltip of the button that shows the next month.
+  ///
+  /// In en, this message translates to:
+  /// **'Next month'**
+  String get datePickerNextMonth;
+
+  /// What a date field shows when its day is today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today, {date}'**
+  String dateFieldTodayValue(String date);
+
+  /// What a date field shows when its day is yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday, {date}'**
+  String dateFieldYesterdayValue(String date);
 }
 
 class _AppLocalizationsDelegate

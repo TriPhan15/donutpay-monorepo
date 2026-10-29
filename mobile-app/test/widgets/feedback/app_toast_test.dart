@@ -44,6 +44,7 @@ Icon _toastIcon(WidgetTester tester) => tester.widget<Icon>(
 );
 
 void main() {
+  setUp(AppToast.resetForTest);
   testWidgets(
     'shows the message near the top, keeps it through pumpAndSettle, and closes it by itself',
     (tester) async {
@@ -101,18 +102,176 @@ void main() {
     });
   }
 
-  testWidgets('a new toast replaces the one on screen', (tester) async {
+  testWidgets('a second toast stacks on top and shows the count label', (
+    tester,
+  ) async {
     var count = 0;
     await tester.pumpWidget(
       _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
     );
 
     await _tapShow(tester);
+    expect(find.textContaining('chạm để xem'), findsNothing);
     await _tapShow(tester);
 
+    expect(
+      find.text('Toast 1'),
+      findsNothing,
+      reason: 'the older one is a plain layer',
+    );
+    expect(find.text('Toast 2'), findsOneWidget);
+    expect(find.text('2 thông báo · chạm để xem'), findsOneWidget);
+  });
+
+  testWidgets('a fourth toast pushes the oldest out', (tester) async {
+    var count = 0;
+    await tester.pumpWidget(
+      _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
+    );
+
+    for (var i = 0; i < 4; i++) {
+      await _tapShow(tester);
+    }
+
+    expect(find.text('Toast 4'), findsOneWidget);
+    expect(find.text('3 thông báo · chạm để xem'), findsOneWidget);
+    await tester.tap(find.text('3 thông báo · chạm để xem'));
+    await tester.pumpAndSettle();
     expect(find.text('Toast 1'), findsNothing);
     expect(find.text('Toast 2'), findsOneWidget);
   });
+
+  testWidgets('each toast closes on its own timer', (tester) async {
+    var count = 0;
+    await tester.pumpWidget(
+      _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
+    );
+
+    await _tapShow(tester);
+    await tester.pump(const Duration(seconds: 2));
+    await _tapShow(tester);
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('chạm để xem'), findsNothing);
+    expect(find.text('Toast 2'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('Toast 2'), findsNothing);
+  });
+
+  testWidgets(
+    'tapping the stack expands it into a list with ages and close buttons, and stops the timers',
+    (tester) async {
+      var count = 0;
+      await tester.pumpWidget(
+        _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
+      );
+      await _tapShow(tester);
+      await _tapShow(tester);
+
+      await tester.tap(find.text('2 thông báo · chạm để xem'));
+      await tester.pumpAndSettle();
+      expect(find.text('Toast 1'), findsOneWidget);
+      expect(find.text('Toast 2'), findsOneWidget);
+      expect(find.text('vừa xong'), findsNWidgets(2));
+      expect(find.text('Thu gọn'), findsOneWidget);
+      expect(find.text('Đóng tất cả'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
+      expect(find.text('Toast 1'), findsOneWidget, reason: 'timers stop');
+
+      await tester.tap(find.byTooltip('Đóng').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Toast 2'), findsNothing);
+      expect(find.text('Toast 1'), findsOneWidget);
+      expect(
+        find.text('Đóng tất cả'),
+        findsNothing,
+        reason: 'a list of one folds back and its timer runs again',
+      );
+      await tester.pump(AppToast.displayDuration);
+      await tester.pumpAndSettle();
+      expect(find.text('Toast 1'), findsNothing);
+    },
+  );
+
+  testWidgets('Đóng tất cả closes every toast', (tester) async {
+    var count = 0;
+    await tester.pumpWidget(
+      _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
+    );
+    await _tapShow(tester);
+    await _tapShow(tester);
+    await tester.tap(find.text('2 thông báo · chạm để xem'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Đóng tất cả'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Toast'), findsNothing);
+  });
+
+  testWidgets('Thu gọn resumes the timers with the time that was left', (
+    tester,
+  ) async {
+    var count = 0;
+    await tester.pumpWidget(
+      _app(onShow: (context) => AppToast.info(context, 'Toast ${++count}')),
+    );
+    await _tapShow(tester);
+    await _tapShow(tester);
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('2 thông báo · chạm để xem'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 10));
+    await tester.tap(find.text('Thu gọn'));
+    await tester.pumpAndSettle();
+
+    await tester.pump(const Duration(milliseconds: 1900));
+    expect(find.text('Toast 2'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+    expect(find.text('Toast 2'), findsNothing);
+    expect(find.text('Toast 1'), findsNothing);
+  });
+
+  testWidgets('a stack of two takes taps', (tester) async {
+    var topTaps = 0;
+    await tester.pumpWidget(
+      _app(
+        onShow: (context) => AppToast.error(context, _message),
+        onTopTap: () => topTaps++,
+      ),
+    );
+    await _tapShow(tester);
+    await _tapShow(tester);
+
+    await tester.tap(find.text(_message), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(topTaps, 0);
+    expect(find.text('Đóng tất cả'), findsOneWidget);
+  });
+
+  testWidgets(
+    'tearing the tree down while expanded leaves no timer and throws nothing',
+    (tester) async {
+      await tester.pumpWidget(
+        _app(onShow: (context) => AppToast.info(context, _message)),
+      );
+      await _tapShow(tester);
+      await _tapShow(tester);
+      await tester.tap(find.text('2 thông báo · chạm để xem'));
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(AppToast.displayDurationWithAction);
+
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'the action runs its callback and closes the toast; such a toast stays up longer',

@@ -19,4 +19,11 @@ abstract class SettingsRepository {
 
   /// Same contract as [setThemeMode].
   Future<bool> setLanguage(AppLanguage language);
+
+  /// The day (at midnight) of the transaction recorded last on this device, offered as a quick choice by the date
+  /// picker; null when none was recorded yet.
+  DateTime? get lastRecordedDay;
+
+  /// Keeps only the day of [day]. Same contract as [setThemeMode].
+  Future<bool> setLastRecordedDay(DateTime day);
 }

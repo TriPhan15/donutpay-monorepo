@@ -234,7 +234,7 @@ void main() {
 
       await tapSave(tester);
       expect(find.text('Thành công'), findsOneWidget);
-      await tester.tap(find.text('OK'));
+      await tester.tap(find.text('Xong'));
       await tester.pumpAndSettle();
 
       expect(uploads(), 1);
@@ -287,7 +287,7 @@ void main() {
       expect(find.text(_dateFallbackHint), findsOneWidget);
 
       await tapSave(tester);
-      await tester.tap(find.text('OK'));
+      await tester.tap(find.text('Xong'));
       await tester.pumpAndSettle();
       final sent = DateTime.parse(
         sentBodies().single['transactionDate'] as String,
@@ -296,19 +296,24 @@ void main() {
     },
   );
 
-  testWidgets('the date is the shared date field, which opens a date picker', (
-    tester,
-  ) async {
-    await openForm(tester);
+  testWidgets(
+    'the date is the shared date field, which opens the transaction date sheet',
+    (tester) async {
+      await openForm(tester);
 
-    final date = find.byType(DateField);
-    expect(date, findsOneWidget);
-    expect(tester.widget<DateField>(date).value, DateTime(2026, 9, 20, 8, 30));
+      final date = find.byType(DateField);
+      expect(date, findsOneWidget);
+      expect(
+        tester.widget<DateField>(date).value,
+        DateTime(2026, 9, 20, 8, 30),
+      );
 
-    await tester.tap(find.byIcon(Icons.calendar_today_rounded));
-    await tester.pumpAndSettle();
-    expect(find.byType(DatePickerDialog), findsOneWidget);
-  });
+      await tester.tap(find.byIcon(Icons.calendar_today_rounded));
+      await tester.pumpAndSettle();
+      expect(find.text('Chọn ngày giao dịch'), findsOneWidget);
+      expect(tester.widget<DateField>(date).forTransaction, isTrue);
+    },
+  );
 
   testWidgets(
     'a receipt of another month says it still counts in the current balance',
@@ -441,7 +446,7 @@ void main() {
       await tester.tap(find.text('Lưu không kèm ảnh'));
       await tester.pump();
       await settle(tester, () => find.text('Thành công').evaluate().isNotEmpty);
-      await tester.tap(find.text('OK'));
+      await tester.tap(find.text('Xong'));
       await tester.pumpAndSettle();
 
       expect(sentBodies().single.containsKey('imageUrl'), isFalse);
@@ -545,7 +550,7 @@ void main() {
           tester,
           () => find.text('Thành công').evaluate().isNotEmpty,
         );
-        await tester.tap(find.text('OK'));
+        await tester.tap(find.text('Xong'));
         await tester.pumpAndSettle();
 
         final bodies = sentBodies();
@@ -661,7 +666,7 @@ void main() {
 
     answer.complete(okResponse({'transactionId': 5, 'finalAmount': 45000}));
     await settle(tester, () => find.text('Thành công').evaluate().isNotEmpty);
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('Xong'));
     await tester.pumpAndSettle();
   });
 

@@ -620,14 +620,28 @@ void main() {
           await tester.tap(find.byIcon(Icons.calendar_today_rounded));
           await tester.pumpAndSettle();
 
-          final picker = find.byType(DatePickerDialog);
-          expect(materialColor(tester, picker), colors.surface);
-          await tester.tap(
-            find
-                .descendant(of: picker, matching: find.byType(TextButton))
-                .first,
+          // The date sheet: its title in the text colour, the quick choices on the pale accent.
+          expect(
+            paintedColor(tester, find.text('Chọn ngày giao dịch')),
+            colors.onSurface,
           );
+          expect(
+            tester
+                .widget<Material>(
+                  find
+                      .ancestor(
+                        of: find.text('Hôm qua'),
+                        matching: find.byType(Material),
+                      )
+                      .first,
+                )
+                .color,
+            colors.primaryContainer,
+          );
+          // The sheet's own close button, above the one of the page.
+          await tester.tap(find.byIcon(Icons.close_rounded).last);
           await tester.pumpAndSettle();
+          expect(find.text('Chọn ngày giao dịch'), findsNothing);
         });
       });
 

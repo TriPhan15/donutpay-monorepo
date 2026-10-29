@@ -275,7 +275,7 @@ class AppLocalizationsVi extends AppLocalizations {
       'Vui lòng kiểm tra quyền truy cập ảnh của ứng dụng và thử lại.';
 
   @override
-  String get dialogOk => 'OK';
+  String get dialogDone => 'Xong';
 
   @override
   String get dialogConfirm => 'Đồng ý';
@@ -1805,9 +1805,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get dateFieldYesterday => 'Hôm qua';
 
   @override
-  String get dateFieldBackToToday => 'Về hôm nay';
-
-  @override
   String get dateFieldPick => 'Chọn ngày';
 
   @override
@@ -2024,4 +2021,73 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pendingErrorMissingImage => 'Ảnh không còn trên máy.';
+
+  @override
+  String toastStackCount(int count) {
+    return '$count thông báo · chạm để xem';
+  }
+
+  @override
+  String get toastCollapse => 'Thu gọn';
+
+  @override
+  String get toastCloseAll => 'Đóng tất cả';
+
+  @override
+  String get toastDismiss => 'Đóng';
+
+  @override
+  String get toastJustNow => 'vừa xong';
+
+  @override
+  String toastSecondsAgo(int count) {
+    return '$count giây trước';
+  }
+
+  @override
+  String toastMinutesAgo(int count) {
+    return '$count phút trước';
+  }
+
+  @override
+  String get receiptViewerTitle => 'Ảnh hóa đơn';
+
+  @override
+  String get receiptViewerShare => 'Chia sẻ';
+
+  @override
+  String get receiptViewerShareFailed => 'Không chia sẻ được ảnh';
+
+  @override
+  String get datePickerTransactionTitle => 'Chọn ngày giao dịch';
+
+  @override
+  String get datePickerTitle => 'Chọn ngày';
+
+  @override
+  String get datePickerLastRecorded => 'Ngày vừa ghi';
+
+  @override
+  String datePickerMonthTitle(String month, String year, String monthName) {
+    return 'Tháng $month, $year';
+  }
+
+  @override
+  String get datePickerWeekdays => 'T2,T3,T4,T5,T6,T7,CN';
+
+  @override
+  String get datePickerPreviousMonth => 'Tháng trước';
+
+  @override
+  String get datePickerNextMonth => 'Tháng sau';
+
+  @override
+  String dateFieldTodayValue(String date) {
+    return 'Hôm nay, $date';
+  }
+
+  @override
+  String dateFieldYesterdayValue(String date) {
+    return 'Hôm qua, $date';
+  }
 }
