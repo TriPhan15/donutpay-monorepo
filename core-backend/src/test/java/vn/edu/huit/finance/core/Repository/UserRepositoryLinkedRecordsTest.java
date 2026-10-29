@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import vn.edu.huit.finance.core.Entity.Budget;
 import vn.edu.huit.finance.core.Entity.BudgetPeriodType;
 import vn.edu.huit.finance.core.Entity.Category;
+import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 
@@ -78,5 +79,15 @@ class UserRepositoryLinkedRecordsTest {
 
         assertTrue(userRepository.existsLinkedRecords(alice.getId()));
         assertFalse(userRepository.existsLinkedRecords(bob.getId()));
+    }
+
+    @Test
+    void aReceiptTheUserOwnsIsALinkedRecord_evenWithoutATransaction() {
+        // A7: receipts.owner_id references the user, so deleting the account would fail: it is locked instead.
+        Receipt receipt = new Receipt();
+        receipt.setOwner(alice);
+        entityManager.persistAndFlush(receipt);
+
+        assertTrue(userRepository.existsLinkedRecords(alice.getId()));
     }
 }

@@ -1422,4 +1422,54 @@ class ReceiptProcessingServiceTest {
         assertEquals(List.of(new OcrCorrectionEvent(RECEIPT_ID, TRANSACTION_ID, ALICE_ID,
                 List.of(new OcrFieldCorrection(OcrField.TOTAL_COST, null, "150000")))), publishedCorrections());
     }
+
+    // ------------------------------------------------------------------------------------------------ A7: the owner column
+
+    private static Receipt ownedReceipt(String status, User owner, Transaction carrier) {
+        Receipt receipt = receipt(status, carrier);
+        receipt.setOwner(owner);
+        return receipt;
+    }
+
+    @Test
+    void aNewReceiptBelongsToTheUserItsTransactionIsSavedFor() {
+        Transaction transaction = transactionOf(alice);
+
+        service.attachReceipt(transaction, FULL_SCAN, null);
+
+        assertSame(alice, transaction.getReceipt().getOwner());
+    }
+
+    @Test
+    void theOwnerOfAReceiptNoTransactionCarriesCanStillReadAndSendItsAmount() {
+        signedInAsAlice();
+        Receipt orphan = ownedReceipt("FAILED", alice, null);
+        repositoryHolds(orphan);
+
+        assertEquals(RECEIPT_ID, service.getMyReceipt(RECEIPT_ID).getId());
+        service.submitFeedback(RECEIPT_ID, new BigDecimal("150000"));
+
+        assertEquals("WAITING_FOR_REVIEW", orphan.getStatus());
+    }
+
+    @Test
+    void anotherUsersReceiptIsA403_whicheverTransactionCarriesIt() {
+        signedInAsAlice();
+        // The owner column decides: bob's receipt stays bob's even on a transaction of alice.
+        repositoryHolds(ownedReceipt("FAILED", bob, transactionOf(alice)));
+
+        assertThrows(TransactionAccessDeniedException.class, () -> service.getMyReceipt(RECEIPT_ID));
+        assertThrows(TransactionAccessDeniedException.class, () -> service.submitFeedback(RECEIPT_ID, new BigDecimal("1")));
+        assertThrows(TransactionAccessDeniedException.class,
+                () -> service.retryMyReceipt(RECEIPT_ID, retry(NEW_SCAN, CLIENT_ID)));
+        verify(receiptRepo, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void aReceiptWithNeitherOwnerNorTransactionIsNobodys() {
+        signedInAsAlice();
+        repositoryHolds(receipt("FAILED", null));
+
+        assertThrows(TransactionAccessDeniedException.class, () -> service.getMyReceipt(RECEIPT_ID));
+    }
 }

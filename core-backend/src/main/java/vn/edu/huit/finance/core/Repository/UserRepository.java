@@ -21,13 +21,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /**
      * True khi còn dòng nào trỏ tới người dùng bằng khóa ngoại (giao dịch, ngân sách, mục tiêu tiết kiệm, thông báo,
-     * đánh giá): xóa tài khoản đó sẽ vướng khóa ngoại, nên UserService chỉ khóa thay vì xóa.
+     * đánh giá, hóa đơn): xóa tài khoản đó sẽ vướng khóa ngoại, nên UserService chỉ khóa thay vì xóa.
      */
     @Query(value = "SELECT (EXISTS (SELECT 1 FROM transactions WHERE user_id = :userId) "
             + "OR EXISTS (SELECT 1 FROM budgets WHERE user_id = :userId) "
             + "OR EXISTS (SELECT 1 FROM saving_goals WHERE user_id = :userId) "
             + "OR EXISTS (SELECT 1 FROM notifications WHERE user_id = :userId) "
-            + "OR EXISTS (SELECT 1 FROM app_reviews WHERE user_id = :userId))", nativeQuery = true)
+            + "OR EXISTS (SELECT 1 FROM app_reviews WHERE user_id = :userId) "
+            + "OR EXISTS (SELECT 1 FROM receipts WHERE owner_id = :userId))", nativeQuery = true)
     boolean existsLinkedRecords(@org.springframework.data.repository.query.Param("userId") Long userId);
     /**
      * Chuẩn RFM của mọi người dùng: chỉ khoản chi, từ {@code windowStart}, bỏ khoản góp tiết kiệm; ngày ở tương lai

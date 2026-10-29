@@ -92,6 +92,17 @@ WHERE is_expense = FALSE AND note LIKE 'Hoàn tiền từ mục tiêu tiết ki�
 COMMIT;
 ```
 
+A7 (chủ sở hữu hóa đơn) có file riêng, chạy sau `receipt-workflow-migration.sql`:
+
+```bash
+docker exec -i finance-postgres psql -X -v ON_ERROR_STOP=1 -U "$DB_USERNAME" -d finance_db \
+  < core-backend/src/main/resources/db/receipt-owner-migration.sql
+```
+
+File này thêm `receipts.owner_id` (khóa ngoại tới `users`) và `receipts_aud.owner_id`, rồi điền chủ của mỗi hóa đơn
+từ giao dịch gắn với nó. Hóa đơn không gắn giao dịch nào giữ `owner_id` NULL, chỉ admin xử lý được. Chạy lại không đổi gì.
+Chưa chạy file này thì app vẫn nhận ra chủ của hóa đơn cũ qua giao dịch gắn với nó.
+
 ## 4. Không cần chạy thử migration trên dữ liệu cũ
 
 Server deploy bắt đầu từ DB trống, nên không cần chạy thử 4 file migration trên bản sao dữ liệu cũ.

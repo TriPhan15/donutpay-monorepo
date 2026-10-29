@@ -764,6 +764,32 @@ class TransactionServiceTest {
         verify(receiptRepo, never()).save(any());
     }
 
+    @Test
+    void theOwnerOfAReceiptNoTransactionCarriesMayCancelIt() {
+        // A7: the owner column decides, a transaction is not needed for it.
+        signedInAsAlice();
+        Receipt orphan = receipt("PENDING", null);
+        orphan.setOwner(alice);
+        when(receiptRepo.findById(7L)).thenReturn(Optional.of(orphan));
+
+        service.cancelMyReceipt(7L);
+
+        assertEquals("CANCELED", orphan.getStatus());
+        verify(receiptRepo).save(orphan);
+    }
+
+    @Test
+    void aReceiptOwnedBySomebodyElseIsRefusedEvenOnATransactionOfTheCaller() {
+        signedInAsAlice();
+        Receipt receipt = receipt("PENDING", transaction(alice, HUNDRED_THOUSAND, true));
+        receipt.setOwner(bob);
+        when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt));
+
+        assertThrows(TransactionAccessDeniedException.class, () -> service.cancelMyReceipt(7L));
+
+        verify(receiptRepo, never()).save(any());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"SUCCESS", "PROCESSING", "COMPLETED_RAW", "EDITED", "FAILED", "WAITING_FOR_REVIEW", "APPROVED", "CANCELED"})
     void aReceiptThatIsNoLongerPendingCannotBeCanceled(String status) {

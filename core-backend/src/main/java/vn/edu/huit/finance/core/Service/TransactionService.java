@@ -413,9 +413,9 @@ public class TransactionService {
             return new ReceiptNotFoundException(MSG_RECEIPT_NOT_FOUND);
         });
 
-        // A receipt that no transaction carries yet has no owner, so nobody may cancel it through here.
+        // The owner column decides (A7); a receipt without an owner (an old row) can only be handled by an administrator.
         Transaction owningTransaction = receipt.getTransaction();
-        if (owningTransaction == null || !owningTransaction.getUser().getId().equals(userId)) {
+        if (!userId.equals(receipt.ownerId())) {
             log.warn("Receipt access denied, userId={}, receiptId={}", userId, receiptId);
             throw new TransactionAccessDeniedException(MSG_RECEIPT_FORBIDDEN);
         }
@@ -428,7 +428,9 @@ public class TransactionService {
         receiptRepo.save(receipt);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, userId));
         // The receipt status is part of the transaction's search document: the index reads it again after the commit.
-        eventPublisher.publishEvent(TransactionChangedEvent.upserted(owningTransaction.getId(), userId, Set.of()));
+        if (owningTransaction != null) {
+            eventPublisher.publishEvent(TransactionChangedEvent.upserted(owningTransaction.getId(), userId, Set.of()));
+        }
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_CANCELED, AuditActor.of(caller), receiptId,
                 String.format(AUDIT_RECEIPT_CANCELED, previousStatus, receipt.getStatus())));
         log.info("Receipt canceled, userId={}, receiptId={}", userId, receiptId);

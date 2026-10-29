@@ -76,6 +76,8 @@ class ReceiptWorkflowMigrationPostgresTest {
 
     private static final String MIGRATION = "db/receipt-workflow-migration.sql";
     private static final String MIGRATION_IN_CONTAINER = "/tmp/receipt-workflow-migration.sql";
+    private static final String OWNER_MIGRATION = "db/receipt-owner-migration.sql";
+    private static final String OWNER_MIGRATION_IN_CONTAINER = "/tmp/receipt-owner-migration.sql";
     /** What psql answers when ON_ERROR_STOP ended a script at a failing statement. */
     private static final int PSQL_STOPPED_ON_ERROR = 3;
     /** The heading of the last list of the REPORT, and the rows of that list (they start with a receipt id). */
@@ -476,6 +478,40 @@ class ReceiptWorkflowMigrationPostgresTest {
                 "-f", MIGRATION_IN_CONTAINER);
     }
 
+    /** Runs receipt-owner-migration.sql (A7) as the owner of the tables, requires it to succeed, returns what psql printed. */
+    private static String ownerMigrated(String database) throws IOException, InterruptedException {
+        POSTGRES.copyFileToContainer(MountableFile.forClasspathResource(OWNER_MIGRATION), OWNER_MIGRATION_IN_CONTAINER);
+        ExecResult result = POSTGRES.execInContainer("psql", "-X", "-v", "ON_ERROR_STOP=1", "-U", USERNAME, "-d", database,
+                "-f", OWNER_MIGRATION_IN_CONTAINER);
+        assertEquals(0, result.getExitCode(), result.getStderr());
+        assertFalse(result.getStderr().contains("ERROR"), result.getStderr());
+        return result.getStdout() + result.getStderr();
+    }
+
+    @Test
+    void theOwnerMigrationGivesEveryCarriedReceiptTheOwnerOfItsTransaction_leavesOrphansWithout_andRunsTwice() throws Exception {
+        JdbcTemplate db = juneDatabase("june_owner");
+        migrated("june_owner");
+
+        String first = ownerMigrated("june_owner");
+
+        assertEquals(0, db.queryForObject("select count(*) from receipts r join transactions t on t.receipt_id = r.id "
+                + "where r.owner_id is distinct from t.user_id", Integer.class), "a carried receipt without its owner");
+        assertEquals(0, db.queryForObject("select count(*) from receipts r where r.owner_id is not null and not exists "
+                + "(select 1 from transactions t where t.receipt_id = r.id)", Integer.class), "an orphan was given an owner");
+        assertTrue(first.contains("receipt-owner-migration: with_owner="), first);
+        List<String> afterTheFirstRun = snapshotOf(db);
+
+        String second = ownerMigrated("june_owner");
+
+        assertEquals(afterTheFirstRun, snapshotOf(db));
+        assertEquals(noticeOf(first), noticeOf(second));
+    }
+
+    private static String noticeOf(String output) {
+        return output.lines().filter(line -> line.contains("receipt-owner-migration:")).findFirst().orElse("");
+    }
+
     /** Runs the script as the owner of the tables, requires it to succeed, and returns all psql printed (with the NOTICEs). */
     private static String migrated(String database) throws IOException, InterruptedException {
         ExecResult result = migrate(database, USERNAME);
@@ -755,6 +791,8 @@ class ReceiptWorkflowMigrationPostgresTest {
         JdbcTemplate db = juneDatabase("june_schema");
 
         migrated("june_schema");
+        // A7 added receipts.owner_id after Phase 1: its own script follows this one on an old database.
+        ownerMigrated("june_schema");
 
         // Against the schema Hibernate creates for the entities today.
         assertEquals(columnsOf(jdbc, ATTEMPTS), columnsOf(db, ATTEMPTS));

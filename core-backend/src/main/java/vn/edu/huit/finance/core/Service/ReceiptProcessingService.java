@@ -164,6 +164,8 @@ public class ReceiptProcessingService {
         }
 
         receipt.setTransaction(transaction);
+        // The owner is the user the transaction is saved for: the signed-in caller of the checkout, never the request.
+        receipt.setOwner(transaction.getUser());
         transaction.setReceipt(receipt);
         log.info("Receipt attached to a new transaction, status={}, errorCode={}, attempt={}",
                 receipt.getStatus(), receipt.getErrorCode(), ReceiptProcessingAttempt.FIRST_ATTEMPT_NUMBER);
@@ -293,8 +295,7 @@ public class ReceiptProcessingService {
         if (changedFields.contains(AUDIT_FIELD_VENDOR)) {
             // The seller is searchable text of the transaction (no amount or month changed): the search index reads the
             // transaction again once this edit has committed.
-            eventPublisher.publishEvent(TransactionChangedEvent.upserted(
-                    receipt.getTransaction().getId(), caller.getId(), Set.of()));
+            reindexCarrier(receipt, caller.getId());
         }
         String editedVendor = request.getVendorName() == null || request.getVendorName().isBlank() ? null : request.getVendorName();
         latestReading(receipt).ifPresent(ai -> publishCorrections(saved, caller.getId(), ai, editedVendor, total, date, true));
@@ -364,7 +365,7 @@ public class ReceiptProcessingService {
         recordReadingOutcome(saved, attemptNumber, actor);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_CONTENT, caller.getId()));
         // The receipt status is part of the transaction's search document: the index reads it again after the commit.
-        eventPublisher.publishEvent(TransactionChangedEvent.upserted(saved.getTransaction().getId(), caller.getId(), Set.of()));
+        reindexCarrier(saved, caller.getId());
         log.info("Receipt retried, userId={}, receiptId={}, attempt={}, status={} -> {}, errorCode={}, version={}",
                 caller.getId(), receiptId, attemptNumber, ReceiptStatus.FAILED, saved.getStatus(),
                 saved.getErrorCode(), saved.getVersion());
@@ -390,7 +391,7 @@ public class ReceiptProcessingService {
         receiptRepo.save(receipt);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, caller.getId()));
         // The receipt status is part of the transaction's search document: the index reads it again after the commit.
-        eventPublisher.publishEvent(TransactionChangedEvent.upserted(receipt.getTransaction().getId(), caller.getId(), Set.of()));
+        reindexCarrier(receipt, caller.getId());
         // The admin web is told (Redis Pub/Sub, then a toast) only after the commit, by AdminEventPublisher.
         eventPublisher.publishEvent(new ReceiptWaitingReviewEvent(receipt.getId()));
         publishCorrections(receipt, caller.getId(), latestReading(receipt).orElseGet(ExtractedReceiptDto::empty), null, amount,
@@ -427,9 +428,9 @@ public class ReceiptProcessingService {
         receipt.failWith(ReceiptErrorCode.REJECTED_BY_ADMIN);
         receiptRepo.save(receipt);
 
-        // A receipt no transaction carries belongs to nobody: only the admin summary counts it.
+        // A receipt without an owner (an old row) belongs to nobody: only the admin summary counts it.
         Transaction carrier = receipt.getTransaction();
-        Long ownerId = carrier != null ? carrier.getUser().getId() : null;
+        Long ownerId = receipt.ownerId();
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, ownerId));
         if (carrier != null) {
             // The receipt status is part of the transaction's search document: the index reads it again after the commit.
@@ -551,6 +552,16 @@ public class ReceiptProcessingService {
         return date;
     }
 
+    /**
+     * The receipt's status and seller are part of the search document of the transaction that carries it: the index reads
+     * that transaction again after the commit. A receipt no transaction carries is in no document.
+     */
+    private void reindexCarrier(Receipt receipt, Long userId) {
+        if (receipt.getTransaction() != null) {
+            eventPublisher.publishEvent(TransactionChangedEvent.upserted(receipt.getTransaction().getId(), userId, Set.of()));
+        }
+    }
+
     /** A receipt that does not exist is a 404, one that exists but is somebody else's (or nobody's) a 403. */
     private Receipt findOwnedReceipt(Long receiptId, Long userId) {
         Receipt receipt = receiptRepo.findDetailedById(receiptId).orElseThrow(() -> {
@@ -561,10 +572,9 @@ public class ReceiptProcessingService {
         return receipt;
     }
 
-    /** The owner of a receipt is the owner of the transaction that carries it; a receipt none carries has no owner. */
+    /** The receipt's owner column decides (A7), whether or not a transaction carries it; a receipt without one is nobody's. */
     private static void requireOwner(Receipt receipt, Long userId) {
-        Transaction carrier = receipt.getTransaction();
-        if (carrier == null || !carrier.getUser().getId().equals(userId)) {
+        if (!Objects.equals(receipt.ownerId(), userId) || userId == null) {
             log.warn("Receipt access denied, userId={}, receiptId={}", userId, receipt.getId());
             throw new TransactionAccessDeniedException(MSG_RECEIPT_FORBIDDEN);
         }

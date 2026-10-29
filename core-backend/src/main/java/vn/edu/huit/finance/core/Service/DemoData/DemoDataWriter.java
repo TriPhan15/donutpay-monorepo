@@ -305,6 +305,7 @@ public class DemoDataWriter {
         transaction.setPaymentMethod(PAYMENT_METHOD_WALLET);
         transaction.setReceipt(receipt);
         receipt.setTransaction(transaction);
+        receipt.setOwner(user);
         transaction = transactionRepository.save(transaction);
 
         auditReceipt(scenario, receipt, user, admin, demo.note());
