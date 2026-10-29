@@ -2118,13 +2118,237 @@
   "@featureLinkedServicesDescription": {
     "description": "Under the linked services feature."
   },
-  "aiTitle": "AI analysis",
-  "@aiTitle": {
-    "description": "Title of the AI tab."
+  "aiTodayLabel": "You can spend today",
+  "@aiTodayLabel": {
+    "description": "AI tab band: label above today's allowance."
   },
-  "aiPickRangeTitle": "Choose a time range",
-  "@aiPickRangeTitle": {
-    "description": "Title of the date range picker."
+  "aiTodayDaysLeft": "{days, plural, =1{last day} other{{days} days left}}",
+  "@aiTodayDaysLeft": {
+    "description": "AI tab band: days left in the month, today included.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "aiTodaySpent": "Spent {amount}",
+  "@aiTodaySpent": {
+    "description": "AI tab band: spent today; amount is formatted money.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "aiTodayLeft": "{amount} left today",
+  "@aiTodayLeft": {
+    "description": "AI tab band: what is left of today's allowance.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "aiTodayOver": "{amount} over today",
+  "@aiTodayOver": {
+    "description": "AI tab band: spent past today's allowance.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHighlightsTitle": "Highlights",
+  "@aiHighlightsTitle": {
+    "description": "AI tab section title."
+  },
+  "aiTrendVsLastMonth": "Compared with the same days last month",
+  "@aiTrendVsLastMonth": {
+    "description": "Highlights: second line of the spending trend row."
+  },
+  "aiTopCategoryLine": "{category}, {amount}",
+  "@aiTopCategoryLine": {
+    "description": "Highlights: top category and what was spent on it.",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "aiTipSurplus": "Money left this month: set a goal",
+  "@aiTipSurplus": {
+    "description": "Highlights: saving tip when money is left and there is no goal."
+  },
+  "aiTipNeedMore": "Still to put into your goal this month",
+  "@aiTipNeedMore": {
+    "description": "Highlights: saving tip when the month does not cover the goal; the pill shows the amount."
+  },
+  "aiTipOnTrack": "On track for your goal",
+  "@aiTipOnTrack": {
+    "description": "Highlights: saving tip when the month covers the goal."
+  },
+  "aiTipOverspent": "Goal covered, but this month is spending more than came in",
+  "@aiTipOverspent": {
+    "description": "Highlights: saving tip when contributions cover the goal but the month spent more than its income."
+  },
+  "aiWeekCompareLine": "{thisWeek} / last week {lastWeek}",
+  "@aiWeekCompareLine": {
+    "description": "Highlights: this week so far against the same days of last week; compact money.",
+    "placeholders": {
+      "thisWeek": {
+        "type": "String"
+      },
+      "lastWeek": {
+        "type": "String"
+      }
+    }
+  },
+  "aiWeekCompareNone": "No spending in these two weeks",
+  "@aiWeekCompareNone": {
+    "description": "Highlights: week comparison without spending."
+  },
+  "aiTopWeekTitle": "Top spending week",
+  "@aiTopWeekTitle": {
+    "description": "Highlights: title of the top week row."
+  },
+  "aiTopWeekLine": "Week {week} of this month",
+  "@aiTopWeekLine": {
+    "description": "Highlights: week is 1-4.",
+    "placeholders": {
+      "week": {
+        "type": "int"
+      }
+    }
+  },
+  "aiDailyChartTitle": "Daily spending",
+  "@aiDailyChartTitle": {
+    "description": "AI tab section title above the area chart."
+  },
+  "aiPickRangeStart": "From",
+  "@aiPickRangeStart": {
+    "description": "Title of the date sheet for the first day of a custom range."
+  },
+  "aiPickRangeEnd": "To",
+  "@aiPickRangeEnd": {
+    "description": "Title of the date sheet for the last day of a custom range."
+  },
+  "aiHabitsTitle": "Spending habits",
+  "@aiHabitsTitle": {
+    "description": "AI tab section title."
+  },
+  "aiHabitRepeat": "{weeks, plural, =1{Seen in the last week} other{Repeated over the last {weeks} weeks}}",
+  "@aiHabitRepeat": {
+    "description": "Habits: weeks with spending that the analysis looked at.",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      }
+    }
+  },
+  "aiTimes": "{count, plural, =1{once} other{{count} times}}",
+  "@aiTimes": {
+    "description": "Habits: how many weeks a sequence came back in.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiHabitEvery": "About every {days} days",
+  "@aiHabitEvery": {
+    "description": "Habits: mean gap of a periodic expense; days is a formatted decimal.",
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHabitLastOn": "Last on {date}",
+  "@aiHabitLastOn": {
+    "description": "Habits: pill of a periodic expense whose expected date is past; date is dd/MM.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHabitUpcoming": "Coming up: after {from} you usually spend on {to}.",
+  "@aiHabitUpcoming": {
+    "description": "Habits: prediction when this week already has the first categories.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHabitUsually": "After {from} you usually spend on {to}.",
+  "@aiHabitUsually": {
+    "description": "Habits: a habit that is not under way this week.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "aiBalanceTitle": "Spending balance",
+  "@aiBalanceTitle": {
+    "description": "AI tab section title (50/30/20)."
+  },
+  "aiBalanceLine": "{percent}% of income, about {target}% advised",
+  "@aiBalanceLine": {
+    "description": "Balance: share of the month's income and its target.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "aiBalanceSavings": "Savings",
+  "@aiBalanceSavings": {
+    "description": "Balance: the saved share."
+  },
+  "aiLevelOk": "On track",
+  "@aiLevelOk": {
+    "description": "Pill: the share is where it should be."
+  },
+  "aiLevelHigh": "A bit high",
+  "@aiLevelHigh": {
+    "description": "Pill: the share is above its target."
+  },
+  "aiLevelLow": "A bit low",
+  "@aiLevelLow": {
+    "description": "Pill: the share is below its target."
+  },
+  "aiAdviceLine": "{category}: {current} → {suggested} / month",
+  "@aiAdviceLine": {
+    "description": "Advice box: one recommendation of the budget advisor; formatted money.",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "current": {
+        "type": "String"
+      },
+      "suggested": {
+        "type": "String"
+      }
+    }
+  },
+  "aiNoDataMessage": "Add transactions to see your spending analysis.",
+  "@aiNoDataMessage": {
+    "description": "AI tab without any transaction."
   },
   "aiErrorNetwork": "Can't reach the analysis server. Please check your connection and try again.",
   "@aiErrorNetwork": {
@@ -2146,10 +2370,6 @@
   "@aiNoData": {
     "description": "The user has no transactions."
   },
-  "aiNoDataHint": "Add real transactions so WCM-SPADE can mine your spending patterns.",
-  "@aiNoDataHint": {
-    "description": "Hint when there are no transactions."
-  },
   "aiTrendTitle": "Spending trend",
   "@aiTrendTitle": {
     "description": "Insight card title."
@@ -2166,51 +2386,9 @@
   "@aiWeekCompareTitle": {
     "description": "Insight card title."
   },
-  "aiChartTitle": "Income & spending chart",
-  "@aiChartTitle": {
-    "description": "Title of the spending chart."
-  },
-  "aiNoWeekData": "No data for the weeks of this month yet.",
-  "@aiNoWeekData": {
-    "description": "No spending in any week of the month."
-  },
-  "aiTopWeek": "Week {week} has the highest spending: {amount}.",
-  "@aiTopWeek": {
-    "description": "week is 1-4; amount is formatted money.",
-    "placeholders": {
-      "week": {
-        "type": "int"
-      },
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "aiSafeToSpendTitle": "How much can I spend today?",
-  "@aiSafeToSpendTitle": {
-    "description": "Title of the safe-to-spend card."
-  },
   "aiSafeToSpendNoIncome": "Add this month's income to work out a safe amount.",
   "@aiSafeToSpendNoIncome": {
     "description": "No income this month."
-  },
-  "aiPerDay": "{amount} / day",
-  "@aiPerDay": {
-    "description": "Money per day; amount is formatted money.",
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "aiDaysLeft": "{days, plural, =1{What is left covers the last day.} other{What is left spread evenly over {days} days.}}",
-  "@aiDaysLeft": {
-    "description": "Days left in the month.",
-    "placeholders": {
-      "days": {
-        "type": "int"
-      }
-    }
   },
   "aiOverSafe": "You've spent past this month's safe share.",
   "@aiOverSafe": {
@@ -2225,64 +2403,13 @@
       }
     }
   },
-  "aiTrendUp": "Spending this month is up {percent}% on last month.",
-  "@aiTrendUp": {
-    "description": "percent has one decimal.",
-    "placeholders": {
-      "percent": {
-        "type": "String"
-      }
-    }
-  },
-  "aiTrendDown": "Spending this month is down {percent}% on last month.",
-  "@aiTrendDown": {
-    "description": "percent has one decimal.",
-    "placeholders": {
-      "percent": {
-        "type": "String"
-      }
-    }
-  },
   "aiNoSpendingThisMonth": "No spending this month yet.",
   "@aiNoSpendingThisMonth": {
     "description": "Top category card without spending."
   },
-  "aiTopCategory": "{category} accounts for {amount} ({percent}% of spending).",
-  "@aiTopCategory": {
-    "description": "category is the category label; amount is formatted money.",
-    "placeholders": {
-      "category": {
-        "type": "String"
-      },
-      "amount": {
-        "type": "String"
-      },
-      "percent": {
-        "type": "String"
-      }
-    }
-  },
-  "aiSurplus": "You're {amount} ahead. Set a goal!",
-  "@aiSurplus": {
-    "description": "Income above spending, no goal yet.",
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
   "aiAddGoal": "Add a savings goal for the AI to analyse.",
   "@aiAddGoal": {
     "description": "No savings goal yet."
-  },
-  "aiGoalNeedMore": "Contribute {amount} more this month to stay on track",
-  "@aiGoalNeedMore": {
-    "description": "Savings tip: what is still missing this month for the urgent goal.",
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
   },
   "aiGoalNoDeadline": "This goal has no deadline, contribute whenever you can",
   "@aiGoalNoDeadline": {
@@ -2291,18 +2418,6 @@
   "aiGoalOverdue": "This goal is past its deadline: set a new date or keep contributing",
   "@aiGoalOverdue": {
     "description": "Savings tip: the urgent goal has a deadline that is already past."
-  },
-  "aiOnTrack": "You're on your savings path. See the money allocation tips below to reach your goal faster!",
-  "@aiOnTrack": {
-    "description": "The user has savings goals."
-  },
-  "aiSpadeTitle": "Sequential spending patterns",
-  "@aiSpadeTitle": {
-    "description": "Title of the WCM-SPADE section."
-  },
-  "aiSpadeSubtitle": "Spending sequences you often follow",
-  "@aiSpadeSubtitle": {
-    "description": "Under the WCM-SPADE title."
   },
   "aiSpadeLoadFailedTitle": "Couldn't load the analysis",
   "@aiSpadeLoadFailedTitle": {
@@ -2344,126 +2459,6 @@
   "@aiSpadeNoPatternMessage": {
     "description": "Enough weeks, but no sequence repeats often enough."
   },
-  "aiSpadeWeeksDetail": "In {count}/{total} weeks",
-  "@aiSpadeWeeksDetail": {
-    "description": "How many of the analysed weeks contain the sequence.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "aiAdviceTitle": "Money allocation tips",
-  "@aiAdviceTitle": {
-    "description": "Title of the budget advice section."
-  },
-  "aiAdviceSubtitle": "Suggested cuts and keeps per item to reach your savings goal",
-  "@aiAdviceSubtitle": {
-    "description": "Under the advice title."
-  },
-  "aiAdvicePerMonth": "{current} → {suggested} / month",
-  "@aiAdvicePerMonth": {
-    "description": "Current and suggested monthly amounts.",
-    "placeholders": {
-      "current": {
-        "type": "String"
-      },
-      "suggested": {
-        "type": "String"
-      }
-    }
-  },
-  "aiGuardTitle": "Habits to watch",
-  "@aiGuardTitle": {
-    "description": "Title of the habit alert section."
-  },
-  "aiGuardSubtitle": "Habits that repeated in many weeks of your history.",
-  "@aiGuardSubtitle": {
-    "description": "Under the habit alert title."
-  },
-  "aiGuardHeading": "Repeated pattern · Sequence mining",
-  "@aiGuardHeading": {
-    "description": "Heading of one habit alert."
-  },
-  "aiGuardRule": "{count}/{total} weeks: after spending on {from}, you also spent on {to} in the same week.",
-  "@aiGuardRule": {
-    "description": "A rule seen in count of the total weeks in which the first part happened.",
-    "placeholders": {
-      "from": {
-        "type": "String"
-      },
-      "to": {
-        "type": "String"
-      },
-      "count": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "aiGuardTriggered": "This week you have spent on {from} but not yet on {to}.",
-  "@aiGuardTriggered": {
-    "description": "The rule applies to the current week.",
-    "placeholders": {
-      "from": {
-        "type": "String"
-      },
-      "to": {
-        "type": "String"
-      }
-    }
-  },
-  "aiHabitTitle": "Recurring habits",
-  "@aiHabitTitle": {
-    "description": "Title of the periodic habits section."
-  },
-  "aiHabitSubtitle": "Categories you spend on at a fairly regular interval.",
-  "@aiHabitSubtitle": {
-    "description": "Under the periodic habits title."
-  },
-  "aiHabitLine": "{category}: about every {days} days, next around {date}",
-  "@aiHabitLine": {
-    "description": "Mean gap in days and the next expected date (dd/MM).",
-    "placeholders": {
-      "category": {
-        "type": "String"
-      },
-      "days": {
-        "type": "String"
-      },
-      "date": {
-        "type": "String"
-      }
-    }
-  },
-  "aiHabitLineLate": "{category}: about every {days} days, last on {last}",
-  "@aiHabitLineLate": {
-    "description": "The expected date has passed; shows the last one.",
-    "placeholders": {
-      "category": {
-        "type": "String"
-      },
-      "days": {
-        "type": "String"
-      },
-      "last": {
-        "type": "String"
-      }
-    }
-  },
-  "ai503020Title": "Spending health — the 50/30/20 rule",
-  "@ai503020Title": {
-    "description": "Title of the 50/30/20 card."
-  },
-  "ai503020Groups": "Needs: Food & drinks, Transport, Supermarket, Living costs · Wants: Entertainment, Other",
-  "@ai503020Groups": {
-    "description": "Which categories count as needs and wants."
-  },
   "ai503020Needs": "Needs",
   "@ai503020Needs": {
     "description": "Needs share row."
@@ -2471,10 +2466,6 @@
   "ai503020Wants": "Wants",
   "@ai503020Wants": {
     "description": "Wants share row."
-  },
-  "ai503020Savings": "Savings (what's left)",
-  "@ai503020Savings": {
-    "description": "Savings share row."
   },
   "ai503020OnTrack": "This month's spending meets the 50/30/20 rule. Keep it up!",
   "@ai503020OnTrack": {

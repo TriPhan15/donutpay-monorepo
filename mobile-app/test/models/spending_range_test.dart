@@ -222,60 +222,21 @@ void main() {
     });
   });
 
-  group('buckets of a month', () {
-    test(
-      'are the four weeks of the chart, the last one taking the rest of the month',
-      () {
-        final buckets = SpendingRange.month(DateTime(2026, 9, 10)).buckets(_vi);
+  group('dayBuckets', () {
+    void expectContiguous(SpendingRange range, List<SpendingBucket> buckets) {
+      expect(buckets.first.start, range.start);
+      expect(
+        buckets.last.end,
+        DateTime(range.end.year, range.end.month, range.end.day + 1),
+      );
+      for (var i = 1; i < buckets.length; i++) {
+        expect(buckets[i].start, buckets[i - 1].end, reason: 'bucket $i');
+      }
+    }
 
-        expect(buckets.map((b) => b.label), ['W1', 'W2', 'W3', 'W4']);
-        expect(buckets.map((b) => b.start), [
-          DateTime(2026, 9, 1),
-          DateTime(2026, 9, 8),
-          DateTime(2026, 9, 15),
-          DateTime(2026, 9, 22),
-        ]);
-        expect(buckets.last.end, DateTime(2026, 10, 1));
-      },
-    );
-
-    test(
-      'put every day in the bar the chart always used: 1-7, 8-14, 15-21 and 22 onwards',
-      () {
-        final buckets = SpendingRange.month(DateTime(2026, 9, 10)).buckets(_vi);
-
-        for (var day = 1; day <= 30; day++) {
-          final expected = day <= 7 ? 0 : (day <= 14 ? 1 : (day <= 21 ? 2 : 3));
-          for (final time in [
-            DateTime(2026, 9, day),
-            DateTime(2026, 9, day, 23, 59),
-          ]) {
-            expect(
-              buckets.indexWhere((b) => b.contains(time)),
-              expected,
-              reason: '$time',
-            );
-          }
-        }
-      },
-    );
-
-    test('are still four for the shortest and the longest month', () {
-      final february = SpendingRange.month(DateTime(2027, 2, 1)).buckets(_vi);
-      final december = SpendingRange.month(DateTime(2026, 12, 1)).buckets(_vi);
-
-      expect(february.length, 4);
-      expect(february.last.start, DateTime(2027, 2, 22));
-      expect(february.last.end, DateTime(2027, 3, 1));
-      expect(december.length, 4);
-      expect(december.last.start, DateTime(2026, 12, 22));
-      expect(december.last.end, DateTime(2027, 1, 1));
-    });
-  });
-
-  group('buckets of a week', () {
-    test('are its seven days, each named after its weekday', () {
-      final buckets = SpendingRange.week(_wednesday).buckets(_vi);
+    test('a week is its seven days, named after their weekdays', () {
+      final range = SpendingRange.week(DateTime(2026, 10, 21));
+      final buckets = range.dayBuckets(_vi);
 
       expect(buckets.map((b) => b.label), [
         'T2',
@@ -286,113 +247,74 @@ void main() {
         'T7',
         'CN',
       ]);
-      expect(buckets.first.start, DateTime(2026, 9, 21));
-      expect(buckets.first.end, DateTime(2026, 9, 22));
-      expect(buckets.last.start, DateTime(2026, 9, 27));
-      expect(buckets.last.end, DateTime(2026, 9, 28));
+      expect(buckets.first.start, DateTime(2026, 10, 19));
+      expectContiguous(range, buckets);
     });
-  });
 
-  group('buckets of a custom range', () {
-    test(
-      'a range of up to a week has one bar per day, named after the weekday',
-      () {
-        final buckets = SpendingRange.custom(
-          DateTime(2026, 9, 23),
-          DateTime(2026, 9, 25),
-        ).buckets(_vi);
+    test('a month is one point per day, labelled dd/MM', () {
+      final range = SpendingRange.month(DateTime(2026, 2, 10));
+      final buckets = range.dayBuckets(_vi);
 
-        expect(buckets.map((b) => b.label), ['T4', 'T5', 'T6']);
-      },
-    );
+      expect(buckets, hasLength(28));
+      expect(buckets.first.label, '01/02');
+      expect(buckets.last.label, '28/02');
+      expectContiguous(range, buckets);
+    });
 
-    test(
-      'a longer range is cut into bars of as few days as keep it within seven bars, named after their first day',
-      () {
-        final buckets = SpendingRange.custom(
-          DateTime(2026, 9, 1),
-          DateTime(2026, 9, 10),
-        ).buckets(_vi);
-
-        expect(buckets.map((b) => b.label), [
-          '01/09',
-          '03/09',
-          '05/09',
-          '07/09',
-          '09/09',
-        ]);
-        expect(buckets.last.end, DateTime(2026, 9, 11));
-      },
-    );
-
-    test(
-      'the last bar is shorter when the days do not divide evenly, and ends with the range',
-      () {
-        final buckets = SpendingRange.custom(
-          DateTime(2026, 9, 1),
-          DateTime(2026, 9, 9),
-        ).buckets(_vi);
-
-        expect(buckets.map((b) => b.label), [
-          '01/09',
-          '03/09',
-          '05/09',
-          '07/09',
-          '09/09',
-        ]);
-        expect(buckets.last.start, DateTime(2026, 9, 9));
-        expect(buckets.last.end, DateTime(2026, 9, 10));
-      },
-    );
-
-    test('a year is still seven bars', () {
-      final buckets = SpendingRange.custom(
-        DateTime(2026, 1, 1),
-        DateTime(2026, 12, 31),
-      ).buckets(_vi);
-
-      expect(buckets.length, 7);
+    test('a month of 31 days still has one point per day', () {
+      expect(
+        SpendingRange.month(DateTime(2026, 10, 1)).dayBuckets(_vi),
+        hasLength(31),
+      );
     });
 
     test(
-      'for any length the bars follow one another, cover exactly the days of the range, and are at most seven',
+      'a long custom range groups days so that it stays within 31 points',
       () {
-        for (var days = 1; days <= 400; days++) {
-          final range = SpendingRange.custom(
-            DateTime(2026, 1, 1),
-            DateTime(2026, 1, days),
-          );
-          final buckets = range.buckets(_vi);
-          final reason = '$days days';
+        final range = SpendingRange.custom(
+          DateTime(2026, 1, 1),
+          DateTime(2026, 3, 3),
+        );
+        final buckets = range.dayBuckets(_vi);
 
-          expect(range.days, days, reason: reason);
-          expect(
-            buckets.length,
-            lessThanOrEqualTo(SpendingRange.maxFittedBuckets),
-            reason: reason,
-          );
-          expect(buckets.first.start, range.start, reason: reason);
-          expect(
-            buckets.last.end,
-            DateTime(range.end.year, range.end.month, range.end.day + 1),
-            reason: reason,
-          );
-          for (var i = 0; i < buckets.length; i++) {
-            expect(
-              buckets[i].end.isAfter(buckets[i].start),
-              isTrue,
-              reason: '$reason, bar $i is empty',
-            );
-            if (i > 0) {
-              expect(
-                buckets[i].start,
-                buckets[i - 1].end,
-                reason: '$reason, gap before bar $i',
-              );
-            }
-          }
-        }
+        expect(range.days, 62);
+        expect(buckets, hasLength(31));
+        expect(buckets[1].start, DateTime(2026, 1, 3));
+        expectContiguous(range, buckets);
       },
     );
+
+    test(
+      'the last group of an uneven range is shorter and ends with the range',
+      () {
+        final range = SpendingRange.custom(
+          DateTime(2026, 1, 1),
+          DateTime(2026, 12, 31),
+        );
+        final buckets = range.dayBuckets(_vi);
+
+        expect(buckets.length, lessThanOrEqualTo(31));
+        expectContiguous(range, buckets);
+      },
+    );
+
+    test('a range of more than a year names its points with the year', () {
+      final range = SpendingRange.custom(
+        DateTime(2025, 1, 1),
+        DateTime(2026, 6, 30),
+      );
+      final labels = range.dayBuckets(_vi).map((b) => b.label).toList();
+
+      expect(labels.first, '01/01/25');
+      expect(labels.toSet(), hasLength(labels.length));
+    });
+
+    test('a short custom range of one day is one point', () {
+      final range = SpendingRange.custom(
+        DateTime(2026, 5, 5),
+        DateTime(2026, 5, 5),
+      );
+      expect(range.dayBuckets(_vi).single.label, '05/05');
+    });
   });
 }

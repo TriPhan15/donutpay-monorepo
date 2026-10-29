@@ -5,7 +5,7 @@ import 'package:finance_ai_app/l10n/app_localizations.dart';
 /// How the period of the spending report is chosen.
 enum SpendingPeriod { week, month, custom }
 
-/// One bar of the report chart: the days from [start] up to, but not including, [end].
+/// One point of the daily chart: the days from [start] up to, but not including, [end].
 class SpendingBucket {
   final String label;
   final DateTime start;
@@ -24,16 +24,16 @@ class SpendingBucket {
   }
 }
 
-/// The days the spending report covers, the first and the last one included, and the bars its chart is split into.
+/// The days the spending report covers, the first and the last one included, and the points its chart is split into.
 class SpendingRange {
-  /// The month keeps the four weekly bars the chart always had: days 1-7, 8-14, 15-21 and 22 up to the month's end.
-  static const int monthBucketCount = 4;
+  /// The daily chart shows at most this many points: a month has one per day.
+  static const int maxDayPoints = 31;
 
-  /// A week, or a range the user picked, is split into at most this many bars so that they stay readable.
-  static const int maxFittedBuckets = 7;
-
-  static const String _weekBucketPrefix = 'W';
   static final DateFormat _dayMonth = DateFormat('dd/MM');
+  static final DateFormat _dayMonthYear = DateFormat('dd/MM/yy');
+
+  /// A range longer than this names its points with the year, so that the same day of two years cannot be confused.
+  static const int _daysPerYear = 365;
   static final DateFormat _fullDate = DateFormat('dd/MM/yyyy');
 
   final SpendingPeriod period;
@@ -111,37 +111,24 @@ class SpendingRange {
     return !day.isBefore(start) && !day.isAfter(end);
   }
 
-  /// The bars of the chart, in order, with no gap between them; together they cover exactly the days of the range. A
-  /// bar of one day is labelled with its weekday in the language of [loc].
-  List<SpendingBucket> buckets(AppLocalizations loc) =>
-      period == SpendingPeriod.month ? _weeklyBuckets() : _fittedBuckets(loc);
-
-  /// Four weeks counted from the first day; the last one takes whatever days are left.
-  List<SpendingBucket> _weeklyBuckets() {
-    return List.generate(monthBucketCount, (i) {
-      final from = _shift(start, i * DateTime.daysPerWeek);
-      final isLast = i == monthBucketCount - 1;
-      return SpendingBucket(
-        label: '$_weekBucketPrefix${i + 1}',
-        start: from,
-        end: isLast ? _shift(end, 1) : _shift(from, DateTime.daysPerWeek),
-      );
-    });
-  }
-
-  /// As few days per bar as it takes to stay within [maxFittedBuckets]. A bar of one day is named after its weekday, a
-  /// longer one after its first day.
-  List<SpendingBucket> _fittedBuckets(AppLocalizations loc) {
+  /// The points of the daily chart, in order, with no gap between them; together they cover exactly the days of the
+  /// range. One point per day, unless the range has more than [maxPoints] days: then as few days per point as keep it
+  /// within [maxPoints], the last point taking what is left. The week's points are named after their weekdays in the
+  /// language of [loc], the others after their first day (dd/MM, dd/MM/yy for a range of more than a year).
+  List<SpendingBucket> dayBuckets(
+    AppLocalizations loc, {
+    int maxPoints = maxDayPoints,
+  }) {
     final endExclusive = _shift(end, 1);
-    final daysPerBucket = (days / maxFittedBuckets).ceil();
+    final daysPerBucket = (days / maxPoints).ceil();
     final count = (days / daysPerBucket).ceil();
     return List.generate(count, (i) {
       final from = _shift(start, i * daysPerBucket);
       final to = _shift(from, daysPerBucket);
       return SpendingBucket(
-        label: daysPerBucket == 1
+        label: period == SpendingPeriod.week
             ? _weekdayLabel(loc, from.weekday)
-            : _dayMonth.format(from),
+            : (days > _daysPerYear ? _dayMonthYear : _dayMonth).format(from),
         start: from,
         end: to.isAfter(endExclusive) ? endExclusive : to,
       );

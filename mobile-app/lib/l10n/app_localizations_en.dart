@@ -1593,10 +1593,156 @@ class AppLocalizationsEn extends AppLocalizations {
   String get featureLinkedServicesDescription => 'MoMo, ZaloPay, banks...';
 
   @override
-  String get aiTitle => 'AI analysis';
+  String get aiTodayLabel => 'You can spend today';
 
   @override
-  String get aiPickRangeTitle => 'Choose a time range';
+  String aiTodayDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days left',
+      one: 'last day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiTodaySpent(String amount) {
+    return 'Spent $amount';
+  }
+
+  @override
+  String aiTodayLeft(String amount) {
+    return '$amount left today';
+  }
+
+  @override
+  String aiTodayOver(String amount) {
+    return '$amount over today';
+  }
+
+  @override
+  String get aiHighlightsTitle => 'Highlights';
+
+  @override
+  String get aiTrendVsLastMonth => 'Compared with the same days last month';
+
+  @override
+  String aiTopCategoryLine(String category, String amount) {
+    return '$category, $amount';
+  }
+
+  @override
+  String get aiTipSurplus => 'Money left this month: set a goal';
+
+  @override
+  String get aiTipNeedMore => 'Still to put into your goal this month';
+
+  @override
+  String get aiTipOnTrack => 'On track for your goal';
+
+  @override
+  String get aiTipOverspent =>
+      'Goal covered, but this month is spending more than came in';
+
+  @override
+  String aiWeekCompareLine(String thisWeek, String lastWeek) {
+    return '$thisWeek / last week $lastWeek';
+  }
+
+  @override
+  String get aiWeekCompareNone => 'No spending in these two weeks';
+
+  @override
+  String get aiTopWeekTitle => 'Top spending week';
+
+  @override
+  String aiTopWeekLine(int week) {
+    return 'Week $week of this month';
+  }
+
+  @override
+  String get aiDailyChartTitle => 'Daily spending';
+
+  @override
+  String get aiPickRangeStart => 'From';
+
+  @override
+  String get aiPickRangeEnd => 'To';
+
+  @override
+  String get aiHabitsTitle => 'Spending habits';
+
+  @override
+  String aiHabitRepeat(int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Repeated over the last $weeks weeks',
+      one: 'Seen in the last week',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiTimes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count times',
+      one: 'once',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiHabitEvery(String days) {
+    return 'About every $days days';
+  }
+
+  @override
+  String aiHabitLastOn(String date) {
+    return 'Last on $date';
+  }
+
+  @override
+  String aiHabitUpcoming(String from, String to) {
+    return 'Coming up: after $from you usually spend on $to.';
+  }
+
+  @override
+  String aiHabitUsually(String from, String to) {
+    return 'After $from you usually spend on $to.';
+  }
+
+  @override
+  String get aiBalanceTitle => 'Spending balance';
+
+  @override
+  String aiBalanceLine(int percent, int target) {
+    return '$percent% of income, about $target% advised';
+  }
+
+  @override
+  String get aiBalanceSavings => 'Savings';
+
+  @override
+  String get aiLevelOk => 'On track';
+
+  @override
+  String get aiLevelHigh => 'A bit high';
+
+  @override
+  String get aiLevelLow => 'A bit low';
+
+  @override
+  String aiAdviceLine(String category, String current, String suggested) {
+    return '$category: $current → $suggested / month';
+  }
+
+  @override
+  String get aiNoDataMessage =>
+      'Add transactions to see your spending analysis.';
 
   @override
   String get aiErrorNetwork =>
@@ -1617,10 +1763,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiNoData => 'No data yet';
 
   @override
-  String get aiNoDataHint =>
-      'Add real transactions so WCM-SPADE can mine your spending patterns.';
-
-  @override
   String get aiTrendTitle => 'Spending trend';
 
   @override
@@ -1633,38 +1775,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiWeekCompareTitle => 'Week comparison';
 
   @override
-  String get aiChartTitle => 'Income & spending chart';
-
-  @override
-  String get aiNoWeekData => 'No data for the weeks of this month yet.';
-
-  @override
-  String aiTopWeek(int week, String amount) {
-    return 'Week $week has the highest spending: $amount.';
-  }
-
-  @override
-  String get aiSafeToSpendTitle => 'How much can I spend today?';
-
-  @override
   String get aiSafeToSpendNoIncome =>
       'Add this month\'s income to work out a safe amount.';
-
-  @override
-  String aiPerDay(String amount) {
-    return '$amount / day';
-  }
-
-  @override
-  String aiDaysLeft(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'What is left spread evenly over $days days.',
-      one: 'What is left covers the last day.',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get aiOverSafe => 'You\'ve spent past this month\'s safe share.';
@@ -1675,35 +1787,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String aiTrendUp(String percent) {
-    return 'Spending this month is up $percent% on last month.';
-  }
-
-  @override
-  String aiTrendDown(String percent) {
-    return 'Spending this month is down $percent% on last month.';
-  }
-
-  @override
   String get aiNoSpendingThisMonth => 'No spending this month yet.';
 
   @override
-  String aiTopCategory(String category, String amount, String percent) {
-    return '$category accounts for $amount ($percent% of spending).';
-  }
-
-  @override
-  String aiSurplus(String amount) {
-    return 'You\'re $amount ahead. Set a goal!';
-  }
-
-  @override
   String get aiAddGoal => 'Add a savings goal for the AI to analyse.';
-
-  @override
-  String aiGoalNeedMore(String amount) {
-    return 'Contribute $amount more this month to stay on track';
-  }
 
   @override
   String get aiGoalNoDeadline =>
@@ -1712,16 +1799,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aiGoalOverdue =>
       'This goal is past its deadline: set a new date or keep contributing';
-
-  @override
-  String get aiOnTrack =>
-      'You\'re on your savings path. See the money allocation tips below to reach your goal faster!';
-
-  @override
-  String get aiSpadeTitle => 'Sequential spending patterns';
-
-  @override
-  String get aiSpadeSubtitle => 'Spending sequences you often follow';
 
   @override
   String get aiSpadeLoadFailedTitle => 'Couldn\'t load the analysis';
@@ -1753,74 +1830,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No sequence of spending repeats in enough weeks yet.';
 
   @override
-  String aiSpadeWeeksDetail(int count, int total) {
-    return 'In $count/$total weeks';
-  }
-
-  @override
-  String get aiAdviceTitle => 'Money allocation tips';
-
-  @override
-  String get aiAdviceSubtitle =>
-      'Suggested cuts and keeps per item to reach your savings goal';
-
-  @override
-  String aiAdvicePerMonth(String current, String suggested) {
-    return '$current → $suggested / month';
-  }
-
-  @override
-  String get aiGuardTitle => 'Habits to watch';
-
-  @override
-  String get aiGuardSubtitle =>
-      'Habits that repeated in many weeks of your history.';
-
-  @override
-  String get aiGuardHeading => 'Repeated pattern · Sequence mining';
-
-  @override
-  String aiGuardRule(String from, String to, int count, int total) {
-    return '$count/$total weeks: after spending on $from, you also spent on $to in the same week.';
-  }
-
-  @override
-  String aiGuardTriggered(String from, String to) {
-    return 'This week you have spent on $from but not yet on $to.';
-  }
-
-  @override
-  String get aiHabitTitle => 'Recurring habits';
-
-  @override
-  String get aiHabitSubtitle =>
-      'Categories you spend on at a fairly regular interval.';
-
-  @override
-  String aiHabitLine(String category, String days, String date) {
-    return '$category: about every $days days, next around $date';
-  }
-
-  @override
-  String aiHabitLineLate(String category, String days, String last) {
-    return '$category: about every $days days, last on $last';
-  }
-
-  @override
-  String get ai503020Title => 'Spending health — the 50/30/20 rule';
-
-  @override
-  String get ai503020Groups =>
-      'Needs: Food & drinks, Transport, Supermarket, Living costs · Wants: Entertainment, Other';
-
-  @override
   String get ai503020Needs => 'Needs';
 
   @override
   String get ai503020Wants => 'Wants';
-
-  @override
-  String get ai503020Savings => 'Savings (what\'s left)';
 
   @override
   String get ai503020OnTrack =>

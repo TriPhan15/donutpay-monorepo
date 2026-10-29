@@ -2868,17 +2868,209 @@ abstract class AppLocalizations {
   /// **'MoMo, ZaloPay, banks...'**
   String get featureLinkedServicesDescription;
 
-  /// Title of the AI tab.
+  /// AI tab band: label above today's allowance.
   ///
   /// In en, this message translates to:
-  /// **'AI analysis'**
-  String get aiTitle;
+  /// **'You can spend today'**
+  String get aiTodayLabel;
 
-  /// Title of the date range picker.
+  /// AI tab band: days left in the month, today included.
   ///
   /// In en, this message translates to:
-  /// **'Choose a time range'**
-  String get aiPickRangeTitle;
+  /// **'{days, plural, =1{last day} other{{days} days left}}'**
+  String aiTodayDaysLeft(int days);
+
+  /// AI tab band: spent today; amount is formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'Spent {amount}'**
+  String aiTodaySpent(String amount);
+
+  /// AI tab band: what is left of today's allowance.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} left today'**
+  String aiTodayLeft(String amount);
+
+  /// AI tab band: spent past today's allowance.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} over today'**
+  String aiTodayOver(String amount);
+
+  /// AI tab section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights'**
+  String get aiHighlightsTitle;
+
+  /// Highlights: second line of the spending trend row.
+  ///
+  /// In en, this message translates to:
+  /// **'Compared with the same days last month'**
+  String get aiTrendVsLastMonth;
+
+  /// Highlights: top category and what was spent on it.
+  ///
+  /// In en, this message translates to:
+  /// **'{category}, {amount}'**
+  String aiTopCategoryLine(String category, String amount);
+
+  /// Highlights: saving tip when money is left and there is no goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Money left this month: set a goal'**
+  String get aiTipSurplus;
+
+  /// Highlights: saving tip when the month does not cover the goal; the pill shows the amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Still to put into your goal this month'**
+  String get aiTipNeedMore;
+
+  /// Highlights: saving tip when the month covers the goal.
+  ///
+  /// In en, this message translates to:
+  /// **'On track for your goal'**
+  String get aiTipOnTrack;
+
+  /// Highlights: saving tip when contributions cover the goal but the month spent more than its income.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal covered, but this month is spending more than came in'**
+  String get aiTipOverspent;
+
+  /// Highlights: this week so far against the same days of last week; compact money.
+  ///
+  /// In en, this message translates to:
+  /// **'{thisWeek} / last week {lastWeek}'**
+  String aiWeekCompareLine(String thisWeek, String lastWeek);
+
+  /// Highlights: week comparison without spending.
+  ///
+  /// In en, this message translates to:
+  /// **'No spending in these two weeks'**
+  String get aiWeekCompareNone;
+
+  /// Highlights: title of the top week row.
+  ///
+  /// In en, this message translates to:
+  /// **'Top spending week'**
+  String get aiTopWeekTitle;
+
+  /// Highlights: week is 1-4.
+  ///
+  /// In en, this message translates to:
+  /// **'Week {week} of this month'**
+  String aiTopWeekLine(int week);
+
+  /// AI tab section title above the area chart.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily spending'**
+  String get aiDailyChartTitle;
+
+  /// Title of the date sheet for the first day of a custom range.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get aiPickRangeStart;
+
+  /// Title of the date sheet for the last day of a custom range.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get aiPickRangeEnd;
+
+  /// AI tab section title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending habits'**
+  String get aiHabitsTitle;
+
+  /// Habits: weeks with spending that the analysis looked at.
+  ///
+  /// In en, this message translates to:
+  /// **'{weeks, plural, =1{Seen in the last week} other{Repeated over the last {weeks} weeks}}'**
+  String aiHabitRepeat(int weeks);
+
+  /// Habits: how many weeks a sequence came back in.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{once} other{{count} times}}'**
+  String aiTimes(int count);
+
+  /// Habits: mean gap of a periodic expense; days is a formatted decimal.
+  ///
+  /// In en, this message translates to:
+  /// **'About every {days} days'**
+  String aiHabitEvery(String days);
+
+  /// Habits: pill of a periodic expense whose expected date is past; date is dd/MM.
+  ///
+  /// In en, this message translates to:
+  /// **'Last on {date}'**
+  String aiHabitLastOn(String date);
+
+  /// Habits: prediction when this week already has the first categories.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming up: after {from} you usually spend on {to}.'**
+  String aiHabitUpcoming(String from, String to);
+
+  /// Habits: a habit that is not under way this week.
+  ///
+  /// In en, this message translates to:
+  /// **'After {from} you usually spend on {to}.'**
+  String aiHabitUsually(String from, String to);
+
+  /// AI tab section title (50/30/20).
+  ///
+  /// In en, this message translates to:
+  /// **'Spending balance'**
+  String get aiBalanceTitle;
+
+  /// Balance: share of the month's income and its target.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of income, about {target}% advised'**
+  String aiBalanceLine(int percent, int target);
+
+  /// Balance: the saved share.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings'**
+  String get aiBalanceSavings;
+
+  /// Pill: the share is where it should be.
+  ///
+  /// In en, this message translates to:
+  /// **'On track'**
+  String get aiLevelOk;
+
+  /// Pill: the share is above its target.
+  ///
+  /// In en, this message translates to:
+  /// **'A bit high'**
+  String get aiLevelHigh;
+
+  /// Pill: the share is below its target.
+  ///
+  /// In en, this message translates to:
+  /// **'A bit low'**
+  String get aiLevelLow;
+
+  /// Advice box: one recommendation of the budget advisor; formatted money.
+  ///
+  /// In en, this message translates to:
+  /// **'{category}: {current} → {suggested} / month'**
+  String aiAdviceLine(String category, String current, String suggested);
+
+  /// AI tab without any transaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add transactions to see your spending analysis.'**
+  String get aiNoDataMessage;
 
   /// The AI service did not answer.
   ///
@@ -2910,12 +3102,6 @@ abstract class AppLocalizations {
   /// **'No data yet'**
   String get aiNoData;
 
-  /// Hint when there are no transactions.
-  ///
-  /// In en, this message translates to:
-  /// **'Add real transactions so WCM-SPADE can mine your spending patterns.'**
-  String get aiNoDataHint;
-
   /// Insight card title.
   ///
   /// In en, this message translates to:
@@ -2940,47 +3126,11 @@ abstract class AppLocalizations {
   /// **'Week comparison'**
   String get aiWeekCompareTitle;
 
-  /// Title of the spending chart.
-  ///
-  /// In en, this message translates to:
-  /// **'Income & spending chart'**
-  String get aiChartTitle;
-
-  /// No spending in any week of the month.
-  ///
-  /// In en, this message translates to:
-  /// **'No data for the weeks of this month yet.'**
-  String get aiNoWeekData;
-
-  /// week is 1-4; amount is formatted money.
-  ///
-  /// In en, this message translates to:
-  /// **'Week {week} has the highest spending: {amount}.'**
-  String aiTopWeek(int week, String amount);
-
-  /// Title of the safe-to-spend card.
-  ///
-  /// In en, this message translates to:
-  /// **'How much can I spend today?'**
-  String get aiSafeToSpendTitle;
-
   /// No income this month.
   ///
   /// In en, this message translates to:
   /// **'Add this month\'s income to work out a safe amount.'**
   String get aiSafeToSpendNoIncome;
-
-  /// Money per day; amount is formatted money.
-  ///
-  /// In en, this message translates to:
-  /// **'{amount} / day'**
-  String aiPerDay(String amount);
-
-  /// Days left in the month.
-  ///
-  /// In en, this message translates to:
-  /// **'{days, plural, =1{What is left covers the last day.} other{What is left spread evenly over {days} days.}}'**
-  String aiDaysLeft(int days);
 
   /// The safe amount is below zero.
   ///
@@ -2994,47 +3144,17 @@ abstract class AppLocalizations {
   /// **'You\'ve spent {amount} this month.'**
   String aiSpentThisMonth(String amount);
 
-  /// percent has one decimal.
-  ///
-  /// In en, this message translates to:
-  /// **'Spending this month is up {percent}% on last month.'**
-  String aiTrendUp(String percent);
-
-  /// percent has one decimal.
-  ///
-  /// In en, this message translates to:
-  /// **'Spending this month is down {percent}% on last month.'**
-  String aiTrendDown(String percent);
-
   /// Top category card without spending.
   ///
   /// In en, this message translates to:
   /// **'No spending this month yet.'**
   String get aiNoSpendingThisMonth;
 
-  /// category is the category label; amount is formatted money.
-  ///
-  /// In en, this message translates to:
-  /// **'{category} accounts for {amount} ({percent}% of spending).'**
-  String aiTopCategory(String category, String amount, String percent);
-
-  /// Income above spending, no goal yet.
-  ///
-  /// In en, this message translates to:
-  /// **'You\'re {amount} ahead. Set a goal!'**
-  String aiSurplus(String amount);
-
   /// No savings goal yet.
   ///
   /// In en, this message translates to:
   /// **'Add a savings goal for the AI to analyse.'**
   String get aiAddGoal;
-
-  /// Savings tip: what is still missing this month for the urgent goal.
-  ///
-  /// In en, this message translates to:
-  /// **'Contribute {amount} more this month to stay on track'**
-  String aiGoalNeedMore(String amount);
 
   /// Savings tip: the urgent goal has no deadline, so no monthly need.
   ///
@@ -3047,24 +3167,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This goal is past its deadline: set a new date or keep contributing'**
   String get aiGoalOverdue;
-
-  /// The user has savings goals.
-  ///
-  /// In en, this message translates to:
-  /// **'You\'re on your savings path. See the money allocation tips below to reach your goal faster!'**
-  String get aiOnTrack;
-
-  /// Title of the WCM-SPADE section.
-  ///
-  /// In en, this message translates to:
-  /// **'Sequential spending patterns'**
-  String get aiSpadeTitle;
-
-  /// Under the WCM-SPADE title.
-  ///
-  /// In en, this message translates to:
-  /// **'Spending sequences you often follow'**
-  String get aiSpadeSubtitle;
 
   /// The last analysis failed.
   ///
@@ -3114,96 +3216,6 @@ abstract class AppLocalizations {
   /// **'No sequence of spending repeats in enough weeks yet.'**
   String get aiSpadeNoPatternMessage;
 
-  /// How many of the analysed weeks contain the sequence.
-  ///
-  /// In en, this message translates to:
-  /// **'In {count}/{total} weeks'**
-  String aiSpadeWeeksDetail(int count, int total);
-
-  /// Title of the budget advice section.
-  ///
-  /// In en, this message translates to:
-  /// **'Money allocation tips'**
-  String get aiAdviceTitle;
-
-  /// Under the advice title.
-  ///
-  /// In en, this message translates to:
-  /// **'Suggested cuts and keeps per item to reach your savings goal'**
-  String get aiAdviceSubtitle;
-
-  /// Current and suggested monthly amounts.
-  ///
-  /// In en, this message translates to:
-  /// **'{current} → {suggested} / month'**
-  String aiAdvicePerMonth(String current, String suggested);
-
-  /// Title of the habit alert section.
-  ///
-  /// In en, this message translates to:
-  /// **'Habits to watch'**
-  String get aiGuardTitle;
-
-  /// Under the habit alert title.
-  ///
-  /// In en, this message translates to:
-  /// **'Habits that repeated in many weeks of your history.'**
-  String get aiGuardSubtitle;
-
-  /// Heading of one habit alert.
-  ///
-  /// In en, this message translates to:
-  /// **'Repeated pattern · Sequence mining'**
-  String get aiGuardHeading;
-
-  /// A rule seen in count of the total weeks in which the first part happened.
-  ///
-  /// In en, this message translates to:
-  /// **'{count}/{total} weeks: after spending on {from}, you also spent on {to} in the same week.'**
-  String aiGuardRule(String from, String to, int count, int total);
-
-  /// The rule applies to the current week.
-  ///
-  /// In en, this message translates to:
-  /// **'This week you have spent on {from} but not yet on {to}.'**
-  String aiGuardTriggered(String from, String to);
-
-  /// Title of the periodic habits section.
-  ///
-  /// In en, this message translates to:
-  /// **'Recurring habits'**
-  String get aiHabitTitle;
-
-  /// Under the periodic habits title.
-  ///
-  /// In en, this message translates to:
-  /// **'Categories you spend on at a fairly regular interval.'**
-  String get aiHabitSubtitle;
-
-  /// Mean gap in days and the next expected date (dd/MM).
-  ///
-  /// In en, this message translates to:
-  /// **'{category}: about every {days} days, next around {date}'**
-  String aiHabitLine(String category, String days, String date);
-
-  /// The expected date has passed; shows the last one.
-  ///
-  /// In en, this message translates to:
-  /// **'{category}: about every {days} days, last on {last}'**
-  String aiHabitLineLate(String category, String days, String last);
-
-  /// Title of the 50/30/20 card.
-  ///
-  /// In en, this message translates to:
-  /// **'Spending health — the 50/30/20 rule'**
-  String get ai503020Title;
-
-  /// Which categories count as needs and wants.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs: Food & drinks, Transport, Supermarket, Living costs · Wants: Entertainment, Other'**
-  String get ai503020Groups;
-
   /// Needs share row.
   ///
   /// In en, this message translates to:
@@ -3215,12 +3227,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wants'**
   String get ai503020Wants;
-
-  /// Savings share row.
-  ///
-  /// In en, this message translates to:
-  /// **'Savings (what\'s left)'**
-  String get ai503020Savings;
 
   /// Advice when every share is on target.
   ///

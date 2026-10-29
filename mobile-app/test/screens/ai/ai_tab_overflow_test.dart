@@ -8,7 +8,7 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/widgets/ai/spending_range_filter.dart';
+import 'package:finance_ai_app/screens/ai/widgets/ai_daily_chart_card.dart';
 
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
@@ -178,11 +178,13 @@ void main() {
           expect(tester.takeException(), isNull);
           final loc = lookupAppLocalizations(locale);
           // Every section is on screen, so each of their rows was laid out at this width.
-          expect(find.text(loc.aiSafeToSpendTitle), findsOneWidget);
-          expect(find.byType(SpendingRangeFilter), findsOneWidget);
-          expect(find.text(loc.aiSpadeTitle), findsOneWidget);
-          expect(find.text(loc.ai503020Title), findsOneWidget);
-          expect(find.text(loc.aiAdviceTitle), findsOneWidget);
+          expect(find.text(loc.aiTodayLabel), findsOneWidget);
+          expect(find.text(loc.aiHighlightsTitle), findsOneWidget);
+          expect(find.byKey(AiDailyChartCard.chartKey), findsOneWidget);
+          expect(find.text(loc.aiHabitsTitle), findsOneWidget);
+          expect(find.text(loc.aiBalanceTitle), findsOneWidget);
+          // The advice of the budget advisor is in the balance box.
+          expect(find.textContaining('Cắt bớt giải trí'), findsOneWidget);
         },
       );
     }

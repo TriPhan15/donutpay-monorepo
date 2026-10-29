@@ -1553,10 +1553,152 @@ class AppLocalizationsVi extends AppLocalizations {
   String get featureLinkedServicesDescription => 'MoMo, ZaloPay, ngân hàng...';
 
   @override
-  String get aiTitle => 'Phân tích AI';
+  String get aiTodayLabel => 'Hôm nay tiêu được';
 
   @override
-  String get aiPickRangeTitle => 'Chọn khoảng thời gian';
+  String aiTodayDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'còn $days ngày',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiTodaySpent(String amount) {
+    return 'Đã tiêu $amount';
+  }
+
+  @override
+  String aiTodayLeft(String amount) {
+    return 'Còn $amount hôm nay';
+  }
+
+  @override
+  String aiTodayOver(String amount) {
+    return 'Vượt $amount hôm nay';
+  }
+
+  @override
+  String get aiHighlightsTitle => 'Điểm nổi bật';
+
+  @override
+  String get aiTrendVsLastMonth => 'So với cùng kỳ tháng trước';
+
+  @override
+  String aiTopCategoryLine(String category, String amount) {
+    return '$category, $amount';
+  }
+
+  @override
+  String get aiTipSurplus => 'Tháng này còn dư, hãy lập mục tiêu';
+
+  @override
+  String get aiTipNeedMore => 'Cần góp thêm cho mục tiêu tháng này';
+
+  @override
+  String get aiTipOnTrack => 'Đúng lộ trình tiết kiệm';
+
+  @override
+  String get aiTipOverspent => 'Đã góp đủ, nhưng tháng này chi vượt số thu';
+
+  @override
+  String aiWeekCompareLine(String thisWeek, String lastWeek) {
+    return '$thisWeek / tuần trước $lastWeek';
+  }
+
+  @override
+  String get aiWeekCompareNone => 'Hai tuần này chưa có khoản chi';
+
+  @override
+  String get aiTopWeekTitle => 'Tuần chi nhiều nhất';
+
+  @override
+  String aiTopWeekLine(int week) {
+    return 'Tuần $week của tháng này';
+  }
+
+  @override
+  String get aiDailyChartTitle => 'Chi tiêu theo ngày';
+
+  @override
+  String get aiPickRangeStart => 'Từ ngày';
+
+  @override
+  String get aiPickRangeEnd => 'Đến ngày';
+
+  @override
+  String get aiHabitsTitle => 'Thói quen chi tiêu';
+
+  @override
+  String aiHabitRepeat(int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Lặp lại trong $weeks tuần qua',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiTimes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lần',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String aiHabitEvery(String days) {
+    return 'Khoảng $days ngày một lần';
+  }
+
+  @override
+  String aiHabitLastOn(String date) {
+    return 'Lần cuối $date';
+  }
+
+  @override
+  String aiHabitUpcoming(String from, String to) {
+    return 'Sắp tới: sau $from bạn hay chi $to.';
+  }
+
+  @override
+  String aiHabitUsually(String from, String to) {
+    return 'Thường thì sau $from bạn hay chi $to.';
+  }
+
+  @override
+  String get aiBalanceTitle => 'Cân đối chi tiêu';
+
+  @override
+  String aiBalanceLine(int percent, int target) {
+    return '$percent% thu nhập, nên khoảng $target%';
+  }
+
+  @override
+  String get aiBalanceSavings => 'Tiết kiệm';
+
+  @override
+  String get aiLevelOk => 'Ổn';
+
+  @override
+  String get aiLevelHigh => 'Hơi cao';
+
+  @override
+  String get aiLevelLow => 'Hơi thấp';
+
+  @override
+  String aiAdviceLine(String category, String current, String suggested) {
+    return '$category: $current → $suggested / tháng';
+  }
+
+  @override
+  String get aiNoDataMessage =>
+      'Thêm giao dịch để xem phân tích chi tiêu của bạn.';
 
   @override
   String get aiErrorNetwork =>
@@ -1577,10 +1719,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get aiNoData => 'Chưa có dữ liệu';
 
   @override
-  String get aiNoDataHint =>
-      'Hãy nhập giao dịch thực tế để hệ thống WCM-SPADE khai phá quy luật.';
-
-  @override
   String get aiTrendTitle => 'Xu hướng chi tiêu';
 
   @override
@@ -1593,37 +1731,8 @@ class AppLocalizationsVi extends AppLocalizations {
   String get aiWeekCompareTitle => 'So sánh tuần';
 
   @override
-  String get aiChartTitle => 'Biểu đồ thu chi tuần';
-
-  @override
-  String get aiNoWeekData => 'Chưa có dữ liệu tuần này.';
-
-  @override
-  String aiTopWeek(int week, String amount) {
-    return 'Tuần $week có chi tiêu cao nhất: $amount.';
-  }
-
-  @override
-  String get aiSafeToSpendTitle => 'Hôm nay tiêu được bao nhiêu?';
-
-  @override
   String get aiSafeToSpendNoIncome =>
       'Thêm khoản thu tháng này để tính số tiền an toàn.';
-
-  @override
-  String aiPerDay(String amount) {
-    return '$amount / ngày';
-  }
-
-  @override
-  String aiDaysLeft(int days) {
-    String _temp0 = intl.Intl.pluralLogic(
-      days,
-      locale: localeName,
-      other: 'Còn lại chia đều $days ngày.',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get aiOverSafe => 'Bạn đã chi vượt phần an toàn của tháng.';
@@ -1634,35 +1743,10 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String aiTrendUp(String percent) {
-    return 'Chi tiêu tháng này tăng $percent% so với tháng trước.';
-  }
-
-  @override
-  String aiTrendDown(String percent) {
-    return 'Chi tiêu tháng này giảm $percent% so với tháng trước.';
-  }
-
-  @override
   String get aiNoSpendingThisMonth => 'Chưa có chi tiêu tháng này.';
 
   @override
-  String aiTopCategory(String category, String amount, String percent) {
-    return '$category chiếm $amount ($percent% tổng chi).';
-  }
-
-  @override
-  String aiSurplus(String amount) {
-    return 'Đang dư $amount. Hãy lập mục tiêu!';
-  }
-
-  @override
   String get aiAddGoal => 'Thêm mục tiêu tiết kiệm để AI phân tích.';
-
-  @override
-  String aiGoalNeedMore(String amount) {
-    return 'Tháng này cần góp thêm $amount cho mục tiêu';
-  }
 
   @override
   String get aiGoalNoDeadline => 'Mục tiêu chưa có hạn, góp lúc nào cũng được';
@@ -1670,16 +1754,6 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get aiGoalOverdue =>
       'Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp';
-
-  @override
-  String get aiOnTrack =>
-      'Bạn đang trong lộ trình tiết kiệm. Xem gợi ý phân bổ tiền bên dưới để đạt mục tiêu nhanh hơn!';
-
-  @override
-  String get aiSpadeTitle => 'Mẫu Chi Tiêu Tuần Tự';
-
-  @override
-  String get aiSpadeSubtitle => 'Hành vi chi tiêu tuần tự thường gặp của bạn';
 
   @override
   String get aiSpadeLoadFailedTitle => 'Không tải được phân tích';
@@ -1712,73 +1786,10 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chưa có chuỗi chi tiêu nào lặp lại đủ nhiều tuần.';
 
   @override
-  String aiSpadeWeeksDetail(int count, int total) {
-    return 'Có trong $count/$total tuần';
-  }
-
-  @override
-  String get aiAdviceTitle => 'Gợi ý phân bổ tiền';
-
-  @override
-  String get aiAdviceSubtitle =>
-      'Đề xuất cắt/giữ từng mục để đạt mục tiêu tiết kiệm';
-
-  @override
-  String aiAdvicePerMonth(String current, String suggested) {
-    return '$current → $suggested / tháng';
-  }
-
-  @override
-  String get aiGuardTitle => 'Thói quen cần lưu ý';
-
-  @override
-  String get aiGuardSubtitle =>
-      'Những thói quen đã lặp lại qua nhiều tuần trong lịch sử của bạn.';
-
-  @override
-  String get aiGuardHeading => 'Mẫu lặp lại · Khai phá chuỗi';
-
-  @override
-  String aiGuardRule(String from, String to, int count, int total) {
-    return '$count/$total tuần: sau khi chi $from, bạn chi tiếp $to trong cùng tuần.';
-  }
-
-  @override
-  String aiGuardTriggered(String from, String to) {
-    return 'Tuần này bạn đã chi $from nhưng chưa chi $to.';
-  }
-
-  @override
-  String get aiHabitTitle => 'Thói quen định kỳ';
-
-  @override
-  String get aiHabitSubtitle => 'Những khoản bạn chi khá đều đặn theo chu kỳ.';
-
-  @override
-  String aiHabitLine(String category, String days, String date) {
-    return '$category: khoảng $days ngày/lần, lần tới khoảng $date';
-  }
-
-  @override
-  String aiHabitLineLate(String category, String days, String last) {
-    return '$category: khoảng $days ngày/lần, lần gần nhất $last';
-  }
-
-  @override
-  String get ai503020Title => 'Sức khỏe chi tiêu — quy tắc 50/30/20';
-
-  @override
-  String get ai503020Groups =>
-      'Thiết yếu: Ăn uống, Di chuyển, Siêu thị, Sinh hoạt · Mong muốn: Giải trí, Khác';
-
-  @override
   String get ai503020Needs => 'Thiết yếu';
 
   @override
   String get ai503020Wants => 'Mong muốn';
-
-  @override
-  String get ai503020Savings => 'Tiết kiệm (phần dư)';
 
   @override
   String get ai503020OnTrack =>

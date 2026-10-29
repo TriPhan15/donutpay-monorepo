@@ -9,13 +9,15 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/widgets/ai/spending_range_filter.dart';
+import 'package:finance_ai_app/screens/ai/widgets/ai_today_band.dart';
+import 'package:finance_ai_app/widgets/common/pill_segmented.dart';
 
 import '../../helpers/captured_logs.dart';
 import '../../helpers/fake_backend.dart';
@@ -24,8 +26,10 @@ import '../../helpers/fake_local_store.dart';
 const String _weekLabel = 'Tuần này';
 const String _monthLabel = 'Tháng này';
 const String _customLabel = 'Tùy chọn';
-const String _refreshLabel = 'Làm mới';
-const String _applyLabel = 'Áp dụng';
+const String _todayChip = 'Hôm nay';
+const String _yesterdayChip = 'Hôm qua';
+const String _fromTitle = 'Từ ngày';
+const String _toTitle = 'Đến ngày';
 const String _dismissLabel = 'Đã hiểu';
 
 const String _errorTitle = 'Không phân tích được thói quen chi tiêu';
@@ -46,6 +50,8 @@ const List<String> _billsThenShopping = ['Hóa đơn', 'Mua sắm'];
 const String _billsThenShoppingShown = 'Hóa đơn → Mua sắm';
 
 final DateTime _now = DateTime.now();
+
+final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 DateTime _at(int year, int month, int day) => DateTime(year, month, day, 12);
 
@@ -96,21 +102,23 @@ Map<String, Object?> _pattern(List<String> steps) => {
 ResponseBody _patternsResponse(List<Map<String, Object?>> patterns) =>
     jsonResponse(200, {'status': 'OK', 'patterns': patterns});
 
-/// What the month chart must draw for expenses on the given days: days 1-7, 8-14, 15-21 and 22 onwards, worked out
-/// here from the days of the month so that the test does not lean on the code it checks.
-List<double> _monthBars(Map<DateTime, double> expenseOn) {
-  final bars = List.filled(4, 0.0);
-  expenseOn.forEach(
-    (day, amount) => bars[math.min((day.day - 1) ~/ 7, 3)] += amount,
-  );
-  return bars;
+/// What the month chart must draw for expenses on the given days: one point per day, up to today, worked out here
+/// from the days of the month so that the test does not lean on the code it checks.
+List<double> _monthPoints(Map<DateTime, double> expenseOn) {
+  final points = List.filled(_now.day, 0.0);
+  expenseOn.forEach((day, amount) {
+    if (day.day <= _now.day) points[day.day - 1] += amount;
+  });
+  return points;
 }
 
-/// What the week chart must draw: one bar per day, Monday first.
-List<double> _weekBars(Map<DateTime, double> expenseOn) {
-  final bars = List.filled(7, 0.0);
-  expenseOn.forEach((day, amount) => bars[day.weekday - 1] += amount);
-  return bars;
+/// What the week chart must draw: one point per day, Monday first, up to today.
+List<double> _weekPoints(Map<DateTime, double> expenseOn) {
+  final points = List.filled(_now.weekday, 0.0);
+  expenseOn.forEach((day, amount) {
+    if (day.weekday <= _now.weekday) points[day.weekday - 1] += amount;
+  });
+  return points;
 }
 
 Future<void> _showPage(WidgetTester tester, PickDateRange? pickDateRange) {
@@ -143,23 +151,29 @@ Future<void> _tap(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
 }
 
-String _selectedOption(WidgetTester tester) =>
-    [_weekLabel, _monthLabel, _customLabel].singleWhere(
-      (label) => tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, label))
-          .selected,
-    );
+String _selectedOption(WidgetTester tester) => switch (tester
+    .widget<PillSegmented<SpendingPeriod>>(
+      find.byType(PillSegmented<SpendingPeriod>),
+    )
+    .selected) {
+  SpendingPeriod.week => _weekLabel,
+  SpendingPeriod.month => _monthLabel,
+  SpendingPeriod.custom => _customLabel,
+};
 
 bool _refreshEnabled(WidgetTester tester) =>
-    tester
-        .widget<TextButton>(find.widgetWithText(TextButton, _refreshLabel))
-        .onPressed !=
-    null;
+    tester.widget<InkWell>(find.byKey(AiTodayBand.refreshKey)).onTap != null;
 
-List<double> _barHeights(WidgetTester tester) => [
-  for (final group
-      in tester.widget<BarChart>(find.byType(BarChart)).data.barGroups)
-    group.barRods.single.toY,
+Future<void> _tapRefresh(WidgetTester tester) async {
+  await tester.tap(find.byKey(AiTodayBand.refreshKey));
+  await tester.pumpAndSettle();
+}
+
+LineChartData _chart(WidgetTester tester) =>
+    tester.widget<LineChart>(find.byType(LineChart)).data;
+
+List<double> _points(WidgetTester tester) => [
+  for (final spot in _chart(tester).lineBarsData.single.spots) spot.y,
 ];
 
 /// The amounts of the transactions a request to the AI service carried, in order.
@@ -253,17 +267,18 @@ void main() {
     );
 
     testWidgets(
-      'the chart keeps its four weekly bars for the month, with the expenses of each and no income',
+      'the month chart has one point per day of the month and draws the expenses up to today, no income',
       (tester) async {
         await pumpPage(tester);
 
         expect(
-          _barHeights(tester),
-          _monthBars({_today: 1000, _monthOnlyDay: 2000}),
+          _points(tester),
+          _monthPoints({_today: 1000, _monthOnlyDay: 2000}),
         );
-        for (final label in ['W1', 'W2', 'W3', 'W4']) {
-          expect(find.text(label), findsOneWidget, reason: label);
-        }
+        expect(
+          _chart(tester).maxX,
+          DateTime(_now.year, _now.month + 1, 0).day - 1,
+        );
       },
     );
 
@@ -274,7 +289,7 @@ void main() {
 
         await pumpPage(tester);
 
-        expect(find.byType(SpendingRangeFilter), findsNothing);
+        expect(find.byType(PillSegmented<SpendingPeriod>), findsNothing);
         expect(analyses(), isEmpty);
         expect(tester.takeException(), isNull);
       },
@@ -304,17 +319,23 @@ void main() {
 
         expect(_selectedOption(tester), _weekLabel);
         expect(analyses(), hasLength(1));
-        expect(_barHeights(tester), _weekBars({_today: 1000}));
+        expect(_points(tester), _weekPoints({_today: 1000}));
         for (final label in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']) {
-          expect(find.text(label), findsOneWidget, reason: label);
+          expect(
+            find.descendant(
+              of: find.byType(LineChart),
+              matching: find.text(label),
+            ),
+            findsOneWidget,
+            reason: label,
+          );
         }
-        expect(find.text('W1'), findsNothing);
         expect(find.text(SpendingRange.week(_now).label), findsOneWidget);
       },
     );
 
     testWidgets(
-      'choosing this month again goes back to the bars of the month, still with one analysis',
+      'choosing this month again goes back to the days of the month, still with one analysis',
       (tester) async {
         await pumpPage(tester);
 
@@ -324,8 +345,8 @@ void main() {
         expect(_selectedOption(tester), _monthLabel);
         expect(analyses(), hasLength(1));
         expect(
-          _barHeights(tester),
-          _monthBars({_today: 1000, _monthOnlyDay: 2000}),
+          _points(tester),
+          _monthPoints({_today: 1000, _monthOnlyDay: 2000}),
         );
       },
     );
@@ -351,15 +372,21 @@ void main() {
     );
 
     testWidgets(
-      'the "So sánh tuần" card keeps comparing the weeks of the month, whatever the chart shows',
+      'the top week row keeps comparing the weeks of the month, whatever the chart shows',
       (tester) async {
         await pumpPage(tester);
-        final bars = _monthBars({_today: 1000, _monthOnlyDay: 2000});
-        var best = 0;
-        for (var i = 1; i < bars.length; i++) {
-          if (bars[i] > bars[best]) best = i;
+        final weeks = List.filled(4, 0.0);
+        for (final (day, amount) in [
+          (_today, 1000.0),
+          (_monthOnlyDay, 2000.0),
+        ]) {
+          weeks[math.min((day.day - 1) ~/ 7, 3)] += amount;
         }
-        final card = 'Tuần ${best + 1} có chi tiêu cao nhất';
+        var best = 0;
+        for (var i = 1; i < weeks.length; i++) {
+          if (weeks[i] > weeks[best]) best = i;
+        }
+        final card = 'Tuần ${best + 1} của tháng này';
         expect(find.textContaining(card), findsOneWidget);
 
         await _tap(tester, _weekLabel);
@@ -385,7 +412,7 @@ void main() {
 
   group('custom range', () {
     testWidgets(
-      'analyses the transactions of the picked days, draws bars that fit their number and is marked on screen',
+      'draws one point per picked day and is marked on screen, without a new analysis',
       (tester) async {
         final firstOfLastMonth = _at(_now.year, _now.month - 1, 1);
         DateTimeRange? offered;
@@ -415,13 +442,10 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(_barHeights(tester), [
-          0.0,
-          0.0,
-          0.0,
-          0.0,
+        expect(_points(tester), [
+          ...List.filled(14, 0.0),
           4000.0,
-        ], reason: 'fifteen days make five bars of three days');
+        ], reason: 'fifteen days in the past, all drawn');
       },
     );
 
@@ -453,34 +477,55 @@ void main() {
     });
 
     testWidgets(
-      'Tùy chọn opens the real date range picker, and Áp dụng keeps the days it started from',
+      'Tùy chọn asks for the first day, then the last one, in the date sheets of the app',
       (tester) async {
         await pumpPage(tester);
 
         await _tap(tester, _customLabel);
-        expect(find.byType(DateRangePickerDialog), findsOneWidget);
+        expect(find.text(_fromTitle), findsOneWidget);
+        await _tap(tester, _yesterdayChip);
+        expect(find.text(_toTitle), findsOneWidget);
+        await _tap(tester, _todayChip);
 
-        await _tap(tester, _applyLabel);
-
-        expect(find.byType(DateRangePickerDialog), findsNothing);
+        expect(find.text(_toTitle), findsNothing);
         expect(_selectedOption(tester), _customLabel);
         expect(analyses(), hasLength(1));
-        expect(find.text(SpendingRange.month(_now).label), findsOneWidget);
+        expect(
+          find.text(
+            SpendingRange.custom(
+              _now.subtract(const Duration(days: 1)),
+              _now,
+            ).label,
+          ),
+          findsOneWidget,
+        );
       },
     );
 
-    testWidgets('closing the real date range picker changes nothing', (
+    testWidgets('closing a date sheet changes nothing', (tester) async {
+      await pumpPage(tester);
+
+      await _tap(tester, _customLabel);
+      await tester.tap(find.byIcon(Icons.close_rounded));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_fromTitle), findsNothing);
+      expect(_selectedOption(tester), _monthLabel);
+      expect(analyses(), hasLength(1));
+    });
+
+    testWidgets('closing the second sheet changes nothing either', (
       tester,
     ) async {
       await pumpPage(tester);
 
       await _tap(tester, _customLabel);
-      await tester.tap(find.byType(CloseButton));
+      await _tap(tester, _todayChip);
+      await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
 
-      expect(find.byType(DateRangePickerDialog), findsNothing);
+      expect(find.text(_toTitle), findsNothing);
       expect(_selectedOption(tester), _monthLabel);
-      expect(analyses(), hasLength(1));
     });
   });
 
@@ -492,7 +537,7 @@ void main() {
       expect(find.text(_foodThenTransportShown), findsOneWidget);
 
       patterns = [_pattern(_billsThenShopping)];
-      await _tap(tester, _refreshLabel);
+      await _tapRefresh(tester);
 
       expect(analyses(), hasLength(2));
       expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
@@ -504,7 +549,7 @@ void main() {
       await pumpPage(tester);
       await _tap(tester, _weekLabel);
 
-      await _tap(tester, _refreshLabel);
+      await _tapRefresh(tester);
 
       expect(_selectedOption(tester), _weekLabel);
       expect(analyses(), hasLength(2));
@@ -522,7 +567,7 @@ void main() {
         expect(_refreshEnabled(tester), isFalse);
         expect(
           find.descendant(
-            of: find.byType(SpendingRangeFilter),
+            of: find.byType(AiTodayBand),
             matching: find.byType(CircularProgressIndicator),
           ),
           findsOneWidget,
@@ -556,6 +601,37 @@ void main() {
       await _pumpFrames(tester);
       expect(gates, hasLength(2), reason: 'the analysis after the change');
     }
+
+    testWidgets(
+      'a reload that comes back after a newer one does not bring back the old transactions',
+      (tester) async {
+        await pumpPage(tester);
+        final oldList = Completer<ResponseBody>();
+        final staleTransactions = [_tx(9, _today, amount: 7000)];
+        var calls = 0;
+        backend.on('GET', '/api/transactions/mine', (_) {
+          calls++;
+          // The first reload is slow and carries what the server had before the second change.
+          return calls == 1 ? oldList.future : okResponse(transactions);
+        });
+
+        RemoteApiHelper.instance.dataChangedNotifier.value++;
+        await _pumpFrames(tester);
+        RemoteApiHelper.instance.dataChangedNotifier.value++;
+        await tester.pumpAndSettle();
+        expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
+        final analysesBefore = analyses().length;
+
+        oldList.complete(okResponse(staleTransactions));
+        await tester.pumpAndSettle();
+
+        expect(analyses(), hasLength(analysesBefore));
+        expect(
+          _points(tester),
+          _monthPoints({_today: 1000, _monthOnlyDay: 2000}),
+        );
+      },
+    );
 
     testWidgets(
       'an answer that comes after a newer analysis was started is dropped',
@@ -665,7 +741,7 @@ void main() {
           );
           expect(logs.where((l) => l.contains(_failureLog)), hasLength(1));
 
-          await _tap(tester, _refreshLabel);
+          await _tapRefresh(tester);
 
           expect(find.text(_errorTitle), findsOneWidget);
           expect(find.text(_networkMessage), findsOneWidget);
@@ -679,7 +755,7 @@ void main() {
             '/spade/analyze',
             (_) => _patternsResponse(patterns),
           );
-          await _tap(tester, _refreshLabel);
+          await _tapRefresh(tester);
 
           expect(find.text(_errorCardTitle), findsNothing);
           expect(find.text(_foodThenTransportShown), findsOneWidget);
@@ -700,7 +776,7 @@ void main() {
             '/spade/analyze',
             (_) => jsonResponse(503, {'detail': 'down'}),
           );
-          await _tap(tester, _refreshLabel);
+          await _tapRefresh(tester);
 
           expect(find.text(_errorTitle), findsOneWidget);
           expect(find.text(_serverMessage), findsOneWidget);
@@ -727,7 +803,7 @@ void main() {
           '/spade/analyze',
           (_) => jsonResponse(422, {'detail': 'bad'}),
         );
-        await _tap(tester, _refreshLabel);
+        await _tapRefresh(tester);
 
         expect(find.text(_errorTitle), findsOneWidget);
         expect(find.text(_rejectedMessage), findsOneWidget);
@@ -932,8 +1008,8 @@ void main() {
   });
 
   group('savings goal', () {
-    const onTrackText = 'Bạn đang trong lộ trình tiết kiệm';
-    const needMoreText = 'Tháng này cần góp thêm';
+    const onTrackText = 'Đúng lộ trình tiết kiệm';
+    const needMoreText = 'Cần góp thêm cho mục tiêu';
 
     String two(int n) => n.toString().padLeft(2, '0');
 
@@ -1076,13 +1152,23 @@ void main() {
 
           await pumpPage(tester);
 
-          // Income 10M − spending 3M − the 2M that left the wallet for the goal.
-          const left = 10e6 - 3e6 - contributed;
+          // Today's allowance: income 10M − the 2M that left the wallet for the goal, over the days left; the 3M
+          // spent today shows on the bar instead of shrinking it.
           final daysLeft =
               DateTime(_now.year, _now.month + 1, 0).day - _now.day + 1;
-          expect(find.text('${money(left / daysLeft)} / ngày'), findsOneWidget);
           expect(
-            find.text('Đang dư ${money(left)}. Hãy lập mục tiêu!'),
+            find.text(money((10e6 - contributed) / daysLeft)),
+            findsOneWidget,
+          );
+          expect(find.text('Đã tiêu ${money(3e6)}'), findsOneWidget);
+          // The surplus: income 10M − spending 3M − the 2M contributed.
+          const left = 10e6 - 3e6 - contributed;
+          expect(
+            find.text('Tháng này còn dư, hãy lập mục tiêu'),
+            findsOneWidget,
+          );
+          expect(
+            find.text('+${CurrencyHelper.formatCompactVND(left, _vi)}'),
             findsOneWidget,
           );
         },
@@ -1104,7 +1190,7 @@ void main() {
           find.text('Thêm mục tiêu tiết kiệm để AI phân tích.'),
           findsOneWidget,
         );
-        expect(find.textContaining('Đang dư'), findsNothing);
+        expect(find.text('Tháng này còn dư, hãy lập mục tiêu'), findsNothing);
       },
     );
   });
