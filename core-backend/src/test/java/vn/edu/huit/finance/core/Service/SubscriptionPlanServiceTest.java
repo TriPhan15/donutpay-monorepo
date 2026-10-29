@@ -6,6 +6,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import vn.edu.huit.finance.core.Exception.SubscriptionPlanNotFoundException;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.SubscriptionPlan;
 import vn.edu.huit.finance.core.Repository.SubscriptionPlanRepository;
@@ -104,7 +105,7 @@ class SubscriptionPlanServiceTest {
     void aPlanThatDoesNotExistIsRefused_andNothingIsRecorded() {
         when(repository.findById(9L)).thenReturn(Optional.empty());
 
-        NoSuchElementException refused = assertThrows(NoSuchElementException.class, () -> service.togglePlan(9L));
+        SubscriptionPlanNotFoundException refused = assertThrows(SubscriptionPlanNotFoundException.class, () -> service.togglePlan(9L));
 
         assertEquals("Không tìm thấy gói hội viên", refused.getMessage());
         verifyNoInteractions(auditLogService);

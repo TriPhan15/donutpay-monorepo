@@ -14,6 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Exception.InvalidRequestException;
 import vn.edu.huit.finance.core.Document.OcrField;
 import vn.edu.huit.finance.core.Dto.OcrCorrectionEvent;
 import vn.edu.huit.finance.core.Dto.OcrFieldCorrection;
@@ -225,7 +226,7 @@ class ReceiptProcessingServiceTest {
         Receipt receipt = receipt(status, transactionOf(alice));
         repositoryHolds(receipt);
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class,
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class,
                 () -> service.submitFeedback(RECEIPT_ID, new BigDecimal("150000")));
 
         assertTrue(refused.getMessage().contains("FAILED"));
@@ -247,7 +248,7 @@ class ReceiptProcessingServiceTest {
     void anAmountThatIsNotPositiveOrPlausibleIsRejectedBeforeAnythingIsLoaded(String amount) {
         BigDecimal manualAmount = amount == null ? null : new BigDecimal(amount);
 
-        assertThrows(IllegalArgumentException.class, () -> service.submitFeedback(RECEIPT_ID, manualAmount));
+        assertThrows(InvalidRequestException.class, () -> service.submitFeedback(RECEIPT_ID, manualAmount));
 
         verifyNoInteractions(receiptRepo, currentUserProvider);
     }
@@ -365,7 +366,7 @@ class ReceiptProcessingServiceTest {
         Receipt receipt = receipt(status, transactionOf(alice));
         repositoryHolds(receipt);
 
-        assertThrows(IllegalStateException.class, () -> service.rejectReceipt(RECEIPT_ID));
+        assertThrows(ReceiptConflictException.class, () -> service.rejectReceipt(RECEIPT_ID));
 
         assertEquals(status, receipt.getStatus());
         verify(receiptRepo, never()).save(any());
@@ -856,7 +857,7 @@ class ReceiptProcessingServiceTest {
         ReceiptUpdateRequestDto request = edit(VERSION);
         request.setExtractedTotal(new BigDecimal(total));
 
-        assertThrows(IllegalArgumentException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
+        assertThrows(InvalidRequestException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
 
         verifyNoInteractions(receiptRepo, currentUserProvider);
     }
@@ -867,7 +868,7 @@ class ReceiptProcessingServiceTest {
         ReceiptUpdateRequestDto request = edit(VERSION);
         request.setExtractedDate(LocalDate.parse(date));
 
-        assertThrows(IllegalArgumentException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
+        assertThrows(InvalidRequestException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
 
         verifyNoInteractions(receiptRepo, currentUserProvider);
     }

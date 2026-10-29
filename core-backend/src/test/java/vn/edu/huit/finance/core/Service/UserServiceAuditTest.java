@@ -223,7 +223,7 @@ class UserServiceAuditTest {
     void anAccountThatDoesNotExistIsNotFound_andNothingIsRecorded() {
         when(userRepository.findById(ID)).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () -> service.updateUser(ID, new UserUpdateDto()));
+        assertThrows(UserNotFoundException.class, () -> service.updateUser(ID, new UserUpdateDto()));
         assertThrows(UserNotFoundException.class, () -> service.deleteUser(ID));
 
         verifyNoInteractions(auditLogService);

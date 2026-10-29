@@ -20,6 +20,7 @@ import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.InvalidTokenException;
 import vn.edu.huit.finance.core.Exception.SocialLoginRejectedException;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.BearerToken;
@@ -113,8 +114,8 @@ public class AuthController {
             loginAttemptService.recordSuccess(email, ipAddress);
 
             User user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException(MSG_ACCOUNT_NOT_FOUND));
-            Integer credentialsVersion = checkedVersion.orElseThrow(() -> new RuntimeException(MSG_ACCOUNT_NOT_FOUND));
+                    .orElseThrow(() -> new UserNotFoundException(MSG_ACCOUNT_NOT_FOUND));
+            Integer credentialsVersion = checkedVersion.orElseThrow(() -> new UserNotFoundException(MSG_ACCOUNT_NOT_FOUND));
 
             String token = jwtUtil.generateToken(email, credentialsVersion);
             String refreshToken = jwtUtil.generateRefreshToken(email, credentialsVersion);

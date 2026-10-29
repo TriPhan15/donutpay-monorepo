@@ -6,6 +6,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import vn.edu.huit.finance.core.Exception.AppReviewNotFoundException;
 import vn.edu.huit.finance.core.Dto.ReviewRequestDto;
 import vn.edu.huit.finance.core.Entity.AppReview;
 import vn.edu.huit.finance.core.Entity.AuditAction;
@@ -75,7 +76,7 @@ class AppReviewServiceTest {
     void aReviewThatDoesNotExistIsRefused_andNothingIsRecorded() {
         when(repository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThrows(NoSuchElementException.class, () -> service.approveReview(5L));
+        assertThrows(AppReviewNotFoundException.class, () -> service.approveReview(5L));
 
         verifyNoInteractions(auditLogService);
     }

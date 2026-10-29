@@ -125,7 +125,7 @@ class PaymentServiceTest {
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> service.createOrder(req("WITHDRAW", "50000", "MOCK"), USER_ID));
-        assertTrue(ex.getMessage().contains("khong du"));
+        assertTrue(ex.getMessage().contains("không đủ"));
         verify(orderRepo, never()).save(any());
         verifyNoInteractions(auditLogService);
     }

@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Service.Payment;
 
 import org.springframework.stereotype.Component;
+import vn.edu.huit.finance.core.Exception.InvalidRequestException;
 
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class PaymentGatewayRegistry {
+
+    private static final String MSG_UNSUPPORTED = "Cổng thanh toán không được hỗ trợ (chỉ nhận: %s)";
 
     private final Map<String, PaymentGateway> byName;
 
@@ -20,8 +23,7 @@ public class PaymentGatewayRegistry {
     public PaymentGateway get(String provider) {
         PaymentGateway g = byName.get(provider == null ? null : provider.toUpperCase());
         if (g == null) {
-            throw new RuntimeException("Cong thanh toan khong ho tro: " + provider
-                    + " (cho phep: " + String.join(", ", byName.keySet()) + ")");
+            throw new InvalidRequestException(String.format(MSG_UNSUPPORTED, String.join(", ", byName.keySet())));
         }
         return g;
     }

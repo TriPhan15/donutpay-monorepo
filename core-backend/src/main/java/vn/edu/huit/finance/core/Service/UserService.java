@@ -1,6 +1,5 @@
 package vn.edu.huit.finance.core.Service;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -111,7 +110,7 @@ public class UserService {
 
     private User update(Long id, UserUpdateDto dto, boolean mayChangeRole) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new UserNotFoundException(String.format(MSG_USER_NOT_FOUND, id)));
 
         String roleBefore = user.getRole();
         if (dto.getRole() != null && !dto.getRole().isBlank()) {

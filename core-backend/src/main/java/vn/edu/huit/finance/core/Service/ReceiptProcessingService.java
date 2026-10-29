@@ -23,6 +23,7 @@ import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.InvalidImageUrlException;
+import vn.edu.huit.finance.core.Exception.InvalidRequestException;
 import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -372,7 +373,7 @@ public class ReceiptProcessingService {
         User caller = currentUserProvider.getCurrentUser();
         Receipt receipt = findOwnedReceipt(receiptId, caller.getId());
         if (!ReceiptStatus.FAILED.matches(receipt.getStatus())) {
-            throw new IllegalStateException(MSG_FEEDBACK_NOT_FAILED);
+            throw new ReceiptConflictException(MSG_FEEDBACK_NOT_FAILED);
         }
 
         receipt.setExtractedTotal(amount);
@@ -410,7 +411,7 @@ public class ReceiptProcessingService {
         }
         if (!receipt.canMoveTo(ReceiptStatus.FAILED)) {
             log.warn("Receipt rejection refused, receiptId={}, status={}", receiptId, receipt.getStatus());
-            throw new IllegalStateException(MSG_REJECT_NOT_ALLOWED);
+            throw new ReceiptConflictException(MSG_REJECT_NOT_ALLOWED);
         }
 
         String previousStatus = receipt.getStatus();
@@ -528,7 +529,7 @@ public class ReceiptProcessingService {
     private static BigDecimal validAmount(BigDecimal amount) {
         BigDecimal rounded = amount == null ? null : amount.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         if (rounded == null || rounded.signum() <= 0 || rounded.compareTo(OcrService.MAX_TOTAL) > 0) {
-            throw new IllegalArgumentException(MSG_AMOUNT_INVALID);
+            throw new InvalidRequestException(MSG_AMOUNT_INVALID);
         }
         return rounded;
     }
@@ -536,7 +537,7 @@ public class ReceiptProcessingService {
     /** A date the owner sends is held to the rule OcrService applies to one the AI read; a field that was left out passes. */
     private static LocalDate validReceiptDate(LocalDate date) {
         if (date != null && (date.getYear() < OcrService.MIN_YEAR || date.getYear() > OcrService.MAX_YEAR)) {
-            throw new IllegalArgumentException(MSG_DATE_INVALID);
+            throw new InvalidRequestException(MSG_DATE_INVALID);
         }
         return date;
     }

@@ -8,6 +8,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import vn.edu.huit.finance.core.Exception.SavingGoalNotFoundException;
 import vn.edu.huit.finance.core.Dto.SavingGoalDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
@@ -243,7 +244,7 @@ class SavingGoalServiceTest {
     void aGoalThatDoesNotExistIsRefused_andNothingIsRecorded() {
         when(repository.findLockedById(99L)).thenReturn(Optional.empty());
 
-        NoSuchElementException refused = assertThrows(NoSuchElementException.class, () -> service.deleteSaving(99L));
+        SavingGoalNotFoundException refused = assertThrows(SavingGoalNotFoundException.class, () -> service.deleteSaving(99L));
 
         assertEquals("Không tìm thấy mục tiêu tiết kiệm", refused.getMessage());
         verifyNoInteractions(auditLogService);
@@ -360,7 +361,7 @@ class SavingGoalServiceTest {
     void aContributionToAGoalThatDoesNotExistIsRefusedBeforeTheWalletIsTouched() {
         when(repository.findLockedById(99L)).thenReturn(Optional.empty());
 
-        NoSuchElementException refused = assertThrows(NoSuchElementException.class,
+        SavingGoalNotFoundException refused = assertThrows(SavingGoalNotFoundException.class,
                 () -> service.contributeToMySaving(99L, CONTRIBUTION));
 
         assertEquals("Không tìm thấy mục tiêu tiết kiệm", refused.getMessage());

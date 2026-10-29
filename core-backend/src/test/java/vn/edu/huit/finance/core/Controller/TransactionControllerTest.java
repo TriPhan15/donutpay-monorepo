@@ -32,6 +32,7 @@ import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
+import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.InvalidSortFieldException;
@@ -654,8 +655,11 @@ class TransactionControllerTest {
         return Stream.of(
                 Arguments.of(new TransactionAccessDeniedException("Bạn không có quyền hủy hóa đơn này"), 403, "Bạn không có quyền hủy hóa đơn này"),
                 Arguments.of(new ReceiptNotFoundException("Không tìm thấy hóa đơn"), 404, "Không tìm thấy hóa đơn"),
-                Arguments.of(new IllegalStateException("Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"), 400,
-                        "Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"));
+                Arguments.of(new ReceiptConflictException("Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"), 409,
+                        "Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"),
+                // A4: a RuntimeException without a handler of its own is a 500 with a fixed text, its message stays in the log.
+                Arguments.of(new RuntimeException("org.postgresql.util.PSQLException: relation receipts"), 500,
+                        "Hệ thống đang gặp sự cố, vui lòng thử lại sau"));
     }
 
     @Test

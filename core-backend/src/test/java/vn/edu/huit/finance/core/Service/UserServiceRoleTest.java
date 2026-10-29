@@ -205,7 +205,7 @@ class UserServiceRoleTest {
     void updatingAnUnknownUserSaysSo() {
         when(userRepository.findById(ID)).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () -> service.updateUser(ID, updateDto("ADMIN")));
+        assertThrows(UserNotFoundException.class, () -> service.updateUser(ID, updateDto("ADMIN")));
     }
 
     // ---- updateOwnProfile: the user editing themselves ----

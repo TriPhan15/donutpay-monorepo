@@ -10,7 +10,7 @@ import vn.edu.huit.finance.core.Repository.SubscriptionPlanRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
-import java.util.NoSuchElementException;
+import vn.edu.huit.finance.core.Exception.SubscriptionPlanNotFoundException;
 
 /**
  * Membership plans, for administrators only (the caller checks that). Each change and its audit row, naming the
@@ -81,7 +81,7 @@ public class SubscriptionPlanService {
     private SubscriptionPlan findPlan(Long planId) {
         return subscriptionPlanRepository.findById(planId).orElseThrow(() -> {
             log.warn("Subscription plan not found, planId={}", planId);
-            return new NoSuchElementException(MSG_PLAN_NOT_FOUND);
+            return new SubscriptionPlanNotFoundException(MSG_PLAN_NOT_FOUND);
         });
     }
 

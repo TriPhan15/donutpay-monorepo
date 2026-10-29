@@ -10,6 +10,7 @@ import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.SavingGoalNotFoundException;
 import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
@@ -21,7 +22,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -194,7 +194,7 @@ public class SavingGoalService {
     private static SavingGoal requireOwned(Optional<SavingGoal> found, Long goalId, User caller) {
         SavingGoal goal = found.orElseThrow(() -> {
             log.warn("Saving goal not found, userId={}, goalId={}", caller.getId(), goalId);
-            return new NoSuchElementException(MSG_GOAL_NOT_FOUND);
+            return new SavingGoalNotFoundException(MSG_GOAL_NOT_FOUND);
         });
         if (!goal.getUser().getId().equals(caller.getId())) {
             log.warn("Saving goal access denied, userId={}, goalId={}", caller.getId(), goalId);

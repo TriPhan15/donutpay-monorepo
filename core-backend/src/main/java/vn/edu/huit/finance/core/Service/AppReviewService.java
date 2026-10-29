@@ -13,7 +13,7 @@ import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
-import java.util.NoSuchElementException;
+import vn.edu.huit.finance.core.Exception.AppReviewNotFoundException;
 
 /**
  * Reviews users leave about the app. A user submits one as the caller of the request (resolved from the JWT, never from
@@ -77,7 +77,7 @@ public class AppReviewService {
     private AppReview findReview(Long reviewId) {
         return appReviewRepository.findById(reviewId).orElseThrow(() -> {
             log.warn("Review not found, reviewId={}", reviewId);
-            return new NoSuchElementException(MSG_REVIEW_NOT_FOUND);
+            return new AppReviewNotFoundException(MSG_REVIEW_NOT_FOUND);
         });
     }
 

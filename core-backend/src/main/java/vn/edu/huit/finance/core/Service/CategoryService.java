@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.Category;
+import vn.edu.huit.finance.core.Exception.CategoryInUseException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
@@ -71,7 +72,7 @@ public class CategoryService {
             categoryRepository.flush();
         } catch (DataIntegrityViolationException e) {
             log.warn("Category deletion refused, it is still in use, categoryId={}", categoryId);
-            throw new IllegalStateException(String.format(MSG_CATEGORY_IN_USE, category.getName()));
+            throw new CategoryInUseException(String.format(MSG_CATEGORY_IN_USE, category.getName()));
         }
 
         record(AuditAction.CATEGORY_DELETED, categoryId, String.format(AUDIT_DELETED, category.getName(), category.getType()));

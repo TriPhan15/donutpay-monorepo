@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Exception.CategoryInUseException;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
@@ -94,7 +95,7 @@ class CategoryServiceTest {
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(category(12L, "Ăn uống")));
         doThrow(new DataIntegrityViolationException("fk_transactions_category")).when(categoryRepository).flush();
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class, () -> service.deleteCategory(12L));
+        CategoryInUseException refused = assertThrows(CategoryInUseException.class, () -> service.deleteCategory(12L));
 
         assertEquals("Không thể xóa danh mục [Ăn uống] vì đang có giao dịch sử dụng nó!", refused.getMessage());
         verifyNoInteractions(auditLogService);

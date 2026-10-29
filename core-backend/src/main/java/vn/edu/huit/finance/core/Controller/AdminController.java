@@ -242,21 +242,14 @@ public class AdminController {
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createUserAjax(@Valid @RequestBody UserCreateDto dto) {
-        try {
-            // Recorded by UserService (USER_CREATED, by the caller) in the transaction of the creation.
-            User user = userService.createUser(dto);
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<Map<String, Object>>builder()
-                    .code(201)
-                    .message("Tạo tài khoản thành công")
-                    .data(toUserResponse(user))
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Map<String, Object>>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_CREATED, by the caller) in the transaction of the creation. A refusal (bad role,
+        // duplicate email...) is answered by GlobalExceptionHandler, never with the raw exception message.
+        User user = userService.createUser(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<Map<String, Object>>builder()
+                .code(201)
+                .message("Tạo tài khoản thành công")
+                .data(toUserResponse(user))
+                .build());
     }
 
     @PutMapping("/ajax/users/{id}")
@@ -265,21 +258,13 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateUserAjax(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateDto dto) {
-        try {
-            // Recorded by UserService (USER_UPDATED, and USER_ROLE_CHANGED for a new role) in the transaction of the update.
-            User user = userService.updateUser(id, dto);
-
-            return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
-                    .code(200)
-                    .message("Cập nhật thông tin thành công")
-                    .data(toUserResponse(user))
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Map<String, Object>>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_UPDATED, and USER_ROLE_CHANGED for a new role) in the transaction of the update.
+        User user = userService.updateUser(id, dto);
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                .code(200)
+                .message("Cập nhật thông tin thành công")
+                .data(toUserResponse(user))
+                .build());
     }
 
     @DeleteMapping("/ajax/users/{id}")
@@ -462,22 +447,14 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> unlockUserOrIp(
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String ipAddress) {
-        try {
-            loginAttemptService.resetAttempts(email, ipAddress);
-            // The lockout lives in memory, outside any transaction: recorded once lifted, in a row of its own.
-            eventPublisher.publishEvent(SecurityAuditEvent.ofCurrentCaller(AuditAction.AUTH_LOGIN_UNLOCKED,
-                    String.format(AUDIT_UNLOCK, email, ipAddress)));
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Đã gỡ khóa giải ban thành công!")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
-                    .code(400)
-                    .message("Gỡ khóa thất bại: " + e.getMessage())
-                    .build());
-        }
+        loginAttemptService.resetAttempts(email, ipAddress);
+        // The lockout lives in memory, outside any transaction: recorded once lifted, in a row of its own.
+        eventPublisher.publishEvent(SecurityAuditEvent.ofCurrentCaller(AuditAction.AUTH_LOGIN_UNLOCKED,
+                String.format(AUDIT_UNLOCK, email, ipAddress)));
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Đã gỡ khóa giải ban thành công!")
+                .build());
 
     }
 
@@ -492,32 +469,23 @@ public class AdminController {
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> approveReviewAjax(@PathVariable Long id) {
-        try {
-            appReviewService.approveReview(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Đã duyệt đánh giá thành công!")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().code(400).message(e.getMessage()).build());
-        }
+        // An unknown id is a 404 from GlobalExceptionHandler.
+        appReviewService.approveReview(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Đã duyệt đánh giá thành công!")
+                .build());
     }
 
     @DeleteMapping("/ajax/reviews/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteReviewAjax(@PathVariable Long id) {
-        try {
-            appReviewService.deleteReview(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Đã xóa đánh giá thành công!")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().code(400).message(e.getMessage()).build());
-        }
+        appReviewService.deleteReview(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Đã xóa đánh giá thành công!")
+                .build());
     }
     @PostMapping("/ajax/segmentation/run")
     @ResponseBody
