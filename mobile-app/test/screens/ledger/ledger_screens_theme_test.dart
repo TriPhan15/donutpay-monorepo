@@ -707,7 +707,11 @@ void main() {
       expect(stepper.boxShadow, AppTheme.softShadow);
       expect(paintedColor(tester, find.text('Lịch')), AppTheme.textPrimary);
       expect(boxColor(tester, find.text('Tháng')), AppTheme.mintLight);
-      expect(paintedColor(tester, find.text('Tháng')), AppTheme.primary);
+      expect(
+        paintedColor(tester, find.text('Tháng')),
+        AppTheme.primaryDark,
+        reason: 'content on the pale primary tile is the deep primary (T9)',
+      );
       expect(
         paintedColor(tester, find.byIcon(Icons.tune_rounded)),
         AppTheme.textGray,

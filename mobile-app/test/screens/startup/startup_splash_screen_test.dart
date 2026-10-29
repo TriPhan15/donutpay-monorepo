@@ -9,14 +9,22 @@ import 'package:finance_ai_app/screens/startup/startup_splash_screen.dart';
 import '../../helpers/theme_colors.dart';
 
 void main() {
-  for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
-    final mode = theme.brightness.name;
+  // The themes are read inside each test: building them here, outside testWidgets, starts a google_fonts load with no
+  // binding and the whole file fails to load.
+  ThemeData themeFor(Brightness brightness) =>
+      brightness == Brightness.dark ? AppTheme.darkTheme : AppTheme.lightTheme;
+
+  for (final brightness in Brightness.values) {
+    final mode = brightness.name;
 
     testWidgets('$mode: brand gradient, logo C and the app name', (
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(theme: theme, home: const StartupSplashScreen()),
+        MaterialApp(
+          theme: themeFor(brightness),
+          home: const StartupSplashScreen(),
+        ),
       );
 
       final box = tester.widget<DecoratedBox>(
@@ -47,7 +55,10 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        MaterialApp(theme: theme, home: const StartupSplashScreen()),
+        MaterialApp(
+          theme: themeFor(brightness),
+          home: const StartupSplashScreen(),
+        ),
       );
 
       final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(

@@ -458,7 +458,11 @@ void main() {
             .selectedColor,
         AppTheme.mintLight,
       );
-      expect(paintedColor(tester, _chipLabel('Tháng này')), AppTheme.primary);
+      expect(
+        paintedColor(tester, _chipLabel('Tháng này')),
+        AppTheme.primaryDark,
+        reason: 'content on the pale primary tile is the deep primary (T9)',
+      );
       expect(paintedColor(tester, find.text('Tuần này')), AppTheme.textGray);
     },
   );

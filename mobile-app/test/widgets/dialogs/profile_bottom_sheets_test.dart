@@ -311,7 +311,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         paintedColor(tester, find.byIcon(Icons.history_rounded)),
-        AppTheme.primary,
+        AppTheme.primaryDark,
+        reason: 'content on the pale primary tile is the deep primary (T9)',
       );
       expect(
         boxColor(tester, find.byIcon(Icons.history_rounded)),
