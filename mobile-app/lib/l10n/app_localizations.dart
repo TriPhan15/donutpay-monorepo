@@ -2622,12 +2622,6 @@ abstract class AppLocalizations {
   /// **'Budget deleted'**
   String get budgetDeleted;
 
-  /// The budget list is empty.
-  ///
-  /// In en, this message translates to:
-  /// **'No budgets yet.'**
-  String get budgetEmpty;
-
   /// Hint under the empty budget list.
   ///
   /// In en, this message translates to:
@@ -2651,12 +2645,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Budget amount (₫)'**
   String get budgetAmountLabel;
-
-  /// The amount is missing or not positive.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter a budget amount greater than 0.'**
-  String get budgetAmountPositive;
 
   /// Label of the week/month choice.
   ///
@@ -3354,12 +3342,6 @@ abstract class AppLocalizations {
   /// **'This year'**
   String get periodThisYear;
 
-  /// Label of the day whose week, month or year the budget covers.
-  ///
-  /// In en, this message translates to:
-  /// **'Period that contains'**
-  String get budgetPeriodDayLabel;
-
   /// Field shown when the budget category is 'Other'.
   ///
   /// In en, this message translates to:
@@ -3383,6 +3365,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'At most {max} characters'**
   String budgetCustomCategoryTooLong(int max);
+
+  /// Header of the budget group whose limit is passed.
+  ///
+  /// In en, this message translates to:
+  /// **'Over budget'**
+  String get budgetGroupOver;
+
+  /// Header of the budget group still within the limit.
+  ///
+  /// In en, this message translates to:
+  /// **'On track'**
+  String get budgetGroupWithin;
+
+  /// How many budgets a group holds, at the end of its header.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 budget} other{{count} budgets}}'**
+  String budgetGroupCount(int count);
+
+  /// What is left of a budget, compact amount.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} left'**
+  String budgetLeft(String amount);
+
+  /// How much a budget is exceeded by, compact amount.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} over'**
+  String budgetOver(String amount);
+
+  /// Spent and limit of a budget, compact amounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{spent} / {limit}'**
+  String budgetAmounts(String spent, String limit);
+
+  /// Title of the budget screen when the selected tab has no running budget.
+  ///
+  /// In en, this message translates to:
+  /// **'No budget for this period'**
+  String get budgetEmptyPeriod;
 
   /// Period label of the Ledger in year mode.
   ///

@@ -1905,10 +1905,6 @@
   "@budgetDeleted": {
     "description": "Shown after a delete."
   },
-  "budgetEmpty": "No budgets yet.",
-  "@budgetEmpty": {
-    "description": "The budget list is empty."
-  },
   "budgetEmptyHint": "Set a weekly or monthly spending limit to stay in control.",
   "@budgetEmptyHint": {
     "description": "Hint under the empty budget list."
@@ -1924,10 +1920,6 @@
   "budgetAmountLabel": "Budget amount (₫)",
   "@budgetAmountLabel": {
     "description": "Label of the amount field."
-  },
-  "budgetAmountPositive": "Please enter a budget amount greater than 0.",
-  "@budgetAmountPositive": {
-    "description": "The amount is missing or not positive."
   },
   "budgetPeriodLabel": "Period",
   "@budgetPeriodLabel": {
@@ -2589,10 +2581,6 @@
   "@periodThisYear": {
     "description": "The current calendar year."
   },
-  "budgetPeriodDayLabel": "Period that contains",
-  "@budgetPeriodDayLabel": {
-    "description": "Label of the day whose week, month or year the budget covers."
-  },
   "budgetCustomCategoryLabel": "Category name",
   "@budgetCustomCategoryLabel": {
     "description": "Field shown when the budget category is 'Other'."
@@ -2613,6 +2601,57 @@
         "type": "int"
       }
     }
+  },
+  "budgetGroupOver": "Over budget",
+  "@budgetGroupOver": {
+    "description": "Header of the budget group whose limit is passed."
+  },
+  "budgetGroupWithin": "On track",
+  "@budgetGroupWithin": {
+    "description": "Header of the budget group still within the limit."
+  },
+  "budgetGroupCount": "{count, plural, =1{1 budget} other{{count} budgets}}",
+  "@budgetGroupCount": {
+    "description": "How many budgets a group holds, at the end of its header.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "budgetLeft": "{amount} left",
+  "@budgetLeft": {
+    "description": "What is left of a budget, compact amount.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetOver": "{amount} over",
+  "@budgetOver": {
+    "description": "How much a budget is exceeded by, compact amount.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetAmounts": "{spent} / {limit}",
+  "@budgetAmounts": {
+    "description": "Spent and limit of a budget, compact amounts.",
+    "placeholders": {
+      "spent": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetEmptyPeriod": "No budget for this period",
+  "@budgetEmptyPeriod": {
+    "description": "Title of the budget screen when the selected tab has no running budget."
   },
   "ledgerYearLabel": "Year {year}",
   "@ledgerYearLabel": {

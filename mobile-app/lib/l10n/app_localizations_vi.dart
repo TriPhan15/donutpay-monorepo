@@ -1412,9 +1412,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get budgetDeleted => 'Đã xóa ngân sách';
 
   @override
-  String get budgetEmpty => 'Chưa có ngân sách nào.';
-
-  @override
   String get budgetEmptyHint =>
       'Đặt hạn mức chi tiêu theo tuần hoặc tháng để kiểm soát tốt hơn.';
 
@@ -1426,10 +1423,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get budgetAmountLabel => 'Số tiền ngân sách (₫)';
-
-  @override
-  String get budgetAmountPositive =>
-      'Vui lòng nhập số tiền ngân sách lớn hơn 0.';
 
   @override
   String get budgetPeriodLabel => 'Kỳ hạn';
@@ -1862,9 +1855,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get periodThisYear => 'Năm nay';
 
   @override
-  String get budgetPeriodDayLabel => 'Kỳ chứa ngày';
-
-  @override
   String get budgetCustomCategoryLabel => 'Tên danh mục';
 
   @override
@@ -1878,6 +1868,35 @@ class AppLocalizationsVi extends AppLocalizations {
   String budgetCustomCategoryTooLong(int max) {
     return 'Tối đa $max ký tự';
   }
+
+  @override
+  String get budgetGroupOver => 'Đang vượt';
+
+  @override
+  String get budgetGroupWithin => 'Trong mức';
+
+  @override
+  String budgetGroupCount(int count) {
+    return '$count ngân sách';
+  }
+
+  @override
+  String budgetLeft(String amount) {
+    return 'Còn $amount';
+  }
+
+  @override
+  String budgetOver(String amount) {
+    return 'Vượt $amount';
+  }
+
+  @override
+  String budgetAmounts(String spent, String limit) {
+    return '$spent / $limit';
+  }
+
+  @override
+  String get budgetEmptyPeriod => 'Chưa có ngân sách cho kỳ này';
 
   @override
   String ledgerYearLabel(String year) {

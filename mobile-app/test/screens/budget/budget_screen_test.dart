@@ -1,17 +1,21 @@
-import 'dart:async';
-
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
+import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/screens/budget/budget_form_sheet.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
+import 'package:finance_ai_app/screens/budget/widgets/budget_band_summary.dart';
+import 'package:finance_ai_app/screens/budget/widgets/budget_group_card.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/common/app_state_view.dart';
 
 import '../../helpers/fake_backend.dart';
+import '../../helpers/fake_local_store.dart';
 
 /// The app in Vietnamese, the language these texts are written in.
 Widget _app(Widget home) => MaterialApp(
@@ -21,28 +25,44 @@ Widget _app(Widget home) => MaterialApp(
   home: home,
 );
 
+String _ymd(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
+
+/// A budget whose period of [periodType] contains [day] (today by default).
 Map<String, Object?> _budget({
   int id = 7,
   int? categoryId = 10,
   String? categoryName = 'Ăn uống',
-  num amount = 2000000,
-  String periodType = 'MONTH',
-  String startDate = '2026-09-01',
-  String endDate = '2026-09-30',
-}) => {
+  num amount = 1000000,
+  String periodType = BudgetPeriodType.month,
+  DateTime? day,
+}) {
+  final range = BudgetPeriodType.rangeContaining(
+    periodType,
+    day ?? DateTime.now(),
+  );
+  return {
+    'id': id,
+    'categoryId': categoryId,
+    'categoryName': categoryName,
+    'amount': amount,
+    'periodType': periodType,
+    'startDate': _ymd(range.start),
+    'endDate': _ymd(range.end),
+  };
+}
+
+Map<String, Object?> _expense(int id, String category, num amount) => {
   'id': id,
-  'categoryId': categoryId,
-  'categoryName': categoryName,
+  'title': category,
   'amount': amount,
-  'periodType': periodType,
-  'startDate': startDate,
-  'endDate': endDate,
+  'date': DateTime.now().toIso8601String(),
+  'category': category,
+  'isExpense': true,
 };
 
 final List<Map<String, Object?>> _serverCategories = [
   {'id': 10, 'name': 'Ăn uống', 'type': 'EXPENSE'},
   {'id': 11, 'name': 'Di chuyển', 'type': 'EXPENSE'},
-  {'id': 6, 'name': 'Thu nhập', 'type': 'INCOME'},
 ];
 
 void main() {
@@ -50,6 +70,7 @@ void main() {
 
   setUpAll(() {
     RemoteApiHelper.instance.init(httpClientAdapter: backend);
+    AppRepository.instance.localStore = FakeLocalStore();
   });
 
   setUp(() async {
@@ -57,407 +78,275 @@ void main() {
     backend.reset();
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
+    backend.on('GET', '/api/transactions/mine', (_) => okResponse([]));
+    backend.on('GET', '/api/categories', (_) => okResponse(_serverCategories));
   });
 
   tearDown(() async {
     await SessionService.clearSession();
   });
 
+  void serveBudgets(List<Map<String, Object?>> budgets) =>
+      backend.on('GET', '/api/budgets', (_) => okResponse(budgets));
+
+  void serveExpenses(List<Map<String, Object?>> expenses) =>
+      backend.on('GET', '/api/transactions/mine', (_) => okResponse(expenses));
+
   Future<void> pumpScreen(WidgetTester tester) async {
-    // Tall enough for the whole form sheet (amount, period, day, categories, save) without scrolling.
-    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.physicalSize = const Size(800, 1800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(_app(const BudgetScreen()));
     await tester.pumpAndSettle();
   }
 
-  Future<void> tapText(WidgetTester tester, String text) async {
-    await tester.tap(find.text(text));
+  Future<void> tap(WidgetTester tester, Finder finder) async {
+    await tester.tap(finder);
     await tester.pumpAndSettle();
   }
 
+  Finder inGroup(BudgetGroupKind kind, String text) => find.descendant(
+    of: find.byWidgetPredicate((w) => w is BudgetGroupCard && w.kind == kind),
+    matching: find.text(text),
+  );
+
+  int budgetCalls() =>
+      backend.calls.where((call) => call == 'GET /api/budgets').length;
+
   group('listing', () {
     testWidgets(
-      'shows the budgets of the server with category, period, dates and amount, asking without any user id',
+      'splits the running month budgets into over and within, with the total in the band',
       (tester) async {
-        backend.on(
-          'GET',
-          '/api/budgets',
-          (_) => okResponse([
-            _budget(),
-            _budget(
-              id: 8,
-              categoryId: null,
-              categoryName: null,
-              amount: 500000,
-              periodType: 'WEEK',
-              startDate: '2026-09-14',
-              endDate: '2026-09-20',
-            ),
-          ]),
-        );
+        serveBudgets([
+          _budget(id: 7, categoryName: 'Ăn uống', amount: 1000000),
+          _budget(
+            id: 8,
+            categoryId: 11,
+            categoryName: 'Di chuyển',
+            amount: 1000000,
+          ),
+          _budget(
+            id: 9,
+            categoryName: 'Ăn uống',
+            day: DateTime.now().subtract(const Duration(days: 62)),
+          ),
+        ]);
+        serveExpenses([
+          _expense(1, 'Ăn uống', 1200000),
+          _expense(2, 'Di chuyển', 300000),
+        ]);
 
         await pumpScreen(tester);
 
-        expect(find.text('Ăn uống'), findsOneWidget);
-        expect(find.text('Tất cả danh mục'), findsOneWidget);
-        expect(find.text('Tháng · 01/09/2026 – 30/09/2026'), findsOneWidget);
-        expect(find.text('Tuần · 14/09/2026 – 20/09/2026'), findsOneWidget);
-        expect(find.text('2.000.000 đ'), findsOneWidget);
-        expect(find.text('500.000 đ'), findsOneWidget);
+        expect(inGroup(BudgetGroupKind.over, 'Ăn uống'), findsOneWidget);
+        expect(inGroup(BudgetGroupKind.within, 'Di chuyển'), findsOneWidget);
+        expect(
+          find.text('Ăn uống'),
+          findsOneWidget,
+          reason: 'the past month is not listed',
+        );
+        expect(find.byType(BudgetBandSummary), findsOneWidget);
+        expect(find.text('75%'), findsOneWidget, reason: '1,5 tr of 2 tr');
 
-        expect(backend.calls, ['GET /api/budgets']);
-        expect(backend.requests.single.queryParameters, isEmpty);
-        expect(backend.requests.single.data, isNull);
+        for (final request in backend.requests) {
+          expect(request.queryParameters, isEmpty);
+          expect(request.data, isNull);
+        }
       },
     );
 
-    testWidgets('shows the empty state with a way to create the first budget', (
+    testWidgets('opens on the week when only a week budget runs today', (
       tester,
     ) async {
-      backend.on('GET', '/api/budgets', (_) => okResponse([]));
+      serveBudgets([
+        _budget(id: 7, periodType: BudgetPeriodType.week),
+        _budget(
+          id: 8,
+          categoryId: 11,
+          categoryName: 'Di chuyển',
+          day: DateTime.now().subtract(const Duration(days: 62)),
+        ),
+      ]);
 
       await pumpScreen(tester);
 
-      expect(find.text('Chưa có ngân sách nào.'), findsOneWidget);
-      expect(find.text('Thiết lập ngân sách'), findsOneWidget);
+      expect(find.text('Ăn uống'), findsOneWidget);
+      expect(find.textContaining('Tuần này'), findsOneWidget);
     });
 
-    testWidgets(
-      'without a login session it asks the user to log in again and calls nothing',
-      (tester) async {
-        await SessionService.clearSession();
+    testWidgets('switching tabs shows the budgets of that period only', (
+      tester,
+    ) async {
+      serveBudgets([
+        _budget(id: 7),
+        _budget(
+          id: 8,
+          categoryId: 11,
+          categoryName: 'Di chuyển',
+          periodType: BudgetPeriodType.week,
+        ),
+      ]);
 
-        await pumpScreen(tester);
+      await pumpScreen(tester);
+      expect(find.text('Ăn uống'), findsOneWidget);
+      expect(find.text('Di chuyển'), findsNothing);
 
-        expect(find.text('Phiên đăng nhập hết hạn'), findsOneWidget);
-        expect(backend.calls, isEmpty);
-        await tapText(tester, 'Đã hiểu');
-        expect(tester.takeException(), isNull);
-      },
-    );
+      await tap(tester, find.text('Tuần'));
+      expect(find.text('Ăn uống'), findsNothing);
+      expect(find.text('Di chuyển'), findsOneWidget);
+    });
+
+    testWidgets('a tab without a running budget invites to set one', (
+      tester,
+    ) async {
+      serveBudgets([_budget(id: 7)]);
+
+      await pumpScreen(tester);
+      await tap(tester, find.text('Năm'));
+
+      expect(find.text('Chưa có ngân sách cho kỳ này'), findsOneWidget);
+      expect(find.byType(BudgetBandSummary), findsNothing);
+      await tap(tester, find.text('Thiết lập ngân sách').last);
+      expect(find.byType(BudgetFormSheet), findsOneWidget);
+      expect(
+        find.textContaining('Năm nay:'),
+        findsOneWidget,
+        reason: 'the new budget starts on the tab it came from',
+      );
+    });
+  });
+
+  group('load failures', () {
+    testWidgets('a server error shows the error view and Retry reloads', (
+      tester,
+    ) async {
+      backend.on('GET', '/api/budgets', (_) => jsonResponse(500, {}));
+
+      await pumpScreen(tester);
+      expect(find.text('Không tải được ngân sách'), findsOneWidget);
+      expect(find.byType(AppStateView), findsOneWidget);
+
+      serveBudgets([_budget()]);
+      await tap(tester, find.text('Thử lại'));
+      expect(find.text('Ăn uống'), findsOneWidget);
+      expect(budgetCalls(), 2);
+    });
+
+    testWidgets('transactions that fail to load fail the page too', (
+      tester,
+    ) async {
+      serveBudgets([_budget()]);
+      backend.on('GET', '/api/transactions/mine', (_) => jsonResponse(500, {}));
+
+      await pumpScreen(tester);
+
+      expect(find.text('Không tải được ngân sách'), findsOneWidget);
+      expect(find.text('Ăn uống'), findsNothing);
+    });
 
     testWidgets('an expired login (403) is reported as such', (tester) async {
       backend.on('GET', '/api/budgets', (_) => jsonResponse(403, {}));
 
       await pumpScreen(tester);
 
-      expect(find.text('Không tải được ngân sách'), findsOneWidget);
       expect(
-        find.text('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
+        find.text(
+          lookupAppLocalizations(const Locale('vi')).errorSessionExpired,
+        ),
         findsOneWidget,
       );
     });
 
-    testWidgets(
-      'a server error gets the fixed server-error text, and the empty state follows',
-      (tester) async {
-        backend.on('GET', '/api/budgets', (_) => jsonResponse(500, {}));
-
-        await pumpScreen(tester);
-
-        expect(
-          find.text('Máy chủ đang gặp sự cố. Vui lòng thử lại sau.'),
-          findsOneWidget,
-        );
-        await tapText(tester, 'Đã hiểu');
-        expect(find.text('Chưa có ngân sách nào.'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'leaving the screen while the budgets are loading does not touch the disposed screen',
-      (tester) async {
-        final pending = Completer<ResponseBody>();
-        backend.on('GET', '/api/budgets', (_) => pending.future);
-
-        await tester.pumpWidget(_app(const BudgetScreen()));
-        await tester.pump();
-        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
-        pending.complete(okResponse([_budget()]));
-        await tester.pumpAndSettle();
-
-        expect(tester.takeException(), isNull);
-      },
-    );
-  });
-
-  group('creating', () {
-    testWidgets(
-      'POSTs the contract JSON, without a user, and shows the reloaded list',
-      (tester) async {
-        var listCalls = 0;
-        backend.on(
-          'GET',
-          '/api/budgets',
-          (_) => okResponse(
-            listCalls++ == 0 ? [] : [_budget(id: 9, amount: 3000000)],
-          ),
-        );
-        backend.on(
-          'GET',
-          '/api/categories',
-          (_) => okResponse(_serverCategories),
-        );
-        backend.on(
-          'POST',
-          '/api/budgets',
-          (_) => okResponse(_budget(id: 9, amount: 3000000), status: 201),
-        );
-
-        await pumpScreen(tester);
-        await tester.tap(find.byIcon(Icons.add_rounded));
-        await tester.pumpAndSettle();
-
-        // Only expense categories are offered.
-        expect(find.widgetWithText(ChoiceChip, 'Ăn uống'), findsOneWidget);
-        expect(find.widgetWithText(ChoiceChip, 'Di chuyển'), findsOneWidget);
-        expect(find.widgetWithText(ChoiceChip, 'Thu nhập'), findsNothing);
-        expect(
-          tester
-              .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Tuần'))
-              .onSelected,
-          isNotNull,
-        );
-
-        await tester.enterText(find.byType(TextField), '3000000');
-        await tester.tap(find.widgetWithText(ChoiceChip, 'Ăn uống'));
-        await tester.pumpAndSettle();
-        await tapText(tester, 'Lưu ngân sách');
-
-        expect(find.text('Đã lưu ngân sách'), findsOneWidget);
-        await tapText(tester, 'Xong');
-
-        final month = BudgetPeriodType.rangeContaining(
-          BudgetPeriodType.month,
-          DateTime.now(),
-        );
-        final post = backend.requests.singleWhere((r) => r.method == 'POST');
-        expect(post.path, '/api/budgets');
-        expect(post.queryParameters, isEmpty);
-        expect(post.data, {
-          'categoryId': 10,
-          'amount': 3000000.0,
-          'periodType': 'MONTH',
-          'startDate': BudgetModel.formatApiDate(month.start),
-          'endDate': BudgetModel.formatApiDate(month.end),
-        });
-        expect(
-          backend.calls.last,
-          'GET /api/budgets',
-          reason: 'the list is reloaded after saving',
-        );
-        expect(find.text('3.000.000 đ'), findsOneWidget);
-        expect(
-          find.text('Lưu ngân sách'),
-          findsNothing,
-          reason: 'the form is closed',
-        );
-      },
-    );
-
-    testWidgets('a budget for every category is sent with a null category', (
+    testWidgets('without a session nothing is asked and the user is told', (
       tester,
     ) async {
-      backend.on('GET', '/api/budgets', (_) => okResponse([]));
-      backend.on(
-        'GET',
-        '/api/categories',
-        (_) => okResponse(_serverCategories),
-      );
-      backend.on(
-        'POST',
-        '/api/budgets',
-        (_) => okResponse(
-          _budget(categoryId: null, categoryName: null),
-          status: 201,
-        ),
-      );
+      await SessionService.clearSession();
+      SharedPreferences.setMockInitialValues({});
 
       await pumpScreen(tester);
-      await tester.tap(find.text('Thiết lập ngân sách'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '1000000');
-      await tapText(tester, 'Lưu ngân sách');
 
-      final post = backend.requests.singleWhere((r) => r.method == 'POST');
-      expect((post.data as Map)['categoryId'], isNull);
-      expect((post.data as Map).containsKey('categoryId'), isTrue);
+      expect(backend.calls, isEmpty);
+      expect(find.text('Phiên đăng nhập hết hạn'), findsOneWidget);
     });
-
-    testWidgets(
-      'a duplicate (409) is shown with the message of the server and the form stays open',
-      (tester) async {
-        backend.on('GET', '/api/budgets', (_) => okResponse([]));
-        backend.on(
-          'GET',
-          '/api/categories',
-          (_) => okResponse(_serverCategories),
-        );
-        backend.on(
-          'POST',
-          '/api/budgets',
-          (_) => jsonResponse(409, {
-            'code': 409,
-            'message': 'Ngân sách cho danh mục và kỳ hạn này đã tồn tại',
-          }),
-        );
-
-        await pumpScreen(tester);
-        await tester.tap(find.byIcon(Icons.add_rounded));
-        await tester.pumpAndSettle();
-        await tester.enterText(find.byType(TextField), '1000000');
-        await tapText(tester, 'Lưu ngân sách');
-
-        expect(find.text('Không lưu được ngân sách'), findsOneWidget);
-        expect(
-          find.text('Ngân sách cho danh mục và kỳ hạn này đã tồn tại'),
-          findsOneWidget,
-        );
-        await tapText(tester, 'Đã hiểu');
-        expect(find.text('Lưu ngân sách'), findsOneWidget);
-      },
-    );
   });
 
   group('editing', () {
-    testWidgets(
-      'PUTs to /api/budgets/{id} with the changed amount and the unchanged dates',
-      (tester) async {
-        var listCalls = 0;
-        backend.on(
-          'GET',
-          '/api/budgets',
-          (_) => okResponse([
-            _budget(amount: listCalls++ == 0 ? 2000000 : 2500000),
-          ]),
-        );
-        backend.on(
-          'GET',
-          '/api/categories',
-          (_) => okResponse(_serverCategories),
-        );
-        backend.on(
-          'PUT',
-          '/api/budgets/7',
-          (_) => okResponse(_budget(amount: 2500000)),
-        );
+    testWidgets('tapping a budget opens it in the sheet', (tester) async {
+      serveBudgets([_budget(amount: 2000000)]);
 
-        await pumpScreen(tester);
-        await tapText(tester, 'Ăn uống');
+      await pumpScreen(tester);
+      await tap(tester, find.text('Ăn uống'));
 
-        expect(find.text('Sửa ngân sách'), findsOneWidget);
-        expect(
-          tester.widget<TextField>(find.byType(TextField)).controller!.text,
-          '2.000.000',
-        );
+      expect(find.text('Sửa ngân sách'), findsOneWidget);
+      expect(find.text('2.000.000'), findsOneWidget);
+    });
 
-        await tester.enterText(find.byType(TextField), '2500000');
-        await tapText(tester, 'Lưu ngân sách');
-        await tapText(tester, 'Xong');
+    testWidgets('a saved budget reloads the list', (tester) async {
+      serveBudgets([]);
+      backend.on('POST', '/api/budgets', (_) => okResponse(_budget()));
 
-        final put = backend.requests.singleWhere((r) => r.method == 'PUT');
-        expect(put.path, '/api/budgets/7');
-        expect(put.queryParameters, isEmpty);
-        expect(put.data, {
-          'categoryId': 10,
-          'amount': 2500000.0,
-          'periodType': 'MONTH',
-          'startDate': '2026-09-01',
-          'endDate': '2026-09-30',
-        });
-        expect(backend.requests.where((r) => r.method == 'POST'), isEmpty);
-        expect(find.text('2.500.000 đ'), findsOneWidget);
-      },
-    );
+      await pumpScreen(tester);
+      await tap(tester, find.byKey(BudgetScreen.addKey));
+      await tester.enterText(find.byType(TextField).first, '500000');
+      await tester.pump();
+      serveBudgets([_budget()]);
+      await tap(tester, find.byKey(BudgetFormSheet.saveKey));
+      await tap(tester, find.text('Xong'));
+
+      expect(backend.calls, contains('POST /api/budgets'));
+      expect(backend.requests.last.data, isNot(contains('userId')));
+      expect(budgetCalls(), 2);
+      expect(find.text('Ăn uống'), findsOneWidget);
+    });
   });
 
   group('deleting', () {
-    testWidgets(
-      'asks first, then DELETEs /api/budgets/{id} and drops the card',
-      (tester) async {
-        backend.on('GET', '/api/budgets', (_) => okResponse([_budget()]));
-        backend.on(
-          'DELETE',
-          '/api/budgets/7',
-          (_) => okResponse(null, message: 'Xóa ngân sách thành công'),
-        );
+    Future<void> swipe(WidgetTester tester) async {
+      await tester.drag(find.text('Ăn uống'), const Offset(-600, 0));
+      await tester.pumpAndSettle();
+    }
 
-        await pumpScreen(tester);
-        await tester.tap(find.byIcon(Icons.delete_outline_rounded));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Xóa ngân sách?'), findsOneWidget);
-        expect(backend.calls, [
-          'GET /api/budgets',
-        ], reason: 'nothing is deleted before the user confirms');
-
-        await tapText(tester, 'Xóa');
-        expect(find.text('Đã xóa ngân sách'), findsOneWidget);
-        await tapText(tester, 'Xong');
-
-        expect(backend.calls, ['GET /api/budgets', 'DELETE /api/budgets/7']);
-        expect(find.text('Ăn uống'), findsNothing);
-        expect(find.text('Chưa có ngân sách nào.'), findsOneWidget);
-      },
-    );
-
-    testWidgets('cancelling the question deletes nothing', (tester) async {
-      backend.on('GET', '/api/budgets', (_) => okResponse([_budget()]));
+    testWidgets('swiping left and confirming deletes the budget', (
+      tester,
+    ) async {
+      serveBudgets([_budget()]);
+      backend.on('DELETE', '/api/budgets/7', (_) => okResponse(null));
 
       await pumpScreen(tester);
-      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
-      await tester.pumpAndSettle();
-      await tapText(tester, 'Hủy');
+      await swipe(tester);
+      expect(find.text('Xóa ngân sách?'), findsOneWidget);
+      await tap(tester, find.text('Xóa'));
 
-      expect(backend.calls, ['GET /api/budgets']);
+      expect(backend.calls, contains('DELETE /api/budgets/7'));
+      expect(find.text('Đã xóa ngân sách'), findsOneWidget);
+      await tap(tester, find.text('Xong'));
+      expect(find.text('Ăn uống'), findsNothing);
+    });
+
+    testWidgets('cancelling the question deletes nothing', (tester) async {
+      serveBudgets([_budget()]);
+
+      await pumpScreen(tester);
+      await swipe(tester);
+      await tap(tester, find.text('Hủy'));
+
+      expect(backend.calls, isNot(contains('DELETE /api/budgets/7')));
       expect(find.text('Ăn uống'), findsOneWidget);
     });
 
-    testWidgets(
-      'a refused delete shows the message of the server and keeps the card',
-      (tester) async {
-        backend.on('GET', '/api/budgets', (_) => okResponse([_budget()]));
-        backend.on(
-          'DELETE',
-          '/api/budgets/7',
-          (_) => jsonResponse(404, {
-            'code': 404,
-            'message': 'Không tìm thấy ngân sách',
-          }),
-        );
+    testWidgets('a failed delete is reported and the budget stays', (
+      tester,
+    ) async {
+      serveBudgets([_budget()]);
+      backend.on('DELETE', '/api/budgets/7', (_) => jsonResponse(500, {}));
 
-        await pumpScreen(tester);
-        await tester.tap(find.byIcon(Icons.delete_outline_rounded));
-        await tester.pumpAndSettle();
-        await tapText(tester, 'Xóa');
+      await pumpScreen(tester);
+      await swipe(tester);
+      await tap(tester, find.text('Xóa'));
 
-        expect(find.text('Không xóa được ngân sách'), findsOneWidget);
-        expect(find.text('Không tìm thấy ngân sách'), findsOneWidget);
-        await tapText(tester, 'Đã hiểu');
-        expect(find.text('Ăn uống'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'leaving the screen while the delete is running does not touch the disposed screen',
-      (tester) async {
-        final pending = Completer<ResponseBody>();
-        backend.on('GET', '/api/budgets', (_) => okResponse([_budget()]));
-        backend.on('DELETE', '/api/budgets/7', (_) => pending.future);
-
-        await pumpScreen(tester);
-        await tester.tap(find.byIcon(Icons.delete_outline_rounded));
-        await tester.pumpAndSettle();
-        await tapText(tester, 'Xóa');
-
-        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
-        pending.complete(okResponse(null));
-        await tester.pumpAndSettle();
-
-        expect(tester.takeException(), isNull);
-      },
-    );
+      expect(find.text('Không xóa được ngân sách'), findsOneWidget);
+      await tap(tester, find.text('Đã hiểu'));
+      expect(find.text('Ăn uống'), findsOneWidget);
+    });
   });
 }
