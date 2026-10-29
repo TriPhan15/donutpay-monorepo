@@ -69,6 +69,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
+    // 429 with a fixed text: too many reset codes were requested for the email.
+    @ExceptionHandler(OtpRequestLimitedException.class)
+    public Object handleOtpRequestLimited(OtpRequestLimitedException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), request);
+    }
+
     // 503 with a fixed text: the OTP store (Redis) is down, so no OTP was issued or checked. The cause stays in the log.
     @ExceptionHandler(OtpStoreUnavailableException.class)
     public Object handleOtpStoreUnavailable(OtpStoreUnavailableException ex, HttpServletRequest request) {
@@ -84,6 +90,12 @@ public class GlobalExceptionHandler {
     // 401: no usable token where one is required. A revoked token never gets this far, JwtAuthFilter answers it first.
     @ExceptionHandler(InvalidTokenException.class)
     public Object handleInvalidToken(InvalidTokenException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
+    }
+
+    // 401 with a fixed text: the reason (wrong app, unverified email...) stays in the service log.
+    @ExceptionHandler(SocialLoginRejectedException.class)
+    public Object handleSocialLoginRejected(SocialLoginRejectedException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
 
@@ -145,6 +157,12 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    // 409: a savings transaction can only change through its savings goal; nothing was written.
+    @ExceptionHandler(SavingsLedgerException.class)
+    public Object handleSavingsLedger(SavingsLedgerException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
     // 409: a versioned row (a receipt) was changed by another request between the read and the write of this one, and the
     // whole transaction of this one was rolled back. The exception names the entity and its id, so the answer is a fixed text.
     @ExceptionHandler(OptimisticLockingFailureException.class)
@@ -170,7 +188,8 @@ public class GlobalExceptionHandler {
                 .build());
     }
 
-    @ExceptionHandler({InsufficientBalanceException.class, InvalidRoleException.class, InvalidSortFieldException.class})
+    @ExceptionHandler({InsufficientBalanceException.class, InvalidRoleException.class, InvalidSortFieldException.class,
+            ProfileUpdateRefusedException.class})
     public Object handleRejectedInput(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }

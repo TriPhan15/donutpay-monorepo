@@ -55,6 +55,24 @@ void main() {
       expect(AiComponents.needsTotal(txs), 0);
     });
 
+    test('does not count a savings contribution as a need', () {
+      expect(AiComponents.needsTotal([_tx('Tiết kiệm', 2000000)]), 0);
+    });
+
+    test('a contribution is not a want and does not lower the saved share', () {
+      // income 10tr, Ăn uống 2tr, contribution 3tr: spending (contribution left out) is 2tr
+      final txs = [_tx('Ăn uống', 2e6), _tx('Tiết kiệm', 3e6)];
+      final spending = txs
+          .where((t) => t.countsAsSpending)
+          .fold(0.0, (s, t) => s + t.amount);
+
+      final shares = AiComponents.shares503020(txs, 10e6, spending);
+
+      expect(shares.needs, 20);
+      expect(shares.wants, 0);
+      expect(shares.save, 80);
+    });
+
     test('ignores surrounding spaces in the stored name', () {
       expect(AiComponents.needsTotal([_tx(' Siêu thị & Chợ ', 10)]), 10);
     });

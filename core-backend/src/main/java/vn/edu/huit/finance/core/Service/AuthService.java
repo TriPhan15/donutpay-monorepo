@@ -22,6 +22,7 @@ import vn.edu.huit.finance.core.Exception.CredentialsChangeConflictException;
 import vn.edu.huit.finance.core.Exception.InvalidOtpException;
 import vn.edu.huit.finance.core.Exception.InvalidPasswordException;
 import vn.edu.huit.finance.core.Exception.InvalidTokenException;
+import vn.edu.huit.finance.core.Exception.OtpRequestLimitedException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
@@ -65,7 +66,6 @@ public class AuthService {
     private static final String AUDIT_DESC_RESET_PASSWORD = "Người dùng đặt lại mật khẩu bằng mã OTP; mọi phiên đăng nhập cũ đã kết thúc";
     private static final String AUDIT_DESC_LOGOUT = "Người dùng đăng xuất; token của phiên đã bị thu hồi";
     private static final String AUDIT_DESC_REFRESH_REJECTED = "Làm mới phiên đăng nhập bị từ chối: %s";
-    private static final String MSG_EMAIL_NOT_REGISTERED = "Email không tồn tại trong hệ thống";
     private static final String MSG_OLD_PASSWORD_INCORRECT = "Mật khẩu cũ không chính xác";
     private static final String MSG_NEW_PASSWORD_SAME_AS_OLD = "Mật khẩu mới phải khác mật khẩu cũ";
     // One answer for every refused refresh, so a caller cannot tell which check its token failed.
@@ -103,6 +103,11 @@ public class AuthService {
     private static final int OTP_BOUND = (int) Math.pow(10, OTP_LENGTH);
     private static final Duration OTP_VALIDITY = Duration.ofMinutes(5);
     private static final int OTP_MAX_FAILED_ATTEMPTS = 3;
+    // Matches the 60 s resend cooldown of the mobile app.
+    private static final Duration OTP_REQUEST_COOLDOWN = Duration.ofSeconds(60);
+    private static final int OTP_MAX_REQUESTS_PER_WINDOW = 5;
+    private static final Duration OTP_REQUEST_WINDOW = Duration.ofHours(1);
+    private static final String MSG_OTP_REQUEST_LIMITED = "Bạn yêu cầu mã quá nhiều lần. Vui lòng thử lại sau.";
     private static final String OTP_MAIL_SUBJECT = "Mã xác thực Quên mật khẩu (Finance App)";
     private static final String OTP_MAIL_TEXT =
             "Mã OTP của bạn là: %s. Mã có hiệu lực trong %d phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.";
@@ -195,11 +200,23 @@ public class AuthService {
         return registered;
     }
 
+    /**
+     * Mails a new OTP when the email has an account, and answers the same way when it has none (the controller's text
+     * does not say which): the request limit runs first, for known and unknown emails alike, so neither the answer
+     * text nor the request limit depends on whether the email is registered. The mail is sent synchronously, so the
+     * response time can still differ (known gap). Re-requesting cannot be used to guess the code either: the limit
+     * is what bounds how many fresh codes (each with its own 3 guesses) an email can get.
+     */
     public void generateAndSendOtp(String email) {
+        if (!otpStore.tryRegisterIssue(email, clock.instant(), OTP_REQUEST_COOLDOWN, OTP_MAX_REQUESTS_PER_WINDOW,
+                OTP_REQUEST_WINDOW)) {
+            log.warn("Password-reset code request refused: too many requests for one email");
+            throw new OtpRequestLimitedException(MSG_OTP_REQUEST_LIMITED);
+        }
         Optional<User> account = userRepository.findByEmail(email);
         if (account.isEmpty()) {
             publishResetRefusal(email, null, AUDIT_DESC_RESET_UNKNOWN_EMAIL);
-            throw new RuntimeException(MSG_EMAIL_NOT_REGISTERED);
+            return;
         }
 
         String otp = String.format(OTP_FORMAT, secureRandom.nextInt(OTP_BOUND));

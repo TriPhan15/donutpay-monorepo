@@ -11,6 +11,7 @@ import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/models/app_notification.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
+import 'package:finance_ai_app/models/spending_analysis.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -65,7 +66,38 @@ class RemoteApiHelper {
 
   /// Moves on after every write of the user's data (transactions, budgets, savings), on the server or in the outbox of
   /// this device. The tabs of MainScaffold stay alive in an IndexedStack, so they reload on it instead of in initState only.
+  /// Writes move it through [notifyDataChanged], never directly, so a [batchDataChanges] can hold them back.
   final ValueNotifier<int> dataChangedNotifier = ValueNotifier(0);
+
+  /// How many [batchDataChanges] are running inside one another, and whether a write came during them.
+  int _batchDepth = 0;
+  bool _changedDuringBatch = false;
+
+  /// Announces one write of the user's data: [dataChangedNotifier] moves once, or once at the end of the
+  /// [batchDataChanges] in progress.
+  void notifyDataChanged() {
+    if (_batchDepth > 0) {
+      _changedDuringBatch = true;
+      return;
+    }
+    dataChangedNotifier.value++;
+  }
+
+  /// Runs [body], in which several writes are made, and moves [dataChangedNotifier] once when it ends (also when it
+  /// throws) if any of them announced a change, so the screens reload once instead of once per write. Batches may nest;
+  /// only the outermost one moves the notifier.
+  Future<T> batchDataChanges<T>(Future<T> Function() body) async {
+    _batchDepth++;
+    try {
+      return await body();
+    } finally {
+      _batchDepth--;
+      if (_batchDepth == 0 && _changedDuringBatch) {
+        _changedDuringBatch = false;
+        dataChangedNotifier.value++;
+      }
+    }
+  }
 
   /// [httpClientAdapter] replaces the real network layer of the core API, of the AI service and of the token refresh; only
   /// tests pass it, the app calls init() with no arguments.
@@ -436,15 +468,16 @@ class RemoteApiHelper {
         debugPrint("Lỗi upload ảnh lên Cloudinary: $e");
       }
     }
+    // No notifyDataChanged here: AppRepository announces the write once it has flagged the outbox row, otherwise a
+    // reload started now would still list the row as waiting.
     await _dio.post('/api/transactions/checkout', data: data);
-    dataChangedNotifier.value++;
   }
 
   /// PUT /api/transactions/{id}: only the fields in [data] change (amount, categoryName, note ...) and the server keeps
   /// the wallet in step. The owner comes from the login token. A refusal reaches the caller as a DioException.
   Future<void> updateTransaction(String id, Map<String, dynamic> data) async {
     await _dio.put('/api/transactions/$id', data: data);
-    dataChangedNotifier.value++;
+    notifyDataChanged();
   }
 
   Future<String?> uploadImage(String imagePath) async {
@@ -487,21 +520,24 @@ class RemoteApiHelper {
     return Map<String, dynamic>.from(res.data);
   }
 
-  Future<List<Map<String, dynamic>>> analyzePatterns(
+  Future<SpendingAnalysis> analyzeSpending(
     List<Map<String, dynamic>> transactions,
   ) async {
     final res = await _mlDio.post(
       '/spade/analyze',
       data: {'transactions': transactions},
     );
-    return List<Map<String, dynamic>>.from(res.data['patterns'] ?? []);
+    final data = res.data;
+    return data is Map
+        ? SpendingAnalysis.fromJson(Map<String, dynamic>.from(data))
+        : SpendingAnalysis.empty;
   }
 
   Future<Map<String, dynamic>> recommendBudget({
     required List<Map<String, dynamic>> transactions,
     double target = 0,
     double current = 0,
-    int monthsLeft = 0,
+    int? monthsLeft,
     double? monthlyIncome,
     double? neededMonthly,
   }) async {
@@ -511,7 +547,8 @@ class RemoteApiHelper {
         'transactions': transactions,
         'target': target,
         'current': current,
-        'months_left': monthsLeft,
+        // ai-service reads a missing field as 0 (no monthly need); null would be refused: the field is an int.
+        'months_left': ?monthsLeft,
         'monthly_income': ?monthlyIncome,
         'needed_monthly': ?neededMonthly,
       },
@@ -666,7 +703,7 @@ class RemoteApiHelper {
 
   Future<BudgetModel> createBudget(BudgetModel budget) async {
     final res = await _dio.post('/api/budgets', data: budget.toJson());
-    dataChangedNotifier.value++;
+    notifyDataChanged();
     return BudgetModel.fromJson(
       Map<String, dynamic>.from(res.data['data'] as Map),
     );
@@ -677,7 +714,7 @@ class RemoteApiHelper {
       '/api/budgets/${budget.id}',
       data: budget.toJson(),
     );
-    dataChangedNotifier.value++;
+    notifyDataChanged();
     return BudgetModel.fromJson(
       Map<String, dynamic>.from(res.data['data'] as Map),
     );
@@ -685,7 +722,7 @@ class RemoteApiHelper {
 
   Future<void> deleteBudget(int budgetId) async {
     await _dio.delete('/api/budgets/$budgetId');
-    dataChangedNotifier.value++;
+    notifyDataChanged();
   }
 
   /// The author is the caller of the request (JWT): the body carries no user id.
@@ -705,7 +742,7 @@ class RemoteApiHelper {
   Future<bool> deleteTransaction(String id) async {
     try {
       final res = await _dio.delete('/api/transactions/$id');
-      dataChangedNotifier.value++;
+      notifyDataChanged();
 
       return res.data['code'] == 200;
     } catch (e) {
@@ -722,17 +759,28 @@ class RemoteApiHelper {
 
   Future<void> addSaving(Map<String, dynamic> data) async {
     await _dio.post('/api/savings', data: data);
-    dataChangedNotifier.value++;
+    notifyDataChanged();
   }
 
-  Future<void> updateSavingCurrent(String id, double current) async {
-    await _dio.put('/api/savings/$id', data: {'current': current});
-    dataChangedNotifier.value++;
+  /// PUT /api/savings/{id}: the name, target and deadline of a goal. The body never carries `current` (the server
+  /// refuses it: the saved amount only moves through contributions). The server treats a missing [deadline] as "clear
+  /// it", so a caller keeping the deadline must pass it.
+  Future<void> updateSaving(
+    String id, {
+    required String title,
+    required double target,
+    String? deadline,
+  }) async {
+    await _dio.put(
+      '/api/savings/$id',
+      data: {'title': title, 'target': target, 'deadline': deadline},
+    );
+    notifyDataChanged();
   }
 
   Future<void> deleteSaving(String id) async {
     await _dio.delete('/api/savings/$id');
-    dataChangedNotifier.value++;
+    notifyDataChanged();
   }
 
   /// POST /api/savings/{id}/contributions: moves [amount] from the wallet into the goal [id]. The server records it as
@@ -746,7 +794,7 @@ class RemoteApiHelper {
       '/api/savings/$id/contributions',
       data: {'amount': amount},
     );
-    dataChangedNotifier.value++;
+    notifyDataChanged();
     return Map<String, dynamic>.from(res.data['data'] as Map);
   }
 }

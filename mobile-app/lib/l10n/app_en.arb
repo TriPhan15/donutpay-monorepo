@@ -1098,6 +1098,35 @@
       }
     }
   },
+  "savingsDeletedRefunded": "Goal deleted: {title}. {amount} went back to your wallet.",
+  "@savingsDeletedRefunded": {
+    "description": "Snackbar after a goal holding money is deleted; amount is what was refunded to the wallet.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsDeleteTitle": "Delete goal",
+  "@savingsDeleteTitle": {
+    "description": "Title of the dialog that confirms deleting a savings goal."
+  },
+  "savingsDeleteConfirm": "Delete this goal?",
+  "@savingsDeleteConfirm": {
+    "description": "Message of the delete goal dialog when nothing has been contributed yet."
+  },
+  "savingsDeleteConfirmRefund": "Delete this goal? The {amount} contributed will be refunded to your wallet.",
+  "@savingsDeleteConfirmRefund": {
+    "description": "Message of the delete goal dialog when the goal holds money; amount is what goes back to the wallet.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "savingsAddTitle": "Add a savings goal",
   "@savingsAddTitle": {
     "description": "Title of the add goal dialog."
@@ -1114,22 +1143,18 @@
   "@savingsTargetAmount": {
     "description": "Field of the add goal dialog."
   },
-  "savingsSavedAmount": "Saved so far (₫)",
-  "@savingsSavedAmount": {
-    "description": "Field of the add goal dialog."
-  },
-  "savingsUpdateTitle": "Update: {title}",
-  "@savingsUpdateTitle": {
-    "description": "Title of the update goal dialog.",
+  "savingsEditTitle": "Edit goal {title}",
+  "@savingsEditTitle": {
+    "description": "Title of the edit goal dialog (name, target and deadline only).",
     "placeholders": {
       "title": {
         "type": "String"
       }
     }
   },
-  "savingsCurrentAmount": "Amount saved (₫)",
-  "@savingsCurrentAmount": {
-    "description": "Field of the update goal dialog."
+  "ledgerSavingsManagedByGoal": "Savings contributions are managed on the Savings page.",
+  "@ledgerSavingsManagedByGoal": {
+    "description": "Shown in the detail sheet of a savings contribution, which cannot be edited (nor deleted while the user has savings goals)."
   },
   "savingsTotalSaved": "Total saved",
   "@savingsTotalSaved": {
@@ -1497,6 +1522,10 @@
   "ledgerDeletedUnsynced": "Unsent transaction deleted",
   "@ledgerDeletedUnsynced": {
     "description": "Snack bar after a local delete."
+  },
+  "ledgerDeleteWhileSending": "This transaction is being sent. Try again in a moment.",
+  "@ledgerDeleteWhileSending": {
+    "description": "Toast when the user deletes an unsent transaction that started being sent meanwhile."
   },
   "ledgerLoadFailedNotice": "Couldn't load the list from the server. Only the unsent transactions on this device are shown. Pull down to try again.",
   "@ledgerLoadFailedNotice": {
@@ -2020,6 +2049,15 @@
   "@dashboardBalance": {
     "description": "Label of the balance card."
   },
+  "dashboardPendingNotInBalance": "Excludes {amount} from transactions waiting to be sent",
+  "@dashboardPendingNotInBalance": {
+    "description": "Note under the balance: the signed total of the transactions still waiting to be sent, which the balance does not include.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardVsLastMonth": "vs. last month",
   "@dashboardVsLastMonth": {
     "description": "After the percentage change of the month."
@@ -2205,6 +2243,23 @@
   "@aiAddGoal": {
     "description": "No savings goal yet."
   },
+  "aiGoalNeedMore": "Contribute {amount} more this month to stay on track",
+  "@aiGoalNeedMore": {
+    "description": "Savings tip: what is still missing this month for the urgent goal.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "aiGoalNoDeadline": "This goal has no deadline, contribute whenever you can",
+  "@aiGoalNoDeadline": {
+    "description": "Savings tip: the urgent goal has no deadline, so no monthly need."
+  },
+  "aiGoalOverdue": "This goal is past its deadline: set a new date or keep contributing",
+  "@aiGoalOverdue": {
+    "description": "Savings tip: the urgent goal has a deadline that is already past."
+  },
   "aiOnTrack": "You're on your savings path. See the money allocation tips below to reach your goal faster!",
   "@aiOnTrack": {
     "description": "The user has savings goals."
@@ -2229,19 +2284,43 @@
   "@aiSpadeNotEnoughTitle": {
     "description": "No pattern found."
   },
-  "aiSpadeNotEnoughMessage": "Add at least 3 transactions to see sequential spending patterns.",
-  "@aiSpadeNotEnoughMessage": {
-    "description": "No pattern found."
+  "aiSpadeNotEnoughWeeks": "Only {weeks} weeks with spending so far; at least {minWeeks} weeks are needed to look for sequences.",
+  "@aiSpadeNotEnoughWeeks": {
+    "description": "Not enough weeks of spending for the sequence mining.",
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      },
+      "minWeeks": {
+        "type": "int"
+      }
+    }
   },
-  "aiSpadeDetail": "Frequency: {count} times  ·  Support (W-Sup): {support}",
-  "@aiSpadeDetail": {
-    "description": "count and support come from the AI service.",
+  "aiSpadeNotEnoughUnknown": "Not enough spending history to look for sequences.",
+  "@aiSpadeNotEnoughUnknown": {
+    "description": "Not enough history and the server did not say how much is needed."
+  },
+  "aiSpadeNotEnoughNone": "No spending in the last 26 weeks yet.",
+  "@aiSpadeNotEnoughNone": {
+    "description": "No spending to analyse."
+  },
+  "aiSpadeNoPatternTitle": "No sequence yet",
+  "@aiSpadeNoPatternTitle": {
+    "description": "Enough weeks, but no sequence repeats often enough."
+  },
+  "aiSpadeNoPatternMessage": "No sequence of spending repeats in enough weeks yet.",
+  "@aiSpadeNoPatternMessage": {
+    "description": "Enough weeks, but no sequence repeats often enough."
+  },
+  "aiSpadeWeeksDetail": "In {count}/{total} weeks",
+  "@aiSpadeWeeksDetail": {
+    "description": "How many of the analysed weeks contain the sequence.",
     "placeholders": {
       "count": {
-        "type": "String"
+        "type": "int"
       },
-      "support": {
-        "type": "String"
+      "total": {
+        "type": "int"
       }
     }
   },
@@ -2265,26 +2344,82 @@
       }
     }
   },
-  "aiGuardTitle": "Future habit alerts",
+  "aiGuardTitle": "Habits to watch",
   "@aiGuardTitle": {
     "description": "Title of the habit alert section."
   },
-  "aiGuardSubtitle": "The AI predicts upcoming spending from your spending sequence history.",
+  "aiGuardSubtitle": "Habits that repeated in many weeks of your history.",
   "@aiGuardSubtitle": {
     "description": "Under the habit alert title."
   },
-  "aiGuardHeading": "Behaviour forecast · Sequence mining",
+  "aiGuardHeading": "Repeated pattern · Sequence mining",
   "@aiGuardHeading": {
     "description": "Heading of one habit alert."
   },
-  "aiGuardRule": "WCM-SPADE found the rule [{from} → {to}]: after spending on {from}, you tend to spend on {to} within a few days. Keep an eye on your wallet so it does not eat into your savings!",
+  "aiGuardRule": "{count}/{total} weeks: after spending on {from}, you also spent on {to} in the same week.",
   "@aiGuardRule": {
-    "description": "from and to are category labels.",
+    "description": "A rule seen in count of the total weeks in which the first part happened.",
     "placeholders": {
       "from": {
         "type": "String"
       },
       "to": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "aiGuardTriggered": "This week you have spent on {from} but not yet on {to}.",
+  "@aiGuardTriggered": {
+    "description": "The rule applies to the current week.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHabitTitle": "Recurring habits",
+  "@aiHabitTitle": {
+    "description": "Title of the periodic habits section."
+  },
+  "aiHabitSubtitle": "Categories you spend on at a fairly regular interval.",
+  "@aiHabitSubtitle": {
+    "description": "Under the periodic habits title."
+  },
+  "aiHabitLine": "{category}: about every {days} days, next around {date}",
+  "@aiHabitLine": {
+    "description": "Mean gap in days and the next expected date (dd/MM).",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "aiHabitLineLate": "{category}: about every {days} days, last on {last}",
+  "@aiHabitLineLate": {
+    "description": "The expected date has passed; shows the last one.",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      },
+      "last": {
         "type": "String"
       }
     }
@@ -2463,10 +2598,6 @@
   "categorySavings": "Savings",
   "@categorySavings": {
     "description": "Default expense category 'savings': money moved into a savings goal."
-  },
-  "savingsSavedAmountHint": "Leave empty if there is none yet or you don't remember; you can change it later",
-  "@savingsSavedAmountHint": {
-    "description": "Helper under the optional saved amount when creating a goal."
   },
   "savingsTargetDateField": "Target date",
   "@savingsTargetDateField": {

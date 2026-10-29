@@ -183,6 +183,13 @@ class DemoDataWriterTest {
     }
 
     @Test
+    void everyDemoGoalStartsEmptyBecauseNoContributionIsSeeded() {
+        seed();
+
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM saving_goals WHERE current_amount <> 0", Long.class)).isZero();
+    }
+
+    @Test
     void theDemoAccountsHaveGoalsNotificationsAndAuditRows() {
         seed();
 

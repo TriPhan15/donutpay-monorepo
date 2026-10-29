@@ -90,7 +90,11 @@ void main() {
     backend.on(
       'GET',
       '/api/users/me',
-      (_) => okResponse({'id': 1, 'email': 'an@example.com'}),
+      (_) => okResponse({
+        'id': 1,
+        'email': 'an@example.com',
+        'walletBalance': 4955000,
+      }),
     );
     backend.on(
       'GET',

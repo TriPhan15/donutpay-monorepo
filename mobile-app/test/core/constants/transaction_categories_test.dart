@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/services/remote_api_helper.dart';
+
+import '../../helpers/fake_backend.dart';
 
 final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 final AppLocalizations _en = lookupAppLocalizations(const Locale('en'));
@@ -70,6 +73,28 @@ void main() {
         TransactionCategories.displayName(_en, TransactionCategories.all),
         _en.categoryAll,
       );
+    });
+  });
+
+  group('TransactionCategories.loadFromApi', () {
+    test('the savings category cannot be picked for a manual expense', () async {
+      final backend = FakeBackend();
+      RemoteApiHelper.instance.init(httpClientAdapter: backend);
+      backend.on(
+        'GET',
+        '/api/categories',
+        (_) => okResponse([
+          {'id': 1, 'name': 'Ăn uống', 'type': 'EXPENSE'},
+          {'id': 2, 'name': 'Tiết kiệm', 'type': 'EXPENSE'},
+          {'id': 3, 'name': 'Lương', 'type': 'INCOME'},
+        ]),
+      );
+
+      await TransactionCategories.loadFromApi();
+
+      expect(TransactionCategories.forType(isExpense: true), ['Ăn uống']);
+      expect(TransactionCategories.forType(isExpense: false), ['Lương']);
+      expect(TransactionCategories.isSavings(' Tiết kiệm '), isTrue);
     });
   });
 }

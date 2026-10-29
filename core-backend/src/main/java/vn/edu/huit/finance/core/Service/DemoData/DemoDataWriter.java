@@ -114,7 +114,7 @@ public class DemoDataWriter {
     private record BudgetPlan(BudgetPeriodType period, DefaultCategory category, double spentShare) {
     }
 
-    private record GoalPlan(String title, long target, long saved, int monthsLeft) {
+    private record GoalPlan(String title, long target, int monthsLeft) {
     }
 
     private static final List<BudgetPlan> OFFICE_WORKER_BUDGETS = List.of(
@@ -125,12 +125,12 @@ public class DemoDataWriter {
             new BudgetPlan(BudgetPeriodType.MONTH, null, 0.55),
             new BudgetPlan(BudgetPeriodType.WEEK, DefaultCategory.FOOD, 0.5));
     private static final List<GoalPlan> OFFICE_WORKER_GOALS = List.of(
-            new GoalPlan("Quỹ dự phòng 6 tháng", 60_000_000, 21_500_000, 10),
-            new GoalPlan("Du lịch Đà Nẵng", 12_000_000, 7_800_000, 3),
-            new GoalPlan("Mua laptop mới", 25_000_000, 4_000_000, 6));
+            new GoalPlan("Quỹ dự phòng 6 tháng", 60_000_000, 10),
+            new GoalPlan("Du lịch Đà Nẵng", 12_000_000, 3),
+            new GoalPlan("Mua laptop mới", 25_000_000, 6));
     private static final List<GoalPlan> STUDENT_GOALS = List.of(
-            new GoalPlan("Mua laptop học tập", 15_000_000, 3_200_000, 6),
-            new GoalPlan("Học phí IELTS", 8_000_000, 5_500_000, 3));
+            new GoalPlan("Mua laptop học tập", 15_000_000, 6),
+            new GoalPlan("Học phí IELTS", 8_000_000, 3));
 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
@@ -393,7 +393,8 @@ public class DemoDataWriter {
             goal.setUser(user);
             goal.setTitle(plan.title());
             goal.setTargetAmount(BigDecimal.valueOf(plan.target()));
-            goal.setCurrentAmount(BigDecimal.valueOf(plan.saved()));
+            // E3: số đã tiết kiệm chỉ đến từ khoản góp (trừ ví); seeder không tạo khoản góp nên mục tiêu bắt đầu từ 0.
+            goal.setCurrentAmount(BigDecimal.ZERO);
             goal.setDeadline(today.plusMonths(plan.monthsLeft()).format(GOAL_DEADLINE));
             savingGoalRepository.save(goal);
         }

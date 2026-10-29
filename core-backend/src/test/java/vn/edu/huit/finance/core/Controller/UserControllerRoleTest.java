@@ -17,6 +17,7 @@ import vn.edu.huit.finance.core.Config.SecurityConfig;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
 import vn.edu.huit.finance.core.Security.JwtAuthFilter;
 import vn.edu.huit.finance.core.Security.JwtUtil;
@@ -44,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(UserController.class)
 @ContextConfiguration(classes = {
-        UserController.class, UserService.class, GlobalExceptionHandler.class, SecurityConfig.class, JwtAuthFilter.class})
+        UserController.class, UserService.class, CurrentUserProvider.class, GlobalExceptionHandler.class, SecurityConfig.class, JwtAuthFilter.class})
 class UserControllerRoleTest {
 
     private static final String TOKEN = "user.jwt.token";
@@ -127,6 +128,41 @@ class UserControllerRoleTest {
                 .andExpect(jsonPath("$.data.role").value("ROLE_USER"));
 
         assertEquals("0922222222", alice.getPhone());
+    }
+
+    @Test
+    void ownerChangingEmail_isRefused400_andNotSaved() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"email\":\"new@x.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400));
+
+        assertEquals("alice@example.com", alice.getEmail());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void ownerSendingSameEmail_isAccepted() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"email\":\"alice@example.com\",\"phone\":\"0911111111\"}"))
+                .andExpect(status().isOk());
+
+        assertEquals("0911111111", alice.getPhone());
+    }
+
+    @Test
+    void ownerUsernameWithAt_isRefused400() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"username\":\"other@x.com\"}"))
+                .andExpect(status().isBadRequest());
+
+        assertEquals("alice", alice.getUsername());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void invalidEmailFormat_isRefused400() throws Exception {
+        mockMvc.perform(updateProfile(ALICE_ID, "{\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(userRepository, never()).save(any());
     }
 
     @Test

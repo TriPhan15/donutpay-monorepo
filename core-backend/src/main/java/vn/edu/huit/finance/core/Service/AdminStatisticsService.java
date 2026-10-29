@@ -76,7 +76,7 @@ public class AdminStatisticsService {
                 .toList();
     }
 
-    /** The users who spent the most (expenses only), highest first. Key {@code <page>:<limit>}, e.g. {@code 0:5}. */
+    /** The users who spent the most (expenses only, savings excluded), highest first. Key {@code <page>:<limit>}, e.g. {@code 0:5}. */
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheNames.ADMIN_TOP_SPENDERS, key = "#page + ':' + #limit", unless = "#result == null")
     public List<TopSpenderDto> getTopSpenders(int page, int limit) {

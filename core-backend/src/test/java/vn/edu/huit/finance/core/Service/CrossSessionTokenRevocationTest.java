@@ -115,6 +115,7 @@ class CrossSessionTokenRevocationTest {
     }
 
     @Autowired private AuthService authService;
+    @Autowired private InMemoryPasswordResetOtpStore otpStore;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private JwtAuthFilter jwtAuthFilter;
     @Autowired private UserRepository userRepository;
@@ -133,6 +134,8 @@ class CrossSessionTokenRevocationTest {
 
     @BeforeEach
     void setUp() {
+        // The store lives as long as the cached context: one email may request a code only once a minute.
+        otpStore.clear();
         User alice = new User();
         alice.setUsername(USERNAME);
         alice.setEmail(EMAIL);
@@ -248,7 +251,8 @@ class CrossSessionTokenRevocationTest {
         FilterOutcome outcome = protectedRequestWith(accessToken);
 
         assertTrue(outcome.reachedTheEndpoint(), "the request should have reached the endpoint");
-        assertEquals(USERNAME, outcome.caller());
+        // The principal name is the email since the lookup by email first (CustomUserDetailsService).
+        assertEquals(EMAIL, outcome.caller());
     }
 
     /** Refused with a 401 in the JSON ApiResponse envelope, before the endpoint; returns the message. */

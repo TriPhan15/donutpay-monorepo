@@ -36,6 +36,7 @@ import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.InvalidSortFieldException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
+import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Exception.TransactionNotFoundException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
@@ -305,6 +306,17 @@ class TransactionControllerTest {
 
         mockMvc.perform(signedIn(request(HttpMethod.DELETE, URL + "/100")))
                 .andExpect(status().is(status))
+                .andExpect(jsonPath("$.message").value(message));
+    }
+
+    @Test
+    void savingsLedgerRefusalIsA409WithTheVietnameseMessage() throws Exception {
+        String message = "Khoản góp tiết kiệm được quản lý trong mục Mục tiêu tiết kiệm. Hãy góp thêm hoặc xóa mục tiêu ở đó.";
+        doThrow(new SavingsLedgerException(message)).when(transactionService).deleteTransaction(100L);
+
+        mockMvc.perform(signedIn(request(HttpMethod.DELETE, URL + "/100")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value(409))
                 .andExpect(jsonPath("$.message").value(message));
     }
 

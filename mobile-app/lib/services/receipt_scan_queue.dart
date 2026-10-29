@@ -212,6 +212,7 @@ class ReceiptScanQueue {
   /// Saves, one after the other, every ready item whose scan needs no review ([ReceiptScanResult.allValid]): the image is
   /// uploaded first, then the transaction goes through [AppRepository.createTransaction]. A saved item (also one that
   /// waits in the outbox) leaves the queue; a duplicate or a failure keeps it. A call while one runs does nothing.
+  /// dataChangedNotifier moves once for the whole run, not once per saved receipt.
   Future<BulkConfirmResult> confirmAllValid() async {
     final userId = SessionService.currentUserId;
     if (userId == null || _confirming) return BulkConfirmResult.none;
@@ -226,23 +227,24 @@ class ReceiptScanQueue {
               (item.result?.allValid ?? false))
             item,
       ];
-      for (final item in valid) {
-        switch (await _confirmOne(userId, item)) {
-          case _ConfirmOutcome.saved:
-            saved++;
-          case _ConfirmOutcome.duplicate:
-            duplicates++;
-          case _ConfirmOutcome.notSaved:
-            notSaved++;
+      await RemoteApiHelper.instance.batchDataChanges(() async {
+        for (final item in valid) {
+          switch (await _confirmOne(userId, item)) {
+            case _ConfirmOutcome.saved:
+              saved++;
+            case _ConfirmOutcome.duplicate:
+              duplicates++;
+            case _ConfirmOutcome.notSaved:
+              notSaved++;
+          }
         }
-      }
+      });
     } finally {
       _confirming = false;
     }
     debugPrint(
       'Xác nhận hàng loạt: lưu $saved, trùng $duplicates, chưa lưu $notSaved.',
     );
-    RemoteApiHelper.instance.dataChangedNotifier.value++;
     await _publish(userId);
     return BulkConfirmResult(
       saved: saved,

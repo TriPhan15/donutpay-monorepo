@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # Rebuild + reinstall app on connected phone.
-# IP = PC LAN IP (same WiFi as phone). Backend and AI go through the compose proxy on port 80 (8080/8000 are internal). Override: PC_IP=x.x.x.x ./deploy.sh
+# IP = PC LAN IP (same WiFi as phone). Backend and AI go through the compose proxy on port 80 (8080/8000 are internal).
+# Usage: PC_IP=x.x.x.x ./deploy.sh
 set -e
 
-PC_IP="${PC_IP:-172.17.96.220}"
-PKG="com.example.finance_ai_app"
+if [ -z "${PC_IP:-}" ]; then
+  echo "PC_IP is required (the PC's LAN IP). Usage: PC_IP=x.x.x.x ./deploy.sh" >&2
+  exit 1
+fi
+# Must match applicationId in android/app/build.gradle.kts.
+PKG="dev.ledgermind.dev"
 
 cd "$(dirname "$0")"
 

@@ -54,7 +54,7 @@ void main() {
   });
 
   test('the AI service client sends it too', () async {
-    await RemoteApiHelper.instance.analyzePatterns([]);
+    await RemoteApiHelper.instance.analyzeSpending([]);
 
     expect(acceptLanguageOf(_analyzePath), 'vi-VN');
   });
@@ -63,7 +63,7 @@ void main() {
     'after three init() calls the language is still read once per request, from the first repository',
     () async {
       await RemoteApiHelper.instance.fetchMe();
-      await RemoteApiHelper.instance.analyzePatterns([]);
+      await RemoteApiHelper.instance.analyzeSpending([]);
 
       expect(settings.localeTagReads, 2);
     },
@@ -75,7 +75,7 @@ void main() {
       await RemoteApiHelper.instance.fetchMe();
       await settings.setLanguage(AppLanguage.english);
       await RemoteApiHelper.instance.fetchMe();
-      await RemoteApiHelper.instance.analyzePatterns([]);
+      await RemoteApiHelper.instance.analyzeSpending([]);
 
       expect(
         backend.requests.map(

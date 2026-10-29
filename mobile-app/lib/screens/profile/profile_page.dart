@@ -68,9 +68,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final List<WalletModel> wallets;
     final List<TransactionModel> txs;
     try {
-      user = await AppRepository.instance.getCurrentUser(userId);
-      wallets = await AppRepository.instance.getWallets(userId);
-      txs = await AppRepository.instance.getTransactions(userId);
+      final summary = await AppRepository.instance.getHomeSummary(userId);
+      user = summary[AppRepository.summaryUser] as UserModel?;
+      wallets = summary[AppRepository.summaryWallets] as List<WalletModel>;
+      txs = summary[AppRepository.summaryTransactions]
+          as List<TransactionModel>;
     } catch (e) {
       UserFacingError.log('Profile load', e);
       if (!mounted || request != _loadRequest) return;

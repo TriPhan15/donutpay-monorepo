@@ -12,6 +12,9 @@ import java.util.Optional;
 public interface SavingGoalRepository extends JpaRepository<SavingGoal, Long> {
     List<SavingGoal> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    /** True when the user has at least one savings goal (reached or not). */
+    boolean existsByUserId(Long userId);
+
     /**
      * One goal, its row locked (SELECT ... FOR UPDATE) until the end of the transaction, so that two contributions to the
      * same goal add up instead of overwriting each other's currentAmount. Call it before the goal is otherwise loaded in

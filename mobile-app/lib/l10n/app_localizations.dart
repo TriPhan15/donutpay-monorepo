@@ -1622,6 +1622,30 @@ abstract class AppLocalizations {
   /// **'Goal deleted: {title}'**
   String savingsDeleted(String title);
 
+  /// Snackbar after a goal holding money is deleted; amount is what was refunded to the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal deleted: {title}. {amount} went back to your wallet.'**
+  String savingsDeletedRefunded(String title, String amount);
+
+  /// Title of the dialog that confirms deleting a savings goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete goal'**
+  String get savingsDeleteTitle;
+
+  /// Message of the delete goal dialog when nothing has been contributed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this goal?'**
+  String get savingsDeleteConfirm;
+
+  /// Message of the delete goal dialog when the goal holds money; amount is what goes back to the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this goal? The {amount} contributed will be refunded to your wallet.'**
+  String savingsDeleteConfirmRefund(String amount);
+
   /// Title of the add goal dialog.
   ///
   /// In en, this message translates to:
@@ -1646,23 +1670,17 @@ abstract class AppLocalizations {
   /// **'Target amount (₫)'**
   String get savingsTargetAmount;
 
-  /// Field of the add goal dialog.
+  /// Title of the edit goal dialog (name, target and deadline only).
   ///
   /// In en, this message translates to:
-  /// **'Saved so far (₫)'**
-  String get savingsSavedAmount;
+  /// **'Edit goal {title}'**
+  String savingsEditTitle(String title);
 
-  /// Title of the update goal dialog.
+  /// Shown in the detail sheet of a savings contribution, which cannot be edited (nor deleted while the user has savings goals).
   ///
   /// In en, this message translates to:
-  /// **'Update: {title}'**
-  String savingsUpdateTitle(String title);
-
-  /// Field of the update goal dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount saved (₫)'**
-  String get savingsCurrentAmount;
+  /// **'Savings contributions are managed on the Savings page.'**
+  String get ledgerSavingsManagedByGoal;
 
   /// Label of the savings summary card.
   ///
@@ -2191,6 +2209,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unsent transaction deleted'**
   String get ledgerDeletedUnsynced;
+
+  /// Toast when the user deletes an unsent transaction that started being sent meanwhile.
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction is being sent. Try again in a moment.'**
+  String get ledgerDeleteWhileSending;
 
   /// Notice above the list when the server list failed.
   ///
@@ -2796,6 +2820,12 @@ abstract class AppLocalizations {
   /// **'Current balance'**
   String get dashboardBalance;
 
+  /// Note under the balance: the signed total of the transactions still waiting to be sent, which the balance does not include.
+  ///
+  /// In en, this message translates to:
+  /// **'Excludes {amount} from transactions waiting to be sent'**
+  String dashboardPendingNotInBalance(String amount);
+
   /// After the percentage change of the month.
   ///
   /// In en, this message translates to:
@@ -3000,6 +3030,24 @@ abstract class AppLocalizations {
   /// **'Add a savings goal for the AI to analyse.'**
   String get aiAddGoal;
 
+  /// Savings tip: what is still missing this month for the urgent goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Contribute {amount} more this month to stay on track'**
+  String aiGoalNeedMore(String amount);
+
+  /// Savings tip: the urgent goal has no deadline, so no monthly need.
+  ///
+  /// In en, this message translates to:
+  /// **'This goal has no deadline, contribute whenever you can'**
+  String get aiGoalNoDeadline;
+
+  /// Savings tip: the urgent goal has a deadline that is already past.
+  ///
+  /// In en, this message translates to:
+  /// **'This goal is past its deadline: set a new date or keep contributing'**
+  String get aiGoalOverdue;
+
   /// The user has savings goals.
   ///
   /// In en, this message translates to:
@@ -3036,17 +3084,41 @@ abstract class AppLocalizations {
   /// **'Not enough data'**
   String get aiSpadeNotEnoughTitle;
 
-  /// No pattern found.
+  /// Not enough weeks of spending for the sequence mining.
   ///
   /// In en, this message translates to:
-  /// **'Add at least 3 transactions to see sequential spending patterns.'**
-  String get aiSpadeNotEnoughMessage;
+  /// **'Only {weeks} weeks with spending so far; at least {minWeeks} weeks are needed to look for sequences.'**
+  String aiSpadeNotEnoughWeeks(int weeks, int minWeeks);
 
-  /// count and support come from the AI service.
+  /// Not enough history and the server did not say how much is needed.
   ///
   /// In en, this message translates to:
-  /// **'Frequency: {count} times  ·  Support (W-Sup): {support}'**
-  String aiSpadeDetail(String count, String support);
+  /// **'Not enough spending history to look for sequences.'**
+  String get aiSpadeNotEnoughUnknown;
+
+  /// No spending to analyse.
+  ///
+  /// In en, this message translates to:
+  /// **'No spending in the last 26 weeks yet.'**
+  String get aiSpadeNotEnoughNone;
+
+  /// Enough weeks, but no sequence repeats often enough.
+  ///
+  /// In en, this message translates to:
+  /// **'No sequence yet'**
+  String get aiSpadeNoPatternTitle;
+
+  /// Enough weeks, but no sequence repeats often enough.
+  ///
+  /// In en, this message translates to:
+  /// **'No sequence of spending repeats in enough weeks yet.'**
+  String get aiSpadeNoPatternMessage;
+
+  /// How many of the analysed weeks contain the sequence.
+  ///
+  /// In en, this message translates to:
+  /// **'In {count}/{total} weeks'**
+  String aiSpadeWeeksDetail(int count, int total);
 
   /// Title of the budget advice section.
   ///
@@ -3069,26 +3141,56 @@ abstract class AppLocalizations {
   /// Title of the habit alert section.
   ///
   /// In en, this message translates to:
-  /// **'Future habit alerts'**
+  /// **'Habits to watch'**
   String get aiGuardTitle;
 
   /// Under the habit alert title.
   ///
   /// In en, this message translates to:
-  /// **'The AI predicts upcoming spending from your spending sequence history.'**
+  /// **'Habits that repeated in many weeks of your history.'**
   String get aiGuardSubtitle;
 
   /// Heading of one habit alert.
   ///
   /// In en, this message translates to:
-  /// **'Behaviour forecast · Sequence mining'**
+  /// **'Repeated pattern · Sequence mining'**
   String get aiGuardHeading;
 
-  /// from and to are category labels.
+  /// A rule seen in count of the total weeks in which the first part happened.
   ///
   /// In en, this message translates to:
-  /// **'WCM-SPADE found the rule [{from} → {to}]: after spending on {from}, you tend to spend on {to} within a few days. Keep an eye on your wallet so it does not eat into your savings!'**
-  String aiGuardRule(String from, String to);
+  /// **'{count}/{total} weeks: after spending on {from}, you also spent on {to} in the same week.'**
+  String aiGuardRule(String from, String to, int count, int total);
+
+  /// The rule applies to the current week.
+  ///
+  /// In en, this message translates to:
+  /// **'This week you have spent on {from} but not yet on {to}.'**
+  String aiGuardTriggered(String from, String to);
+
+  /// Title of the periodic habits section.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring habits'**
+  String get aiHabitTitle;
+
+  /// Under the periodic habits title.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories you spend on at a fairly regular interval.'**
+  String get aiHabitSubtitle;
+
+  /// Mean gap in days and the next expected date (dd/MM).
+  ///
+  /// In en, this message translates to:
+  /// **'{category}: about every {days} days, next around {date}'**
+  String aiHabitLine(String category, String days, String date);
+
+  /// The expected date has passed; shows the last one.
+  ///
+  /// In en, this message translates to:
+  /// **'{category}: about every {days} days, last on {last}'**
+  String aiHabitLineLate(String category, String days, String last);
 
   /// Title of the 50/30/20 card.
   ///
@@ -3299,12 +3401,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Savings'**
   String get categorySavings;
-
-  /// Helper under the optional saved amount when creating a goal.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave empty if there is none yet or you don\'t remember; you can change it later'**
-  String get savingsSavedAmountHint;
 
   /// Label of the optional target date of a goal.
   ///

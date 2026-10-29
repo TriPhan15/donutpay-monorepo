@@ -182,4 +182,30 @@ class SavingGoalContributionRollbackTest {
         assertMoney("0", goalInDatabase(bobsGoalId));
         assertNothingMoved();
     }
+
+    @Test
+    void contributeThenDelete_givesTheWalletBackItsMoney() {
+        service.contributeToMySaving(alicesGoalId, new BigDecimal("300000"));
+        assertMoney("700000", walletInDatabase());
+
+        service.deleteSaving(alicesGoalId);
+
+        // The goal held 1,000,000 + 300,000: all of it goes back as one income of "Thu khác".
+        assertMoney("2000000", walletInDatabase());
+        assertEquals(0, savingGoalRepository.count());
+        Transaction refund = transactionRepository.findByUserIdOrderByTransactionDateDesc(aliceId).stream()
+                .filter(transaction -> !transaction.isExpense()).findFirst().orElseThrow();
+        assertMoney("1300000", refund.getAmount());
+        assertEquals(DefaultCategory.OTHER_INCOME.getDisplayName(), refund.getCategoryName());
+        assertTrue(refund.getNote().contains("Mua xe"));
+    }
+
+    @Test
+    void whenTheGoalCannotBeDeletedTheRefundIsRolledBack() {
+        doThrow(new IllegalStateException("database went away")).when(savingGoalRepository).delete(any(SavingGoal.class));
+
+        assertThrows(IllegalStateException.class, () -> service.deleteSaving(alicesGoalId));
+
+        assertNothingMoved();
+    }
 }

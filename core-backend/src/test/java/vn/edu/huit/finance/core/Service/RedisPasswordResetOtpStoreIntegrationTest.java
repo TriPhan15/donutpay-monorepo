@@ -44,6 +44,9 @@ class RedisPasswordResetOtpStoreIntegrationTest {
     private static final Instant ISSUED_AT = Instant.parse("2026-01-01T10:00:00Z");
     private static final Duration VALIDITY = Duration.ofMinutes(5);
     private static final int MAX_FAILED_ATTEMPTS = 3;
+    private static final Duration COOLDOWN = Duration.ofSeconds(60);
+    private static final int MAX_ISSUES = 5;
+    private static final Duration ISSUE_WINDOW = Duration.ofHours(1);
     private static final int PARALLEL_GUESSES = 40;
     private static final int PARALLEL_ROUNDS = 10;
 
@@ -189,6 +192,43 @@ class RedisPasswordResetOtpStoreIntegrationTest {
                 pool.shutdownNow();
             }
         }));
+    }
+
+    @Test
+    void limitIsSharedAcrossCaseOfTheEmail() {
+        api().run(context -> {
+            PasswordResetOtpStore store = store(context);
+            String upper = "A-" + UUID.randomUUID() + "@x.com";
+
+            assertTrue(store.tryRegisterIssue(upper, ISSUED_AT, COOLDOWN, MAX_ISSUES, ISSUE_WINDOW));
+            assertFalse(store.tryRegisterIssue(" " + upper.toLowerCase() + " ", ISSUED_AT.plusSeconds(1), COOLDOWN,
+                    MAX_ISSUES, ISSUE_WINDOW));
+        });
+    }
+
+    @Test
+    void anIssueIsAllowedOnceTheCooldownPassed_andRefusedOnceTheWindowIsFull() {
+        api().run(context -> {
+            PasswordResetOtpStore store = store(context);
+            for (int i = 0; i < MAX_ISSUES; i++) {
+                assertTrue(store.tryRegisterIssue(email, ISSUED_AT.plus(COOLDOWN.multipliedBy(i)), COOLDOWN, MAX_ISSUES,
+                        ISSUE_WINDOW), "issue " + i);
+            }
+
+            assertFalse(store.tryRegisterIssue(email, ISSUED_AT.plus(COOLDOWN.multipliedBy(MAX_ISSUES)), COOLDOWN,
+                    MAX_ISSUES, ISSUE_WINDOW));
+        });
+    }
+
+    @Test
+    void aRefusedIssueIsNotRecorded_soTheCooldownRunsFromTheLastGrantedOne() {
+        api().run(context -> {
+            PasswordResetOtpStore store = store(context);
+            assertTrue(store.tryRegisterIssue(email, ISSUED_AT, COOLDOWN, MAX_ISSUES, ISSUE_WINDOW));
+            assertFalse(store.tryRegisterIssue(email, ISSUED_AT.plusSeconds(59), COOLDOWN, MAX_ISSUES, ISSUE_WINDOW));
+
+            assertTrue(store.tryRegisterIssue(email, ISSUED_AT.plusSeconds(60), COOLDOWN, MAX_ISSUES, ISSUE_WINDOW));
+        });
     }
 
     @Test

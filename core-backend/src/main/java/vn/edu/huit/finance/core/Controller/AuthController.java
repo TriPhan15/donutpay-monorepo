@@ -19,6 +19,7 @@ import vn.edu.huit.finance.core.Dto.ResetPasswordRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.InvalidTokenException;
+import vn.edu.huit.finance.core.Exception.SocialLoginRejectedException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.BearerToken;
@@ -41,6 +42,8 @@ import java.util.Set;
 @RestController
 @RequestMapping(AuthPaths.BASE)
 public class AuthController {
+    // The same text for a registered and an unregistered email, and without the email: the answer reveals neither.
+    private static final String FORGOT_PASSWORD_MESSAGE = "Nếu email đã đăng ký, mã OTP sẽ được gửi tới email đó.";
     private static final String CHANGE_PASSWORD_SUCCESS_MESSAGE = "Đổi mật khẩu thành công!";
     private static final String LOGOUT_SUCCESS_MESSAGE = "Đăng xuất thành công!";
     private static final String REFRESH_SUCCESS_MESSAGE = "Refresh token thành công";
@@ -208,7 +211,7 @@ public class AuthController {
             // The provider's token is opaque: nobody is named, only the provider (when it is one the server supports).
             publishLoginRefusal(AuditAction.AUTH_LOGIN_FAILED, null,
                     String.format(AUDIT_SOCIAL_LOGIN_FAILED, providerName(req.get("provider"))));
-            return ResponseEntity.status(401).body(java.util.Map.of("message", "Lỗi xác thực: " + e.getMessage()));
+            return ResponseEntity.status(401).body(java.util.Map.of("message", SocialLoginRejectedException.MESSAGE));
         }
     }
 
@@ -218,7 +221,7 @@ public class AuthController {
 
         ApiResponse<String> response = ApiResponse.<String>builder()
                 .code(200)
-                .message("Mã OTP đã được gửi đến email: " + email)
+                .message(FORGOT_PASSWORD_MESSAGE)
                 .build();
         return ResponseEntity.ok(response);
     }

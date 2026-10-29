@@ -29,6 +29,7 @@ import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.Category;
+import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
@@ -38,16 +39,19 @@ import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.InvalidSortFieldException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
+import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Exception.TransactionNotFoundException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Repository.ReceiptRepository;
+import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -82,6 +86,7 @@ class TransactionServiceTest {
     @Mock private ReceiptRepository receiptRepo;
     @Mock private TransactionRepository transactionRepo;
     @Mock private UserRepository userRepo;
+    @Mock private SavingGoalRepository savingGoalRepository;
     @Mock private CategoryRepository categoryRepo;
     @Mock private AuditLogService auditLogService;
     @Mock private CurrentUserProvider currentUserProvider;
@@ -1084,14 +1089,16 @@ class TransactionServiceTest {
     private static final String SCAN = "{\"seller\": {}}";
     private static final Long EARLIER_ID = 55L;
 
-    /** What attachReceipt does for real: the receipt's seller and timestamp (here 10:30:42) replace what the client sent. */
+    /** What attachReceipt does for real: the receipt's seller is kept, and the timestamp (here 10:30:42) only fills a date the client left empty. */
     private void theScanReads(String seller) {
         doAnswer(invocation -> {
             Transaction transaction = invocation.getArgument(0);
             Receipt receipt = new Receipt();
             receipt.setVendorName(seller);
             transaction.setReceipt(receipt);
-            transaction.setTransactionDate(SCANNED_MINUTE.plusSeconds(42));
+            if (transaction.getTransactionDate() == null) {
+                transaction.setTransactionDate(SCANNED_MINUTE.plusSeconds(42));
+            }
             return null;
         }).when(receiptProcessingService).attachReceipt(any(), any(), any());
     }
@@ -1114,6 +1121,15 @@ class TransactionServiceTest {
                 SCANNED_MINUTE.plusMinutes(1))).thenReturn(List.of(transactions));
     }
 
+    private static final LocalDateTime MAY_28_0900 = LocalDateTime.of(2026, 5, 28, 9, 0);
+
+    /** A scan whose date the user left empty (the AI's timestamp fills it) or confirmed (it wins over the AI). */
+    private TransactionRequestDto scannedCheckout(LocalDateTime userDate) {
+        TransactionRequestDto request = checkout(SCAN);
+        request.setTransactionDate(userDate);
+        return request;
+    }
+
     private void aliceScansFoodAs(String seller) {
         checkoutAsAlice();
         when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
@@ -1126,7 +1142,7 @@ class TransactionServiceTest {
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
 
         DuplicateReceiptException refused = assertThrows(DuplicateReceiptException.class,
-                () -> service.createMyTransaction(checkout(SCAN)));
+                () -> service.createMyTransaction(scannedCheckout(null)));
 
         assertEquals("Hóa đơn này có vẻ đã được lưu trước đó", refused.getMessage());
         assertEquals(EARLIER_ID, refused.getExistingTransactionId());
@@ -1143,7 +1159,7 @@ class TransactionServiceTest {
         aliceScansFoodAs("Bách Hóa Xanh");
         aliceHasInThatMinute(savedEarlier(earlierSeller));
 
-        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(checkout(SCAN)));
+        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(scannedCheckout(null)));
     }
 
     @Test
@@ -1151,7 +1167,7 @@ class TransactionServiceTest {
         aliceScansFoodAs("Highlands Coffee");
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
 
-        service.createMyTransaction(checkout(SCAN));
+        service.createMyTransaction(scannedCheckout(null));
 
         verify(transactionRepo).save(any(Transaction.class));
     }
@@ -1163,7 +1179,7 @@ class TransactionServiceTest {
         aliceScansFoodAs(seller);
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
 
-        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(checkout(SCAN)));
+        assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(scannedCheckout(null)));
     }
 
     @Test
@@ -1174,7 +1190,7 @@ class TransactionServiceTest {
         aliceHasInThatMinute(savedEarlier("Highlands"), withoutSeller);
 
         DuplicateReceiptException refused = assertThrows(DuplicateReceiptException.class,
-                () -> service.createMyTransaction(checkout(SCAN)));
+                () -> service.createMyTransaction(scannedCheckout(null)));
 
         assertEquals(EARLIER_ID + 1, refused.getExistingTransactionId());
     }
@@ -1183,11 +1199,21 @@ class TransactionServiceTest {
     void theLookupIsTheCallersOwnSameDirectionAndAmountInTheMinuteOfTheReceiptsTimestamp() {
         aliceScansFoodAs("Bách Hóa Xanh");
 
-        service.createMyTransaction(checkout(SCAN));
+        service.createMyTransaction(scannedCheckout(null));
 
         verify(transactionRepo).findPossibleReceiptDuplicates(ALICE_ID, true, HUNDRED_THOUSAND, SCANNED_MINUTE,
                 SCANNED_MINUTE.plusMinutes(1));
         verify(transactionRepo).save(any(Transaction.class));
+    }
+
+    @Test
+    void theDuplicateCheckUsesTheDateTheUserConfirmedAndNotTheOneTheAiRead() {
+        aliceScansFoodAs("Bách Hóa Xanh");
+
+        service.createMyTransaction(scannedCheckout(MAY_28_0900));
+
+        verify(transactionRepo).findPossibleReceiptDuplicates(eq(ALICE_ID), eq(true), any(), eq(MAY_28_0900),
+                eq(MAY_28_0900.plusMinutes(1)));
     }
 
     @Test
@@ -1206,7 +1232,8 @@ class TransactionServiceTest {
     void allowDuplicateFalseIsTheSameAsNotSendingIt() {
         aliceScansFoodAs("Bách Hóa Xanh");
         aliceHasInThatMinute(savedEarlier("Bách Hóa Xanh"));
-        TransactionRequestDto request = checkout(SCAN);
+        // No confirmed date, so the duplicate check runs on the minute the AI read (SCANNED_MINUTE).
+        TransactionRequestDto request = scannedCheckout(null);
         request.setAllowDuplicate(false);
 
         assertThrows(DuplicateReceiptException.class, () -> service.createMyTransaction(request));
@@ -2012,6 +2039,131 @@ class TransactionServiceTest {
         verifyNoInteractions(eventPublisher);
     }
 
+    // ------------------------------------------------------------------------ savings: only through the savings goal
+
+    private Category savingsCategory() {
+        return category(12L, SavingsContributions.CATEGORY_NAME, DefaultCategory.TYPE_EXPENSE);
+    }
+
+    private Transaction aliceHasASavingsContribution() {
+        Transaction contribution = aliceHasOwnTransaction(new BigDecimal("500000"), true);
+        contribution.setCategory(savingsCategory());
+        contribution.setCategoryName(SavingsContributions.CATEGORY_NAME);
+        return contribution;
+    }
+
+    private void savingsCategoryExistsByName() {
+        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(SavingsContributions.CATEGORY_NAME))
+                .thenReturn(Optional.of(savingsCategory()));
+    }
+
+    @Test
+    void updatingASavingsContributionIsRefusedAndTheWalletIsUntouched() {
+        aliceHasASavingsContribution();
+
+        assertThrows(SavingsLedgerException.class, () -> service.updateTransaction(TX_ID, updateAmount("100000")));
+
+        verifyNothingWasWritten();
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void deletingASavingsContributionIsRefusedAndNothingIsDeletedWhileTheOwnerHasAGoal() {
+        aliceHasASavingsContribution();
+        when(savingGoalRepository.existsByUserId(ALICE_ID)).thenReturn(true);
+
+        assertThrows(SavingsLedgerException.class, () -> service.deleteTransaction(TX_ID));
+
+        verifyNothingWasWritten();
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void aSavingsRowOfAnOwnerWithoutAnyGoalIsDeletedAndTheWalletGetsItBack() {
+        Transaction legacyRow = aliceHasASavingsContribution();
+        when(savingGoalRepository.existsByUserId(ALICE_ID)).thenReturn(false);
+
+        service.deleteTransaction(TX_ID);
+
+        assertMoney("1500000", alice.getWalletBalance());
+        InOrder order = inOrder(entityManager, userRepo, transactionRepo);
+        order.verify(entityManager).find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE);
+        order.verify(userRepo).saveAndFlush(alice);
+        order.verify(transactionRepo).delete(legacyRow);
+    }
+
+    @Test
+    void anOrdinaryDeleteDoesNotLookAtTheSavingsGoals() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+
+        service.deleteTransaction(TX_ID);
+
+        verifyNoInteractions(savingGoalRepository);
+    }
+
+    @Test
+    void updatingASavingsRowStaysRefusedEvenWithoutAnyGoal() {
+        aliceHasASavingsContribution();
+        lenient().when(savingGoalRepository.existsByUserId(ALICE_ID)).thenReturn(false);
+
+        assertThrows(SavingsLedgerException.class, () -> service.updateTransaction(TX_ID, updateAmount("100000")));
+
+        verifyNothingWasWritten();
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void movingATransactionIntoTheSavingsCategoryIsRefused() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        savingsCategoryExistsByName();
+        TransactionUpdateRequestDto request = update();
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        assertThrows(SavingsLedgerException.class, () -> service.updateTransaction(TX_ID, request));
+
+        verifyNothingWasWritten();
+    }
+
+    @Test
+    void genericCheckoutInTheSavingsCategoryIsRefusedAndTheWalletIsUntouched() {
+        checkoutAsAlice();
+        savingsCategoryExistsByName();
+        TransactionRequestDto request = checkout(true, "100000");
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        assertThrows(SavingsLedgerException.class, () -> service.createMyTransaction(request));
+
+        verify(userRepo, never()).saveAndFlush(any());
+        verify(transactionRepo, never()).save(any());
+        assertMoney("1000000", alice.getWalletBalance());
+    }
+
+    @Test
+    void theWebhookCheckoutInTheSavingsCategoryIsRefusedToo() {
+        when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
+        savingsCategoryExistsByName();
+        TransactionRequestDto request = checkout(true, "100000");
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        assertThrows(SavingsLedgerException.class, () -> service.createTransaction(request, ALICE_ID));
+
+        verify(transactionRepo, never()).save(any());
+    }
+
+    @Test
+    void recordSavingsMovementAcceptsTheSavingsCategory() {
+        checkoutAsAlice();
+        savingsCategoryExistsByName();
+        TransactionRequestDto request = checkout(true, "100000");
+        request.setCategoryName(SavingsContributions.CATEGORY_NAME);
+
+        Map<String, Object> result = service.recordSavingsMovement(request);
+
+        assertTrue(result.containsKey("transactionId"));
+        assertMoney("900000", alice.getWalletBalance());
+        verify(transactionRepo).save(any(Transaction.class));
+    }
+
     // ------------------------------------------------------------------------------------------------ structural guards
 
     @Test
@@ -2032,6 +2184,7 @@ class TransactionServiceTest {
                 TransactionService.class.getMethod("cancelMyReceipt", Long.class),
                 TransactionService.class.getMethod("approveReceipt", Long.class),
                 TransactionService.class.getMethod("createMyTransaction", TransactionRequestDto.class),
+                TransactionService.class.getMethod("recordSavingsMovement", TransactionRequestDto.class),
                 TransactionService.class.getMethod("createTransaction", TransactionRequestDto.class, Long.class));
 
         for (Method method : writers) {
@@ -2066,7 +2219,9 @@ class TransactionServiceTest {
                 .map(Method::getName)
                 .collect(Collectors.toSet());
 
-        // The payment webhook has no SecurityContext, and the two administrator lookups are guarded by their controller.
-        assertEquals(Set.of("createTransaction", "getPopularVendorsOf", "getDashboardOf"), takingAUserId);
+        // The payment webhook has no SecurityContext (createTransaction, and lockWalletAndCheckCovers for a
+        // withdrawal), and the two administrator lookups are guarded by their controller.
+        assertEquals(Set.of("createTransaction", "lockWalletAndCheckCovers", "getPopularVendorsOf", "getDashboardOf"),
+                takingAUserId);
     }
 }

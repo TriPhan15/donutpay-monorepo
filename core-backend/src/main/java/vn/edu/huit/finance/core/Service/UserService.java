@@ -14,8 +14,10 @@ import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.ProfileUpdateRefusedException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.Roles;
+import vn.edu.huit.finance.core.Security.UsernamePolicy;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
@@ -37,6 +39,7 @@ import java.util.Objects;
 public class UserService {
 
     private static final String MSG_ROLE_CHANGE_FORBIDDEN = "Không được phép tự thay đổi vai trò";
+    private static final String MSG_EMAIL_CHANGE_FORBIDDEN = "Không thể tự đổi email. Liên hệ quản trị viên.";
     private static final String AUDIT_CREATED = "Quản trị viên tạo tài khoản %s, vai trò %s";
     private static final String AUDIT_UPDATED_BY_ADMIN = "Quản trị viên cập nhật tài khoản: %s";
     private static final String AUDIT_UPDATED_BY_OWNER = "Người dùng tự cập nhật hồ sơ: %s";
@@ -99,6 +102,9 @@ public class UserService {
                 throw new AccessDeniedException(MSG_ROLE_CHANGE_FORBIDDEN);
             }
         }
+        if (!mayChangeRole) {
+            refuseForbiddenOwnerChanges(id, user, dto);
+        }
         List<String> changedFields = new ArrayList<>();
         if (dto.getUsername() != null && !dto.getUsername().isBlank()) {
             addIfChanged(changedFields, AUDIT_FIELD_USERNAME, user.getUsername(), dto.getUsername());
@@ -108,7 +114,8 @@ public class UserService {
             addIfChanged(changedFields, AUDIT_FIELD_PHONE, user.getPhone(), dto.getPhone());
             user.setPhone(dto.getPhone());
         }
-        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+        // Đường tự sửa hồ sơ: email không đổi theo định nghĩa (đã kiểm ở trên), không ghi lại để khỏi đổi kiểu chữ của subject JWT.
+        if (mayChangeRole && dto.getEmail() != null && !dto.getEmail().isBlank()) {
             addIfChanged(changedFields, AUDIT_FIELD_EMAIL, user.getEmail(), dto.getEmail());
             user.setEmail(dto.getEmail());
         }
@@ -121,6 +128,20 @@ public class UserService {
             record(AuditAction.USER_ROLE_CHANGED, id, String.format(AUDIT_ROLE_CHANGED, roleBefore, saved.getRole()));
         }
         return saved;
+    }
+
+    /** Người dùng tự sửa hồ sơ: không được đổi email (là subject của JWT), tên đăng nhập có @ phải trùng email của mình. */
+    private void refuseForbiddenOwnerChanges(Long id, User user, UserUpdateDto dto) {
+        String email = dto.getEmail();
+        if (email != null && !email.isBlank() && !email.trim().equalsIgnoreCase(user.getEmail())) {
+            log.warn("Email change refused, userId={}", id);
+            throw new ProfileUpdateRefusedException(MSG_EMAIL_CHANGE_FORBIDDEN);
+        }
+        String username = dto.getUsername();
+        if (username != null && !username.isBlank() && !UsernamePolicy.isAllowed(username, user.getEmail())) {
+            log.warn("Username refused, userId={}", id);
+            throw new ProfileUpdateRefusedException(UsernamePolicy.MESSAGE);
+        }
     }
 
     @Transactional

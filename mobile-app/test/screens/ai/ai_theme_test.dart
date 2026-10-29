@@ -50,7 +50,7 @@ final List<Map<String, Object?>> _transactions = [
 ];
 
 ResponseBody _patterns(List<Map<String, Object?>> patterns) =>
-    jsonResponse(200, {'patterns': patterns});
+    jsonResponse(200, {'status': 'OK', 'patterns': patterns});
 
 Finder _chipLabel(String label) => find.descendant(
   of: find.widgetWithText(ChoiceChip, label),
@@ -85,7 +85,16 @@ void main() {
       'POST',
       '/spade/analyze',
       (_) => _patterns([
-        {'pattern': 'an uong → giai tri', 'count': 3, 'wsupport': '12.5%'},
+        {
+          'itemsets': [
+            ['Ăn uống'],
+            ['Giải trí'],
+          ],
+          'support': 3,
+          'weight': 1.0,
+          'weightedSupport': 0.125,
+          'weeks': ['2026-W40'],
+        },
       ]),
     );
   });
@@ -240,7 +249,7 @@ void main() {
             colors.onPrimaryContainer,
           );
           expect(
-            paintedColor(tester, find.textContaining('Tần suất')),
+            paintedColor(tester, find.textContaining('Có trong')),
             colors.primary,
           );
           expect(

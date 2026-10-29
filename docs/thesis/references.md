@@ -335,6 +335,62 @@
 - Kiểm chứng (cập nhật T10/T11): HTTP 200.
 - Dùng cho: 4.7.2 (điền sẵn email, trình quản lý mật khẩu của hệ điều hành).
 
+### Bổ sung ở phiên đợt 5 (kiểm chứng ngày 28/10/2026)
+
+> Phục vụ phần phân tích chi tiêu và RFM. Đánh số tạm [76]–[88]; khi xếp lại danh mục ở bước đánh số cuối phải thay đồng loạt các trích dẫn [n]. Danh sách đã kiểm/bỏ chi tiết ở `docs/thesis/facts_ai.md` mục 12.
+
+[76] P. Fournier-Viger, A. Gomariz, M. Campos, R. Thomas, Fast Vertical Mining of Sequential Patterns Using Co-occurrence Information, Advances in Knowledge Discovery and Data Mining (PAKDD 2014), Lecture Notes in Computer Science (pp. 40–52), Springer, 2014. DOI: 10.1007/978-3-319-06608-0_4.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp tác giả, tiêu đề, trang, năm. Số tập LNCS không ghi vì Crossref không có.
+- Dùng cho: 2.x (CMAP của CM-SPADE trong ai-service/wcm_spade.py); Ch.3 (pipeline phân tích chi tiêu).
+
+[77] U. Yun, J. J. Leggett, WSpan: Weighted Sequential pattern mining in large sequence databases, 2006 3rd International IEEE Conference Intelligent Systems (pp. 512–517), 2006. DOI: 10.1109/IS.2006.348472.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp. Công thức "trọng số mẫu = trung bình trọng số item" và cận MaxW chưa được đọc trong bài gốc, nên chỉ trích dẫn ý "đưa trọng số vào quá trình khai phá"; công thức cụ thể là cách làm của đề tài kiểu WSpan.
+- Dùng cho: 2.x (support có trọng số).
+
+[78] J. Wang, J. Han, BIDE: Efficient Mining of Frequent Closed Sequences, Proceedings of the 20th International Conference on Data Engineering (ICDE 2004) (pp. 79–90), 2004. DOI: 10.1109/ICDE.2004.1319986.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp tiêu đề, trang, DOI; năm 2004 lấy từ ngày hội nghị (Boston, 28/9/2004) vì trường năm của Crossref trống. Code chỉ lọc mẫu đóng sau khai phá theo tinh thần BIDE, không cài đặt BIDE.
+- Dùng cho: 2.x (lọc mẫu đóng).
+
+[79] P. Fournier-Viger, C.-W. Wu, V. S. Tseng, L. Cao, R. Nkambou, Mining Partially-Ordered Sequential Rules Common to Multiple Sequences, IEEE Transactions on Knowledge and Data Engineering (vol. 27, no. 8, pp. 2203–2216), 2015. DOI: 10.1109/TKDE.2015.2405509.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp. Định nghĩa support/confidence nguyên văn chưa đọc; chỉ dẫn cho khái niệm luật tuần tự có độ tin cậy, không gán ngưỡng nào cho bài.
+- Dùng cho: 2.x (luật tuần tự A ⇒ B).
+
+[80] S. Brin, R. Motwani, C. Silverstein, Beyond market baskets: generalizing association rules to correlations, Proceedings of the 1997 ACM SIGMOD International Conference on Management of Data (pp. 265–276), 1997. DOI: 10.1145/253260.253327.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp; đã đọc PDF (eecs.yorku.ca/course_archive/2011-12/F/6412/reading/brin97.pdf): bài định nghĩa độ "interest" I(r) = O(r)/E[r], giá trị lớn hơn 1 là phụ thuộc dương, tức tương đương lift. Bài không dùng từ "lift".
+- Dùng cho: 2.x (lift của luật).
+
+[81] P. Clark, R. Boswell, Rule induction with CN2: Some recent improvements, Machine Learning – EWSL-91, Lecture Notes in Computer Science (pp. 151–163), Springer, 1991. DOI: 10.1007/BFb0017011.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp; phần tóm tắt (qua nguồn thứ cấp) nêu ước lượng Laplace cho độ chính xác của luật. Công thức (k+1)/(n+2) của đề tài là trường hợp hai lớp và là lựa chọn thiết kế, không gán cho bài.
+- Dùng cho: 2.x (Laplace confidence).
+
+[82] H. Mannila, H. Toivonen, A. I. Verkamo, Discovery of Frequent Episodes in Event Sequences, Data Mining and Knowledge Discovery (vol. 1, no. 3, pp. 259–289), 1997. DOI: 10.1023/A:1009748302351.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp. Cắt chuỗi theo tuần ISO chỉ là xấp xỉ lấy cảm hứng từ khai phá episode theo cửa sổ, không phải cài đặt WINEPI.
+- Dùng cho: 2.x (vì sao chia chuỗi theo tuần).
+
+[83] S. K. Tanbeer, C. F. Ahmed, B.-S. Jeong, Y.-K. Lee, Discovering Periodic-Frequent Patterns in Transactional Databases, Advances in Knowledge Discovery and Data Mining (PAKDD 2009), Lecture Notes in Computer Science (pp. 242–253), Springer, 2009. DOI: 10.1007/978-3-642-01307-2_24.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp (docstring spending_habits.py ghi thiếu trang).
+- Dùng cho: 2.x (thói quen định kỳ).
+
+[84] P. Fournier-Viger, C.-W. Lin, Q.-H. Duong, T.-L. Dam, L. Ševčík, D. Uhrin, M. Voznak, PFPM: Discovering Periodic Frequent Patterns with Novel Periodicity Measures, Proceedings of the 2nd Czech-China Scientific Conference 2016, InTech, 2017. DOI: 10.5772/66780.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp tiêu đề, tác giả, năm, DOI; Crossref không có số trang. Có bản tạp chí 2019 (Advances in Electrical and Electronic Engineering 17(1), DOI 10.15598/aeee.v17i1.3185) với tiêu đề "Discovering Periodic Itemsets Using Novel Periodicity Measures"; mục này theo tiêu đề chương 2017 mà code dẫn. Đề tài chỉ dùng ý thống kê khoảng cách giữa các lần xuất hiện cho một danh mục.
+- Dùng cho: 2.x (thói quen định kỳ).
+
+[85] Plaid, Transactions API – /transactions/recurring/get (trạng thái luồng định kỳ MATURE), https://plaid.com/docs/api/products/transactions/, truy cập ngày 28/10/2026.
+- Kiểm chứng (đợt 5, 28/10/2026): đã đọc bản Markdown của trang (plaid.com/docs/api/products/transactions/index.html.md): "A MATURE recurring stream should have at least 3 transactions and happen on a regular cadence (For Annual recurring stream, we will mark it MATURE after 2 instances)." `MIN_OCCURRENCES` = 3 theo quy tắc này; `MAX_GAP_CV` = 0,5 là lựa chọn của đề tài.
+- Dùng cho: 2.x (ngưỡng tối thiểu 3 lần).
+
+[86] G. I. Webb, Discovering Significant Patterns, Machine Learning (vol. 68, no. 1, pp. 1–33), 2007. DOI: 10.1007/s10994-007-5006-x.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp. Chỉ dùng cho ý "khai phá nhiều luật trên ít tuần cần kiểm định ý nghĩa thống kê"; chi tiết phương pháp (Fisher, Holm) chưa đọc lại.
+- Dùng cho: 2.x/Ch.5 (hạn chế: luật chỉ mô tả lịch sử).
+
+[87] R. Agrawal, R. Srikant, Mining Sequential Patterns, Proceedings of the Eleventh International Conference on Data Engineering (ICDE 1995) (pp. 3–14), 1995. DOI: 10.1109/ICDE.1995.380415.
+- Kiểm chứng (đợt 5, 28/10/2026): Crossref khớp.
+- Dùng cho: 2.x (khái niệm mẫu tuần tự và support).
+
+[88] A. M. Hughes, Strategic Database Marketing, Probus Publishing, Chicago, 1994.
+- Kiểm chứng (đợt 5, 28/10/2026): chỉ xác nhận sự tồn tại và nhà xuất bản/năm qua bản ghi thư viện, và bài điểm sách (strategyonline.ca) nêu sách bàn về phân tích RFM. KHÔNG xác nhận được sách chia ngũ phân vị, không có ISBN hay trang kiểm chứng. Văn bản chỉ được trích sách cho khái niệm RFM; việc chấm điểm 1–5 theo ngũ phân vị viết là cách phổ biến trong thực hành RFM và là lựa chọn của đề tài.
+- Dùng cho: 2.2.6/Ch.2 (phân khúc RFM).
+
 ---
 
 ## Đã loại

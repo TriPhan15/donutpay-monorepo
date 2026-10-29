@@ -1,10 +1,15 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:dio/dio.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/utils/savings_goal_planner.dart';
+import 'package:finance_ai_app/core/utils/spending_history.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/spending_analysis.dart';
 import 'package:finance_ai_app/models/spending_range.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -56,7 +61,7 @@ class AITabPage extends StatefulWidget {
 class _AITabPageState extends State<AITabPage> {
   bool _isLoading = true;
   List<TransactionModel> _transactions = [];
-  List<Map<String, dynamic>> _spadePatterns = [];
+  SpendingAnalysis? _analysis;
   List<Map<String, dynamic>> _savingsGoals = [];
 
   bool _spadeLoading = false;
@@ -69,6 +74,9 @@ class _AITabPageState extends State<AITabPage> {
   Map<String, dynamic>? _budgetAdvice;
   bool _adviceLoading = false;
 
+  /// Numbers each budget advice request, like [_spadeRequestId]: only the latest one may set or clear the advice.
+  int _adviceRequestId = 0;
+
   List<TransactionModel> get _monthTxs {
     final now = DateTime.now();
     return _transactions
@@ -78,8 +86,9 @@ class _AITabPageState extends State<AITabPage> {
 
   double get _monthIncome =>
       _monthTxs.where((t) => !t.isExpense).fold(0, (s, t) => s + t.amount);
-  double get _monthExpense =>
-      _monthTxs.where((t) => t.isExpense).fold(0, (s, t) => s + t.amount);
+  double get _monthExpense => _monthTxs
+      .where((t) => t.countsAsSpending)
+      .fold(0, (s, t) => s + t.amount);
 
   /// Worked out from the clock each time, so "this week" and "this month" never go stale while the tab stays open.
   SpendingRange get _range =>
@@ -137,42 +146,25 @@ class _AITabPageState extends State<AITabPage> {
     _loadBudgetAdvice(txs);
   }
 
-  Map<String, dynamic>? _pickUrgentGoal() {
-    final active = _savingsGoals
-        .where(
-          (g) => ((g['target'] ?? 0) as num) > ((g['current'] ?? 0) as num),
-        )
-        .toList();
-    if (active.isEmpty) return null;
-
-    final now = DateTime.now();
-    return active.reduce((a, b) {
-      final d1 = _daysLeftOf(a, now) ?? 999999;
-      final d2 = _daysLeftOf(b, now) ?? 999999;
-      return (d1 > 0 && d1 < d2) ? a : b;
-    });
-  }
-
-  int? _daysLeftOf(Map<String, dynamic> g, DateTime now) {
-    try {
-      final p = (g['deadline'] ?? '').toString().split('/');
-      return DateTime(
-        int.parse(p[2]),
-        int.parse(p[1]),
-        int.parse(p[0]),
-      ).difference(now).inDays;
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<void> _loadBudgetAdvice(List<TransactionModel> txs) async {
-    final goal = _pickUrgentGoal();
-    if (goal == null) return;
+    final requestId = ++_adviceRequestId;
+    final today = DateTime.now();
+    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
+    if (goal == null) {
+      if (mounted) {
+        setState(() {
+          _budgetAdvice = null;
+          _adviceLoading = false;
+        });
+      }
+      return;
+    }
 
     setState(() => _adviceLoading = true);
+    Map<String, dynamic>? advice;
     try {
-      final data = txs
+      // Savings contributions are not spending: the advisor would try to cut them like any other category.
+      final data = SpendingHistory.forBudgetAdvice(txs, today)
           .map(
             (t) => {
               'category': t.category,
@@ -182,19 +174,23 @@ class _AITabPageState extends State<AITabPage> {
             },
           )
           .toList();
-      final days = _daysLeftOf(goal, DateTime.now());
-
-      final advice = await RemoteApiHelper.instance.recommendBudget(
+      advice = await RemoteApiHelper.instance.recommendBudget(
         transactions: data,
         target: ((goal['target'] ?? 0) as num).toDouble(),
         current: ((goal['current'] ?? 0) as num).toDouble(),
-        monthsLeft: (days != null && days > 0) ? (days / 30.0).ceil() : 1,
+        monthsLeft: SavingsGoalPlanner.monthsLeft(goal, today),
       );
-      if (mounted) setState(() => _budgetAdvice = advice);
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _adviceLoading = false);
+    } catch (e) {
+      // Also the 422 of a history that is too short: old advice must not outlive a request that failed.
+      debugPrint('Lỗi lấy gợi ý phân bổ tiền: $e');
+      advice = null;
     }
+    // The page is gone, or a newer request has taken over: this answer, or failure, must not touch its advice.
+    if (!mounted || requestId != _adviceRequestId) return;
+    setState(() {
+      _budgetAdvice = advice;
+      _adviceLoading = false;
+    });
   }
 
   void _onPeriodSelected(SpendingPeriod period) {
@@ -203,8 +199,8 @@ class _AITabPageState extends State<AITabPage> {
       return;
     }
     if (period == _period) return;
+    // The filter only redraws the charts; the analysis always covers the same 26 weeks.
     setState(() => _period = period);
-    _loadSpadePatterns(reportErrors: true);
   }
 
   Future<void> _pickCustomRange() async {
@@ -218,7 +214,6 @@ class _AITabPageState extends State<AITabPage> {
       _period = SpendingPeriod.custom;
       _customRange = SpendingRange.custom(picked.start, picked.end);
     });
-    _loadSpadePatterns(reportErrors: true);
   }
 
   static String _messageOf(Object error, AppLocalizations loc) {
@@ -229,52 +224,48 @@ class _AITabPageState extends State<AITabPage> {
     return loc.aiErrorRejected;
   }
 
-  Future<List<Map<String, dynamic>>> _analyze(
-    List<TransactionModel> txs,
-  ) async {
-    // Nothing to mine in an empty range, so the AI service is not called for it.
-    if (txs.isEmpty) return const [];
-    final data = txs
-        .map(
-          (t) => {
-            'category': t.category,
-            'amount': t.amount,
-            'date': t.date.toIso8601String(),
-            'isExpense': t.isExpense,
-          },
-        )
-        .toList();
-    return RemoteApiHelper.instance.analyzePatterns(data);
-  }
-
-  /// Mines the spending patterns of the days on screen. Only a call the user asked for ([reportErrors]: a filter change, the
-  /// refresh button, a pull to refresh) opens an error dialog. The tab is built at start-up behind the others, so a failure
-  /// of a background load is logged and shown on the card only.
+  /// Mines the spending habits of the last 26 weeks, whatever period the charts show. Only a call the user asked for
+  /// ([reportErrors]: the refresh button, a pull to refresh) opens an error dialog. The tab is built at start-up behind
+  /// the others, so a failure of a background load is logged and shown on the card only.
   Future<void> _loadSpadePatterns({bool reportErrors = false}) async {
     final requestId = ++_spadeRequestId;
-    final range = _range;
-    final rangeTxs = _transactions
-        .where((t) => range.contains(t.date))
-        .toList();
+    final history = SpendingHistory.forAnalysis(_transactions, DateTime.now());
+    // Nothing to mine without spending, so the AI service is not called for it.
+    if (history.isEmpty) {
+      setState(() {
+        _analysis = SpendingAnalysis.empty;
+        _spadeFailed = false;
+        _spadeLoading = false;
+      });
+      return;
+    }
     setState(() {
       _spadeLoading = true;
       _spadeFailed = false;
     });
 
-    List<Map<String, dynamic>>? patterns;
+    SpendingAnalysis? analysis;
     Object? failure;
     try {
-      patterns = await _analyze(rangeTxs);
+      analysis = await RemoteApiHelper.instance.analyzeSpending([
+        for (final t in history)
+          {
+            'category': t.category,
+            'amount': t.amount,
+            'date': t.date.toIso8601String(),
+            'isExpense': t.isExpense,
+          },
+      ]);
     } catch (e) {
       failure = e;
     }
-    // The page is gone, or a newer request has taken over because the filter changed meanwhile: drop this answer.
+    // The page is gone, or a newer request has taken over: drop this answer.
     if (!mounted || requestId != _spadeRequestId) return;
 
-    final loaded = patterns;
+    final loaded = analysis;
     final error = failure;
     setState(() {
-      if (loaded != null) _spadePatterns = loaded;
+      if (loaded != null) _analysis = loaded;
       _spadeFailed = error != null;
       _spadeLoading = false;
     });
@@ -392,11 +383,30 @@ class _AITabPageState extends State<AITabPage> {
         AiComponents.buildSpadeSection(
           colors,
           loc,
-          _spadePatterns,
+          _analysis,
           _spadeLoading,
           hasError: _spadeFailed,
         ),
         const SizedBox(height: 24),
+        if (_analysis != null && _analysis!.rules.isNotEmpty) ...[
+          AiComponents.buildHabitAlertSection(
+            colors,
+            loc,
+            _analysis!.rules,
+            _transactions,
+            DateTime.now(),
+          ),
+          const SizedBox(height: 24),
+        ],
+        if (_analysis != null && _analysis!.habits.isNotEmpty) ...[
+          AiComponents.buildPeriodicHabitsSection(
+            colors,
+            loc,
+            _analysis!.habits,
+            DateTime.now(),
+          ),
+          const SizedBox(height: 24),
+        ],
 
         AiComponents.build503020Card(
           colors,
@@ -421,7 +431,7 @@ class _AITabPageState extends State<AITabPage> {
   List<double> _expensesPerBucket(List<SpendingBucket> buckets) => [
     for (final bucket in buckets)
       _transactions
-          .where((t) => t.isExpense && bucket.contains(t.date))
+          .where((t) => t.countsAsSpending && bucket.contains(t.date))
           .fold(0.0, (s, t) => s + t.amount),
   ];
 
@@ -541,22 +551,14 @@ class _AITabPageState extends State<AITabPage> {
       );
     }
 
-    double goalNeed = 0;
-    final goal = _pickUrgentGoal();
-    if (goal != null) {
-      final target = ((goal['target'] ?? 0) as num).toDouble();
-      final current = ((goal['current'] ?? 0) as num).toDouble();
-      final days = _daysLeftOf(goal, DateTime.now()) ?? 1;
-      goalNeed = ((target - current) / ((days > 0 ? days : 1) / 30.0).ceil())
-          .clamp(0, double.infinity);
-    }
+    final goalReserve = _goalReserve(DateTime.now());
 
     final daysLeft =
         (DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day -
                 DateTime.now().day +
                 1)
             .clamp(1, 31);
-    final safePerDay = (_monthIncome - _monthExpense - goalNeed) / daysLeft;
+    final safePerDay = (_monthIncome - _monthExpense - goalReserve) / daysLeft;
     final ok = safePerDay >= 0;
     final color = ok ? colors.primary : colors.error;
 
@@ -618,7 +620,9 @@ class _AITabPageState extends State<AITabPage> {
     final lastTotal = _transactions
         .where(
           (t) =>
-              t.isExpense && t.date.year == lm.year && t.date.month == lm.month,
+              t.countsAsSpending &&
+              t.date.year == lm.year &&
+              t.date.month == lm.month,
         )
         .fold(0.0, (s, t) => s + t.amount);
     if (lastTotal == 0) return loc.aiSpentThisMonth(_fmt(loc, _monthExpense));
@@ -631,7 +635,7 @@ class _AITabPageState extends State<AITabPage> {
   String _getTopCategory(AppLocalizations loc) {
     if (_monthExpense <= 0) return loc.aiNoSpendingThisMonth;
     final Map<String, double> totals = {};
-    for (var tx in _monthTxs.where((t) => t.isExpense)) {
+    for (var tx in _monthTxs.where((t) => t.countsAsSpending)) {
       totals[tx.category] = (totals[tx.category] ?? 0) + tx.amount;
     }
     final top = totals.entries.reduce((a, b) => a.value > b.value ? a : b);
@@ -642,13 +646,46 @@ class _AITabPageState extends State<AITabPage> {
     );
   }
 
+  /// The money kept out of this month's spending: what the urgent goal asks for. Without an unfinished goal (none, or
+  /// all reached or deleted), what was contributed this month, because that money has already left the wallet.
+  double _goalReserve(DateTime today) {
+    final contributed = SavingsGoalPlanner.contributedInMonth(
+      _transactions,
+      today,
+    );
+    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
+    if (goal == null) return contributed;
+    return SavingsGoalPlanner.goalReserve(
+      monthlyNeed: SavingsGoalPlanner.monthlyNeed(goal, today),
+      contributedThisMonth: contributed,
+    );
+  }
+
   String _getSavingTip(AppLocalizations loc) {
-    if (_savingsGoals.isEmpty) {
-      return _monthIncome > _monthExpense
-          ? loc.aiSurplus(_fmt(loc, _monthIncome - _monthExpense))
-          : loc.aiAddGoal;
+    final today = DateTime.now();
+    final contributed = SavingsGoalPlanner.contributedInMonth(
+      _transactions,
+      today,
+    );
+    final goal = SavingsGoalPlanner.pickUrgentGoal(_savingsGoals, today);
+    if (goal == null) {
+      // No unfinished goal (none at all, or all reached): the old tips apply. This month's contributions have left the
+      // wallet, so they are not part of the surplus.
+      final surplus = _monthIncome - _monthExpense - contributed;
+      return surplus > 0 ? loc.aiSurplus(_fmt(loc, surplus)) : loc.aiAddGoal;
     }
-    return loc.aiOnTrack;
+    final need = SavingsGoalPlanner.monthlyNeed(goal, today);
+    if (need == 0) {
+      return SavingsGoalPlanner.isOverdue(goal, today)
+          ? loc.aiGoalOverdue
+          : loc.aiGoalNoDeadline;
+    }
+    final reserve = SavingsGoalPlanner.goalReserve(
+      monthlyNeed: need,
+      contributedThisMonth: contributed,
+    );
+    if (_monthIncome - _monthExpense - reserve >= 0) return loc.aiOnTrack;
+    return loc.aiGoalNeedMore(_fmt(loc, math.max(0, need - contributed)));
   }
 
   Widget _buildInsightCard(

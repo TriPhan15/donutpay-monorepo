@@ -14,6 +14,9 @@ class TransactionModel {
   static const String columnImageUrl = 'image_url';
   static const String columnRawReceiptData = 'raw_receipt_data';
 
+  /// Column of the "save anyway" of a scanned receipt (version 9), 0 or 1, so a resend from the outbox still carries it.
+  static const String columnAllowDuplicate = 'allow_duplicate';
+
   /// The checkout field that saves a scanned receipt even when the server thinks it is already saved.
   static const String checkoutAllowDuplicate = 'allowDuplicate';
 
@@ -54,6 +57,10 @@ class TransactionModel {
   /// created on this device is pending or in error until the server confirms it.
   final SyncStatus syncStatus;
 
+  /// The user's "save anyway" after the server took a scanned receipt for one already saved (409). It is stored with the
+  /// transaction in the outbox, so every send of it (the first one and any resend) carries it.
+  final bool allowDuplicate;
+
   TransactionModel({
     this.id,
     required this.title,
@@ -68,6 +75,7 @@ class TransactionModel {
     this.receiptStatus,
     this.clientId,
     this.syncStatus = SyncStatus.synced,
+    this.allowDuplicate = false,
   });
 
   /// A new transaction of the user, not stored anywhere yet: it gets its [clientId] here, once, so every send of it
@@ -100,11 +108,24 @@ class TransactionModel {
 
   IconData get icon => isExpense ? Icons.money_off : Icons.attach_money;
 
+  /// Money moved from the wallet into a savings goal: it leaves the wallet but is not spending.
+  bool get isSavingsContribution =>
+      isExpense && TransactionCategories.isSavings(category);
+
+  /// True when this counts in "spending" totals: an expense that is not a savings contribution.
+  bool get countsAsSpending => isExpense && !isSavingsContribution;
+
   /// True while the server has not confirmed the transaction: it is waiting to be sent, or its last send failed.
   bool get isUnsynced => syncStatus != SyncStatus.synced;
 
   /// The same transaction in another sync state.
-  TransactionModel withSyncStatus(SyncStatus status) {
+  TransactionModel withSyncStatus(SyncStatus status) =>
+      _copy(syncStatus: status);
+
+  /// The same transaction, saved even when the server takes it for a receipt already saved.
+  TransactionModel allowingDuplicate() => _copy(allowDuplicate: true);
+
+  TransactionModel _copy({SyncStatus? syncStatus, bool? allowDuplicate}) {
     return TransactionModel(
       id: id,
       title: title,
@@ -118,15 +139,15 @@ class TransactionModel {
       rawReceiptData: rawReceiptData,
       receiptStatus: receiptStatus,
       clientId: clientId,
-      syncStatus: status,
+      syncStatus: syncStatus ?? this.syncStatus,
+      allowDuplicate: allowDuplicate ?? this.allowDuplicate,
     );
   }
 
   /// The body of POST /api/transactions/checkout. It is built only from the fields that are stored locally, so a resend
   /// sends exactly what the first send did; the server answers a repeated [clientId] with the first transaction and
-  /// ignores any difference in the rest. [allowDuplicate] is the user's "save anyway" after the server took a scanned
-  /// receipt for one already saved (409): only that one send carries it, it is not stored.
-  Map<String, dynamic> toCheckoutJson({bool allowDuplicate = false}) {
+  /// ignores any difference in the rest, [allowDuplicate] included.
+  Map<String, dynamic> toCheckoutJson() {
     return {
       'amount': amount,
       'note': title,
@@ -198,6 +219,7 @@ class TransactionModel {
       columnSyncStatus: syncStatus.dbValue,
       columnImageUrl: imageUrl,
       columnRawReceiptData: rawReceiptData,
+      columnAllowDuplicate: allowDuplicate ? 1 : 0,
     };
   }
 
@@ -217,6 +239,7 @@ class TransactionModel {
       rawReceiptData: map[columnRawReceiptData] as String?,
       clientId: map[columnClientId] as String?,
       syncStatus: syncStatus,
+      allowDuplicate: map[columnAllowDuplicate] == 1,
     );
   }
 }

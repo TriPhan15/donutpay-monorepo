@@ -243,18 +243,17 @@ void main() {
     }
 
     testWidgets(
-      'the saved amount and the target date are optional: 0 and no date are sent',
+      'a new goal is created without a saved amount, and with no date when none is picked',
       (tester) async {
         final sent = await addGoal(tester, () async {
-          expect(
-            find.text('Bỏ trống nếu chưa có hoặc không nhớ, sửa được sau'),
-            findsOneWidget,
-          );
+          // Only the name and the target: the saved amount moves through contributions.
+          expect(dialogFields(), findsNWidgets(2));
           await tester.enterText(dialogFields().at(0), 'Mua xe');
           await tester.enterText(dialogFields().at(1), '50000000');
         });
 
-        expect(sent, {'title': 'Mua xe', 'target': 50000000.0, 'current': 0.0});
+        expect(sent, {'title': 'Mua xe', 'target': 50000000.0});
+        expect((sent as Map).containsKey('current'), isFalse);
         expect(find.byType(AlertDialog), findsNothing);
       },
     );
@@ -264,7 +263,6 @@ void main() {
       final sent = await addGoal(tester, () async {
         await tester.enterText(dialogFields().at(0), 'Mua xe');
         await tester.enterText(dialogFields().at(1), '50.000.000');
-        await tester.enterText(dialogFields().at(2), '1000000');
         await tester.tap(find.text('Thêm ngày đạt mục tiêu (không bắt buộc)'));
         await tester.pumpAndSettle();
         expect(find.text('Ngày đạt mục tiêu'), findsOneWidget);
@@ -273,7 +271,6 @@ void main() {
       expect(sent, {
         'title': 'Mua xe',
         'target': 50000000.0,
-        'current': 1000000.0,
         'deadline': today,
       });
     });

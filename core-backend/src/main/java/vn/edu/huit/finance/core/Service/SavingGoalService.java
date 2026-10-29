@@ -10,6 +10,7 @@ import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
@@ -27,8 +28,8 @@ import java.util.Optional;
 /**
  * The saving goals of the signed-in caller. No method takes a user id: the owner is the caller, from the SecurityContext,
  * and a goal of somebody else is refused with a 403 (recorded as AUTH_ACCESS_DENIED). Each change and its audit row commit
- * together. Creating, updating and deleting a goal only change figures the owner keeps for themselves (no money moves);
- * a contribution does move money: it is an expense of the wallet in the "Tiết kiệm" category, recorded through
+ * together. Creating and updating a goal only change figures the owner keeps for themselves (the saved amount starts at 0 and
+ * never comes from a request); a contribution and the refund of a deleted goal do move money: a contribution is an expense of the wallet in the "Tiết kiệm" category, recorded through
  * TransactionService like any other checkout. Neither the amounts nor the title are part of the audit rows here.
  */
 @Slf4j
@@ -38,11 +39,18 @@ public class SavingGoalService {
     private static final String MSG_GOAL_NOT_FOUND = "Không tìm thấy mục tiêu tiết kiệm";
     private static final String MSG_GOAL_FORBIDDEN = "Bạn không có quyền thao tác trên mục tiêu tiết kiệm này";
     private static final String AUDIT_CREATED = "Tạo mục tiêu tiết kiệm";
-    private static final String AUDIT_UPDATED = "Cập nhật số tiền đã tiết kiệm";
+    private static final String AUDIT_UPDATED = "Cập nhật mục tiêu tiết kiệm";
     private static final String AUDIT_DELETED = "Xóa mục tiêu tiết kiệm";
+    private static final String AUDIT_DELETED_WITH_REFUND = "Xóa mục tiêu tiết kiệm, hoàn %s VNĐ vào ví (giao dịch #%s)";
+    static final String MSG_CURRENT_ONLY_BY_CONTRIBUTION = "Số tiền đã tiết kiệm chỉ thay đổi qua Góp tiền";
+    static final String MSG_NEW_GOAL_STARTS_EMPTY =
+            "Mục tiêu mới bắt đầu từ 0đ. Hãy dùng Góp tiền để chuyển tiền từ ví vào mục tiêu";
+    static final String REFUND_NOTE = "Hoàn tiền từ mục tiêu tiết kiệm đã xóa: %s";
     private static final String AUDIT_CONTRIBUTED = "Góp tiền vào mục tiêu tiết kiệm (giao dịch #%s)";
     /** Where a contribution comes from: the wallet, under the name the mobile app gives that source. */
     static final String CONTRIBUTION_PAYMENT_METHOD = "WALLET";
+    /** A refund goes back to the wallet the same way. */
+    static final String REFUND_PAYMENT_METHOD = CONTRIBUTION_PAYMENT_METHOD;
     private static final String KEY_TRANSACTION_ID = "transactionId";
 
     @Autowired
@@ -67,10 +75,14 @@ public class SavingGoalService {
     @Transactional
     public SavingGoalDto createSaving(SavingGoalDto request) {
         User caller = currentUserProvider.getCurrentUser();
+        if (request.getCurrent() != null && request.getCurrent().signum() > 0) {
+            log.warn("Saving goal with a starting amount refused, userId={}", caller.getId());
+            throw new SavingsLedgerException(MSG_NEW_GOAL_STARTS_EMPTY);
+        }
         SavingGoal goal = new SavingGoal();
         goal.setTitle(request.getTitle());
         goal.setTargetAmount(request.getTarget());
-        goal.setCurrentAmount(request.getCurrent());
+        goal.setCurrentAmount(BigDecimal.ZERO);
         goal.setDeadline(request.getDeadline());
         goal.setUser(caller);
         SavingGoal created = savingGoalRepository.save(goal);
@@ -80,15 +92,31 @@ public class SavingGoalService {
         return toDto(created);
     }
 
+    /**
+     * Changes the title, target and deadline. The saved amount is never taken from the request: it only moves through
+     * contributions and the refund of a deletion, so a [current] that differs from the stored one is refused (409).
+     * The goal row is locked so a concurrent contribution is not overwritten.
+     */
     @Transactional
-    public void updateCurrentAmount(Long goalId, BigDecimal currentAmount) {
+    public SavingGoalDto updateMySaving(Long goalId, SavingGoalDto request) {
         User caller = currentUserProvider.getCurrentUser();
-        SavingGoal goal = findOwnedGoal(goalId, caller);
-        goal.setCurrentAmount(currentAmount);
-        savingGoalRepository.save(goal);
+        SavingGoal goal = requireOwned(savingGoalRepository.findLockedById(goalId), goalId, caller);
+        if (request.getCurrent() != null && request.getCurrent().compareTo(savedAmount(goal)) != 0) {
+            log.warn("Saving goal amount change refused, userId={}, goalId={}", caller.getId(), goalId);
+            throw new SavingsLedgerException(MSG_CURRENT_ONLY_BY_CONTRIBUTION);
+        }
+        goal.setTitle(request.getTitle());
+        goal.setTargetAmount(request.getTarget());
+        goal.setDeadline(request.getDeadline());
+        SavingGoal saved = savingGoalRepository.save(goal);
 
         auditLogService.record(AuditEntry.of(AuditAction.SAVING_UPDATED, AuditActor.of(caller), goalId, AUDIT_UPDATED));
         log.info("Saving goal updated, userId={}, goalId={}", caller.getId(), goalId);
+        return toDto(saved);
+    }
+
+    private static BigDecimal savedAmount(SavingGoal goal) {
+        return Objects.requireNonNullElse(goal.getCurrentAmount(), BigDecimal.ZERO);
     }
 
     /**
@@ -104,11 +132,10 @@ public class SavingGoalService {
         User caller = currentUserProvider.getCurrentUser();
         SavingGoal goal = requireOwned(savingGoalRepository.findLockedById(goalId), goalId, caller);
 
-        Map<String, Object> checkout = transactionService.createMyTransaction(contributionTransaction(goal, amount));
+        Map<String, Object> checkout = transactionService.recordSavingsMovement(contributionTransaction(goal, amount));
         Object transactionId = checkout.get(KEY_TRANSACTION_ID);
 
-        BigDecimal current = Objects.requireNonNullElse(goal.getCurrentAmount(), BigDecimal.ZERO);
-        goal.setCurrentAmount(current.add(amount));
+        goal.setCurrentAmount(savedAmount(goal).add(amount));
         SavingGoal saved = savingGoalRepository.save(goal);
 
         auditLogService.record(AuditEntry.of(AuditAction.SAVING_UPDATED, AuditActor.of(caller), goalId,
@@ -129,18 +156,39 @@ public class SavingGoalService {
         return request;
     }
 
+    /**
+     * Deletes a goal; the money it holds goes back to the wallet in the same transaction, as an income of "Thu khác"
+     * naming the goal. The goal row is locked first so a concurrent contribution cannot slip in between.
+     */
     @Transactional
     public void deleteSaving(Long goalId) {
         User caller = currentUserProvider.getCurrentUser();
-        savingGoalRepository.delete(findOwnedGoal(goalId, caller));
+        SavingGoal goal = requireOwned(savingGoalRepository.findLockedById(goalId), goalId, caller);
+        BigDecimal refund = savedAmount(goal);
 
-        auditLogService.record(AuditEntry.of(AuditAction.SAVING_DELETED, AuditActor.of(caller), goalId, AUDIT_DELETED));
+        String audit = AUDIT_DELETED;
+        if (refund.signum() > 0) {
+            Object transactionId = transactionService.recordSavingsMovement(refundTransaction(goal, refund))
+                    .get(KEY_TRANSACTION_ID);
+            audit = String.format(AUDIT_DELETED_WITH_REFUND, refund.toPlainString(), transactionId);
+            log.info("Saving goal refunded to the wallet, userId={}, goalId={}, amount={}", caller.getId(), goalId, refund);
+        }
+        savingGoalRepository.delete(goal);
+
+        auditLogService.record(AuditEntry.of(AuditAction.SAVING_DELETED, AuditActor.of(caller), goalId, audit));
         log.info("Saving goal deleted, userId={}, goalId={}", caller.getId(), goalId);
     }
 
-    /** A goal that does not exist is refused like before (400), one that exists but is somebody else's with a 403. */
-    private SavingGoal findOwnedGoal(Long goalId, User caller) {
-        return requireOwned(savingGoalRepository.findById(goalId), goalId, caller);
+    /** The income a deletion records: back into the wallet, now, as "Thu khác", noted with the goal's title. */
+    private static TransactionRequestDto refundTransaction(SavingGoal goal, BigDecimal amount) {
+        TransactionRequestDto request = new TransactionRequestDto();
+        request.setAmount(amount);
+        request.setExpense(false);
+        request.setCategoryName(DefaultCategory.OTHER_INCOME.getDisplayName());
+        request.setNote(String.format(REFUND_NOTE, goal.getTitle()));
+        request.setPaymentMethod(REFUND_PAYMENT_METHOD);
+        request.setTransactionDate(LocalDateTime.now());
+        return request;
     }
 
     private static SavingGoal requireOwned(Optional<SavingGoal> found, Long goalId, User caller) {

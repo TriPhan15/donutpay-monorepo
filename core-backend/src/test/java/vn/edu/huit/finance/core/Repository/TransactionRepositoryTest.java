@@ -8,10 +8,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.PageRequest;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -163,13 +165,44 @@ class TransactionRepositoryTest {
     }
 
     @Test
-    void sumExpensesBetween_addsUpOnlyTheExpensesOfThatUserInsideTheRange() {
+    void sumSpendingBetween_addsUpOnlyTheExpensesOfThatUserInsideTheRange() {
         User alice = withReceipt.getUser();
         persistNoiseAroundSeptember(alice, withReceipt.getCategory(), persistCategory("Di chuyển"));
 
-        BigDecimal spent = transactionRepository.sumExpensesBetween(alice.getId(), SEPTEMBER_START, OCTOBER_START);
+        BigDecimal spent = transactionRepository.sumSpendingBetween(alice.getId(), SEPTEMBER_START, OCTOBER_START);
 
         assertMoney("250000", spent); // 2 x 100,000 of the fixture + 50,000 on the last second of September
+    }
+
+    @Test
+    void sumSpendingBetween_leavesOutSavingsContributions() {
+        // Góp tiết kiệm trừ ví nhưng không phải chi tiêu (D1)
+        User alice = withReceipt.getUser();
+        Category savings = persistCategory(SavingsContributions.CATEGORY_NAME);
+        persistTransaction(alice, savings, "4500000", true, SEPTEMBER_START.plusDays(2));
+
+        // 2 x 100,000 of the fixture; the 4,500,000 contribution is not spending
+        assertMoney("200000", transactionRepository.sumSpendingBetween(alice.getId(), SEPTEMBER_START, OCTOBER_START));
+    }
+
+    @Test
+    void topSpenders_leaveOutSavingsContributions() {
+        User alice = withReceipt.getUser();
+        Category savings = persistCategory(SavingsContributions.CATEGORY_NAME);
+        persistTransaction(alice, savings, "4500000", true, SEPTEMBER_START.plusDays(2));
+        User bob = new User();
+        bob.setUsername("bob");
+        bob.setPassword("hash");
+        bob.setEmail("bob@example.com");
+        bob.setPhone("0900000002");
+        entityManager.persistAndFlush(bob);
+        persistTransaction(bob, withReceipt.getCategory(), "300000", true, SEPTEMBER_START.plusDays(1));
+
+        // alice spends 200,000 (fixture) + a 4,500,000 contribution; bob spends 300,000
+        List<Object[]> top = transactionRepository.findTopSpenders(PageRequest.of(0, 2));
+
+        assertEquals("bob", top.get(0)[0]);
+        assertMoney("200000", (BigDecimal) top.get(1)[1]);
     }
 
     @Test
@@ -190,7 +223,7 @@ class TransactionRepositoryTest {
         User alice = withReceipt.getUser();
         Category food = withReceipt.getCategory();
 
-        assertNull(transactionRepository.sumExpensesBetween(alice.getId(), OCTOBER_START, OCTOBER_START.plusDays(31)));
+        assertNull(transactionRepository.sumSpendingBetween(alice.getId(), OCTOBER_START, OCTOBER_START.plusDays(31)));
         assertNull(transactionRepository.sumExpensesInCategoryBetween(
                 alice.getId(), food.getId(), OCTOBER_START, OCTOBER_START.plusDays(31)));
     }

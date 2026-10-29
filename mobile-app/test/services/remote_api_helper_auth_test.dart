@@ -703,7 +703,7 @@ void main() {
         (_) => jsonResponse(200, {'patterns': []}),
       );
 
-      await RemoteApiHelper.instance.analyzePatterns([]);
+      await RemoteApiHelper.instance.analyzeSpending([]);
 
       expect(bearersOf('POST /spade/analyze'), ['Bearer access-token']);
     });
@@ -717,8 +717,14 @@ void main() {
           (options) => options.headers['Authorization'] == 'Bearer access-token'
               ? _unauthorized()
               : jsonResponse(200, {
+                  'status': 'OK',
                   'patterns': [
-                    {'name': 'p'},
+                    {
+                      'itemsets': [
+                        ['Ăn uống'],
+                        ['Đi lại'],
+                      ],
+                    },
                   ],
                 }),
         );
@@ -728,9 +734,9 @@ void main() {
           (_) => _tokenPair('new-access', 'new-refresh'),
         );
 
-        final patterns = await RemoteApiHelper.instance.analyzePatterns([]);
+        final analysis = await RemoteApiHelper.instance.analyzeSpending([]);
 
-        expect(patterns, hasLength(1));
+        expect(analysis.patterns, hasLength(1));
         expect(refreshCalls(), 1);
         expect(bearersOf('POST /spade/analyze'), [
           'Bearer access-token',
@@ -747,7 +753,7 @@ void main() {
         backend.on('POST', '/api/auth/refresh', (_) => _unauthorized());
 
         await expectLater(
-          RemoteApiHelper.instance.analyzePatterns([]),
+          RemoteApiHelper.instance.analyzeSpending([]),
           throwsA(isDioError(401)),
         );
         expect(refreshCalls(), 1);

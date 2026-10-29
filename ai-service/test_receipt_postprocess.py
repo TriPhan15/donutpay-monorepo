@@ -2,6 +2,7 @@
 
 import csv
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -213,3 +214,9 @@ def test_postprocess_never_breaks_an_exact_v5_prediction() -> None:
             lost += before and not after
     assert lost == 0
     assert gained >= 20
+
+
+@pytest.mark.parametrize(("raw", "valid"), [("28/10/2026", True), ("29/10/2026", True), ("30/10/2026", False)])
+def test_future_receipt_date_is_invalid(raw, valid):
+    result = normalize_timestamp_field(raw, today=date(2026, 10, 28))
+    assert result.valid is valid and result.iso is not None

@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.edu.huit.finance.core.Dto.AdminDashboardSummaryDto;
+import vn.edu.huit.finance.core.Entity.CustomerSegment;
+import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Dto.LowBalanceUserDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
@@ -25,6 +27,7 @@ import vn.edu.huit.finance.core.Service.AdminStatisticsService;
 import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
+import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
@@ -34,16 +37,20 @@ import vn.edu.huit.finance.core.Service.UserService;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -65,6 +72,7 @@ class AdminDashboardPageTest {
     @MockBean private CampaignRepository campaignRepo;
     @MockBean private ReceiptRepository receiptRepo;
     @MockBean private BackupService backupService;
+    @MockBean private CustomerSegmentationService customerSegmentationService;
     @MockBean private UserService userService;
     @MockBean private TransactionService transactionService;
     @MockBean private EntityManager entityManager;
@@ -90,6 +98,7 @@ class AdminDashboardPageTest {
                 .thenReturn(List.of(new MonthlyTransactionCountDto(now.minusMonths(1), 3),
                         new MonthlyTransactionCountDto(now, 17)));
         when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
 
         // The charts are inlined into JavaScript, where Thymeleaf writes every non-ASCII character as a \\u escape.
         mockMvc.perform(get("/admin/dashboard"))
@@ -110,6 +119,73 @@ class AdminDashboardPageTest {
         verify(adminStatisticsService).getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD);
         verify(adminStatisticsService).getTopSpenders(0, 5);
         verify(adminStatisticsService).getMonthlyTransactionCounts(now, 6);
+    }
+
+    private void stubEmptyDashboard() {
+        YearMonth now = YearMonth.now();
+        when(adminStatisticsService.getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD))
+                .thenReturn(new AdminDashboardSummaryDto(BigDecimal.ZERO, 0, 0, List.of(), List.of()));
+        when(adminStatisticsService.getTopSpenders(0, 5)).thenReturn(List.of());
+        when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
+        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
+    }
+
+    private static Map<CustomerSegment, Long> sevenCounts() {
+        Map<CustomerSegment, Long> counts = new EnumMap<>(CustomerSegment.class);
+        long[] values = {3, 0, 1, 0, 2, 0, 5};
+        for (CustomerSegment segment : CustomerSegment.values()) {
+            counts.put(segment, values[segment.ordinal()]);
+        }
+        return counts;
+    }
+
+    @Test
+    void theDashboardSaysRfm_andNeverTheOldClusteringName() throws Exception {
+        stubEmptyDashboard();
+
+        mockMvc.perform(get("/admin/dashboard"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(containsString("RFM"), not(containsString("K-" + "Means")),
+                        not(containsString("K-" + "means")), not(containsString("Python")))));
+    }
+
+    @Test
+    void theSegmentChartGetsEverySegmentInOrder() throws Exception {
+        stubEmptyDashboard();
+
+        mockMvc.perform(get("/admin/dashboard"))
+                .andExpect(model().attribute("segmentData", List.of(3L, 0L, 1L, 0L, 2L, 0L, 5L)))
+                .andExpect(model().attribute("segmentNames", List.of("Khách hàng tốt nhất", "Trung thành", "Khách mới",
+                        "Cần chú ý", "Có nguy cơ rời bỏ", "Ngủ đông", "Đã rời bỏ")))
+                .andExpect(model().attribute("segmentDisplayNames", Map.of("CHAMPIONS", "Khách hàng tốt nhất",
+                        "LOYAL", "Trung thành", "NEW", "Khách mới", "NEED_ATTENTION", "Cần chú ý",
+                        "AT_RISK", "Có nguy cơ rời bỏ", "HIBERNATING", "Ngủ đông", "LOST", "Đã rời bỏ")))
+                .andExpect(model().attributeDoesNotExist("vipCount", "activeCount", "atRiskCount", "churnCount"))
+                .andExpect(content().string(containsString("const segmentData = [3,0,1,0,2,0,5];")));
+    }
+
+    @Test
+    void aUserRowShowsTheSegmentName_theRawOldLabel_orNotSegmented() throws Exception {
+        stubEmptyDashboard();
+        User champion = new User();
+        champion.setId(1L);
+        champion.setUsername("u_champion");
+        champion.setAiLabel("CHAMPIONS");
+        User old = new User();
+        old.setId(2L);
+        old.setUsername("u_old");
+        old.setAiLabel("VIP");
+        User none = new User();
+        none.setId(3L);
+        none.setUsername("u_none");
+        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(champion, old, none)));
+
+        mockMvc.perform(get("/admin/dashboard"))
+                .andExpect(content().string(allOf(
+                        containsString("Khách hàng tốt nhất</span>"),
+                        containsString(">VIP</span>"),
+                        containsString("Chưa phân lớp</span>"))));
     }
 
     @Test

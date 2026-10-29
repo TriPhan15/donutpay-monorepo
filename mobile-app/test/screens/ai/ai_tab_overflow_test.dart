@@ -87,9 +87,53 @@ void main() {
       'POST',
       '/spade/analyze',
       (_) => jsonResponse(200, {
+        'status': 'OK',
         'patterns': [
-          {'pattern': 'an uong → giai tri', 'count': 4, 'wsupport': '12.5%'},
+          {
+            'itemsets': [
+              ['Ăn uống'],
+              ['Giải trí'],
+            ],
+            'support': 4,
+            'weight': 1.0,
+            'weightedSupport': 0.125,
+            'weeks': ['2026-W40'],
+          },
         ],
+        'rules': [
+          for (final cat in const [
+            'Siêu thị & Chợ',
+            'Internet & Điện thoại',
+            'Gia đình & Con cái',
+          ])
+            {
+              'antecedent': ['Ăn uống', 'Giải trí'],
+              'consequent': [cat],
+              'support': 6,
+              'antecedentSupport': 8,
+              'confidence': 0.75,
+              'laplaceConfidence': 0.7,
+              'lift': 1.4,
+              'weeks': ['2026-W40'],
+            },
+        ],
+        'habits': [
+          for (final cat in const [
+            'Siêu thị & Chợ',
+            'Internet & Điện thoại',
+            'Gia đình & Con cái',
+            'Một danh mục tự đặt có cái tên rất dài để thử tràn dòng',
+            'Giải trí',
+          ])
+            {
+              'category': cat,
+              'occurrences': 6,
+              'meanGapDays': 6.8,
+              'lastDate': '2026-10-20',
+              'nextExpectedDate': '2099-01-01',
+            },
+        ],
+        'meta': {'weeksWithData': 12, 'minWeeks': 8},
       }),
     );
     backend.on(

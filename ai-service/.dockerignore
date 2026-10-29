@@ -33,4 +33,3 @@ Version3/
 Version5/*
 !Version5/donut_result/
 *.ipynb
-train_model.py

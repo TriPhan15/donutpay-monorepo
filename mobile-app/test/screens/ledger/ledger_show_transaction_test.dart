@@ -16,6 +16,8 @@ import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
 
 const String _editLabel = 'Sửa giao dịch';
+const String _savingsManaged =
+    'Khoản góp tiết kiệm được quản lý ở mục Tiết kiệm.';
 const String _notFound =
     'Không tìm thấy giao dịch của thông báo này, có thể nó đã bị xóa.';
 
@@ -125,4 +127,83 @@ void main() {
       expect(find.text(_editLabel), findsNothing);
     },
   );
+
+  testWidgets(
+    'a savings contribution of a user with a goal can be neither edited nor deleted',
+    (tester) async {
+      backend.on(
+        'GET',
+        '/api/savings',
+        (_) => okResponse([
+          {'id': 7, 'title': 'Du lịch', 'target': 1000000, 'current': 45000},
+        ]),
+      );
+      transactions = [
+        {..._tx(9, DateTime.now()), 'category': 'Tiết kiệm'},
+      ];
+      await pump(tester);
+
+      ledgerKey.currentState!.showTransaction(9);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_editLabel), findsNothing);
+      expect(find.text('Xóa giao dịch này'), findsNothing);
+      expect(find.text(_savingsManaged), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'a savings row of a user without any goal (typed by hand before goals) can be deleted, not edited',
+    (tester) async {
+      backend.on('GET', '/api/savings', (_) => okResponse([]));
+      transactions = [
+        {..._tx(9, DateTime.now()), 'category': 'Tiết kiệm'},
+      ];
+      await pump(tester);
+
+      ledgerKey.currentState!.showTransaction(9);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_editLabel), findsNothing);
+      expect(find.text('Xóa giao dịch này'), findsOneWidget);
+      expect(find.text(_savingsManaged), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'when the goals cannot be read, a savings row stays locked',
+    (tester) async {
+      backend.on(
+        'GET',
+        '/api/savings',
+        (_) => jsonResponse(500, {'code': 500}),
+      );
+      transactions = [
+        {..._tx(9, DateTime.now()), 'category': 'Tiết kiệm'},
+      ];
+      await pump(tester);
+
+      ledgerKey.currentState!.showTransaction(9);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Xóa giao dịch này'), findsNothing);
+      expect(find.text(_savingsManaged), findsOneWidget);
+    },
+  );
+
+  testWidgets('an ordinary expense keeps its edit and delete buttons', (
+    tester,
+  ) async {
+    transactions = [_tx(1, DateTime.now())];
+    await pump(tester);
+
+    ledgerKey.currentState!.showTransaction(1);
+    await tester.pumpAndSettle();
+
+    expect(find.text(_editLabel), findsOneWidget);
+    expect(find.text('Xóa giao dịch này'), findsOneWidget);
+  });
 }

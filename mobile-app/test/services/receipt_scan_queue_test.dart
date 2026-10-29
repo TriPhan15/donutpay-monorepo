@@ -405,7 +405,7 @@ void main() {
 
   group('migration', () {
     test(
-      'opening a v7 database as v8 creates the queue table and keeps the transactions',
+      'opening a v7 database creates the queue table and keeps the transactions',
       () async {
         final path = p.join(temp.path, 'v7.db');
         final v7 = await databaseFactoryFfiNoIsolate.openDatabase(
@@ -433,7 +433,7 @@ void main() {
         );
         addTearDown(v8.close);
 
-        expect(await v8.getVersion(), 8);
+        expect(await v8.getVersion(), 9);
         final columns = await v8.rawQuery(
           'PRAGMA table_info(${SqfliteHelper.receiptScanQueueTable})',
         );
@@ -450,6 +450,98 @@ void main() {
         expect(transactions, hasLength(1));
         expect(transactions.single['client_id'], 'c-1');
         expect(transactions.single['sync_status'], 'error');
+      },
+    );
+
+    test(
+      'opening a v8 database as v9 adds allow_duplicate (0 for the rows already there), and they can still be resent',
+      () async {
+        final path = p.join(temp.path, 'v8.db');
+        final v8 = await databaseFactoryFfiNoIsolate.openDatabase(
+          path,
+          options: OpenDatabaseOptions(
+            version: 8,
+            onCreate: (db, _) => db.execute(_v7Transactions),
+          ),
+        );
+        await v8.insert('transactions', {
+          'user_id': _userId,
+          'title': 'Cà phê',
+          'category': 'Ăn uống',
+          'amount': 45000,
+          'date': '2026-09-20T08:30:00.000',
+          'is_expense': 1,
+          'client_id': 'c-1',
+          'sync_status': 'error',
+        });
+        await v8.close();
+
+        final v9 = await SqfliteHelper.openAt(
+          databaseFactoryFfiNoIsolate,
+          path,
+        );
+        addTearDown(v9.close);
+
+        expect(await v9.getVersion(), 9);
+        final row = (await v9.query('transactions')).single;
+        expect(row[TransactionModel.columnAllowDuplicate], 0);
+        final waiting = (await SqfliteHelper.withDatabase(
+          v9,
+        ).getUnsyncedTransactions(_userId)).single;
+        expect(waiting.clientId, 'c-1');
+        expect(waiting.allowDuplicate, isFalse);
+        expect(waiting.toCheckoutJson()['clientId'], 'c-1');
+      },
+    );
+  });
+
+  group('outbox rows', () {
+    TransactionModel draft() => TransactionModel.draft(
+      title: 'Highlands',
+      category: 'Ăn uống',
+      amount: 45000,
+      date: DateTime(2026, 9, 20, 8, 30),
+      isExpense: true,
+    );
+
+    test('allowDuplicate is written to the table and read back', () async {
+      final tx = draft().allowingDuplicate().withSyncStatus(SyncStatus.error);
+      await store.insertTransaction(tx, _userId);
+
+      final read = (await store.getUnsyncedTransactions(_userId)).single;
+      expect(read.allowDuplicate, isTrue);
+      expect(
+        read.toCheckoutJson()[TransactionModel.checkoutAllowDuplicate],
+        isTrue,
+      );
+    });
+
+    test(
+      'deleteFailedTransaction deletes a failed row and leaves a pending one',
+      () async {
+        final failed = draft().withSyncStatus(SyncStatus.error);
+        final pending = draft().withSyncStatus(SyncStatus.pending);
+        await store.insertTransaction(failed, _userId);
+        await store.insertTransaction(pending, _userId);
+
+        expect(
+          await store.deleteFailedTransaction(_otherUserId, failed.clientId!),
+          0,
+          reason: 'not a row of that user',
+        );
+        expect(
+          await store.deleteFailedTransaction(_userId, pending.clientId!),
+          0,
+          reason: 'it is being sent',
+        );
+        expect(
+          await store.deleteFailedTransaction(_userId, failed.clientId!),
+          1,
+        );
+        expect(
+          (await store.getUnsyncedTransactions(_userId)).map((t) => t.clientId),
+          [pending.clientId],
+        );
       },
     );
   });
@@ -600,6 +692,29 @@ void main() {
       expect(requestsTo(_checkout), 2);
       expect(await queue.items(), isEmpty);
     });
+
+    test(
+      'confirming several receipts moves dataChangedNotifier once',
+      () async {
+        await readyItems([_scanned('A'), _scanned('B'), _scanned('C')]);
+        uploadsSucceed();
+        backend.on('POST', _checkout, (_) => _created());
+        var changes = 0;
+        void count() => changes++;
+        RemoteApiHelper.instance.dataChangedNotifier.addListener(count);
+        addTearDown(
+          () => RemoteApiHelper.instance.dataChangedNotifier.removeListener(
+            count,
+          ),
+        );
+
+        final result = await queue.confirmAllValid();
+
+        expect(result.saved, 3);
+        expect(requestsTo(_checkout), 3);
+        expect(changes, 1);
+      },
+    );
 
     test(
       'offline: the draft goes to the outbox and the item leaves the queue',

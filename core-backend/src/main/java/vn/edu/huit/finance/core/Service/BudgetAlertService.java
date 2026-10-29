@@ -9,6 +9,7 @@ import vn.edu.huit.finance.core.Entity.NotificationType;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Repository.BudgetRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
+import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -83,7 +84,8 @@ public class BudgetAlertService {
 
     private void notifyOnCrossing(Transaction transaction, SpendingSnapshot before) {
         // Income never uses up a budget, and an expense that became an income or left every budget only lowers spending.
-        if (!transaction.isExpense()) {
+        // Góp tiết kiệm trừ ví nhưng không phải chi tiêu (D1).
+        if (!transaction.isExpense() || SavingsContributions.isContribution(transaction)) {
             return;
         }
 
@@ -113,7 +115,7 @@ public class BudgetAlertService {
         Category category = budget.getCategory();
 
         BigDecimal spent = category == null
-                ? transactionRepository.sumExpensesBetween(userId, periodStart, periodEnd)
+                ? transactionRepository.sumSpendingBetween(userId, periodStart, periodEnd)
                 : transactionRepository.sumExpensesInCategoryBetween(userId, category.getId(), periodStart, periodEnd);
         return spent == null ? BigDecimal.ZERO : spent;
     }

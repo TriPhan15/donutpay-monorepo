@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/sync_status.dart';
+import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
@@ -64,6 +66,7 @@ void main() {
   final backend = FakeBackend();
   var transactions = <Map<String, Object?>>[];
   var budgets = <Map<String, Object?>>[];
+  num walletBalance = 0;
 
   setUpAll(() async {
     await initializeDateFormatting('vi_VN');
@@ -83,10 +86,15 @@ void main() {
     backend.reset();
     transactions = [];
     budgets = [];
+    walletBalance = 0;
     backend.on(
       'GET',
       '/api/users/me',
-      (_) => okResponse({'id': 1, 'email': 'an@example.com'}),
+      (_) => okResponse({
+        'id': 1,
+        'email': 'an@example.com',
+        'walletBalance': walletBalance,
+      }),
     );
     backend.on('GET', _mine, (_) => okResponse(transactions));
     backend.on('GET', '/api/budgets', (_) => okResponse(budgets));
@@ -119,14 +127,17 @@ void main() {
     final write = RemoteApiHelper.instance.addTransaction({'amount': 1});
     await tester.pump(const Duration(milliseconds: 100));
     await write;
+    // addTransaction announces nothing: AppRepository does it once the outbox row is flagged.
+    RemoteApiHelper.instance.notifyDataChanged();
     await tester.pumpAndSettle();
   }
 
   int listRequests() => backend.calls.where((c) => c == 'GET $_mine').length;
 
   testWidgets(
-    'the balance is called "Số dư hiện tại" and is income minus expense, below zero too',
+    'the balance is called "Số dư hiện tại" and is the one the server keeps, below zero too',
     (tester) async {
+      walletBalance = -200000;
       transactions = [_tx(100000, id: 1, isExpense: false), _tx(300000, id: 2)];
 
       await pump(tester, _tabs());
@@ -137,14 +148,54 @@ void main() {
     },
   );
 
+  testWidgets('the balance card shows the server balance and the pending note', (
+    tester,
+  ) async {
+    walletBalance = 750000;
+    transactions = [_tx(1000000, id: 1, isExpense: false)];
+    // A purchase made offline: on this device only, so the balance of the server does not include it.
+    final store = FakeLocalStore();
+    AppRepository.instance.localStore = store;
+    addTearDown(() => AppRepository.instance.localStore = FakeLocalStore());
+    await store.insertTransaction(
+      TransactionModel.draft(
+        title: 'Cà phê',
+        category: 'Ăn uống',
+        amount: 200000,
+        date: DateTime.now(),
+        isExpense: true,
+      ).withSyncStatus(SyncStatus.pending),
+      1,
+    );
+
+    await pump(tester, _tabs());
+
+    expect(find.text(vnd(750000)), findsOneWidget);
+    expect(
+      find.text('Chưa tính ${vnd(-200000)} của giao dịch đang chờ gửi'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('no pending note when nothing waits on the device', (
+    tester,
+  ) async {
+    walletBalance = 750000;
+    await pump(tester, _tabs());
+
+    expect(find.textContaining('của giao dịch đang chờ gửi'), findsNothing);
+  });
+
   testWidgets(
     'a write on another tab reloads the home screen and the Ledger kept behind it',
     (tester) async {
+      walletBalance = 100000;
       transactions = [_tx(100000, id: 1, isExpense: false)];
       await pump(tester, _tabs());
       expect(find.text(vnd(100000)), findsWidgets);
       expect(find.text('Giao dịch 2', skipOffstage: false), findsNothing);
 
+      walletBalance = 60000;
       await writeElsewhere(tester, [
         _tx(100000, id: 1, isExpense: false),
         _tx(40000, id: 2),

@@ -23,6 +23,7 @@ import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.CredentialsChangeConflictException;
 import vn.edu.huit.finance.core.Exception.InvalidOtpException;
+import vn.edu.huit.finance.core.Exception.OtpRequestLimitedException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
@@ -67,6 +68,10 @@ class AuthServiceResetPasswordTest {
     // The requirements under test, spelled out here instead of read from the service.
     private static final Duration OTP_VALIDITY = Duration.ofMinutes(5);
     private static final int MAX_FAILED_ATTEMPTS = 3;
+    private static final Duration OTP_REQUEST_COOLDOWN = Duration.ofSeconds(60);
+    private static final int MAX_REQUESTS_PER_HOUR = 5;
+    private static final int SECONDS_BETWEEN_REQUESTS = 61;
+    private static final String REQUEST_LIMITED_MESSAGE = "Bạn yêu cầu mã quá nhiều lần. Vui lòng thử lại sau.";
     private static final int PARALLEL_ROUNDS = 25;
     private static final int OTP_BOUND = 1_000_000;
     private static final String OTP_EXPIRED_MESSAGE =
@@ -88,6 +93,7 @@ class AuthServiceResetPasswordTest {
     @Mock private ApplicationEventPublisher eventPublisher;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(4);
+    private final InMemoryPasswordResetOtpStore otpStore = new InMemoryPasswordResetOtpStore();
     private AuthService service;
     private User user;
 
@@ -100,7 +106,7 @@ class AuthServiceResetPasswordTest {
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
         ReflectionTestUtils.setField(service, "auditLogService", auditLogService);
         ReflectionTestUtils.setField(service, "eventPublisher", eventPublisher);
-        ReflectionTestUtils.setField(service, "otpStore", new InMemoryPasswordResetOtpStore());
+        ReflectionTestUtils.setField(service, "otpStore", otpStore);
         timeIs(ISSUED_AT);
 
         user = new User();
@@ -131,6 +137,8 @@ class AuthServiceResetPasswordTest {
     /** Requests an OTP like a client would and reads it back from the newest mail the service sent. */
     private String requestOtp() {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        // The tests of the OTP rules ask again at one frozen instant; the request limit has tests of its own below.
+        otpStore.forgetIssues();
         service.generateAndSendOtp(EMAIL);
 
         ArgumentCaptor<SimpleMailMessage> mail = ArgumentCaptor.forClass(SimpleMailMessage.class);
@@ -254,13 +262,14 @@ class AuthServiceResetPasswordTest {
     }
 
     @Test
-    void generateAndSendOtp_recordsARequestForAnUnknownEmail_andMailsNothing() {
+    void unknownEmail_getsTheSameAnswerAsAKnownOne_andNoMail() {
         String unknown = "nobody@example.com";
         when(userRepository.findByEmail(unknown)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> service.generateAndSendOtp(unknown));
+        assertDoesNotThrow(() -> service.generateAndSendOtp(unknown));
 
-        verifyNoInteractions(mailSender, auditLogService);
+        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verifyNoInteractions(auditLogService);
         AuditEntry refusal = publishedEntries().get(0);
         assertEquals(AuditAction.AUTH_PASSWORD_RESET_REJECTED, refusal.action());
         assertEquals(AuditActor.unauthenticated(unknown), refusal.actor());
@@ -313,6 +322,53 @@ class AuthServiceResetPasswordTest {
         assertEquals(OTP_EXPIRED_MESSAGE, rejectionOf(otp).getMessage());
 
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void secondRequestWithinCooldown_isRefused429_andNoMail() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        service.generateAndSendOtp(EMAIL);
+        timeIs(ISSUED_AT.plus(OTP_REQUEST_COOLDOWN).minusSeconds(1));
+
+        OtpRequestLimitedException refused = assertThrows(OtpRequestLimitedException.class,
+                () -> service.generateAndSendOtp(EMAIL));
+
+        assertEquals(REQUEST_LIMITED_MESSAGE, refused.getMessage());
+        verify(mailSender, times(1)).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    void requestAfterTheCooldown_isServed() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        service.generateAndSendOtp(EMAIL);
+        timeIs(ISSUED_AT.plus(OTP_REQUEST_COOLDOWN));
+
+        assertDoesNotThrow(() -> service.generateAndSendOtp(EMAIL));
+
+        verify(mailSender, times(2)).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    void sixthRequestInAnHour_isRefused() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        for (int i = 0; i < MAX_REQUESTS_PER_HOUR; i++) {
+            timeIs(ISSUED_AT.plusSeconds(i * SECONDS_BETWEEN_REQUESTS));
+            service.generateAndSendOtp(EMAIL);
+        }
+        timeIs(ISSUED_AT.plusSeconds(MAX_REQUESTS_PER_HOUR * SECONDS_BETWEEN_REQUESTS));
+
+        assertThrows(OtpRequestLimitedException.class, () -> service.generateAndSendOtp(EMAIL));
+
+        verify(mailSender, times(MAX_REQUESTS_PER_HOUR)).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    void requestLimit_alsoCoversAnUnknownEmail_soTheAnswerDoesNotTellWhetherItIsRegistered() {
+        String unknown = "nobody@example.com";
+        when(userRepository.findByEmail(unknown)).thenReturn(Optional.empty());
+        service.generateAndSendOtp(unknown);
+
+        assertThrows(OtpRequestLimitedException.class, () -> service.generateAndSendOtp(unknown));
     }
 
     @Test

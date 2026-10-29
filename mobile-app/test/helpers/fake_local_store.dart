@@ -68,6 +68,20 @@ class FakeLocalStore implements SqfliteHelper {
     return before - _rows.length;
   }
 
+  /// Like the SQL of SqfliteHelper: only a row whose last send failed goes. The row keeps every field of the model it
+  /// was stored with (allowDuplicate too), as the table does.
+  @override
+  Future<int> deleteFailedTransaction(int userId, String clientId) async {
+    final before = _rows.length;
+    _rows.removeWhere(
+      (row) =>
+          row.userId == userId &&
+          row.transaction.clientId == clientId &&
+          row.transaction.syncStatus == SyncStatus.error,
+    );
+    return before - _rows.length;
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) {
     throw UnimplementedError(

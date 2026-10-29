@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -39,9 +40,9 @@ const String _rejectedMessage =
 const String _failureLog = 'Lỗi phân tích thói quen chi tiêu';
 
 /// The patterns the fake AI service answers with, and the texts the page makes of them.
-const String _foodThenTransport = 'an uong → di lai';
+const List<String> _foodThenTransport = ['Ăn uống', 'Đi lại'];
 const String _foodThenTransportShown = 'Ăn uống → Đi lại';
-const String _billsThenShopping = 'hoa don → mua sam';
+const List<String> _billsThenShopping = ['Hóa đơn', 'Mua sắm'];
 const String _billsThenShoppingShown = 'Hóa đơn → Mua sắm';
 
 final DateTime _now = DateTime.now();
@@ -81,15 +82,19 @@ Map<String, Object?> _tx(
   'isExpense': isExpense,
 };
 
-Map<String, Object?> _pattern(String pattern) => {
-  'pattern': pattern,
-  'count': 4,
-  'wsupport': '12.5%',
+Map<String, Object?> _pattern(List<String> steps) => {
+  'itemsets': [
+    for (final step in steps) [step],
+  ],
+  'support': 4,
+  'weight': 1.0,
+  'weightedSupport': 0.125,
+  'weeks': ['2026-W40'],
 };
 
 /// What the AI service answers to /spade/analyze.
 ResponseBody _patternsResponse(List<Map<String, Object?>> patterns) =>
-    jsonResponse(200, {'patterns': patterns});
+    jsonResponse(200, {'status': 'OK', 'patterns': patterns});
 
 /// What the month chart must draw for expenses on the given days: days 1-7, 8-14, 15-21 and 22 onwards, worked out
 /// here from the days of the month so that the test does not lean on the code it checks.
@@ -218,13 +223,14 @@ void main() {
 
   group('opening the tab', () {
     testWidgets(
-      'opens on this month: the transactions of this month are analysed and the patterns are listed',
+      'opens by analysing 26 weeks of spending, not the month on screen',
       (tester) async {
         await pumpPage(tester);
 
         expect(_selectedOption(tester), _monthLabel);
         expect(analyses(), hasLength(1));
-        expect(_amountsSent(analyses().single), [1000, 2000, 9000]);
+        // Last month is inside the 26 weeks; the income never is.
+        expect(_amountsSent(analyses().single), [1000, 2000, 4000]);
         expect(find.text(_foodThenTransportShown), findsOneWidget);
         expect(find.text(SpendingRange.month(_now).label), findsOneWidget);
       },
@@ -275,9 +281,9 @@ void main() {
     );
 
     testWidgets(
-      'a range with no transaction says there is not enough data and does not call the AI service',
+      'a history older than 26 weeks says there is not enough data and does not call the AI service',
       (tester) async {
-        transactions = [_tx(3, _lastMonthDay, amount: 4000)];
+        transactions = [_tx(3, _at(_now.year - 2, 1, 15), amount: 4000)];
 
         await pumpPage(tester);
 
@@ -290,15 +296,14 @@ void main() {
 
   group('time filter', () {
     testWidgets(
-      'choosing this week analyses only the transactions of this week and redraws the chart with its seven days',
+      'choosing this week redraws the chart without asking the AI service again',
       (tester) async {
         await pumpPage(tester);
 
         await _tap(tester, _weekLabel);
 
         expect(_selectedOption(tester), _weekLabel);
-        expect(analyses(), hasLength(2));
-        expect(_amountsSent(analyses().last), [1000, 9000]);
+        expect(analyses(), hasLength(1));
         expect(_barHeights(tester), _weekBars({_today: 1000}));
         for (final label in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']) {
           expect(find.text(label), findsOneWidget, reason: label);
@@ -309,7 +314,7 @@ void main() {
     );
 
     testWidgets(
-      'choosing this month again goes back to the transactions and the bars of the month',
+      'choosing this month again goes back to the bars of the month, still with one analysis',
       (tester) async {
         await pumpPage(tester);
 
@@ -317,8 +322,7 @@ void main() {
         await _tap(tester, _monthLabel);
 
         expect(_selectedOption(tester), _monthLabel);
-        expect(analyses(), hasLength(3));
-        expect(_amountsSent(analyses().last), [1000, 2000, 9000]);
+        expect(analyses(), hasLength(1));
         expect(
           _barHeights(tester),
           _monthBars({_today: 1000, _monthOnlyDay: 2000}),
@@ -326,17 +330,13 @@ void main() {
       },
     );
 
-    testWidgets('each answer replaces the patterns of the previous range', (
-      tester,
-    ) async {
+    testWidgets('the patterns stay when the filter changes', (tester) async {
       await pumpPage(tester);
       expect(find.text(_foodThenTransportShown), findsOneWidget);
 
-      patterns = [_pattern(_billsThenShopping)];
       await _tap(tester, _weekLabel);
 
-      expect(find.text(_billsThenShoppingShown), findsOneWidget);
-      expect(find.text(_foodThenTransportShown), findsNothing);
+      expect(find.text(_foodThenTransportShown), findsOneWidget);
     });
 
     testWidgets(
@@ -378,8 +378,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_selectedOption(tester), _weekLabel);
-      expect(analyses(), hasLength(3));
-      expect(_amountsSent(analyses().last), [1000, 9000]);
+      expect(analyses(), hasLength(2));
+      expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
     });
   });
 
@@ -408,8 +408,7 @@ void main() {
           reason: 'the picker starts from the days on screen',
         );
         expect(_selectedOption(tester), _customLabel);
-        expect(analyses(), hasLength(2));
-        expect(_amountsSent(analyses().last), [4000]);
+        expect(analyses(), hasLength(1));
         expect(
           find.text(
             SpendingRange.custom(firstOfLastMonth, _lastMonthDay).label,
@@ -450,7 +449,7 @@ void main() {
       await _tap(tester, _weekLabel);
 
       expect(_selectedOption(tester), _weekLabel);
-      expect(_amountsSent(analyses().last), [1000, 9000]);
+      expect(analyses(), hasLength(1));
     });
 
     testWidgets(
@@ -465,8 +464,7 @@ void main() {
 
         expect(find.byType(DateRangePickerDialog), findsNothing);
         expect(_selectedOption(tester), _customLabel);
-        expect(analyses(), hasLength(2));
-        expect(_amountsSent(analyses().last), [1000, 2000, 9000]);
+        expect(analyses(), hasLength(1));
         expect(find.text(SpendingRange.month(_now).label), findsOneWidget);
       },
     );
@@ -487,21 +485,20 @@ void main() {
   });
 
   group('refresh button', () {
-    testWidgets(
-      'asks the AI service again for the range on screen and shows the new patterns',
-      (tester) async {
-        await pumpPage(tester);
-        expect(find.text(_foodThenTransportShown), findsOneWidget);
+    testWidgets('analyses the same 26 weeks again and shows the new patterns', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      expect(find.text(_foodThenTransportShown), findsOneWidget);
 
-        patterns = [_pattern(_billsThenShopping)];
-        await _tap(tester, _refreshLabel);
+      patterns = [_pattern(_billsThenShopping)];
+      await _tap(tester, _refreshLabel);
 
-        expect(analyses(), hasLength(2));
-        expect(_amountsSent(analyses().last), [1000, 2000, 9000]);
-        expect(find.text(_billsThenShoppingShown), findsOneWidget);
-        expect(find.text(_foodThenTransportShown), findsNothing);
-      },
-    );
+      expect(analyses(), hasLength(2));
+      expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
+      expect(find.text(_billsThenShoppingShown), findsOneWidget);
+      expect(find.text(_foodThenTransportShown), findsNothing);
+    });
 
     testWidgets('keeps the period the user chose', (tester) async {
       await pumpPage(tester);
@@ -510,8 +507,8 @@ void main() {
       await _tap(tester, _refreshLabel);
 
       expect(_selectedOption(tester), _weekLabel);
-      expect(analyses(), hasLength(3));
-      expect(_amountsSent(analyses().last), [1000, 9000]);
+      expect(analyses(), hasLength(2));
+      expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
     });
 
     testWidgets(
@@ -544,8 +541,8 @@ void main() {
   group('answers out of order', () {
     late List<Completer<ResponseBody>> gates;
 
-    /// Opens the tab on the month and then chooses the week, both answers of the AI service still pending.
-    Future<void> openMonthThenChooseWeek(WidgetTester tester) async {
+    /// Opens the tab and then changes the data, both answers of the AI service still pending.
+    Future<void> openThenChangeData(WidgetTester tester) async {
       gates = [];
       backend.on('POST', '/spade/analyze', (_) {
         final gate = Completer<ResponseBody>();
@@ -553,17 +550,17 @@ void main() {
         return gate.future;
       });
       await pumpPageWhileLoading(tester);
-      expect(gates, hasLength(1), reason: 'the analysis of the month');
+      expect(gates, hasLength(1), reason: 'the first analysis');
 
-      await tester.tap(find.text(_weekLabel));
+      RemoteApiHelper.instance.dataChangedNotifier.value++;
       await _pumpFrames(tester);
-      expect(gates, hasLength(2), reason: 'the analysis of the week');
+      expect(gates, hasLength(2), reason: 'the analysis after the change');
     }
 
     testWidgets(
-      'an answer that comes after the user changed the filter is dropped',
+      'an answer that comes after a newer analysis was started is dropped',
       (tester) async {
-        await openMonthThenChooseWeek(tester);
+        await openThenChangeData(tester);
 
         gates[1].complete(_patternsResponse([_pattern(_billsThenShopping)]));
         await _pumpFrames(tester);
@@ -575,14 +572,13 @@ void main() {
 
         expect(find.text(_billsThenShoppingShown), findsOneWidget);
         expect(find.text(_foodThenTransportShown), findsNothing);
-        expect(_selectedOption(tester), _weekLabel);
       },
     );
 
     testWidgets(
       'an old answer neither shows its patterns nor stops the spinner of the newer analysis',
       (tester) async {
-        await openMonthThenChooseWeek(tester);
+        await openThenChangeData(tester);
 
         gates[0].complete(_patternsResponse([_pattern(_foodThenTransport)]));
         await _pumpFrames(tester);
@@ -591,7 +587,7 @@ void main() {
         expect(
           _refreshEnabled(tester),
           isFalse,
-          reason: 'the analysis of the week is still running',
+          reason: 'the newer analysis is still running',
         );
 
         gates[1].complete(_patternsResponse([_pattern(_billsThenShopping)]));
@@ -622,7 +618,7 @@ void main() {
         final answer = Completer<ResponseBody>();
         backend.on('POST', '/spade/analyze', (_) => answer.future);
         await pumpPageWhileLoading(tester);
-        await tester.tap(find.text(_weekLabel));
+        RemoteApiHelper.instance.dataChangedNotifier.value++;
         await _pumpFrames(tester);
 
         await tester.pumpWidget(const SizedBox());
@@ -693,7 +689,7 @@ void main() {
     );
 
     testWidgets(
-      'a server error on a filter change is reported as a problem of the server, and the old patterns go',
+      'a server error on Làm mới is reported as a problem of the server, and the old patterns go',
       (tester) async {
         await withCapturedLogs((logs) async {
           await pumpPage(tester);
@@ -704,16 +700,15 @@ void main() {
             '/spade/analyze',
             (_) => jsonResponse(503, {'detail': 'down'}),
           );
-          await _tap(tester, _weekLabel);
+          await _tap(tester, _refreshLabel);
 
           expect(find.text(_errorTitle), findsOneWidget);
           expect(find.text(_serverMessage), findsOneWidget);
           expect(
             find.text(_foodThenTransportShown),
             findsNothing,
-            reason: 'the patterns of the month do not belong to the week',
+            reason: 'a failed analysis shows the error card, not the old list',
           );
-          expect(_selectedOption(tester), _weekLabel);
           await _tap(tester, _dismissLabel);
           expect(find.text(_errorCardTitle), findsOneWidget);
           expect(logs.where((l) => l.contains(_failureLog)), hasLength(1));
@@ -740,7 +735,7 @@ void main() {
       });
     });
 
-    testWidgets('a failure of the custom range is reported too', (
+    testWidgets('changing the period never opens an error dialog', (
       tester,
     ) async {
       await withCapturedLogs((logs) async {
@@ -758,13 +753,359 @@ void main() {
             type: DioExceptionType.receiveTimeout,
           ),
         );
+        await _tap(tester, _weekLabel);
         await _tap(tester, _customLabel);
 
-        expect(find.text(_errorTitle), findsOneWidget);
-        expect(find.text(_networkMessage), findsOneWidget);
+        expect(analyses(), hasLength(1));
+        expect(find.text(_errorTitle), findsNothing);
         expect(_selectedOption(tester), _customLabel);
-        await _tap(tester, _dismissLabel);
       });
     });
+  });
+
+  group('budget advice', () {
+    const adviceText = 'Gợi ý thử nghiệm';
+
+    void withGoal() {
+      backend.on(
+        'GET',
+        '/api/savings',
+        (_) => okResponse([
+          {
+            'id': 1,
+            'title': 'Mục tiêu',
+            'target': 5e6,
+            'current': 1e6,
+            'deadline': null,
+          },
+        ]),
+      );
+    }
+
+    testWidgets('failed advice clears the previous advice', (tester) async {
+      await withCapturedLogs((logs) async {
+        withGoal();
+        backend.on(
+          'POST',
+          '/spade/recommend',
+          (_) =>
+              jsonResponse(200, {'summary': adviceText, 'recommendations': []}),
+        );
+        await pumpPage(tester);
+        expect(find.text(adviceText), findsOneWidget);
+
+        backend.on(
+          'POST',
+          '/spade/recommend',
+          (_) => jsonResponse(503, {'detail': 'down'}),
+        );
+        RemoteApiHelper.instance.dataChangedNotifier.value++;
+        await tester.pumpAndSettle();
+
+        expect(find.text(adviceText), findsNothing);
+        expect(find.text(_dismissLabel), findsNothing);
+      });
+    });
+
+    testWidgets(
+      'a 422 for a history that is too short clears the advice and opens no dialog',
+      (tester) async {
+        await withCapturedLogs((logs) async {
+          withGoal();
+          backend.on(
+            'POST',
+            '/spade/recommend',
+            (_) => jsonResponse(200, {
+              'summary': adviceText,
+              'recommendations': [],
+            }),
+          );
+          await pumpPage(tester);
+          expect(find.text(adviceText), findsOneWidget);
+
+          backend.on(
+            'POST',
+            '/spade/recommend',
+            (_) => jsonResponse(422, {'detail': 'Chưa đủ lịch sử chi tiêu'}),
+          );
+          RemoteApiHelper.instance.dataChangedNotifier.value++;
+          await tester.pumpAndSettle();
+
+          expect(find.text(adviceText), findsNothing);
+          expect(find.text(_dismissLabel), findsNothing);
+          expect(tester.takeException(), isNull);
+        });
+      },
+    );
+
+    testWidgets(
+      'the advice gets the history from the 1st day 7 months back, without savings',
+      (tester) async {
+        withGoal();
+        transactions = [
+          _tx(1, _today, amount: 1000),
+          _tx(2, DateTime(_now.year, _now.month - 7, 1), amount: 2000),
+          _tx(3, DateTime(_now.year, _now.month - 7, 0, 23, 59), amount: 4000),
+          _tx(4, _today, amount: 700, category: 'Tiết kiệm'),
+        ];
+        backend.on(
+          'POST',
+          '/spade/recommend',
+          (_) => jsonResponse(200, {'recommendations': []}),
+        );
+
+        await pumpPage(tester);
+
+        final sent = backend.requests
+            .where((r) => r.path == '/spade/recommend')
+            .single;
+        expect(_amountsSent(sent), [1000, 2000]);
+      },
+    );
+
+    group('answers out of order', () {
+      late List<Completer<ResponseBody>> gates;
+
+      /// Opens the tab and changes the data, both advice requests still pending.
+      Future<void> openThenChangeData(WidgetTester tester) async {
+        withGoal();
+        gates = [];
+        backend.on('POST', '/spade/recommend', (_) {
+          final gate = Completer<ResponseBody>();
+          gates.add(gate);
+          return gate.future;
+        });
+        await pumpPageWhileLoading(tester);
+        expect(gates, hasLength(1), reason: 'the first advice request');
+
+        RemoteApiHelper.instance.dataChangedNotifier.value++;
+        await _pumpFrames(tester);
+        expect(gates, hasLength(2), reason: 'the request after the change');
+
+        gates[1].complete(
+          jsonResponse(200, {'summary': adviceText, 'recommendations': []}),
+        );
+        await _pumpFrames(tester);
+        expect(find.text(adviceText), findsOneWidget);
+      }
+
+      testWidgets('a late 422 does not clear the newer advice', (tester) async {
+        await withCapturedLogs((logs) async {
+          await openThenChangeData(tester);
+
+          gates[0].complete(
+            jsonResponse(422, {'detail': 'Chưa đủ lịch sử chi tiêu'}),
+          );
+          await _pumpFrames(tester);
+
+          expect(find.text(adviceText), findsOneWidget);
+        });
+      });
+
+      testWidgets('a late answer does not overwrite the newer advice', (
+        tester,
+      ) async {
+        await openThenChangeData(tester);
+
+        gates[0].complete(
+          jsonResponse(200, {'summary': 'Gợi ý cũ', 'recommendations': []}),
+        );
+        await _pumpFrames(tester);
+
+        expect(find.text(adviceText), findsOneWidget);
+        expect(find.text('Gợi ý cũ'), findsNothing);
+      });
+    });
+
+    testWidgets('savings contributions are not sent to /spade/analyze', (
+      tester,
+    ) async {
+      transactions = [
+        _tx(1, _today, amount: 1000),
+        _tx(2, _today, amount: 700, category: 'Tiết kiệm'),
+      ];
+
+      await pumpPage(tester);
+
+      expect(_amountsSent(analyses().single), [1000]);
+    });
+  });
+
+  group('savings goal', () {
+    const onTrackText = 'Bạn đang trong lộ trình tiết kiệm';
+    const needMoreText = 'Tháng này cần góp thêm';
+
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    /// A goal the way core-backend sends it; a deadline of today makes the monthly need the whole rest.
+    Map<String, Object?> goal({
+      required num target,
+      String? deadline,
+      num current = 0,
+    }) => {
+      'id': 1,
+      'title': 'Mục tiêu',
+      'target': target,
+      'current': current,
+      'deadline': deadline,
+    };
+
+    testWidgets(
+      'a goal without deadline sends no months_left and no savings contribution',
+      (tester) async {
+        transactions = [
+          _tx(1, _today, amount: 5000),
+          _tx(2, _today, amount: 9000, category: 'Thu nhập', isExpense: false),
+          _tx(3, _today, amount: 700, category: 'Tiết kiệm'),
+        ];
+        backend.on(
+          'GET',
+          '/api/savings',
+          (_) => okResponse([goal(target: 5e6, current: 1e6)]),
+        );
+        backend.on(
+          'POST',
+          '/spade/recommend',
+          (_) => jsonResponse(200, {'recommendations': []}),
+        );
+
+        await pumpPage(tester);
+
+        final sent = backend.requests
+            .where((r) => r.path == '/spade/recommend')
+            .toList();
+        expect(sent, hasLength(1));
+        final body = sent.single.data as Map;
+        expect(body.containsKey('months_left'), isFalse);
+        final categories = [
+          for (final t in body['transactions'] as List) (t as Map)['category'],
+        ];
+        expect(categories, isNot(contains('Tiết kiệm')));
+        expect(categories, hasLength(2));
+        expect(
+          find.text('Mục tiêu chưa có hạn, góp lúc nào cũng được'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('on track is shown only when the month covers the goal', (
+      tester,
+    ) async {
+      final deadline = '${two(_now.day)}/${two(_now.month)}/${_now.year}';
+      backend.on(
+        'GET',
+        '/api/savings',
+        (_) => okResponse([goal(target: 2e6, deadline: deadline)]),
+      );
+      backend.on(
+        'POST',
+        '/spade/recommend',
+        (_) => jsonResponse(200, {'recommendations': []}),
+      );
+
+      transactions = [
+        _tx(1, _today, amount: 3e6),
+        _tx(2, _today, amount: 10e6, category: 'Thu nhập', isExpense: false),
+      ];
+      await pumpPage(tester);
+      expect(find.textContaining(onTrackText), findsOneWidget);
+      expect(find.textContaining(needMoreText), findsNothing);
+
+      transactions = [
+        _tx(1, _today, amount: 2.5e6),
+        _tx(2, _today, amount: 3e6, category: 'Thu nhập', isExpense: false),
+      ];
+      RemoteApiHelper.instance.dataChangedNotifier.value++;
+      await tester.pumpAndSettle();
+      expect(find.textContaining(needMoreText), findsOneWidget);
+      expect(find.textContaining(onTrackText), findsNothing);
+    });
+
+    testWidgets('an overdue goal says it is past its deadline', (tester) async {
+      backend.on(
+        'GET',
+        '/api/savings',
+        (_) => okResponse([goal(target: 5e6, deadline: '01/01/2020')]),
+      );
+      backend.on(
+        'POST',
+        '/spade/recommend',
+        (_) => jsonResponse(200, {'recommendations': []}),
+      );
+
+      await pumpPage(tester);
+
+      expect(
+        find.text(
+          'Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Mục tiêu chưa có hạn, góp lúc nào cũng được'),
+        findsNothing,
+      );
+    });
+
+    /// What the page shows for [amount]: grouped the Vietnamese way, then the currency.
+    String money(double amount) =>
+        '${NumberFormat.decimalPattern('vi').format(amount.round())} đ';
+
+    final noUnfinishedGoal = {
+      'reached this month': [goal(target: 2e6, current: 2e6)],
+      'deleted this month': <Map<String, Object?>>[],
+    };
+    noUnfinishedGoal.forEach((how, goals) {
+      testWidgets(
+        'a goal $how after contributing: safe-to-spend and the surplus leave out what was contributed',
+        (tester) async {
+          const contributed = 2e6;
+          transactions = [
+            _tx(1, _today, amount: 3e6),
+            _tx(
+              2,
+              _today,
+              amount: 10e6,
+              category: 'Thu nhập',
+              isExpense: false,
+            ),
+            _tx(3, _today, amount: contributed, category: 'Tiết kiệm'),
+          ];
+          backend.on('GET', '/api/savings', (_) => okResponse(goals));
+
+          await pumpPage(tester);
+
+          // Income 10M − spending 3M − the 2M that left the wallet for the goal.
+          const left = 10e6 - 3e6 - contributed;
+          final daysLeft =
+              DateTime(_now.year, _now.month + 1, 0).day - _now.day + 1;
+          expect(find.text('${money(left / daysLeft)} / ngày'), findsOneWidget);
+          expect(
+            find.text('Đang dư ${money(left)}. Hãy lập mục tiêu!'),
+            findsOneWidget,
+          );
+        },
+      );
+    });
+
+    testWidgets(
+      'without a goal, contributions that eat the whole surplus ask for a goal instead',
+      (tester) async {
+        transactions = [
+          _tx(1, _today, amount: 3e6),
+          _tx(2, _today, amount: 5e6, category: 'Thu nhập', isExpense: false),
+          _tx(3, _today, amount: 2e6, category: 'Tiết kiệm'),
+        ];
+
+        await pumpPage(tester);
+
+        expect(
+          find.text('Thêm mục tiêu tiết kiệm để AI phân tích.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Đang dư'), findsNothing);
+      },
+    );
   });
 }

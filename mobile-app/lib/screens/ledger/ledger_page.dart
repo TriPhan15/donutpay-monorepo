@@ -173,7 +173,7 @@ class LedgerPageState extends State<LedgerPage> {
       return;
     }
     setState(() => _selectedDate = tx.date);
-    _showTransactionDetails(tx);
+    unawaited(_showTransactionDetails(tx));
   }
 
   /// Asked for by the user (pull-to-refresh, a tap on the tab it is on): what waits in the outbox is sent again first.
@@ -282,7 +282,7 @@ class LedgerPageState extends State<LedgerPage> {
       .fold(0.0, (s, tx) => s + tx.amount);
 
   double get _periodExpense => _periodTransactions
-      .where((tx) => tx.isExpense)
+      .where((tx) => tx.countsAsSpending)
       .fold(0.0, (s, tx) => s + tx.amount);
 
   void _shiftPeriod(int dir) {
@@ -727,7 +727,7 @@ class LedgerPageState extends State<LedgerPage> {
   double _sumOn(DateTime ref, bool expense, {required bool isDay}) {
     return _transactions
         .where((t) {
-          if (t.isExpense != expense) return false;
+          if (expense ? !t.countsAsSpending : t.isExpense) return false;
           if (isDay) return DateUtils.isSameDay(t.date, ref);
           return t.date.year == ref.year && t.date.month == ref.month;
         })
@@ -1149,8 +1149,27 @@ class LedgerPageState extends State<LedgerPage> {
     );
   }
 
-  void _showTransactionDetails(TransactionModel tx) {
-    showModalBottomSheet(
+  /// A savings contribution on the server can be deleted only by a user who has no savings goal at all: such a row
+  /// was typed by hand before goals existed (the server refuses the delete otherwise). When the goals cannot be read,
+  /// the row stays locked.
+  Future<bool> _savingsRowDeletable(TransactionModel tx) async {
+    if (!tx.isSavingsContribution || tx.id == null) return false;
+    try {
+      final goals = await RemoteApiHelper.instance.fetchSavings();
+      return goals.isEmpty;
+    } catch (e) {
+      debugPrint('Lỗi tải mục tiêu tiết kiệm: $e');
+      return false;
+    }
+  }
+
+  Future<void> _showTransactionDetails(TransactionModel tx) async {
+    final savingsDeletable = await _savingsRowDeletable(tx);
+    if (!mounted) return;
+    final canDelete =
+        tx.syncStatus != SyncStatus.pending &&
+        (!tx.isSavingsContribution || savingsDeletable);
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -1347,8 +1366,19 @@ class LedgerPageState extends State<LedgerPage> {
                     ),
                     const SizedBox(height: 12),
                   ],
+                  // A savings contribution belongs to its goal: the server refuses to edit it, and to delete it while
+                  // the user has a savings goal (409).
+                  if (tx.isSavingsContribution)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        loc.ledgerSavingsManagedByGoal,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: colors.onSurfaceVariant),
+                      ),
+                    ),
                   // Editing goes through the server, so only a transaction it already has can be edited.
-                  if (tx.id != null) ...[
+                  if (tx.id != null && !tx.isSavingsContribution) ...[
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -1366,30 +1396,32 @@ class LedgerPageState extends State<LedgerPage> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.error.withValues(alpha: 0.1),
-                        foregroundColor: colors.error,
-                        elevation: 0,
+                  // A row being sent may already be on the server: it cannot be deleted until its send is over.
+                  if (canDelete)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.error.withValues(alpha: 0.1),
+                          foregroundColor: colors.error,
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.delete_rounded),
+                        label: Text(
+                          loc.ledgerDelete,
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          if (tx.isUnsynced) {
+                            _deleteUnsyncedAction(tx);
+                          } else {
+                            _deleteTransactionAction(tx.id!);
+                          }
+                        },
                       ),
-                      icon: const Icon(Icons.delete_rounded),
-                      label: Text(
-                        loc.ledgerDelete,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        if (tx.isUnsynced) {
-                          _deleteUnsyncedAction(tx);
-                        } else {
-                          _deleteTransactionAction(tx.id!);
-                        }
-                      },
                     ),
-                  ),
                   const SizedBox(height: 8),
                 ],
               ),
@@ -1512,6 +1544,8 @@ class LedgerPageState extends State<LedgerPage> {
       _resendingClientIds.remove(clientId);
     }
     if (!mounted) return;
+    // The row was deleted meanwhile: nothing was sent and there is nothing to say.
+    if (failure == null && outcome == null) return;
 
     if (failure != null) {
       await AppDialog.error(
@@ -1548,8 +1582,16 @@ class LedgerPageState extends State<LedgerPage> {
     );
     if (!confirmed || !mounted) return;
 
-    await AppRepository.instance.deleteUnsyncedTransaction(userId, clientId);
+    final deleted = await AppRepository.instance.deleteUnsyncedTransaction(
+      userId,
+      clientId,
+    );
     if (!mounted) return;
+    if (!deleted) {
+      // It started being sent after the sheet opened (the outbox resend).
+      AppToast.error(context, context.loc.ledgerDeleteWhileSending);
+      return;
+    }
     AppToast.success(context, context.loc.ledgerDeletedUnsynced);
   }
 
@@ -1604,7 +1646,7 @@ class LedgerPageState extends State<LedgerPage> {
     for (var tx in monthTxs) {
       final dateStr = DateFormat('dd/MM/yyyy').format(tx.date);
       if (tx.isExpense) {
-        totalExpense += tx.amount;
+        if (tx.countsAsSpending) totalExpense += tx.amount;
         sheet.appendRow([
           TextCellValue(dateStr),
           TextCellValue(TransactionCategories.displayName(loc, tx.category)),

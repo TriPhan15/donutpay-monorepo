@@ -1,0 +1,21 @@
+@startuml ch2_phan_tich_chi_tieu
+' Hình 3.x: Đường xử lý của POST /spade/analyze trong AI Service (mục 3.9.4)
+!include _style.iuml
+skinparam defaultFontSize 13
+start
+:Nhận danh sách giao dịch\n(tối đa 5.000, kiểm tra bằng Pydantic);
+:Lọc khoản chi: bỏ khoản thu,\nbỏ danh mục "Tiết kiệm",\nbỏ ngày sau ngày mai;
+:Cắt cửa sổ 26 tuần ISO\nneo vào khoản chi muộn nhất;
+:Dựng chuỗi tuần: mỗi tuần một chuỗi,\nmỗi ngày một itemset;
+if (Có chi tiêu từ 8 tuần\ntrở lên?) then (có)
+  :Tính trọng số của từng danh mục\ntừ tổng chi trong cửa sổ;
+  :Khai phá WCM-SPADE: id-list,\nCMAP, cận support thô;
+  :Lọc mẫu đóng,\ngiữ mẫu từ 2 item trở lên;
+  :Sinh luật từ id-list thô:\nLaplace, lift, bỏ luật bị trội;
+else (không)
+  :status = INSUFFICIENT_DATA,\nmẫu và luật để rỗng;
+endif
+:Tính thói quen định kỳ\nvà cơ cấu danh mục;
+:Cắt top_n, làm tròn,\ntrả JSON camelCase;
+stop
+@enduml

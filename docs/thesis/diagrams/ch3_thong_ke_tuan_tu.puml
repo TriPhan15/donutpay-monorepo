@@ -13,21 +13,21 @@ boundary ":RemoteApi\nHelper" as API
 control ":Transaction\nService" as TS
 control ":AI Service" as AI
 control ":WCMSpade" as WS
-ND -> UI ++ : Mở tab AI, chọn\nkhoảng thời gian
+ND -> UI ++ : Mở tab AI
 UI -> REPO ++ : getTransactions(userId)
 REPO -> TS ++ : GET\n/api/transactions/mine
 return danh sách\nTransactionResponseDto
 return List<TransactionModel>
 UI -> API ++ : fetchSavings()
 return mục tiêu tiết kiệm\n(GET /api/savings)
-UI -> UI : lọc theo khoảng,\ntính tổng thu chi,\nbiểu đồ tuần
-UI -> API ++ : analyzePatterns(giao\ndịch trong khoảng)
+UI -> UI : tính tổng thu chi,\nbiểu đồ tuần theo\nkhoảng đang chọn
+UI -> API ++ : analyzeSpending(chi\ntiêu 26 tuần)
 API -> AI ++ : POST /spade/analyze
-AI -> WS ++ : mine(sequences,\nitem_prices)
-return các mẫu chuỗi có\ntrọng số
-return patterns
+AI -> WS ++ : mine(sequences,\nspending_totals)
+return mẫu, luật,\nthói quen
+return phân tích
 return
-UI -> API ++ : recommendBudget(giao\ndịch, mục tiêu)
+UI -> API ++ : recommendBudget(thu chi\n7 tháng, mục tiêu)
 API -> AI ++ : POST\n/spade/recommend
 return xu hướng, gợi ý ngân\nsách
 return

@@ -1,135 +1,128 @@
+"""Budget advice from full calendar months of income and spending (no pattern mining)."""
 from __future__ import annotations
-import math
-import unicodedata
+
 from collections import defaultdict
 from datetime import date
-from typing import Dict, List, Optional, Tuple
-from wcm_spade import WCMSpade
+from typing import FrozenSet, List, Literal, Optional, Sequence, Tuple
 
-ESSENTIAL = {
-    "an uong", "di lai", "hoa don", "suc khoe", "giao duc",
-    "nha o", "dien nuoc", "internet", "xang", "y te",
-}
-DISCRETIONARY = {
-    "du lich", "giai tri", "mua sam", "ca phe", "an vat",
-    "lam dep", "game", "shopping", "quan ao", "do choi",
-}
+from local_time import local_today
+from spending_data import TransactionIn, expenses_from, incomes_from
 
-def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFD", s)
-    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    s = s.replace("đ", "d").replace("Đ", "D")
-    return s.strip().lower()
+# Must match essentialExpenses in mobile-app/lib/core/constants/transaction_categories.dart
+# (the DefaultCategory names core-backend stores).
+ESSENTIAL_CATEGORIES: FrozenSet[str] = frozenset({
+    "Ăn uống", "Siêu thị & Chợ", "Di chuyển", "Nhà ở", "Điện nước",
+    "Internet & Điện thoại", "Sức khỏe", "Giáo dục", "Gia đình & Con cái", "Bảo hiểm",
+})
+DISCRETIONARY_CATEGORIES: FrozenSet[str] = frozenset({"Mua sắm", "Giải trí", "Du lịch", "Hiếu hỉ"})
 
-def classify(tag: str) -> str:
-    n = _norm(tag)
-    if n in ESSENTIAL:
+MAX_CUT_RATIO = 0.30
+ESSENTIAL_CUT_RATIO = 0.10
+LIGHT_CUT_RATIO = 0.10
+DISCRETIONARY_SHARE_ALERT = 15
+ADVICE_MAX_MONTHS = 6
+
+NO_EXPENSE_MESSAGE = "Không có giao dịch chi để phân tích."
+NOT_ENOUGH_HISTORY_MESSAGE = "Cần ít nhất một tháng chi tiêu trọn vẹn để AI đưa ra lời khuyên."
+NO_DEADLINE_PREFIX = "Mục tiêu chưa có hạn nên AI không tính số cần góp mỗi tháng."
+
+
+class AdviceError(ValueError):
+    """The request cannot be advised on; the message is one of the fixed texts above."""
+
+
+def classify(category: str) -> Literal["essential", "discretionary", "neutral"]:
+    name = category.strip()
+    if name in ESSENTIAL_CATEGORIES:
         return "essential"
-    if n in DISCRETIONARY:
+    if name in DISCRETIONARY_CATEGORIES:
         return "discretionary"
     return "neutral"
 
-def _parse_date(s: str) -> Optional[date]:
-    if not s:
-        return None
-    s = s.strip().replace("Z", "")
-    try:
-        return date.fromisoformat(s[:10])
-    except ValueError:
-        return None
 
-def _build_sequences(exp: List[Tuple[date, str, float]]):
-    by_month = defaultdict(lambda: defaultdict(set))
-    price_sum = defaultdict(float)
-    price_cnt = defaultdict(int)
-    for d, tag, amt in exp:
-        by_month[(d.year, d.month)][d.toordinal()].add(tag)
-        price_sum[tag] += amt
-        price_cnt[tag] += 1
-    sequences = [
-        [tuple(sorted(days[day])) for day in sorted(days.keys())]
-        for days in by_month.values()
-    ]
-    prices = {t: price_sum[t] / price_cnt[t] for t in price_sum if price_cnt[t]}
-    return sequences, prices, len(by_month)
+def full_months(first_day: date, today: date,
+                max_months: int = ADVICE_MAX_MONTHS) -> List[Tuple[int, int]]:
+    """Calendar months fully covered by data: after a partial first month, before the current one.
+
+    A first day other than the 1st means that month started before the data did.
+    Keeps the latest `max_months`.
+    """
+    idx = first_day.year * 12 + first_day.month - 1
+    if first_day.day != 1:
+        idx += 1
+    end = today.year * 12 + today.month - 1  # exclusive: the current month is partial
+    months = [(i // 12, i % 12 + 1) for i in range(idx, end)]
+    return months[-max_months:]
+
+
+def _fmt(val: float) -> str:
+    return f"{int(val):,}".replace(",", ".")
+
 
 def advise(
-    transactions: List[dict],
+    transactions: Sequence[TransactionIn],
     target: float = 0.0,
     current: float = 0.0,
-    months_left: int = 0,
+    months_left: Optional[int] = None,
     monthly_income: Optional[float] = None,
     needed_monthly: Optional[float] = None,
-    alpha: float = 0.5,
-    min_sup_factor: float = 0.4,
-    max_cut_ratio: float = 0.30,
+    today: Optional[date] = None,
 ) -> dict:
-    exp = []
-    income_total = 0.0
-    n_income_months = set()
-    for t in transactions:
-        d = _parse_date(str(t.get("date", "")))
-        amt = max(float(t.get("amount", 0) or 0), 0.0)
-        if d is None:
-            continue
-        if t.get("isExpense", True):
-            exp.append((d, str(t.get("category", "Khác")), amt))
-        else:
-            income_total += amt
-            n_income_months.add((d.year, d.month))
+    today = today or local_today()
+    expenses = expenses_from(transactions)
+    incomes = incomes_from(transactions)
+    if not expenses:
+        raise AdviceError(NO_EXPENSE_MESSAGE)
 
-    if not exp:
-        return {"error": "Không có giao dịch chi để phân tích."}
+    first_day = min([e.day for e in expenses] + [i.day for i in incomes])
+    months = full_months(first_day, today)
+    month_set = set(months)
+    exp = [e for e in expenses if (e.day.year, e.day.month) in month_set]
+    if not months or not exp:
+        raise AdviceError(NOT_ENOUGH_HISTORY_MESSAGE)
+    n_months = len(months)
 
-    sequences, prices, n_months = _build_sequences(exp)
-    engine = WCMSpade(min_sup=min_sup_factor, alpha=alpha, max_pattern_length=3)
-    res = engine.mine(sequences, prices)
-    trends = []
-    for p in res.patterns:
-        if len(p.itemsets) >= 2:
-            human = " → ".join("+".join(it) for it in p.itemsets)
-            trends.append({"pattern": human, "count": p.raw_sup,
-                           "wsupport": round(p.wsup, 3)})
-    trends = trends[:10]
-    months_span = max(n_months, 1)
     tag_total = defaultdict(float)
-    for _, tag, amt in exp:
-        tag_total[tag] += amt
-    tag_monthly = {t: v / months_span for t, v in tag_total.items()}
-    total_monthly_exp = sum(tag_monthly.values()) or 1.0
+    for e in exp:
+        tag_total[e.category] += e.amount
+    tag_monthly = {t: v / n_months for t, v in tag_total.items()}
+    total_monthly_exp = sum(tag_monthly.values())
+    share_base = total_monthly_exp or 1.0
 
-    tag_stats = []
-    for t, m in sorted(tag_monthly.items(), key=lambda kv: kv[1], reverse=True):
-        tag_stats.append({
+    tag_stats = [
+        {
             "tag": t,
             "monthlyAvg": round(m),
-            "share": round(m / total_monthly_exp * 100, 1),
-            "weight": round(res.item_weights.get(t, 0.0), 3),
+            "share": round(m / share_base * 100, 1),
             "type": classify(t),
-        })
+        }
+        for t, m in sorted(tag_monthly.items(), key=lambda kv: kv[1], reverse=True)
+    ]
+
+    has_deadline = months_left is not None or needed_monthly is not None
     if needed_monthly is None:
-        remaining = max(target - current, 0.0)
-        needed_monthly = remaining / months_left if months_left > 0 else 0.0
+        if months_left is not None and months_left > 0:
+            needed_monthly = max(target - current, 0.0) / months_left
+        else:
+            needed_monthly = 0.0
+            has_deadline = False
 
     if monthly_income is None:
-        monthly_income = (income_total / len(n_income_months)) if n_income_months else 0.0
+        income_total = sum(i.amount for i in incomes if (i.day.year, i.day.month) in month_set)
+        monthly_income = income_total / n_months
     surplus = monthly_income - total_monthly_exp
     gap = needed_monthly - surplus
 
     remaining_gap = gap
     recommendations = []
-    summary = ""
-
-    def _fmt(val):
-        return f"{int(val):,}".replace(",", ".")
+    prefix = "" if has_deadline else NO_DEADLINE_PREFIX + " "
 
     if gap <= 0:
         summary = (f"Thặng dư {_fmt(surplus)}đ/tháng ≥ cần {_fmt(needed_monthly)}đ/tháng. "
                    f"Đang đúng hướng — duy trì và đẩy phần dư vào tiết kiệm.")
-
         for s in tag_stats:
-            if s["type"] == "discretionary" and s["share"] >= 15:
-                cut = round(s["monthlyAvg"] * 0.1)
+            if s["type"] == "discretionary" and s["share"] >= DISCRETIONARY_SHARE_ALERT:
+                cut = round(s["monthlyAvg"] * LIGHT_CUT_RATIO)
                 recommendations.append({
                     "tag": s["tag"], "current": s["monthlyAvg"],
                     "suggested": s["monthlyAvg"] - cut, "delta": -cut,
@@ -137,31 +130,28 @@ def advise(
                     "reason": f"Mục tùy ý chiếm {s['share']}% — cắt 10% để dư thêm.",
                 })
     else:
-        order = (["discretionary"], ["neutral"], ["essential"])
-        for group in order:
-            pool = [s for s in tag_stats if s["type"] in group and s["monthlyAvg"] > 0]
-            pool_total = sum(s["monthlyAvg"] for s in pool) or 0.0
+        for group in ("discretionary", "neutral", "essential"):
+            pool = [s for s in tag_stats if s["type"] == group and s["monthlyAvg"] > 0]
+            pool_total = sum(s["monthlyAvg"] for s in pool)
             if pool_total <= 0 or remaining_gap <= 0:
                 continue
-
-            ratio_cap = 0.10 if group == ["essential"] else max_cut_ratio
+            ratio_cap = ESSENTIAL_CUT_RATIO if group == "essential" else MAX_CUT_RATIO
+            label = {"discretionary": "Mục tùy ý", "essential": "Mục thiết yếu"}.get(group, "Mục linh hoạt")
             for s in pool:
                 if remaining_gap <= 0:
                     break
-                max_cut = s["monthlyAvg"] * ratio_cap
                 want = remaining_gap * (s["monthlyAvg"] / pool_total)
-                cut = round(min(max_cut, want))
+                cut = round(min(s["monthlyAvg"] * ratio_cap, want))
                 if cut <= 0:
                     continue
                 recommendations.append({
                     "tag": s["tag"], "current": s["monthlyAvg"],
                     "suggested": s["monthlyAvg"] - cut, "delta": -cut,
                     "action": "cắt giảm",
-                    "reason": (f"{'Mục tùy ý' if s['type']=='discretionary' else 'Mục thiết yếu' if s['type']=='essential' else 'Mục linh hoạt'}"
-                               f", chiếm {s['share']}% chi tiêu."),
+                    "reason": f"{label}, chiếm {s['share']}% chi tiêu.",
                 })
                 remaining_gap -= cut
-                
+
         total_cut = sum(-r["delta"] for r in recommendations)
         if remaining_gap > 0:
             summary = (f"Cần tiết kiệm {_fmt(needed_monthly)}đ/tháng, thiếu {_fmt(gap)}đ. "
@@ -172,7 +162,6 @@ def advise(
                        f"Đề xuất cắt tổng {_fmt(total_cut)}đ từ các mục dưới → đủ đạt mục tiêu.")
 
     return {
-        "trends": trends,
         "tagStats": tag_stats,
         "goal": {
             "neededMonthly": round(needed_monthly),
@@ -180,12 +169,13 @@ def advise(
             "monthlyExpense": round(total_monthly_exp),
             "surplus": round(surplus),
             "gap": round(gap),
+            "hasDeadline": has_deadline,
         },
         "recommendations": recommendations,
-        "summary": summary,
+        "summary": prefix + summary,
         "meta": {
             "nMonths": n_months,
-            "effectiveMinSup": res.effective_min_sup,
-            "meanW": round(res.mean_w, 4),
+            "firstMonth": f"{months[0][0]}-{months[0][1]:02d}",
+            "lastMonth": f"{months[-1][0]}-{months[-1][1]:02d}",
         },
     }

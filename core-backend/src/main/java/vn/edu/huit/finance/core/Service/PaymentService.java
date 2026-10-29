@@ -1,5 +1,6 @@
 package vn.edu.huit.finance.core.Service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -31,6 +32,7 @@ import java.util.UUID;
  * (the system acts then: nobody is signed in on a webhook). A webhook whose signature does not match changes nothing and
  * is recorded on its own. The amount is part of the rows (it is money that moves); the signature never is.
  */
+@Slf4j
 @Service
 public class PaymentService {
 
@@ -49,6 +51,7 @@ public class PaymentService {
     private static final String AUDIT_COMPLETED = "Cổng %s xác nhận thanh toán %s %s VNĐ, mã đơn %s, mã giao dịch cổng %s";
     private static final String AUDIT_FAILED = "Cổng %s báo thanh toán thất bại (mã kết quả %s), mã đơn %s";
     private static final String AUDIT_AMOUNT_MISMATCH = "Cổng %s xác nhận số tiền %s VNĐ khác số tiền của đơn %s VNĐ, mã đơn %s";
+    static final String AUDIT_INSUFFICIENT_BALANCE = "Cổng %s xác nhận rút %s VNĐ nhưng số dư ví không đủ, mã đơn %s";
     private static final String AUDIT_CANCELED = "Hủy đơn %s %s VNĐ, mã đơn %s";
     private static final String AUDIT_WEBHOOK_REJECTED = "Chữ ký webhook không khớp, đơn được nhắc tới: %s";
 
@@ -113,7 +116,8 @@ public class PaymentService {
             throw new RuntimeException("Sai chu ky webhook (HMAC khong khop)");
         }
 
-        PaymentOrder order = orderRepo.findByOrderCode(dto.getOrderCode())
+        // Khóa đơn đến hết giao dịch: webhook phát lại đồng thời phải chờ rồi thấy đơn đã chốt.
+        PaymentOrder order = orderRepo.findLockedByOrderCode(dto.getOrderCode())
                 .orElseThrow(() -> new RuntimeException("Khong tim thay don: " + dto.getOrderCode()));
 
         if (order.getStatus() != PaymentStatus.PENDING) {
@@ -132,6 +136,10 @@ public class PaymentService {
         order.setGatewayTxnId(dto.getGatewayTxnId());
 
         boolean success = "00".equals(dto.getResultCode());
+        if (success && order.getType() == PaymentType.WITHDRAW && !walletCovers(order)) {
+            failUncoveredWithdrawal(order);
+            return;
+        }
         if (success) {
             createSyncTransaction(order);
             order.setStatus(PaymentStatus.SUCCESS);
@@ -146,6 +154,24 @@ public class PaymentService {
             recordOutcome(AuditAction.PAYMENT_FAILED, order, String.format(AUDIT_FAILED, order.getProvider(),
                     dto.getResultCode(), order.getOrderCode()));
         }
+    }
+
+    /**
+     * Locks the wallet (after the order, the same order as a successful payment) and tells whether it covers the
+     * withdrawal. Decided before any write: an exception thrown through the transactional createTransaction would mark
+     * this whole transaction rollback-only and the order could never be closed as FAILED.
+     */
+    private boolean walletCovers(PaymentOrder order) {
+        return transactionService.lockWalletAndCheckCovers(order.getUserId(), order.getAmount());
+    }
+
+    /** The gateway confirmed a withdrawal the wallet cannot cover: no money moves, the order is closed as FAILED. */
+    private void failUncoveredWithdrawal(PaymentOrder order) {
+        order.setStatus(PaymentStatus.FAILED);
+        orderRepo.save(order);
+        recordOutcome(AuditAction.PAYMENT_FAILED, order, String.format(AUDIT_INSUFFICIENT_BALANCE, order.getProvider(),
+                order.getAmount().toPlainString(), order.getOrderCode()));
+        log.warn("Withdrawal failed: insufficient balance, orderCode={}, userId={}", order.getOrderCode(), order.getUserId());
     }
 
     /** The gateway's report on an order, recorded with the system as the actor: nobody is signed in on a webhook. */

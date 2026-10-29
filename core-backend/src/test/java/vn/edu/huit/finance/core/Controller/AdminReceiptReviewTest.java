@@ -38,6 +38,7 @@ import vn.edu.huit.finance.core.Service.AdminStatisticsService;
 import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
+import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
@@ -58,6 +59,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static vn.edu.huit.finance.core.Security.CsrfTestSupport.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -92,6 +94,7 @@ class AdminReceiptReviewTest {
     @MockBean private CampaignRepository campaignRepo;
     @MockBean private ReceiptRepository receiptRepo;
     @MockBean private BackupService backupService;
+    @MockBean private CustomerSegmentationService customerSegmentationService;
     @MockBean private UserService userService;
     @MockBean private EntityManager entityManager;
     @MockBean private SubscriptionPlanRepository subscriptionPlanRepository;
@@ -127,7 +130,7 @@ class AdminReceiptReviewTest {
     @ParameterizedTest
     @ValueSource(strings = {APPROVE, REJECT})
     void withoutAnAdminSessionTheRequestIsSentToTheLoginPageAndNoReceiptIsTouched(String url) throws Exception {
-        mockMvc.perform(post(url))
+        mockMvc.perform(post(url).with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrlPattern("**/admin/login"));
 
@@ -137,14 +140,14 @@ class AdminReceiptReviewTest {
     @ParameterizedTest
     @ValueSource(strings = {APPROVE, REJECT})
     void anOrdinaryUserIsForbiddenAndNoReceiptIsTouched(String url) throws Exception {
-        mockMvc.perform(post(url).session(sessionOf(Roles.USER))).andExpect(status().isForbidden());
+        mockMvc.perform(post(url).with(csrf()).session(sessionOf(Roles.USER))).andExpect(status().isForbidden());
 
         verifyNoInteractions(transactionService, receiptProcessingService);
     }
 
     @Test
     void anAdministratorApprovesAReceiptThroughTheServiceThatReconcilesTheWallet() throws Exception {
-        mockMvc.perform(post(APPROVE).session(sessionOf(Roles.ADMIN))).andExpect(redirectedUrl("/admin/receipts"));
+        mockMvc.perform(post(APPROVE).with(csrf()).session(sessionOf(Roles.ADMIN))).andExpect(redirectedUrl("/admin/receipts"));
 
         verify(transactionService).approveReceipt(7L);
         verifyNoInteractions(receiptProcessingService);
@@ -152,7 +155,7 @@ class AdminReceiptReviewTest {
 
     @Test
     void anAdministratorRejectsAReceiptThroughTheReceiptService() throws Exception {
-        mockMvc.perform(post(REJECT).session(sessionOf(Roles.ADMIN))).andExpect(redirectedUrl("/admin/receipts"));
+        mockMvc.perform(post(REJECT).with(csrf()).session(sessionOf(Roles.ADMIN))).andExpect(redirectedUrl("/admin/receipts"));
 
         verify(receiptProcessingService).rejectReceipt(7L);
         verifyNoInteractions(transactionService);

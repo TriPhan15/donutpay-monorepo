@@ -844,6 +844,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String savingsDeletedRefunded(String title, String amount) {
+    return 'Goal deleted: $title. $amount went back to your wallet.';
+  }
+
+  @override
+  String get savingsDeleteTitle => 'Delete goal';
+
+  @override
+  String get savingsDeleteConfirm => 'Delete this goal?';
+
+  @override
+  String savingsDeleteConfirmRefund(String amount) {
+    return 'Delete this goal? The $amount contributed will be refunded to your wallet.';
+  }
+
+  @override
   String get savingsAddTitle => 'Add a savings goal';
 
   @override
@@ -856,15 +872,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get savingsTargetAmount => 'Target amount (₫)';
 
   @override
-  String get savingsSavedAmount => 'Saved so far (₫)';
-
-  @override
-  String savingsUpdateTitle(String title) {
-    return 'Update: $title';
+  String savingsEditTitle(String title) {
+    return 'Edit goal $title';
   }
 
   @override
-  String get savingsCurrentAmount => 'Amount saved (₫)';
+  String get ledgerSavingsManagedByGoal =>
+      'Savings contributions are managed on the Savings page.';
 
   @override
   String get savingsTotalSaved => 'Total saved';
@@ -1168,6 +1182,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ledgerDeletedUnsynced => 'Unsent transaction deleted';
+
+  @override
+  String get ledgerDeleteWhileSending =>
+      'This transaction is being sent. Try again in a moment.';
 
   @override
   String get ledgerLoadFailedNotice =>
@@ -1538,6 +1556,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardBalance => 'Current balance';
 
   @override
+  String dashboardPendingNotInBalance(String amount) {
+    return 'Excludes $amount from transactions waiting to be sent';
+  }
+
+  @override
   String get dashboardVsLastMonth => 'vs. last month';
 
   @override
@@ -1667,6 +1690,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiAddGoal => 'Add a savings goal for the AI to analyse.';
 
   @override
+  String aiGoalNeedMore(String amount) {
+    return 'Contribute $amount more this month to stay on track';
+  }
+
+  @override
+  String get aiGoalNoDeadline =>
+      'This goal has no deadline, contribute whenever you can';
+
+  @override
+  String get aiGoalOverdue =>
+      'This goal is past its deadline: set a new date or keep contributing';
+
+  @override
   String get aiOnTrack =>
       'You\'re on your savings path. See the money allocation tips below to reach your goal faster!';
 
@@ -1687,12 +1723,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiSpadeNotEnoughTitle => 'Not enough data';
 
   @override
-  String get aiSpadeNotEnoughMessage =>
-      'Add at least 3 transactions to see sequential spending patterns.';
+  String aiSpadeNotEnoughWeeks(int weeks, int minWeeks) {
+    return 'Only $weeks weeks with spending so far; at least $minWeeks weeks are needed to look for sequences.';
+  }
 
   @override
-  String aiSpadeDetail(String count, String support) {
-    return 'Frequency: $count times  ·  Support (W-Sup): $support';
+  String get aiSpadeNotEnoughUnknown =>
+      'Not enough spending history to look for sequences.';
+
+  @override
+  String get aiSpadeNotEnoughNone => 'No spending in the last 26 weeks yet.';
+
+  @override
+  String get aiSpadeNoPatternTitle => 'No sequence yet';
+
+  @override
+  String get aiSpadeNoPatternMessage =>
+      'No sequence of spending repeats in enough weeks yet.';
+
+  @override
+  String aiSpadeWeeksDetail(int count, int total) {
+    return 'In $count/$total weeks';
   }
 
   @override
@@ -1708,18 +1759,40 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aiGuardTitle => 'Future habit alerts';
+  String get aiGuardTitle => 'Habits to watch';
 
   @override
   String get aiGuardSubtitle =>
-      'The AI predicts upcoming spending from your spending sequence history.';
+      'Habits that repeated in many weeks of your history.';
 
   @override
-  String get aiGuardHeading => 'Behaviour forecast · Sequence mining';
+  String get aiGuardHeading => 'Repeated pattern · Sequence mining';
 
   @override
-  String aiGuardRule(String from, String to) {
-    return 'WCM-SPADE found the rule [$from → $to]: after spending on $from, you tend to spend on $to within a few days. Keep an eye on your wallet so it does not eat into your savings!';
+  String aiGuardRule(String from, String to, int count, int total) {
+    return '$count/$total weeks: after spending on $from, you also spent on $to in the same week.';
+  }
+
+  @override
+  String aiGuardTriggered(String from, String to) {
+    return 'This week you have spent on $from but not yet on $to.';
+  }
+
+  @override
+  String get aiHabitTitle => 'Recurring habits';
+
+  @override
+  String get aiHabitSubtitle =>
+      'Categories you spend on at a fairly regular interval.';
+
+  @override
+  String aiHabitLine(String category, String days, String date) {
+    return '$category: about every $days days, next around $date';
+  }
+
+  @override
+  String aiHabitLineLate(String category, String days, String last) {
+    return '$category: about every $days days, last on $last';
   }
 
   @override
@@ -1847,10 +1920,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categorySavings => 'Savings';
-
-  @override
-  String get savingsSavedAmountHint =>
-      'Leave empty if there is none yet or you don\'t remember; you can change it later';
 
   @override
   String get savingsTargetDateField => 'Target date';

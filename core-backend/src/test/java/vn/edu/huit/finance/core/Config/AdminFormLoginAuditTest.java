@@ -34,6 +34,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static vn.edu.huit.finance.core.Security.CsrfTestSupport.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
@@ -77,7 +78,7 @@ class AdminFormLoginAuditTest {
     }
 
     private static MockHttpServletRequestBuilder signIn(String password) {
-        return post(LOGIN).servletPath(LOGIN).param("username", ROOT).param("password", password);
+        return post(LOGIN).with(csrf()).servletPath(LOGIN).param("username", ROOT).param("password", password);
     }
 
     private List<AuditEntry> recorded() {
@@ -144,7 +145,7 @@ class AdminFormLoginAuditTest {
         MockHttpSession session = (MockHttpSession) mockMvc.perform(signIn(PASSWORD)).andReturn().getRequest().getSession();
         events.clear();
 
-        mockMvc.perform(post(LOGOUT).servletPath(LOGOUT).session(session)).andExpect(redirectedUrl("/admin/login"));
+        mockMvc.perform(post(LOGOUT).with(csrf()).servletPath(LOGOUT).session(session)).andExpect(redirectedUrl("/admin/login"));
 
         AuditEntry row = theOnlyRow();
         assertEquals(AuditAction.AUTH_LOGOUT, row.action());
@@ -154,7 +155,7 @@ class AdminFormLoginAuditTest {
 
     @Test
     void aSignOutWithoutASessionRecordsNothing() throws Exception {
-        mockMvc.perform(post(LOGOUT).servletPath(LOGOUT)).andExpect(redirectedUrl("/admin/login"));
+        mockMvc.perform(post(LOGOUT).with(csrf()).servletPath(LOGOUT)).andExpect(redirectedUrl("/admin/login"));
 
         assertEquals(List.of(), recorded());
     }

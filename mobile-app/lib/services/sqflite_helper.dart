@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:finance_ai_app/models/scan_queue_item.dart';
-import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 
@@ -18,7 +17,7 @@ class SqfliteHelper {
   static final SqfliteHelper instance = SqfliteHelper._();
 
   static const String _dbName = 'finance_ai_app.db';
-  static const int _dbVersion = 8;
+  static const int _dbVersion = 9;
 
   static const String usersTable = 'users';
   static const String transactionsTable = 'transactions';
@@ -38,6 +37,11 @@ class SqfliteHelper {
       '${TransactionModel.columnImageUrl} TEXT';
   static const String _rawReceiptDataColumnDef =
       '${TransactionModel.columnRawReceiptData} TEXT';
+
+  /// Column definition of the "save anyway" of a scanned receipt that waits to be sent (version 9). Rows that already
+  /// exist did not ask for it.
+  static const String _allowDuplicateColumnDef =
+      '${TransactionModel.columnAllowDuplicate} INTEGER NOT NULL DEFAULT 0';
 
   /// The receipts waiting to be read or confirmed on this device (version 8).
   static const String _createReceiptScanQueueTable =
@@ -114,7 +118,8 @@ CREATE TABLE $transactionsTable (
   $_clientIdColumnDef,
   $_syncStatusColumnDef,
   $_imageUrlColumnDef,
-  $_rawReceiptDataColumnDef
+  $_rawReceiptDataColumnDef,
+  $_allowDuplicateColumnDef
 )
 ''');
 
@@ -246,33 +251,20 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
     if (oldVersion < 8) {
       await db.execute(_createReceiptScanQueueTable);
     }
-  }
 
-  Future<int> updateUser(UserModel user) async {
-    final id = user.id;
-    if (id == null) {
-      throw ArgumentError('UserModel.id is required for update');
+    if (oldVersion < 9) {
+      final columns = await db.rawQuery(
+        'PRAGMA table_info($transactionsTable)',
+      );
+      final hasAllowDuplicate = columns.any(
+        (c) => c['name'] == TransactionModel.columnAllowDuplicate,
+      );
+      if (!hasAllowDuplicate) {
+        await db.execute(
+          'ALTER TABLE $transactionsTable ADD COLUMN $_allowDuplicateColumnDef',
+        );
+      }
     }
-
-    final db = await database;
-    return db.update(
-      usersTable,
-      user.toMap(),
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  Future<UserModel?> getUserById(int id) async {
-    final db = await database;
-    final rows = await db.query(
-      usersTable,
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return UserModel.fromMap(rows.first);
   }
 
   Future<int> insertTransaction(
@@ -320,6 +312,18 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
       transactionsTable,
       where: 'user_id = ? AND ${TransactionModel.columnClientId} = ?',
       whereArgs: [userId, clientId],
+    );
+  }
+
+  /// Deletes the transaction of the user with this clientId only while its last send failed: a row that is being sent
+  /// (pending) or that the server confirmed is left alone. Returns how many rows went (0 or 1).
+  Future<int> deleteFailedTransaction(int userId, String clientId) async {
+    final db = await database;
+    return db.delete(
+      transactionsTable,
+      where:
+          'user_id = ? AND ${TransactionModel.columnClientId} = ? AND ${TransactionModel.columnSyncStatus} = ?',
+      whereArgs: [userId, clientId, SyncStatus.error.dbValue],
     );
   }
 

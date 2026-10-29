@@ -34,15 +34,15 @@ public class SavingGoalController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<String>> createSaving(@RequestBody SavingGoalDto dto) {
+    public ResponseEntity<ApiResponse<String>> createSaving(@Valid @RequestBody SavingGoalDto dto) {
         savingGoalService.createSaving(dto);
         return ResponseEntity.ok(ApiResponse.<String>builder().code(CODE_OK).message(MSG_CREATED).build());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<String>> updateCurrentAmount(@PathVariable Long id, @RequestBody SavingGoalDto dto) {
-        savingGoalService.updateCurrentAmount(id, dto.getCurrent());
-        return ResponseEntity.ok(ApiResponse.<String>builder().code(CODE_OK).message(MSG_UPDATED).build());
+    public ResponseEntity<ApiResponse<SavingGoalDto>> updateSaving(@PathVariable Long id,
+                                                                   @Valid @RequestBody SavingGoalDto dto) {
+        return ApiResponses.respond(HttpStatus.OK, MSG_UPDATED, savingGoalService.updateMySaving(id, dto));
     }
 
     /** Moves money from the caller's wallet into the goal: an expense in "Tiết kiệm", and the goal's current amount grows. */

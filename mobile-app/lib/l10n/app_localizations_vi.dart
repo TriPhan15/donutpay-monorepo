@@ -837,6 +837,22 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String savingsDeletedRefunded(String title, String amount) {
+    return 'Đã xóa mục tiêu: $title. $amount đã được hoàn vào ví.';
+  }
+
+  @override
+  String get savingsDeleteTitle => 'Xóa mục tiêu';
+
+  @override
+  String get savingsDeleteConfirm => 'Xóa mục tiêu này?';
+
+  @override
+  String savingsDeleteConfirmRefund(String amount) {
+    return 'Xóa mục tiêu này? $amount đã góp sẽ được hoàn vào ví.';
+  }
+
+  @override
   String get savingsAddTitle => 'Thêm mục tiêu tiết kiệm';
 
   @override
@@ -849,15 +865,13 @@ class AppLocalizationsVi extends AppLocalizations {
   String get savingsTargetAmount => 'Số tiền mục tiêu (₫)';
 
   @override
-  String get savingsSavedAmount => 'Đã tiết kiệm (₫)';
-
-  @override
-  String savingsUpdateTitle(String title) {
-    return 'Cập nhật: $title';
+  String savingsEditTitle(String title) {
+    return 'Sửa mục tiêu $title';
   }
 
   @override
-  String get savingsCurrentAmount => 'Số tiền đã tiết kiệm (₫)';
+  String get ledgerSavingsManagedByGoal =>
+      'Khoản góp tiết kiệm được quản lý ở mục Tiết kiệm.';
 
   @override
   String get savingsTotalSaved => 'Tổng đã tiết kiệm';
@@ -1140,6 +1154,10 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get ledgerDeletedUnsynced => 'Đã xóa giao dịch chưa gửi';
+
+  @override
+  String get ledgerDeleteWhileSending =>
+      'Giao dịch đang được gửi, hãy thử lại sau ít phút.';
 
   @override
   String get ledgerLoadFailedNotice =>
@@ -1508,6 +1526,11 @@ class AppLocalizationsVi extends AppLocalizations {
   String get dashboardBalance => 'Số dư hiện tại';
 
   @override
+  String dashboardPendingNotInBalance(String amount) {
+    return 'Chưa tính $amount của giao dịch đang chờ gửi';
+  }
+
+  @override
   String get dashboardVsLastMonth => 'so với tháng trước';
 
   @override
@@ -1636,6 +1659,18 @@ class AppLocalizationsVi extends AppLocalizations {
   String get aiAddGoal => 'Thêm mục tiêu tiết kiệm để AI phân tích.';
 
   @override
+  String aiGoalNeedMore(String amount) {
+    return 'Tháng này cần góp thêm $amount cho mục tiêu';
+  }
+
+  @override
+  String get aiGoalNoDeadline => 'Mục tiêu chưa có hạn, góp lúc nào cũng được';
+
+  @override
+  String get aiGoalOverdue =>
+      'Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp';
+
+  @override
   String get aiOnTrack =>
       'Bạn đang trong lộ trình tiết kiệm. Xem gợi ý phân bổ tiền bên dưới để đạt mục tiêu nhanh hơn!';
 
@@ -1656,12 +1691,28 @@ class AppLocalizationsVi extends AppLocalizations {
   String get aiSpadeNotEnoughTitle => 'Chưa đủ dữ liệu';
 
   @override
-  String get aiSpadeNotEnoughMessage =>
-      'Thêm ít nhất 3 giao dịch để xem mẫu chi tiêu tuần tự.';
+  String aiSpadeNotEnoughWeeks(int weeks, int minWeeks) {
+    return 'Mới có $weeks tuần có chi tiêu; cần ít nhất $minWeeks tuần để tìm mẫu tuần tự.';
+  }
 
   @override
-  String aiSpadeDetail(String count, String support) {
-    return 'Tần suất: $count lần  ·  Độ hỗ trợ (W-Sup): $support';
+  String get aiSpadeNotEnoughUnknown =>
+      'Chưa đủ lịch sử chi tiêu để tìm mẫu tuần tự.';
+
+  @override
+  String get aiSpadeNotEnoughNone =>
+      'Chưa có khoản chi nào trong 26 tuần gần đây.';
+
+  @override
+  String get aiSpadeNoPatternTitle => 'Chưa có mẫu nào';
+
+  @override
+  String get aiSpadeNoPatternMessage =>
+      'Chưa có chuỗi chi tiêu nào lặp lại đủ nhiều tuần.';
+
+  @override
+  String aiSpadeWeeksDetail(int count, int total) {
+    return 'Có trong $count/$total tuần';
   }
 
   @override
@@ -1677,18 +1728,39 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get aiGuardTitle => 'Cảnh báo thói quen tương lai';
+  String get aiGuardTitle => 'Thói quen cần lưu ý';
 
   @override
   String get aiGuardSubtitle =>
-      'AI dự đoán các khoản chi sắp tới dựa trên lịch sử tuần tự của bạn.';
+      'Những thói quen đã lặp lại qua nhiều tuần trong lịch sử của bạn.';
 
   @override
-  String get aiGuardHeading => 'Dự báo hành vi · Khai phá chuỗi';
+  String get aiGuardHeading => 'Mẫu lặp lại · Khai phá chuỗi';
 
   @override
-  String aiGuardRule(String from, String to) {
-    return 'Thuật toán WCM-SPADE phát hiện luật [$from → $to]: Sau khi chi tiền cho $from, bạn có xu hướng sẽ chi cho $to trong vài ngày tới. Hãy chú ý kiểm soát hầu bao để không lạm lẹm vào khoản tiết kiệm!';
+  String aiGuardRule(String from, String to, int count, int total) {
+    return '$count/$total tuần: sau khi chi $from, bạn chi tiếp $to trong cùng tuần.';
+  }
+
+  @override
+  String aiGuardTriggered(String from, String to) {
+    return 'Tuần này bạn đã chi $from nhưng chưa chi $to.';
+  }
+
+  @override
+  String get aiHabitTitle => 'Thói quen định kỳ';
+
+  @override
+  String get aiHabitSubtitle => 'Những khoản bạn chi khá đều đặn theo chu kỳ.';
+
+  @override
+  String aiHabitLine(String category, String days, String date) {
+    return '$category: khoảng $days ngày/lần, lần tới khoảng $date';
+  }
+
+  @override
+  String aiHabitLineLate(String category, String days, String last) {
+    return '$category: khoảng $days ngày/lần, lần gần nhất $last';
   }
 
   @override
@@ -1816,10 +1888,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get categorySavings => 'Tiết kiệm';
-
-  @override
-  String get savingsSavedAmountHint =>
-      'Bỏ trống nếu chưa có hoặc không nhớ, sửa được sau';
 
   @override
   String get savingsTargetDateField => 'Ngày đạt mục tiêu';

@@ -20,11 +20,11 @@ APP -> BE ++ : Lấy giao dịch và mục tiêu tiết kiệm
 BE -> MT : Đọc mục tiêu
 return Giao dịch và mục tiêu
 par
-  APP -> AI ++ : Gửi giao dịch trong khoảng đang chọn
-  AI -> AI : Khai phá mẫu chuỗi (WCM-SPADE)
-  AI --> APP -- : Các mẫu chi tiêu
+  APP -> AI ++ : Gửi các khoản chi của 26 tuần gần nhất
+  AI -> AI : Dựng chuỗi tuần, khai phá mẫu và luật (WCM-SPADE)
+  AI --> APP -- : Mẫu, luật, thói quen, cơ cấu danh mục
 else Có mục tiêu tiết kiệm
-  APP -> AI ++ : Gửi toàn bộ giao dịch và mục tiêu gần hạn nhất
+  APP -> AI ++ : Gửi thu chi 7 tháng lịch gần nhất và mục tiêu gần hạn nhất
   AI --> APP -- : Xu hướng, gợi ý ngân sách, tóm tắt
 end
 APP --> ND -- : Hiển thị mẫu chi tiêu và gợi ý

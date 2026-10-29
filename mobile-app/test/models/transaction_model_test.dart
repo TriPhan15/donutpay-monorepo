@@ -180,6 +180,7 @@ void main() {
             'wallet_id',
             'client_id', 'sync_status', // the sync state (Task A8)
             'image_url', 'raw_receipt_data', // the receipt of the outbox (T3b)
+            'allow_duplicate', // a duplicate the user chose to keep (batch 2)
           ]),
         );
         expect(
@@ -340,6 +341,45 @@ void main() {
     });
 
     test(
+      'allowDuplicate is stored as 0/1, survives a trip through SQLite and a change of state, and goes with every send',
+      () {
+        expect(_draft().allowDuplicate, isFalse);
+        expect(_draft().toDbMap(7)[TransactionModel.columnAllowDuplicate], 0);
+        expect(
+          _draft().toCheckoutJson().keys,
+          isNot(contains(TransactionModel.checkoutAllowDuplicate)),
+        );
+
+        final draft = _draft().allowingDuplicate();
+        final row = {
+          ...draft.withSyncStatus(SyncStatus.error).toDbMap(7),
+          'id': 42,
+        };
+        expect(row[TransactionModel.columnAllowDuplicate], 1);
+
+        final read = TransactionModel.fromDbMap(row);
+        expect(read.allowDuplicate, isTrue);
+        expect(read.clientId, draft.clientId);
+        expect(read.withSyncStatus(SyncStatus.pending).allowDuplicate, isTrue);
+        expect(
+          read.toCheckoutJson()[TransactionModel.checkoutAllowDuplicate],
+          isTrue,
+        );
+        expect(read.toCheckoutJson(), draft.toCheckoutJson());
+      },
+    );
+
+    test(
+      'a row from before the allow_duplicate column reads as not allowing a duplicate',
+      () {
+        final row = {..._draft().withSyncStatus(SyncStatus.error).toDbMap(7)}
+          ..remove(TransactionModel.columnAllowDuplicate);
+
+        expect(TransactionModel.fromDbMap(row).allowDuplicate, isFalse);
+      },
+    );
+
+    test(
       'the receipt of a scanned draft survives a trip through SQLite and goes with every send',
       () {
         final draft = TransactionModel.draft(
@@ -430,5 +470,34 @@ void main() {
         expect(SyncStatus.synced.label(_vi), 'Đã đồng bộ');
       },
     );
+  });
+
+  group('savings contributions', () {
+    TransactionModel model({required String category, required bool isExpense}) =>
+        TransactionModel(
+          title: 'góp',
+          amount: 100000,
+          date: DateTime(2026, 10, 1),
+          category: category,
+          isExpense: isExpense,
+        );
+
+    test('a savings contribution is an expense of the wallet but not spending', () {
+      final tx = model(category: 'Tiết kiệm', isExpense: true);
+      expect(tx.isSavingsContribution, isTrue);
+      expect(tx.countsAsSpending, isFalse);
+    });
+
+    test('an income named like the savings category is neither', () {
+      final tx = model(category: 'Tiết kiệm', isExpense: false);
+      expect(tx.isSavingsContribution, isFalse);
+      expect(tx.countsAsSpending, isFalse);
+    });
+
+    test('any other expense counts as spending', () {
+      final tx = model(category: 'Ăn uống', isExpense: true);
+      expect(tx.isSavingsContribution, isFalse);
+      expect(tx.countsAsSpending, isTrue);
+    });
   });
 }
