@@ -128,3 +128,13 @@ JUNIOR_ENGINEER_CURRICULUM.md
 Do_An_BigData_NoSQL_Plan.md
 FEATURE_AUDIT.md
 ycda.txt
+
+# Office files and their lock files are never pushed (Word/PowerPoint builds and drafts stay on each laptop)
+*.doc
+*.ppt
+*.pptx
+~$*
+
+# Personal study notes of team members stay local
+docs/nosql/ghi_chu_tien/
+docs/nosql/tim_hieu_tool/
