@@ -213,7 +213,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({InsufficientBalanceException.class, InvalidRoleException.class, InvalidSortFieldException.class,
-            ProfileUpdateRefusedException.class, InvalidImageUrlException.class})
+            ProfileUpdateRefusedException.class, InvalidImageUrlException.class, PaymentWebhookRejectedException.class})
     public Object handleRejectedInput(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }

@@ -39,7 +39,7 @@ public class PaymentController {
     }
 
     @PostMapping("/webhook")
-    public ResponseEntity<ApiResponse<Void>> webhook(@RequestBody PaymentWebhookDto dto) {
+    public ResponseEntity<ApiResponse<Void>> webhook(@Valid @RequestBody PaymentWebhookDto dto) {
         paymentService.handleWebhook(dto);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .code(200).message("OK").build());

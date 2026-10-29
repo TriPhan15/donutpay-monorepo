@@ -10,6 +10,7 @@ import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.*;
+import vn.edu.huit.finance.core.Exception.PaymentWebhookRejectedException;
 import vn.edu.huit.finance.core.Repository.PaymentOrderRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
@@ -17,9 +18,11 @@ import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.Payment.PaymentGateway;
 import vn.edu.huit.finance.core.Service.Payment.PaymentGatewayRegistry;
+import vn.edu.huit.finance.core.Service.Payment.RejectedWebhookAuditThrottle;
 import vn.edu.huit.finance.core.Util.HmacUtil;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,6 +57,9 @@ public class PaymentService {
     static final String AUDIT_INSUFFICIENT_BALANCE = "Cổng %s xác nhận rút %s VNĐ nhưng số dư ví không đủ, mã đơn %s";
     private static final String AUDIT_CANCELED = "Hủy đơn %s %s VNĐ, mã đơn %s";
     private static final String AUDIT_WEBHOOK_REJECTED = "Chữ ký webhook không khớp, đơn được nhắc tới: %s";
+    private static final String MSG_WEBHOOK_REJECTED = "Sai chữ ký webhook (HMAC không khớp)";
+
+    private final RejectedWebhookAuditThrottle rejectedWebhooks = new RejectedWebhookAuditThrottle(Clock.systemUTC());
 
     @Transactional
     public Map<String, Object> createOrder(CreatePaymentRequestDto req, Long userId) {
@@ -110,10 +116,15 @@ public class PaymentService {
                 + dto.getResultCode() + "|" + dto.getAmount().toPlainString();
         if (!HmacUtil.verify(raw, secret, dto.getSignature())) {
             // Nobody may be named: the request proves nothing about who sent it. Recorded on its own (this transaction
-            // rolls back), with the order code it quoted, cleaned and cut like any text of an audit row.
-            eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.PAYMENT_WEBHOOK_REJECTED,
-                    AuditActor.unauthenticated(null), null, String.format(AUDIT_WEBHOOK_REJECTED, dto.getOrderCode())));
-            throw new RuntimeException("Sai chu ky webhook (HMAC khong khop)");
+            // rolls back), with the order code it quoted, cleaned and cut like any text of an audit row. Throttled, since
+            // anybody can send one: the same order code once per window, and a ceiling on all of them.
+            if (rejectedWebhooks.shouldRecord(dto.getOrderCode())) {
+                eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.PAYMENT_WEBHOOK_REJECTED,
+                        AuditActor.unauthenticated(null), null, String.format(AUDIT_WEBHOOK_REJECTED, dto.getOrderCode())));
+            } else {
+                log.warn("Webhook rejected (bad signature), audit row throttled, orderCode={}", dto.getOrderCode());
+            }
+            throw new PaymentWebhookRejectedException(MSG_WEBHOOK_REJECTED);
         }
 
         // Khóa đơn đến hết giao dịch: webhook phát lại đồng thời phải chờ rồi thấy đơn đã chốt.
