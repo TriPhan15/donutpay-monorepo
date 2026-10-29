@@ -850,11 +850,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get savingsTitle => 'Sổ tiết kiệm';
 
   @override
-  String savingsLoadFailed(String reason) {
-    return 'Không tải được sổ tiết kiệm. $reason';
-  }
-
-  @override
   String savingsDeleteFailed(String reason) {
     return 'Không xóa được mục tiêu. $reason';
   }
@@ -881,21 +876,7 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get savingsAddTitle => 'Thêm mục tiêu tiết kiệm';
-
-  @override
-  String get savingsAdd => 'Thêm';
-
-  @override
   String get savingsGoalName => 'Tên mục tiêu';
-
-  @override
-  String get savingsTargetAmount => 'Số tiền mục tiêu (₫)';
-
-  @override
-  String savingsEditTitle(String title) {
-    return 'Sửa mục tiêu $title';
-  }
 
   @override
   String get ledgerSavingsManagedByGoal =>
@@ -913,21 +894,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String savingsTarget(String amount) {
     return 'Mục tiêu: $amount';
   }
-
-  @override
-  String get savingsAddGoalAction => 'Thêm\nmục tiêu';
-
-  @override
-  String get savingsGoalList => 'Danh sách mục tiêu';
-
-  @override
-  String get savingsEmpty => 'Chưa có mục tiêu nào.';
-
-  @override
-  String get savingsEmptyHint => 'Nhấn \"+\" để tạo mục tiêu tiết kiệm.';
-
-  @override
-  String get savingsUpdate => 'Cập nhật';
 
   @override
   String get commonSessionExpiredTitle => 'Phiên đăng nhập hết hạn';
@@ -1918,36 +1884,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get categorySavings => 'Tiết kiệm';
 
   @override
-  String get savingsTargetDateField => 'Ngày đạt mục tiêu';
-
-  @override
-  String get savingsTargetDateAdd => 'Thêm ngày đạt mục tiêu (không bắt buộc)';
-
-  @override
   String get savingsTargetDateClear => 'Bỏ ngày đạt mục tiêu';
 
   @override
-  String savingsTargetDateShown(String date) {
-    return 'Ngày đạt mục tiêu: $date';
-  }
-
-  @override
   String get savingsContribute => 'Góp tiền';
-
-  @override
-  String savingsContributeTitle(String title) {
-    return 'Góp tiền: $title';
-  }
-
-  @override
-  String get savingsContributeAmount => 'Số tiền góp (₫)';
-
-  @override
-  String get savingsContributeHelper =>
-      'Trừ vào số dư ví và ghi thành khoản chi \"Tiết kiệm\"';
-
-  @override
-  String get savingsContributeInvalidAmount => 'Nhập số tiền lớn hơn 0';
 
   @override
   String savingsContributeFailed(String reason) {
@@ -2303,4 +2243,140 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get statsNoMatch => 'Không có giao dịch khớp bộ lọc';
+
+  @override
+  String get savingsTabActive => 'Đang thực hiện';
+
+  @override
+  String get savingsTabDone => 'Đã xong';
+
+  @override
+  String get savingsMissing => 'Còn thiếu';
+
+  @override
+  String savingsDaysLeft(int days, String date) {
+    return 'Còn $days ngày · $date';
+  }
+
+  @override
+  String savingsDueToday(String date) {
+    return 'Hạn hôm nay · $date';
+  }
+
+  @override
+  String savingsOverdue(String date) {
+    return 'Quá hạn · $date';
+  }
+
+  @override
+  String get savingsNoDeadline => 'Không đặt hạn';
+
+  @override
+  String get savingsReached => 'Đã đạt mục tiêu';
+
+  @override
+  String get savingsEmptyActiveTitle => 'Chưa có mục tiêu đang thực hiện';
+
+  @override
+  String get savingsEmptyActiveHint => 'Nhấn + để tạo mục tiêu tiết kiệm.';
+
+  @override
+  String get savingsEmptyDoneTitle => 'Chưa có mục tiêu đã xong';
+
+  @override
+  String get savingsEmptyDoneHint => 'Mục tiêu góp đủ tiền sẽ hiện ở đây.';
+
+  @override
+  String get savingsLoadFailedTitle => 'Không tải được sổ tiết kiệm';
+
+  @override
+  String get savingsCreate => 'Thêm mục tiêu';
+
+  @override
+  String get savingsEditGoal => 'Sửa mục tiêu';
+
+  @override
+  String get savingsFormGoalCard => 'Mục tiêu';
+
+  @override
+  String get savingsFormDeadlineCard => 'Thời hạn';
+
+  @override
+  String get savingsTargetAmountLabel => 'Số tiền mục tiêu';
+
+  @override
+  String get savingsSavedLabel => 'Đã tiết kiệm';
+
+  @override
+  String get savingsSavedHint => 'Chỉ thay đổi qua Góp tiền.';
+
+  @override
+  String get savingsDeadlineLabel => 'Ngày đạt mục tiêu (không bắt buộc)';
+
+  @override
+  String get savingsDeadlinePick => 'Chọn ngày';
+
+  @override
+  String get savingsSaveGoal => 'Lưu mục tiêu';
+
+  @override
+  String savingsCreated(String title) {
+    return 'Đã thêm mục tiêu: $title';
+  }
+
+  @override
+  String savingsUpdated(String title) {
+    return 'Đã lưu mục tiêu: $title';
+  }
+
+  @override
+  String get savingsSaveFailedTitle => 'Không lưu được mục tiêu';
+
+  @override
+  String get savingsContributeAmountLabel => 'Số tiền góp';
+
+  @override
+  String savingsContributeAddition(String saved, String added) {
+    return '$saved + $added =';
+  }
+
+  @override
+  String savingsAmountsOf(String saved, String target) {
+    return '$saved / $target';
+  }
+
+  @override
+  String get savingsSuggestedBadge => 'Gợi ý';
+
+  @override
+  String savingsSuggestionHint(String amount, String date) {
+    return 'Gợi ý: góp $amount mỗi tháng để kịp hạn $date.';
+  }
+
+  @override
+  String savingsWalletLine(String balance) {
+    return 'Trừ từ ví (số dư $balance) và ghi thành khoản chi \"Tiết kiệm\".';
+  }
+
+  @override
+  String get savingsWalletLineNoBalance =>
+      'Trừ từ ví và ghi thành khoản chi \"Tiết kiệm\".';
+
+  @override
+  String savingsContributeButton(String amount) {
+    return 'Góp $amount';
+  }
+
+  @override
+  String savingsReloadFailed(String reason) {
+    return 'Không tải lại được sổ tiết kiệm. $reason';
+  }
+
+  @override
+  String get savingsNoTarget => 'Chưa đặt số tiền';
+
+  @override
+  String savingsOverfillHint(String missing) {
+    return 'Mục tiêu chỉ còn thiếu $missing. Phần dư vẫn được góp vào mục tiêu.';
+  }
 }

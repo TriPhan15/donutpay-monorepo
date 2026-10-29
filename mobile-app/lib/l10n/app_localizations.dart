@@ -1652,12 +1652,6 @@ abstract class AppLocalizations {
   /// **'Savings'**
   String get savingsTitle;
 
-  /// Snackbar when the savings cannot be loaded; reason is the error text.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not load your savings. {reason}'**
-  String savingsLoadFailed(String reason);
-
   /// Snackbar when a goal cannot be deleted; reason is the error text.
   ///
   /// In en, this message translates to:
@@ -1694,35 +1688,11 @@ abstract class AppLocalizations {
   /// **'Delete this goal? The {amount} contributed will be refunded to your wallet.'**
   String savingsDeleteConfirmRefund(String amount);
 
-  /// Title of the add goal dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a savings goal'**
-  String get savingsAddTitle;
-
-  /// Submit button of the add goal dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Add'**
-  String get savingsAdd;
-
   /// Field of the add goal dialog.
   ///
   /// In en, this message translates to:
   /// **'Goal name'**
   String get savingsGoalName;
-
-  /// Field of the add goal dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Target amount (₫)'**
-  String get savingsTargetAmount;
-
-  /// Title of the edit goal dialog (name, target and deadline only).
-  ///
-  /// In en, this message translates to:
-  /// **'Edit goal {title}'**
-  String savingsEditTitle(String title);
 
   /// Shown in the detail sheet of a savings contribution, which cannot be edited (nor deleted while the user has savings goals).
   ///
@@ -1747,36 +1717,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Target: {amount}'**
   String savingsTarget(String amount);
-
-  /// Two-line label of the add goal shortcut.
-  ///
-  /// In en, this message translates to:
-  /// **'Add\ngoal'**
-  String get savingsAddGoalAction;
-
-  /// Heading of the goal list.
-  ///
-  /// In en, this message translates to:
-  /// **'Goals'**
-  String get savingsGoalList;
-
-  /// Shown when there is no goal.
-  ///
-  /// In en, this message translates to:
-  /// **'No goals yet.'**
-  String get savingsEmpty;
-
-  /// Hint under the empty goal list.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap \"+\" to create a savings goal.'**
-  String get savingsEmptyHint;
-
-  /// Button that opens the update goal dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Update'**
-  String get savingsUpdate;
 
   /// Title of the dialog shown when a form is used without a signed-in user.
   ///
@@ -3426,59 +3366,17 @@ abstract class AppLocalizations {
   /// **'Savings'**
   String get categorySavings;
 
-  /// Label of the optional target date of a goal.
-  ///
-  /// In en, this message translates to:
-  /// **'Target date'**
-  String get savingsTargetDateField;
-
-  /// Button that adds the optional target date.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a target date (optional)'**
-  String get savingsTargetDateAdd;
-
   /// Tooltip of the button that removes the target date.
   ///
   /// In en, this message translates to:
   /// **'Remove the target date'**
   String get savingsTargetDateClear;
 
-  /// Target date under a goal's name.
-  ///
-  /// In en, this message translates to:
-  /// **'Target date: {date}'**
-  String savingsTargetDateShown(String date);
-
   /// Button of a goal that moves money from the wallet into it.
   ///
   /// In en, this message translates to:
   /// **'Add money'**
   String get savingsContribute;
-
-  /// Title of the add money sheet.
-  ///
-  /// In en, this message translates to:
-  /// **'Add money: {title}'**
-  String savingsContributeTitle(String title);
-
-  /// Amount field of the add money sheet.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount (₫)'**
-  String get savingsContributeAmount;
-
-  /// Helper of the add money amount.
-  ///
-  /// In en, this message translates to:
-  /// **'Taken from your wallet and recorded as a \"Savings\" expense'**
-  String get savingsContributeHelper;
-
-  /// Toast when the add money amount is empty or zero.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter an amount greater than 0'**
-  String get savingsContributeInvalidAmount;
 
   /// Toast when a contribution fails; reason is the error text.
   ///
@@ -4055,6 +3953,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No transaction matches the filter'**
   String get statsNoMatch;
+
+  /// Savings screen toggle: goals still being funded.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get savingsTabActive;
+
+  /// Savings screen toggle: reached goals.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get savingsTabDone;
+
+  /// Caption above the amount a savings goal still misses.
+  ///
+  /// In en, this message translates to:
+  /// **'Still needed'**
+  String get savingsMissing;
+
+  /// Row of a savings goal: days to its target date, then the date.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day left} other{{days} days left}} · {date}'**
+  String savingsDaysLeft(int days, String date);
+
+  /// Row of a savings goal whose target date is today.
+  ///
+  /// In en, this message translates to:
+  /// **'Due today · {date}'**
+  String savingsDueToday(String date);
+
+  /// Row of an unfinished savings goal whose target date is past.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue · {date}'**
+  String savingsOverdue(String date);
+
+  /// Row of a savings goal without a target date.
+  ///
+  /// In en, this message translates to:
+  /// **'No target date'**
+  String get savingsNoDeadline;
+
+  /// Row of a reached savings goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal reached'**
+  String get savingsReached;
+
+  /// Empty state of the In progress tab.
+  ///
+  /// In en, this message translates to:
+  /// **'No goals in progress'**
+  String get savingsEmptyActiveTitle;
+
+  /// Empty state of the In progress tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap + to create a savings goal.'**
+  String get savingsEmptyActiveHint;
+
+  /// Empty state of the Done tab.
+  ///
+  /// In en, this message translates to:
+  /// **'No goals reached yet'**
+  String get savingsEmptyDoneTitle;
+
+  /// Empty state of the Done tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals you fully fund show up here.'**
+  String get savingsEmptyDoneHint;
+
+  /// Title of the error state of the savings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your savings'**
+  String get savingsLoadFailedTitle;
+
+  /// Title of the new goal form and tooltip of the + button.
+  ///
+  /// In en, this message translates to:
+  /// **'Add goal'**
+  String get savingsCreate;
+
+  /// Title of the goal form when editing.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit goal'**
+  String get savingsEditGoal;
+
+  /// Header of the first card of the goal form.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get savingsFormGoalCard;
+
+  /// Header of the target date card of the goal form.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline'**
+  String get savingsFormDeadlineCard;
+
+  /// Label of the target amount field.
+  ///
+  /// In en, this message translates to:
+  /// **'Target amount'**
+  String get savingsTargetAmountLabel;
+
+  /// Read-only saved amount in the goal form.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get savingsSavedLabel;
+
+  /// Why the saved amount cannot be typed in the goal form.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes only through Add money.'**
+  String get savingsSavedHint;
+
+  /// Label of the target date field.
+  ///
+  /// In en, this message translates to:
+  /// **'Target date (optional)'**
+  String get savingsDeadlineLabel;
+
+  /// Target date field without a date.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get savingsDeadlinePick;
+
+  /// Button of the goal form.
+  ///
+  /// In en, this message translates to:
+  /// **'Save goal'**
+  String get savingsSaveGoal;
+
+  /// Toast after a goal is created.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal added: {title}'**
+  String savingsCreated(String title);
+
+  /// Toast after a goal is edited.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal saved: {title}'**
+  String savingsUpdated(String title);
+
+  /// Error dialog of the goal form.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the goal'**
+  String get savingsSaveFailedTitle;
+
+  /// Label of the amount field of the Add money sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get savingsContributeAmountLabel;
+
+  /// Head card of the Add money sheet: saved amount plus the amount typed.
+  ///
+  /// In en, this message translates to:
+  /// **'{saved} + {added} ='**
+  String savingsContributeAddition(String saved, String added);
+
+  /// Saved amount over the target.
+  ///
+  /// In en, this message translates to:
+  /// **'{saved} / {target}'**
+  String savingsAmountsOf(String saved, String target);
+
+  /// Badge on the suggested quick amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested'**
+  String get savingsSuggestedBadge;
+
+  /// Line under the quick amounts when the goal has a target date.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion: add {amount} a month to reach it by {date}.'**
+  String savingsSuggestionHint(String amount, String date);
+
+  /// Add money sheet: where the money comes from.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken from your wallet (balance {balance}) and recorded as a \"Savings\" expense.'**
+  String savingsWalletLine(String balance);
+
+  /// Add money sheet when the balance could not be read.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken from your wallet and recorded as a \"Savings\" expense.'**
+  String get savingsWalletLineNoBalance;
+
+  /// Button of the Add money sheet with the amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {amount}'**
+  String savingsContributeButton(String amount);
+
+  /// Toast when a reload fails while goals are already shown; reason is the error text.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reload your savings. {reason}'**
+  String savingsReloadFailed(String reason);
+
+  /// Row of a savings goal whose target is 0.
+  ///
+  /// In en, this message translates to:
+  /// **'No amount set'**
+  String get savingsNoTarget;
+
+  /// Add money sheet when the amount typed is above what the goal misses.
+  ///
+  /// In en, this message translates to:
+  /// **'The goal only misses {missing}. The extra still goes into the goal.'**
+  String savingsOverfillHint(String missing);
 }
 
 class _AppLocalizationsDelegate
