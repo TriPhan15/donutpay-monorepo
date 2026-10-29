@@ -103,6 +103,8 @@ class AnalysisMeta(_CamelModel):
     min_support: float
     raw_support_bound: int
     max_weight: float
+    # Số giao dịch bị bỏ vì ngày không đọc được (spending_data.count_undated).
+    skipped_rows: int = 0
 
 
 class SpadeAnalyzeResponse(_CamelModel):
@@ -178,8 +180,12 @@ def analyze_spending(
     expenses: Sequence[Expense],
     top_n: int = DEFAULT_TOP_N,
     min_sup: float = DEFAULT_MIN_SUP,
+    skipped_rows: int = 0,
 ) -> SpadeAnalyzeResponse:
-    """Phân tích chi tiêu (CPU-bound, đồng bộ). Khoản chi đã loại tiết kiệm."""
+    """Phân tích chi tiêu (CPU-bound, đồng bộ). Khoản chi đã loại tiết kiệm.
+
+    ``skipped_rows``: số giao dịch người gọi đã bỏ vì ngày sai, chỉ để báo lại trong ``meta``.
+    """
     db = weekly_database(expenses)
     weeks_with_data = len(db.labels)
     categories = _categories(db.expenses)
@@ -240,5 +246,6 @@ def analyze_spending(
             min_support=min_sup,
             raw_support_bound=raw_bound,
             max_weight=_round(max_weight),
+            skipped_rows=skipped_rows,
         ),
     )

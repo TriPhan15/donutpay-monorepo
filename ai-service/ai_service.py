@@ -15,7 +15,7 @@ import logging
 from starlette.concurrency import run_in_threadpool
 
 from spending_analysis import DEFAULT_TOP_N, SpadeAnalyzeResponse, analyze_spending
-from spending_data import MAX_AMOUNT, MAX_TRANSACTIONS, TransactionIn, expenses_from
+from spending_data import MAX_AMOUNT, MAX_TRANSACTIONS, TransactionIn, count_undated, expenses_from
 from wcm_spade import DEFAULT_MIN_SUP
 import budget_advisor
 import rfm_segmentation
@@ -225,13 +225,16 @@ class RecommendRequest(BaseModel):
 @app.post("/spade/analyze", response_model=SpadeAnalyzeResponse)
 def analyze_patterns(req: SpadeRequest) -> SpadeAnalyzeResponse:
     """Phân tích chi tiêu 26 tuần (CPU-bound nên dùng def, chạy trong threadpool)."""
+    skipped = count_undated(req.transactions)
+    if skipped:
+        logger.warning("spade/analyze: bỏ %d giao dịch có ngày không đọc được", skipped)
     return analyze_spending(
-        expenses_from(req.transactions), top_n=req.top_n, min_sup=req.min_sup_factor
+        expenses_from(req.transactions), top_n=req.top_n, min_sup=req.min_sup_factor, skipped_rows=skipped
     )
 
 
-@app.post("/spade/recommend")
-def recommend_budget(req: RecommendRequest):
+@app.post("/spade/recommend", response_model=budget_advisor.RecommendResponse)
+def recommend_budget(req: RecommendRequest) -> Dict[str, Any]:
     logger.info("BudgetAdvisor nhận %d giao dịch", len(req.transactions))
     try:
         result = budget_advisor.advise(
@@ -270,8 +273,18 @@ class AdminSegmentRequest(BaseModel):
     users: List[UserRFM] = Field(max_length=MAX_RFM_USERS)
 
 
-@app.post("/admin/segment")
-def segment_users(req: AdminSegmentRequest):
+class SegmentOut(BaseModel):
+    user_id: str
+    label: str
+    rfm: str
+
+
+class AdminSegmentResponse(BaseModel):
+    segments: List[SegmentOut]
+
+
+@app.post("/admin/segment", response_model=AdminSegmentResponse)
+def segment_users(req: AdminSegmentRequest) -> Dict[str, Any]:
     logger.info("Đang phân lớp %d khách hàng RFM...", len(req.users))
     results = rfm_segmentation.segment_users(
         [RfmInput(u.user_id, u.recency, u.frequency, u.monetary) for u in req.users]

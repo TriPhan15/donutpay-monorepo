@@ -53,6 +53,15 @@ def is_savings(category: str) -> bool:
     return _nfc(category) == _nfc(SAVINGS_CATEGORY)
 
 
+def count_undated(txs: Iterable[TransactionIn]) -> int:
+    """Số giao dịch có ngày không đọc được, bị expenses_from/incomes_from bỏ qua.
+
+    Không trả 422 cho các dòng này vì APK cũ có thể đang gửi dữ liệu như vậy; số dòng bị bỏ được trả trong ``meta``
+    để app (và log) biết vì sao kết quả có thể là "không đủ dữ liệu".
+    """
+    return sum(1 for tx in txs if parse_local_date(tx.date) is None)
+
+
 def expenses_from(txs: Iterable[TransactionIn]) -> List[Expense]:
     """Expenses only, without savings and unparseable dates, sorted by day."""
     out: List[Expense] = []

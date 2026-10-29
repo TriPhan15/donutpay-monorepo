@@ -337,22 +337,28 @@ def test_analyze_rejects_out_of_range_input(bad):
     assert client.post("/spade/analyze", json=bad).status_code == 422
 
 
-def test_recommend_budget(mocker):
-    """POST /spade/recommend tra ve loi khuyen lay tu budget_advisor.advise
-    (da mock), khong phu thuoc thuat toan tinh ngan sach that."""
-    fake_advice = {
-        "trends": [],
-        "tagStats": [],
+def _fake_advice(summary: str) -> dict:
+    """Dict dung hinh dang advise() tra ve (response_model cua /spade/recommend kiem no)."""
+    return {
+        "tagStats": [{"tag": "an uong", "monthlyAvg": 50000, "share": 100.0, "type": "neutral"}],
         "goal": {
             "neededMonthly": 1000000,
             "monthlyIncome": 5000000,
             "monthlyExpense": 3000000,
             "surplus": 2000000,
             "gap": -1000000,
+            "hasDeadline": True,
         },
         "recommendations": [],
-        "summary": "Đề xuất ngân sách giả lập cho kiểm thử.",
+        "summary": summary,
+        "meta": {"nMonths": 1, "firstMonth": "2026-09", "lastMonth": "2026-09", "skippedRows": 0},
     }
+
+
+def test_recommend_budget(mocker):
+    """POST /spade/recommend tra ve loi khuyen lay tu budget_advisor.advise
+    (da mock), khong phu thuoc thuat toan tinh ngan sach that."""
+    fake_advice = _fake_advice("Đề xuất ngân sách giả lập cho kiểm thử.")
     # Mock: chan ham budget_advisor.advise, ep tra ve dict loi khuyen gia
     # lap de chi kiem tra endpoint truyen/tra du lieu dung.
     mocker.patch("budget_advisor.advise", return_value=fake_advice)
@@ -429,7 +435,7 @@ def test_recommend_rejects_months_left_zero():
 
 
 def test_recommend_ignores_old_max_cut_ratio(mocker):
-    m = mocker.patch("budget_advisor.advise", return_value={"summary": "ok"})
+    m = mocker.patch("budget_advisor.advise", return_value=_fake_advice("ok"))
     r = client.post("/spade/recommend", json={"transactions": [_tx()], "max_cut_ratio": 5, "alpha": 1})
     assert r.status_code == 200
     assert "max_cut_ratio" not in m.call_args.kwargs and "alpha" not in m.call_args.kwargs
@@ -456,3 +462,23 @@ def test_admin_segment_endpoint_returns_labels_and_codes():
     {"user_id": "abc", "recency": 1, "frequency": 1, "monetary": 1}])
 def test_admin_segment_rejects_bad_users(user):
     assert client.post("/admin/segment", json={"users": [user]}).status_code == 422
+
+
+def test_analyze_and_recommend_report_rows_with_an_unreadable_date():
+    """B7: dòng ngày sai bị bỏ im lặng trước đây; nay vẫn 200 nhưng meta.skippedRows báo số dòng bị bỏ."""
+    bad = [_tx(date="31/02/2026"), _tx(date="")]
+    analyze = client.post("/spade/analyze", json={"transactions": bad})
+    assert analyze.status_code == 200 and analyze.json()["meta"]["skippedRows"] == 2
+    txs = [_tx("Ăn uống", 3_000_000, _prev_month_day(1))] + bad
+    recommend = client.post("/spade/recommend", json={"transactions": txs})
+    assert recommend.status_code == 200 and recommend.json()["meta"]["skippedRows"] == 2
+
+
+def test_recommend_and_segment_declare_their_response_models():
+    """B7: /spade/recommend va /admin/segment co response_model, ten field giu nguyen."""
+    schema = client.get("/openapi.json").json()
+    for path in ("/spade/recommend", "/admin/segment"):
+        ok = schema["paths"][path]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
+        assert "$ref" in ok, path
+    goal = schema["components"]["schemas"]["GoalOut"]["properties"]
+    assert {"neededMonthly", "monthlyIncome", "monthlyExpense", "surplus", "gap", "hasDeadline"} == set(goal)

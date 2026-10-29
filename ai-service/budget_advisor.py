@@ -5,8 +5,11 @@ from collections import defaultdict
 from datetime import date
 from typing import FrozenSet, List, Literal, Optional, Sequence, Tuple
 
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+
 from local_time import local_today
-from spending_data import TransactionIn, expenses_from, incomes_from
+from spending_data import TransactionIn, count_undated, expenses_from, incomes_from
 
 # Must match essentialExpenses in mobile-app/lib/core/constants/transaction_categories.dart
 # (the DefaultCategory names core-backend stores).
@@ -32,6 +35,52 @@ ADVICE_ERROR_MESSAGES: FrozenSet[str] = frozenset({NO_EXPENSE_MESSAGE, NOT_ENOUG
 
 class AdviceError(ValueError):
     """The request cannot be advised on; the message is one of the fixed texts above."""
+
+
+class _CamelModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+# Response của /spade/recommend: tên field (camelCase) giữ đúng như dict advise() trả về, app mobile đang đọc chúng.
+class TagStatOut(_CamelModel):
+    tag: str
+    monthly_avg: int
+    share: float
+    type: Literal["essential", "discretionary", "neutral"]
+
+
+class GoalOut(_CamelModel):
+    needed_monthly: int
+    monthly_income: int
+    monthly_expense: int
+    surplus: int
+    gap: int
+    has_deadline: bool
+
+
+class RecommendationOut(_CamelModel):
+    tag: str
+    current: int
+    suggested: int
+    delta: int
+    action: str
+    reason: str
+
+
+class AdviceMeta(_CamelModel):
+    n_months: int
+    first_month: str
+    last_month: str
+    # Số giao dịch bị bỏ vì ngày không đọc được (spending_data.count_undated).
+    skipped_rows: int = 0
+
+
+class RecommendResponse(_CamelModel):
+    tag_stats: List[TagStatOut]
+    goal: GoalOut
+    recommendations: List[RecommendationOut]
+    summary: str
+    meta: AdviceMeta
 
 
 def classify(category: str) -> Literal["essential", "discretionary", "neutral"]:
@@ -187,5 +236,6 @@ def advise(
             "nMonths": n_months,
             "firstMonth": f"{months[0][0]}-{months[0][1]:02d}",
             "lastMonth": f"{months[-1][0]}-{months[-1][1]:02d}",
+            "skippedRows": count_undated(transactions),
         },
     }
