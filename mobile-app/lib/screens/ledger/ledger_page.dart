@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/transaction_filter.dart';
@@ -255,13 +256,7 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   /// The listed transactions: the search matches through the filter, and in the calendar only those of the chosen day.
-  List<TransactionModel> get _listed {
-    final matches = _filter.apply(_searchMatches);
-    if (_view != StatsView.calendar) return matches;
-    return matches
-        .where((tx) => DateUtils.isSameDay(tx.date, _selectedDate))
-        .toList();
-  }
+  List<TransactionModel> get _listed => _filter.apply(_listSource);
 
   void _onSearchChanged(String value) {
     _searchTimer?.cancel();
@@ -359,8 +354,21 @@ class LedgerPageState extends State<LedgerPage> {
     if (picked != null) _showPeriodOf(picked);
   }
 
-  Future<void> _openFilter() async {
+  /// The search matches the list draws from: in the calendar, those of the chosen day.
+  List<TransactionModel> get _listSource {
     final matches = _searchMatches;
+    if (_view != StatsView.calendar) return matches;
+    return matches
+        .where((tx) => DateUtils.isSameDay(tx.date, _selectedDate))
+        .toList();
+  }
+
+  /// The categories measure the whole period: a filter or a search changes nothing there, which a line under them says.
+  bool get _narrowsList => _filter.isActive || _searchQuery.trim().isNotEmpty;
+
+  Future<void> _openFilter() async {
+    // "Xem n giao dịch" counts what the list will show.
+    final matches = _listSource;
     final picked = await showTransactionFilterSheet(
       context,
       initial: _filter,
@@ -463,6 +471,18 @@ class LedgerPageState extends State<LedgerPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(_gutter, 20, _gutter, 0),
                 child: _buildList(loc),
+              )
+            else if (_narrowsList)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(_gutter, 12, _gutter, 0),
+                child: Text(
+                  loc.statsCategoriesFilterHint,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: AppTextSize.secondary,
+                  ),
+                ),
               ),
           ],
         ),

@@ -669,4 +669,34 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+    'with the categories already cached the first frame shows every tile, so nothing jumps',
+    (tester) async {
+      TransactionCategories.expenseSelectable.addAll([
+        'Ăn uống',
+        'Di chuyển',
+        'Mua sắm',
+        'Hóa đơn',
+      ]);
+      tester.view.physicalSize = const Size(600, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('vi'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: EditTransactionPage(transaction: _tx()),
+        ),
+      );
+
+      expect(inGrid('Ăn uống'), findsOneWidget);
+      expect(inGrid('Di chuyển'), findsOneWidget);
+      expect(inGrid('Mua sắm'), findsOneWidget);
+      expect(inGrid('Khác'), findsOneWidget);
+      await tester.pumpAndSettle();
+    },
+  );
 }

@@ -77,6 +77,10 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     _noteController.text = _originalNote;
     _category = _original.category;
     _date = _original.date;
+    // The categories another screen already read give every tile in the first frame, so the tiles do not jump.
+    _serverCategories = List.of(
+      TransactionCategories.forType(isExpense: _original.isExpense),
+    );
     _amountController.addListener(_onFieldChanged);
     _noteController.addListener(_onFieldChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {

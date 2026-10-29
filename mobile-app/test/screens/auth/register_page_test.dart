@@ -195,4 +195,42 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  testWidgets('two quick taps on an empty form open one dialog', (
+    tester,
+  ) async {
+    await open(tester);
+
+    await tester.tap(submitButton());
+    await tester.tap(submitButton());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Thiếu thông tin'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Back waits while the account is being created, so the outcome is still shown',
+    (tester) async {
+      final answer = Completer<ResponseBody>();
+      backend.on('POST', _registerPath, (_) => answer.future);
+      await open(tester);
+      await fillIn(tester);
+
+      await tester.tap(submitButton());
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byKey(AuthFormLayout.backKey));
+      // Longer than any page transition.
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(find.byType(RegisterScreen), findsOneWidget);
+
+      answer.complete(okResponse({'id': 1}));
+      await tester.pumpAndSettle();
+      expect(find.text(_successTitle), findsOneWidget);
+      await tester.tap(find.text(_done));
+      await tester.pumpAndSettle();
+      expect(find.byType(RegisterScreen), findsNothing);
+    },
+  );
 }

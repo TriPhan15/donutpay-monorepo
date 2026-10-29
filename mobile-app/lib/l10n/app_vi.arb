@@ -664,6 +664,7 @@
   "statsTotalIncome": "Tổng thu {amount}",
   "statsTotalExpense": "Tổng chi {amount}",
   "statsNoMatch": "Không có giao dịch khớp bộ lọc",
+  "statsCategoriesFilterHint": "Lọc và tìm kiếm chỉ áp dụng cho danh sách giao dịch ở Biểu đồ và Lịch.",
   "savingsTabActive": "Đang thực hiện",
   "savingsTabDone": "Đã xong",
   "savingsMissing": "Còn thiếu",

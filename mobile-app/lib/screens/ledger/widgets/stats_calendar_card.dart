@@ -8,7 +8,7 @@ import 'package:finance_ai_app/models/ledger_stats.dart';
 
 /// The "Lịch" view of the statistics tab (T9 spec, 3.1): a Monday-first month grid, each day with its income (green,
 /// no "+") and spending (red) in compact amounts. The selected day is filled, today only outlined, future days faded.
-/// Cells grow with their text, so two amounts never overflow.
+/// An amount stays on one line and shrinks to fit a narrow cell; cells grow with a large font, so nothing overflows.
 class StatsCalendarCard extends StatelessWidget {
   const StatsCalendarCard({
     super.key,
@@ -122,6 +122,16 @@ class StatsCalendarCard extends StatelessWidget {
       fontSize: AppTextSize.caption,
       height: 1.2,
     );
+    // One line, scaled down when the cell is too narrow: "18,5 tr" never breaks into "18,5" over "tr".
+    Widget amount(double value, Color color) => FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        CurrencyHelper.formatCompactVND(value, loc),
+        maxLines: 1,
+        softWrap: false,
+        style: line(color),
+      ),
+    );
     Widget cell = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onDaySelected(day),
@@ -144,17 +154,9 @@ class StatsCalendarCard extends StatelessWidget {
               ).copyWith(fontWeight: FontWeight.w600),
             ),
             if ((dayTotals?.income ?? 0) > 0)
-              Text(
-                CurrencyHelper.formatCompactVND(dayTotals!.income, loc),
-                textAlign: TextAlign.center,
-                style: line(context.colors.successColor),
-              ),
+              amount(dayTotals!.income, context.colors.successColor),
             if ((dayTotals?.expense ?? 0) > 0)
-              Text(
-                CurrencyHelper.formatCompactVND(dayTotals!.expense, loc),
-                textAlign: TextAlign.center,
-                style: line(colors.error),
-              ),
+              amount(dayTotals!.expense, colors.error),
           ],
         ),
       ),

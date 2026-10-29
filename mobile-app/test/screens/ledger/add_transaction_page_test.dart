@@ -582,4 +582,60 @@ void main() {
       },
     );
   });
+
+  testWidgets('the close button waits while a save runs', (tester) async {
+    final answer = Completer<ResponseBody>();
+    backend.on('POST', _checkout, (_) => answer.future);
+    await openForm(tester);
+    await typeAmount(tester, '45000');
+
+    await tester.tap(find.text(_saveLabel));
+    await pumpForRequest(tester);
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await pumpForRequest(tester);
+    expect(
+      find.text(_saveLabel),
+      findsOneWidget,
+      reason: 'the form stays until the save is over',
+    );
+    expect(closed, isFalse);
+
+    answer.complete(okResponse({'transactionId': 5}));
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Xong');
+    expect(closed, isTrue);
+    expect(result, isTrue);
+  });
+
+  testWidgets('Chi → Thu → Chi keeps the category picked for the expense', (
+    tester,
+  ) async {
+    backend.on('POST', _checkout, (_) => okResponse({'transactionId': 5}));
+    await openForm(tester);
+
+    await tapText(tester, 'Di chuyển');
+    await tapText(tester, 'Thu nhập');
+    await tapText(tester, 'Chi tiêu');
+    await typeAmount(tester, '45000');
+    await tapText(tester, _saveLabel);
+    await tapText(tester, 'Xong');
+
+    expect(sentBodies().single['categoryName'], 'Di chuyển');
+  });
+
+  testWidgets(
+    'on a 320 x 568 phone with the keyboard up the form keeps room to scroll',
+    (tester) async {
+      tester.view.viewInsets = const FakeViewPadding(bottom: 260);
+      addTearDown(tester.view.resetViewInsets);
+      await openForm(tester, size: const Size(320, 568));
+
+      final scroll = find.descendant(
+        of: find.byType(AddTransactionPage),
+        matching: find.byType(Scrollable),
+      );
+      final height = tester.getSize(scroll.first).height;
+      expect(height, greaterThanOrEqualTo(150));
+    },
+  );
 }

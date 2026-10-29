@@ -154,6 +154,41 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets(
+    'the footer link draws its splash above the gradient, on its own transparent Material',
+    (tester) async {
+      await tester.pumpWidget(
+        withAppSettings(
+          AuthFormLayout.brand(
+            tagline: 't',
+            footer: AuthFooterLink(
+              question: 'Chưa có tài khoản? ',
+              action: 'Đăng ký ngay',
+              onTap: () {},
+            ),
+            child: const Text('form'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final material = tester.widget<Material>(
+        find
+            .ancestor(of: find.byType(InkWell), matching: find.byType(Material))
+            .first,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AuthFooterLink),
+          matching: find.byWidget(material),
+        ),
+        findsOneWidget,
+        reason: 'the nearest Material lies under the gradient otherwise',
+      );
+      expect(material.type, MaterialType.transparency);
+    },
+  );
+
   testWidgets('a password field hides its text until the eye is tapped', (
     tester,
   ) async {

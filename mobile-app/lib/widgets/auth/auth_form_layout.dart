@@ -233,28 +233,32 @@ class AuthFooterLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Its own see-through Material: the splash would otherwise be drawn on the Scaffold's, under the gradient.
     return Center(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Text.rich(
-            TextSpan(
-              text: question,
-              style: const TextStyle(color: BandColors.secondary),
-              children: [
-                TextSpan(
-                  text: action,
-                  style: const TextStyle(
-                    color: BandColors.primary,
-                    fontWeight: FontWeight.w700,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Text.rich(
+              TextSpan(
+                text: question,
+                style: const TextStyle(color: BandColors.secondary),
+                children: [
+                  TextSpan(
+                    text: action,
+                    style: const TextStyle(
+                      color: BandColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: AppTextSize.secondary),
             ),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: AppTextSize.secondary),
           ),
         ),
       ),

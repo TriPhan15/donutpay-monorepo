@@ -4092,6 +4092,12 @@ abstract class AppLocalizations {
   /// **'No transaction matches the filter'**
   String get statsNoMatch;
 
+  /// Under the Categories view of the statistics tab while a filter or a search is active: they do not change the category shares.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter and search only narrow the transaction list of Chart and Calendar.'**
+  String get statsCategoriesFilterHint;
+
   /// Savings screen toggle: goals still being funded.
   ///
   /// In en, this message translates to:

@@ -169,4 +169,42 @@ void main() {
       expect(find.text('Không có giao dịch khớp bộ lọc'), findsNothing);
     },
   );
+
+  testWidgets('in Lịch the filter counts the chosen day only, like the list', (
+    tester,
+  ) async {
+    await pumpLedger(tester);
+    await tap(tester, find.text('Lịch'));
+
+    await tap(tester, find.byKey(StatsHeaderBand.filterKey));
+
+    expect(find.text('Xem 1 giao dịch'), findsOneWidget);
+    expect(find.text('Xem 2 giao dịch'), findsNothing);
+  });
+
+  testWidgets(
+    'in Danh mục an active filter or search says that it narrows the list of the other views',
+    (tester) async {
+      const hint =
+          'Lọc và tìm kiếm chỉ áp dụng cho danh sách giao dịch ở Biểu đồ và Lịch.';
+      await pumpLedger(tester);
+      await tap(tester, find.text('Danh mục'));
+      expect(find.text(hint), findsNothing);
+
+      await tap(tester, find.byKey(StatsHeaderBand.filterKey));
+      await tap(tester, find.text('>500k'));
+      await tap(tester, find.text('Xem 0 giao dịch'));
+      expect(find.text(hint), findsOneWidget);
+
+      await tap(tester, find.byKey(StatsHeaderBand.filterKey));
+      await tap(tester, find.text('Đặt lại'));
+      await tap(tester, find.text('Xem 2 giao dịch'));
+      expect(find.text(hint), findsNothing);
+
+      await tap(tester, find.byKey(StatsHeaderBand.searchKey));
+      await tester.enterText(find.byType(TextField), 'a');
+      await tester.pumpAndSettle();
+      expect(find.text(hint), findsOneWidget);
+    },
+  );
 }

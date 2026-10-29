@@ -210,44 +210,48 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final colors = Theme.of(context).colorScheme;
     final imageUrl = _tx.imageUrl;
     final hasButtons = _canEdit || _canDelete;
-    return Scaffold(
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          PageBand(
-            key: TransactionDetailPage.bandKey,
-            buttonKey: TransactionDetailPage.backKey,
-            title: loc.transactionDetailTitle,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(_gutter, _gutter, _gutter, 0),
-            child: TransactionHeadCard(transaction: _tx),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(_gutter, 12, _gutter, 0),
-            child: _rowsCard(context),
-          ),
-          if (imageUrl != null && imageUrl.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(_gutter, 16, _gutter, 0),
-              child: _photo(context, imageUrl),
+    // Leaving while a send or a delete runs would hide its outcome.
+    return PopScope(
+      canPop: !_busy,
+      child: Scaffold(
+        body: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            PageBand(
+              key: TransactionDetailPage.bandKey,
+              buttonKey: TransactionDetailPage.backKey,
+              title: loc.transactionDetailTitle,
             ),
-          if (_tx.isSavingsContribution)
             Padding(
-              padding: const EdgeInsets.fromLTRB(_gutter, 16, _gutter, 0),
-              child: Text(
-                loc.ledgerSavingsManagedByGoal,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colors.onSurfaceVariant,
-                  fontSize: AppTextSize.secondary,
+              padding: const EdgeInsets.fromLTRB(_gutter, _gutter, _gutter, 0),
+              child: TransactionHeadCard(transaction: _tx),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(_gutter, 12, _gutter, 0),
+              child: _rowsCard(context),
+            ),
+            if (imageUrl != null && imageUrl.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(_gutter, 16, _gutter, 0),
+                child: _photo(context, imageUrl),
+              ),
+            if (_tx.isSavingsContribution)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(_gutter, 16, _gutter, 0),
+                child: Text(
+                  loc.ledgerSavingsManagedByGoal,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: AppTextSize.secondary,
+                  ),
                 ),
               ),
-            ),
-          const SizedBox(height: _gutter),
-        ],
+            const SizedBox(height: _gutter),
+          ],
+        ),
+        bottomNavigationBar: hasButtons ? _buttons(context) : null,
       ),
-      bottomNavigationBar: hasButtons ? _buttons(context) : null,
     );
   }
 
@@ -353,12 +357,30 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           onTap: () => _openPhoto(url),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
+            // Contain, not cover: a long receipt is shown whole, on a muted ground, and the viewer zooms in.
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: _photoMaxHeight),
               child: Image.network(
                 url,
                 width: double.infinity,
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
+                frameBuilder: (context, child, frame, _) => ColoredBox(
+                  color: colors.surfaceContainerHighest,
+                  child: child,
+                ),
+                loadingBuilder: (context, child, progress) => progress == null
+                    ? child
+                    : SizedBox(
+                        height: _photoErrorHeight,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: progress.expectedTotalBytes == null
+                                ? null
+                                : progress.cumulativeBytesLoaded /
+                                      progress.expectedTotalBytes!,
+                          ),
+                        ),
+                      ),
                 errorBuilder: (context, error, stack) => Container(
                   height: _photoErrorHeight,
                   color: colors.surfaceContainerHighest,
