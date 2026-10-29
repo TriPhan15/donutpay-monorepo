@@ -1,28 +1,25 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
-import 'package:finance_ai_app/core/theme/app_theme.dart';
-import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
+import 'package:finance_ai_app/models/home_budget_summary.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
 import 'package:finance_ai_app/screens/ledger/add_transaction_page.dart';
 import 'package:finance_ai_app/screens/notifications/notification_screen.dart';
+import 'package:finance_ai_app/screens/dashboard/widgets/home_header_band.dart';
+import 'package:finance_ai_app/widgets/common/app_state_view.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
+import 'package:finance_ai_app/screens/dashboard/widgets/home_recent_card.dart';
 import 'package:finance_ai_app/screens/profile/savings_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
-import 'package:finance_ai_app/widgets/budget/budget_section.dart';
-import 'package:finance_ai_app/widgets/notifications/notification_bell.dart';
-import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
-import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
+import 'package:finance_ai_app/widgets/budget/home_budget_band.dart';
 
 class DashboardPage extends StatefulWidget {
   /// Shows a transaction (by its server id) on the Ledger tab: where a transaction notification and a tapped recent
@@ -38,9 +35,6 @@ class DashboardPage extends StatefulWidget {
 
 class DashboardPageState extends State<DashboardPage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
-  /// How many budgets the home screen lists; the rest is one line saying how many more there are.
-  static const int _maxBudgetCards = 3;
-
   @override
   bool get wantKeepAlive => true;
 
@@ -57,10 +51,15 @@ class DashboardPageState extends State<DashboardPage>
 
   bool _isLoading = true;
 
-  /// Hidden each time the home screen is created (sign-in, app start); the eye icon shows it. Never saved.
-  bool _balanceHidden = true;
+  /// Set once a load has succeeded: later loads keep the page on screen instead of the spinner, and a later failure
+  /// keeps what is shown.
+  bool _hasData = false;
+
+  /// The first load failed: the page offers to try again instead of showing zeros.
+  bool _loadFailed = false;
+
   UserModel? _user;
-  List<BudgetProgress> _budgetProgress = [];
+  HomeBudgetSummary? _budgetSummary;
   bool _budgetsFailed = false;
 
   /// The wallet balance the server keeps (User.walletBalance, sent as walletBalance); rows not yet synced are not in it.
@@ -68,8 +67,6 @@ class DashboardPageState extends State<DashboardPage>
   double _pendingBalanceChange = 0;
   double _monthlyIncome = 0;
   double _monthlyExpense = 0;
-  double _prevMonthlyIncome = 0;
-  double _prevMonthlyExpense = 0;
   List<TransactionModel> _recentTransactions = [];
 
   @override
@@ -100,7 +97,13 @@ class DashboardPageState extends State<DashboardPage>
 
   Future<void> _load() async {
     final request = ++_loadRequest;
-    setState(() => _isLoading = true);
+    // Only a page with nothing to show yet is replaced by the spinner; a reload keeps it.
+    if (!_hasData) {
+      setState(() {
+        _isLoading = true;
+        _loadFailed = false;
+      });
+    }
     final userId = SessionService.currentUserId;
     if (userId == null) {
       setState(() => _isLoading = false);
@@ -110,7 +113,6 @@ class DashboardPageState extends State<DashboardPage>
     unawaited(_refreshUnreadNotifications());
 
     final now = DateTime.now();
-    final prevMonth = DateTime(now.year, now.month - 1);
 
     try {
       // Started together: the budgets do not depend on the summary, so the wait is that of the slower request.
@@ -128,28 +130,13 @@ class DashboardPageState extends State<DashboardPage>
       final pendingChange =
           summary[AppRepository.summaryPendingWalletChange] as double;
 
-      double mInc = 0, mExp = 0, pInc = 0, pExp = 0;
-
-      for (var tx in txs) {
-        if (tx.isExpense) {
-          if (tx.countsAsSpending &&
-              tx.date.year == now.year &&
-              tx.date.month == now.month) {
-            mExp += tx.amount;
-          }
-          if (tx.countsAsSpending &&
-              tx.date.year == prevMonth.year &&
-              tx.date.month == prevMonth.month) {
-            pExp += tx.amount;
-          }
-        } else {
-          if (tx.date.year == now.year && tx.date.month == now.month) {
-            mInc += tx.amount;
-          }
-          if (tx.date.year == prevMonth.year &&
-              tx.date.month == prevMonth.month) {
-            pInc += tx.amount;
-          }
+      double mInc = 0, mExp = 0;
+      for (final tx in txs) {
+        if (tx.date.year != now.year || tx.date.month != now.month) continue;
+        if (!tx.isExpense) {
+          mInc += tx.amount;
+        } else if (tx.countsAsSpending) {
+          mExp += tx.amount;
         }
       }
 
@@ -161,18 +148,20 @@ class DashboardPageState extends State<DashboardPage>
 
       setState(() {
         _user = summary[AppRepository.summaryUser];
-        _budgetProgress = budgetProgress;
-        _budgetsFailed = budgets == null;
+        // Budgets failing on a reload keep the band that was shown, like the rest of the page.
+        if (budgets != null || !_hasData) {
+          _budgetSummary = HomeBudgetSummary.from(budgetProgress, now);
+          _budgetsFailed = budgets == null;
+        }
 
         _currentBalance = balance;
         _pendingBalanceChange = pendingChange;
         _monthlyIncome = mInc;
         _monthlyExpense = mExp;
-        _prevMonthlyIncome = pInc;
-        _prevMonthlyExpense = pExp;
         _recentTransactions = txs.take(5).toList();
 
         _isLoading = false;
+        _hasData = true;
       });
       // Not awaited: a dialog waiting for the user must not keep the pull-to-refresh spinner turning.
       unawaited(
@@ -185,7 +174,10 @@ class DashboardPageState extends State<DashboardPage>
     } catch (e) {
       debugPrint('Lỗi tải trang chủ: $e');
       if (!mounted || request != _loadRequest) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+        _loadFailed = !_hasData;
+      });
     }
   }
 
@@ -224,440 +216,74 @@ class DashboardPageState extends State<DashboardPage>
     if (mounted) unawaited(_refreshUnreadNotifications());
   }
 
-  /// [amount] in the language on screen, with a minus in front only when it is below zero.
-  String _formatCurrency(double amount) =>
-      CurrencyHelper.formatVND(amount, context.loc, showSign: amount < 0);
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
     if (_isLoading) {
-      return _buildLoadingScreen(colors);
+      return const Center(child: AppStateView.loading());
+    }
+    if (_loadFailed) {
+      return Center(
+        child: AppStateView.error(
+          title: loc.dashboardLoadFailedTitle,
+          message: loc.dashboardLoadFailedMessage,
+          onRetry: _load,
+        ),
+      );
     }
 
-    return Stack(
-      children: [
-        _buildBackgroundGlow(colors),
-        SafeArea(
-          // No colours of its own: the spinner takes the primary colour and the surface of the theme.
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      _buildHeader(colors),
-                      if (_budgetProgress.isNotEmpty || _budgetsFailed)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                          // The whole block, any of its bars included, leads to the budget screen.
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: _openBudgetScreen,
-                            child: BudgetSection(
-                              progresses: _budgetProgress,
-                              loadFailed: _budgetsFailed,
-                              maxItems: _maxBudgetCards,
-                              titleSize: 18,
-                              onManage: _openBudgetScreen,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 24),
-                      _buildUtilityGrid(colors),
-                      const SizedBox(height: 24),
-                      _buildRecentTransactions(colors),
-                    ]),
+    // The band runs up under the status bar and keeps its content below it itself.
+    return SafeArea(
+      top: false,
+      // No colours of its own: the spinner takes the primary colour and the surface of the theme.
+      child: RefreshIndicator(
+        onRefresh: _load,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 100),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  HomeHeaderBand(
+                    userName: _user?.fullName ?? loc.defaultUserName,
+                    balance: _currentBalance,
+                    pendingChange: _pendingBalanceChange,
+                    monthIncome: _monthlyIncome,
+                    monthExpense: _monthlyExpense,
+                    unreadNotifications: _unreadNotifications,
+                    onOpenNotifications: _openNotifications,
+                    onAddTransaction: _openAddTransaction,
+                    onScanReceipt: widget.onScanReceipt,
+                    onOpenBudgets: _openBudgetScreen,
+                    onOpenSavings: () => _navigateTo(const SavingsPage()),
+                    onOpenTransaction: widget.onOpenTransaction,
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoadingScreen(ColorScheme colors) {
-    final skeleton = colors.onSurfaceVariant.withValues(alpha: 0.15);
-    return Stack(
-      children: [
-        _buildBackgroundGlow(colors),
-        SafeArea(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0.3, end: 0.8),
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeInOut,
-            builder: (context, opacity, child) {
-              return Opacity(opacity: opacity, child: child);
-            },
-            onEnd: () {
-              if (mounted) setState(() {});
-            },
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 32, top: 10),
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildSkeletonBox(
-                            skeleton,
-                            width: 80,
-                            height: 14,
-                            borderRadius: 4,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSkeletonBox(
-                            skeleton,
-                            width: 150,
-                            height: 22,
-                            borderRadius: 6,
-                          ),
-                        ],
-                      ),
-                      _buildSkeletonBox(
-                        skeleton,
-                        width: 48,
-                        height: 48,
-                        shape: BoxShape.circle,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                _buildSkeletonBox(
-                  skeleton,
-                  height: 180,
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  borderRadius: 24,
-                ),
-                const SizedBox(height: 32),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSkeletonBox(
-                        skeleton,
-                        width: 100,
-                        height: 20,
-                        borderRadius: 6,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(
-                          4,
-                          (_) => Column(
-                            children: [
-                              _buildSkeletonBox(
-                                skeleton,
-                                width: 56,
-                                height: 56,
-                                borderRadius: 16,
-                              ),
-                              const SizedBox(height: 8),
-                              _buildSkeletonBox(
-                                skeleton,
-                                width: 50,
-                                height: 12,
-                                borderRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSkeletonBox(
-                        skeleton,
-                        width: 160,
-                        height: 20,
-                        borderRadius: 6,
-                      ),
-                      const SizedBox(height: 16),
-                      ...List.generate(
-                        4,
-                        (_) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              _buildSkeletonBox(
-                                skeleton,
-                                width: 48,
-                                height: 48,
-                                borderRadius: 16,
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildSkeletonBox(
-                                      skeleton,
-                                      width: double.infinity,
-                                      height: 16,
-                                      borderRadius: 4,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    _buildSkeletonBox(
-                                      skeleton,
-                                      width: 100,
-                                      height: 12,
-                                      borderRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              _buildSkeletonBox(
-                                skeleton,
-                                width: 80,
-                                height: 20,
-                                borderRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSkeletonBox(
-    Color color, {
-    double? width,
-    double? height,
-    EdgeInsetsGeometry? margin,
-    BoxShape shape = BoxShape.rectangle,
-    double borderRadius = 20,
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      margin: margin,
-      decoration: BoxDecoration(
-        color: color,
-        shape: shape,
-        borderRadius: shape == BoxShape.rectangle
-            ? BorderRadius.circular(borderRadius)
-            : null,
-      ),
-    );
-  }
-
-  Widget _buildBackgroundGlow(ColorScheme colors) {
-    return Positioned(
-      top: -100,
-      left: -100,
-      child: ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
-        child: Container(
-          width: 300,
-          height: 300,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: colors.primary.withValues(alpha: 0.15),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(ColorScheme colors) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.loc.dashboardGreeting,
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                      fontSize: 14,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: HomeBudgetBand(
+                      summary: _budgetSummary,
+                      loadFailed: _budgetsFailed,
+                      onOpen: _openBudgetScreen,
+                      onRetry: _load,
                     ),
                   ),
-                  Text(
-                    _user?.fullName ?? context.loc.defaultUserName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                    child: HomeRecentCard(
+                      transactions: _recentTransactions,
+                      onOpenTransaction: widget.onOpenTransaction,
+                      onSeeAll: MainTabs.opener(MainTab.ledger),
+                      onAddTransaction: _openAddTransaction,
                     ),
                   ),
-                ],
-              ),
-              CircleAvatar(
-                backgroundColor: colors.surface,
-                child: NotificationBell(
-                  unreadCount: _unreadNotifications,
-                  onPressed: _openNotifications,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildAssetsCard(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAssetsCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: AppTheme.purpleCardGradient,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.30),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                context.loc.dashboardBalance,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
-                  fontSize: 14,
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() => _balanceHidden = !_balanceHidden),
-                child: Icon(
-                  _balanceHidden
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
-                  color: Colors.white.withValues(alpha: 0.75),
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            child: Text(
-              _balanceHidden ? '••••••••' : _formatCurrency(_currentBalance),
-              key: ValueKey(_balanceHidden),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.w800,
+                ]),
               ),
             ),
-          ),
-          if (_pendingBalanceChange != 0) _buildPendingNote(),
-          const SizedBox(height: 16),
-          _buildTrendCapsule(),
-        ],
-      ),
-    );
-  }
-
-  /// Under the balance: the amount of the transactions still waiting to be sent, which the balance does not include.
-  Widget _buildPendingNote() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Text(
-        _balanceHidden
-            ? '••••••••'
-            : context.loc.dashboardPendingNotInBalance(
-                _formatCurrency(_pendingBalanceChange),
-              ),
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.75),
-          fontSize: 12,
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTrendCapsule() {
-    final curNet = _monthlyIncome - _monthlyExpense;
-    final prevNet = _prevMonthlyIncome - _prevMonthlyExpense;
-    final diff = prevNet == 0
-        ? (curNet > 0 ? 100.0 : (curNet < 0 ? -100.0 : 0.0))
-        : (curNet - prevNet) / prevNet.abs() * 100;
-    final up = diff >= 0;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                up ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                color: Colors.white,
-                size: 14,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${diff.abs().toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          context.loc.dashboardVsLastMonth,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.75),
-            fontSize: 12,
-          ),
-        ),
-      ],
     );
   }
 
@@ -670,216 +296,8 @@ class DashboardPageState extends State<DashboardPage>
     });
   }
 
-  /// Four shortcuts of the same width: add a transaction, scan a receipt, budgets, savings.
-  Widget _buildUtilityGrid(ColorScheme colors) {
-    final loc = context.loc;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            loc.profileUtilities,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildUtilityIcon(
-                colors,
-                Icons.add_circle_outline_rounded,
-                loc.addTransactionTitle,
-                // The list refreshes through dataChangedNotifier once the transaction is saved, as from the Ledger.
-                () => _navigateTo(const AddTransactionPage()),
-              ),
-              _buildUtilityIcon(
-                colors,
-                Icons.receipt_long_rounded,
-                loc.dashboardScanReceipt,
-                widget.onScanReceipt,
-              ),
-              _buildUtilityIcon(
-                colors,
-                Icons.account_balance_wallet_rounded,
-                loc.budgetTitle,
-                _openBudgetScreen,
-              ),
-              _buildUtilityIcon(
-                colors,
-                Icons.savings_rounded,
-                loc.savingsTitle,
-                () => _navigateTo(const SavingsPage()),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// One shortcut: a round tinted icon over a label of at most two lines.
-  Widget _buildUtilityIcon(
-    ColorScheme colors,
-    IconData icon,
-    String label,
-    VoidCallback? onTap,
-  ) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-          child: Column(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.10),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: colors.primary, size: 28),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.onSurfaceVariant,
-                  fontSize: 12,
-                  height: 1.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentTransactions(ColorScheme colors) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.loc.ledgerRecent,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          if (_recentTransactions.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Center(
-                child: Text(
-                  context.loc.dashboardNoTransactions,
-                  style: TextStyle(color: colors.onSurfaceVariant),
-                ),
-              ),
-            )
-          else
-            ..._recentTransactions.map(
-              (tx) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildTxItem(colors, tx),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// A transaction the server has opens in the Ledger's detail sheet, the way a notification does. One still waiting
-  /// to be sent has no server id yet, so it does not open.
-  Widget _buildTxItem(ColorScheme colors, TransactionModel tx) {
-    final serverId = int.tryParse(tx.id ?? '');
-    final openTransaction = widget.onOpenTransaction;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: InkWell(
-        onTap: serverId == null || openTransaction == null
-            ? null
-            : () => openTransaction(serverId),
-        borderRadius: BorderRadius.circular(16),
-        child: _buildTxRow(colors, tx),
-      ),
-    );
-  }
-
-  Widget _buildTxRow(ColorScheme colors, TransactionModel tx) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: tx.color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(tx.icon, color: tx.color),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                // A transaction without a note is titled with its category, shown in the app language.
-                TransactionCategories.displayName(context.loc, tx.title),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatTime(tx.date),
-                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-              ),
-              if (tx.receiptStatus != null) ...[
-                const SizedBox(height: 6),
-                ReceiptStatusBadge(status: tx.receiptStatus!),
-              ],
-              if (tx.isUnsynced) ...[
-                const SizedBox(height: 6),
-                SyncStatusBadge(status: tx.syncStatus),
-              ],
-            ],
-          ),
-        ),
-        Text(
-          '${tx.isExpense ? "- " : "+ "}${_formatCurrency(tx.amount)}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-      ],
-    );
-  }
-
-  String _formatTime(DateTime date) {
-    final loc = context.loc;
-    final now = DateTime.now();
-    final time = DateFormat('HH:mm').format(date);
-    if (DateUtils.isSameDay(date, now)) return loc.dateTodayAt(time);
-    if (DateUtils.isSameDay(date, now.subtract(const Duration(days: 1)))) {
-      return loc.dateYesterdayAt(time);
-    }
-    if (now.difference(date).inDays < 7) {
-      return DateFormat('EEEE, HH:mm', loc.localeName).format(date);
-    }
-    return DateFormat('dd/MM/yyyy, HH:mm').format(date);
-  }
+  // The list refreshes through dataChangedNotifier once the transaction is saved, as from the Ledger.
+  void _openAddTransaction() => _navigateTo(const AddTransactionPage());
 
   void _navigateTo(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));

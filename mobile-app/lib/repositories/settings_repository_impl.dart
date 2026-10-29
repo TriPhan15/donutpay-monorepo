@@ -14,11 +14,13 @@ class SettingsRepositoryImpl implements SettingsRepository {
     Locale Function() deviceLocale = _platformLocale,
   }) : _themeMode = _readThemeMode(_preferences),
        _language = _readLanguage(_preferences, deviceLocale),
-       _lastRecordedDay = _readDay(_preferences, lastRecordedDayKey);
+       _lastRecordedDay = _readDay(_preferences, lastRecordedDayKey),
+       _amountsHidden = _readBool(_preferences, amountsHiddenKey) ?? true;
 
   static const String themeModeKey = 'app_theme';
   static const String languageKey = 'app_language';
   static const String lastRecordedDayKey = 'last_recorded_day';
+  static const String amountsHiddenKey = 'amounts_hidden';
   static const String _dayPattern = 'yyyy-MM-dd';
   // With no saved choice the app follows the device's light or dark mode.
   static const ThemeMode defaultThemeMode = ThemeMode.system;
@@ -27,6 +29,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
   ThemeMode _themeMode;
   AppLanguage _language;
   DateTime? _lastRecordedDay;
+  bool _amountsHidden;
 
   @override
   ThemeMode get themeMode => _themeMode;
@@ -62,9 +65,24 @@ class SettingsRepositoryImpl implements SettingsRepository {
     return _write(lastRecordedDayKey, DateFormat(_dayPattern).format(only));
   }
 
-  Future<bool> _write(String key, String value) async {
+  @override
+  bool get amountsHidden => _amountsHidden;
+
+  @override
+  Future<bool> setAmountsHidden(bool hidden) {
+    _amountsHidden = hidden;
+    return _save(
+      amountsHiddenKey,
+      () => _preferences.setBool(amountsHiddenKey, hidden),
+    );
+  }
+
+  Future<bool> _write(String key, String value) =>
+      _save(key, () => _preferences.setString(key, value));
+
+  Future<bool> _save(String key, Future<bool> Function() write) async {
     try {
-      final saved = await _preferences.setString(key, value);
+      final saved = await write();
       if (!saved) debugPrint('Settings: the device did not save "$key".');
       return saved;
     } catch (e) {
@@ -74,6 +92,11 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   static Locale _platformLocale() => PlatformDispatcher.instance.locale;
+
+  static bool? _readBool(SharedPreferences preferences, String key) {
+    final value = preferences.get(key);
+    return value is bool ? value : null;
+  }
 
   static String? _readString(SharedPreferences preferences, String key) {
     final value = preferences.get(key);

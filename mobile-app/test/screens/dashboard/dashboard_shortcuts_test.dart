@@ -9,26 +9,29 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/add_transaction_page.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
 import 'package:finance_ai_app/screens/profile/savings_page.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
-import 'package:finance_ai_app/widgets/budget/budget_progress_card.dart';
+import 'package:finance_ai_app/widgets/budget/home_budget_band.dart';
 
 import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
+import '../../helpers/fake_settings_repository.dart';
 import '../../helpers/vnd.dart';
 
-const String _hiddenBalance = '••••••••';
+/// What every hidden amount of the band shows: the balance and the two month totals.
+const String _hidden = '••••••';
 
 /// The shortcuts of the home screen, in the order they are shown.
 const List<(IconData, String)> _shortcuts = [
   (Icons.add_circle_outline_rounded, 'Thêm giao dịch'),
   (Icons.receipt_long_rounded, 'Quét hóa đơn'),
   (Icons.account_balance_wallet_rounded, 'Ngân sách'),
-  (Icons.savings_rounded, 'Sổ tiết kiệm'),
+  (Icons.savings_rounded, 'Tiết kiệm'),
 ];
 
 Map<String, Object?> _tx(
@@ -117,13 +120,16 @@ void main() {
     WidgetTester tester, {
     ValueChanged<int>? onOpenTransaction,
     VoidCallback? onScanReceipt,
+    FakeSettingsRepository? settings,
+    Size size = const Size(600, 3000),
   }) async {
     // Tall and wide, because the test font is much wider than a real one and the rows would overflow at phone width.
-    tester.view.physicalSize = const Size(600, 3000);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       withAppSettings(
+        settings: settings,
         Scaffold(
           body: DashboardPage(
             onOpenTransaction: onOpenTransaction,
@@ -141,35 +147,74 @@ void main() {
       (tester) async {
         await showDashboard(tester);
 
-        expect(find.text(_hiddenBalance), findsOneWidget);
+        // The balance and the two month totals.
+        expect(find.text(_hidden), findsNWidgets(3));
         expect(find.text(vnd(5000000 - 45000)), findsNothing);
         expect(find.byIcon(Icons.visibility_off_rounded), findsOneWidget);
 
         await tester.tap(find.byIcon(Icons.visibility_off_rounded));
         await tester.pumpAndSettle();
         expect(find.text(vnd(5000000 - 45000)), findsOneWidget);
-        expect(find.text(_hiddenBalance), findsNothing);
+        expect(find.text('Thu 5 tr'), findsOneWidget);
+        expect(find.text('Chi 45k'), findsOneWidget);
+        expect(find.text(_hidden), findsNothing);
 
         await tester.tap(find.byIcon(Icons.visibility_rounded));
         await tester.pumpAndSettle();
-        expect(find.text(_hiddenBalance), findsOneWidget);
+        expect(find.text(_hidden), findsNWidgets(3));
       },
     );
 
-    testWidgets(
-      'is hidden again on a new home screen: the choice is not kept',
-      (tester) async {
-        await showDashboard(tester);
-        await tester.tap(find.byIcon(Icons.visibility_off_rounded));
-        await tester.pumpAndSettle();
-        expect(find.text(_hiddenBalance), findsNothing);
+    testWidgets('the choice is kept on a new home screen', (tester) async {
+      final settings = FakeSettingsRepository();
+      await showDashboard(tester, settings: settings);
+      await tester.tap(find.byIcon(Icons.visibility_off_rounded));
+      await tester.pumpAndSettle();
+      expect(settings.amountsHidden, isFalse);
 
-        await tester.pumpWidget(const SizedBox());
-        await showDashboard(tester);
+      await tester.pumpWidget(const SizedBox());
+      await showDashboard(tester, settings: settings);
 
-        expect(find.text(_hiddenBalance), findsOneWidget);
-      },
-    );
+      expect(find.text(_hidden), findsNothing);
+      expect(find.text(vnd(5000000 - 45000)), findsOneWidget);
+    });
+
+    testWidgets('the eye sits right of the balance, on its line', (
+      tester,
+    ) async {
+      await showDashboard(
+        tester,
+        settings: FakeSettingsRepository()..amountsHidden = false,
+      );
+
+      final balance = tester.getRect(find.text(vnd(5000000 - 45000)));
+      final eye = tester.getCenter(find.byIcon(Icons.visibility_rounded));
+      expect(eye.dx, greaterThan(balance.right));
+      expect(eye.dy, inInclusiveRange(balance.top, balance.bottom));
+    });
+
+    testWidgets('the eye is 30 to see but 48 to tap', (tester) async {
+      await showDashboard(tester);
+      final icon = find.byIcon(Icons.visibility_off_rounded);
+
+      expect(
+        tester.getSize(
+          find.ancestor(of: icon, matching: find.byType(Material)).first,
+        ),
+        const Size(30, 30),
+      );
+      expect(
+        tester.getSize(
+          find.ancestor(of: icon, matching: find.byType(InkWell)).first,
+        ),
+        const Size(48, 48),
+      );
+
+      // A tap just outside the visible square still toggles.
+      await tester.tapAt(tester.getCenter(icon) + const Offset(0, 21));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.visibility_rounded), findsOneWidget);
+    });
   });
 
   group('shortcuts', () {
@@ -249,7 +294,7 @@ void main() {
       expect(find.byType(BudgetScreen), findsOneWidget);
     });
 
-    testWidgets('"Sổ tiết kiệm" opens the savings page', (tester) async {
+    testWidgets('"Tiết kiệm" opens the savings page', (tester) async {
       await showDashboard(tester);
 
       await tester.tap(_shortcut(Icons.savings_rounded));
@@ -259,26 +304,24 @@ void main() {
     });
   });
 
-  group('budget block', () {
-    testWidgets('tapping a bar opens the budget screen', (tester) async {
+  group('budget band', () {
+    testWidgets('tapping the band opens the budget screen', (tester) async {
       budgets = [_monthBudget()];
       await showDashboard(tester);
-      expect(find.byType(BudgetProgressCard), findsOneWidget);
+      expect(find.byType(HomeBudgetBand), findsOneWidget);
 
-      await tester.tap(find.byType(BudgetProgressCard));
+      await tester.tap(find.text('4%'));
       await tester.pumpAndSettle();
 
       expect(find.byType(BudgetScreen), findsOneWidget);
     });
 
-    testWidgets('tapping the title of the block opens the budget screen', (
+    testWidgets('with no budget the band invites and opens the budget screen', (
       tester,
     ) async {
-      budgets = [_monthBudget()];
       await showDashboard(tester);
 
-      // "Ngân sách" is both the block title and a shortcut label: the title is the first one, above the shortcuts.
-      await tester.tap(find.text('Ngân sách').first);
+      await tester.tap(find.text('Đặt ngân sách tháng này'));
       await tester.pumpAndSettle();
 
       expect(find.byType(BudgetScreen), findsOneWidget);
@@ -297,6 +340,27 @@ void main() {
       await tester.tap(find.text('Lương tháng'));
       await tester.pumpAndSettle();
       expect(opened, [7, 8]);
+    });
+
+    testWidgets('"Xem tất cả" shows the ledger tab', (tester) async {
+      final shown = <MainTab>[];
+      void show(MainTab tab) => shown.add(tab);
+      MainTabs.attach(show);
+      addTearDown(() => MainTabs.detach(show));
+      await showDashboard(tester);
+
+      await tester.tap(find.text('Xem tất cả'));
+      await tester.pumpAndSettle();
+
+      expect(shown, [MainTab.ledger]);
+    });
+
+    testWidgets('without a MainScaffold "Xem tất cả" is not shown', (
+      tester,
+    ) async {
+      await showDashboard(tester);
+
+      expect(find.text('Xem tất cả'), findsNothing);
     });
   });
 }

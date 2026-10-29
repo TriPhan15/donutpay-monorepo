@@ -369,6 +369,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String currencyThousandShort(String amount) {
+    return '${amount}K';
+  }
+
+  @override
+  String currencyMillionShort(String amount) {
+    return '${amount}M';
+  }
+
+  @override
+  String currencyBillionShort(String amount) {
+    return '${amount}B';
+  }
+
+  @override
   String get weekdayShortMon => 'Mon';
 
   @override
@@ -1553,7 +1568,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardGreeting => 'Hello,';
 
   @override
-  String get dashboardBalance => 'Current balance';
+  String get dashboardBalance => 'Balance';
 
   @override
   String dashboardPendingNotInBalance(String amount) {
@@ -1561,7 +1576,77 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dashboardVsLastMonth => 'vs. last month';
+  String dashboardMonthIncome(String amount) {
+    return 'In $amount';
+  }
+
+  @override
+  String dashboardMonthExpense(String amount) {
+    return 'Out $amount';
+  }
+
+  @override
+  String get dashboardShowAmounts => 'Show amounts';
+
+  @override
+  String get dashboardHideAmounts => 'Hide amounts';
+
+  @override
+  String get dashboardSavingsShort => 'Savings';
+
+  @override
+  String homeBudgetLeft(String amount, int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
+    return '$amount left for $_temp0';
+  }
+
+  @override
+  String homeBudgetOver(String amount) {
+    return 'Over by $amount';
+  }
+
+  @override
+  String homeBudgetCategoryOver(String category, String amount) {
+    return '$category is over by $amount';
+  }
+
+  @override
+  String homeBudgetCategoryNear(String category, int percent) {
+    return '$category has used $percent%';
+  }
+
+  @override
+  String get homeBudgetView => 'View';
+
+  @override
+  String get homeBudgetEmptyTitle => 'Set this month\'s budget';
+
+  @override
+  String get homeBudgetEmptyHint => 'See how much is left for each day';
+
+  @override
+  String get homeBudgetSet => 'Set';
+
+  @override
+  String get homeBudgetFailed => 'Couldn\'t load budgets';
+
+  @override
+  String get dashboardRecent => 'Recent';
+
+  @override
+  String get dashboardSeeAll => 'See all';
+
+  @override
+  String get dashboardLoadFailedTitle => 'Couldn\'t load the home screen';
+
+  @override
+  String get dashboardLoadFailedMessage =>
+      'Check the connection and try again.';
 
   @override
   String get dashboardNoTransactions => 'No transactions yet.';

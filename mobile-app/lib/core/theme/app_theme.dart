@@ -125,12 +125,6 @@ class AppTheme {
     boxShadow: softShadow,
   );
 
-  static const LinearGradient purpleCardGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [gradientStart, gradientEnd],
-  );
-
   static const LinearGradient darkCardGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,

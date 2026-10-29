@@ -365,6 +365,21 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String currencyThousandShort(String amount) {
+    return '${amount}k';
+  }
+
+  @override
+  String currencyMillionShort(String amount) {
+    return '$amount tr';
+  }
+
+  @override
+  String currencyBillionShort(String amount) {
+    return '$amount tỷ';
+  }
+
+  @override
   String get weekdayShortMon => 'T2';
 
   @override
@@ -1523,7 +1538,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get dashboardGreeting => 'Xin chào,';
 
   @override
-  String get dashboardBalance => 'Số dư hiện tại';
+  String get dashboardBalance => 'Số dư';
 
   @override
   String dashboardPendingNotInBalance(String amount) {
@@ -1531,7 +1546,70 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get dashboardVsLastMonth => 'so với tháng trước';
+  String dashboardMonthIncome(String amount) {
+    return 'Thu $amount';
+  }
+
+  @override
+  String dashboardMonthExpense(String amount) {
+    return 'Chi $amount';
+  }
+
+  @override
+  String get dashboardShowAmounts => 'Hiện số tiền';
+
+  @override
+  String get dashboardHideAmounts => 'Ẩn số tiền';
+
+  @override
+  String get dashboardSavingsShort => 'Tiết kiệm';
+
+  @override
+  String homeBudgetLeft(String amount, int days) {
+    return 'Còn $amount cho $days ngày';
+  }
+
+  @override
+  String homeBudgetOver(String amount) {
+    return 'Đã vượt $amount';
+  }
+
+  @override
+  String homeBudgetCategoryOver(String category, String amount) {
+    return '$category đã vượt $amount';
+  }
+
+  @override
+  String homeBudgetCategoryNear(String category, int percent) {
+    return '$category đã dùng $percent%';
+  }
+
+  @override
+  String get homeBudgetView => 'Xem';
+
+  @override
+  String get homeBudgetEmptyTitle => 'Đặt ngân sách tháng này';
+
+  @override
+  String get homeBudgetEmptyHint => 'Biết mỗi ngày còn tiêu được bao nhiêu';
+
+  @override
+  String get homeBudgetSet => 'Đặt';
+
+  @override
+  String get homeBudgetFailed => 'Chưa tải được ngân sách';
+
+  @override
+  String get dashboardRecent => 'Gần đây';
+
+  @override
+  String get dashboardSeeAll => 'Xem tất cả';
+
+  @override
+  String get dashboardLoadFailedTitle => 'Chưa tải được trang chủ';
+
+  @override
+  String get dashboardLoadFailedMessage => 'Kiểm tra kết nối rồi thử lại.';
 
   @override
   String get dashboardNoTransactions => 'Chưa có giao dịch nào.';

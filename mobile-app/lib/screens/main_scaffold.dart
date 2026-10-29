@@ -8,6 +8,7 @@ import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart
 import 'package:sqflite/sqflite.dart' show DatabaseException;
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
@@ -20,7 +21,6 @@ import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
-import 'package:finance_ai_app/widgets/receipt/scan_queue_banner.dart';
 
 /// What the ML Kit document scanner throws when the user closes it without scanning: not an error to show.
 const String _scannerCancelledMessage = 'Operation cancelled';
@@ -322,6 +322,8 @@ class _MainScaffoldState extends State<MainScaffold>
       return _showQueueStorageError();
     }
     if (!mounted) return;
+    // The scan strip that follows the reading sits on the home tab.
+    if (accepted > 0) setState(() => _currentIndex = MainTab.home.index);
     final loc = context.loc;
     final skipped = imagePaths.length - accepted;
     if (skipped == 0) {
@@ -381,15 +383,7 @@ class _MainScaffoldState extends State<MainScaffold>
     final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
     return Scaffold(
-      body: Column(
-        children: [
-          Expanded(
-            child: IndexedStack(index: _currentIndex, children: _pages),
-          ),
-          // Above the tab bar on every tab; it takes no room while the scan queue is empty.
-          ScanQueueBanner(onOpenTransaction: _openTransaction),
-        ],
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Container(
         margin: const EdgeInsets.only(top: 30),
@@ -469,10 +463,15 @@ class _MainScaffoldState extends State<MainScaffold>
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: AppTextSize.caption,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
-              child: Text(label),
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

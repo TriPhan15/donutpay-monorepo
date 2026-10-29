@@ -39,4 +39,32 @@ void main() {
       );
     });
   });
+
+  group('CurrencyHelper.formatCompactVND', () {
+    final vi = AppLanguage.vietnamese.localizations;
+    final en = AppLanguage.english.localizations;
+
+    test(
+      'compact amounts pick the largest unit that still rounds to at least 1',
+      () {
+        expect(CurrencyHelper.formatCompactVND(850000, vi), '850k');
+        expect(CurrencyHelper.formatCompactVND(18500000, vi), '18,5 tr');
+        expect(CurrencyHelper.formatCompactVND(6020000, vi), '6,02 tr');
+        expect(CurrencyHelper.formatCompactVND(1985000, vi), '1,99 tr');
+        expect(CurrencyHelper.formatCompactVND(999999, vi), '1 tr');
+        expect(CurrencyHelper.formatCompactVND(1200000000, vi), '1,2 tỷ');
+        expect(CurrencyHelper.formatCompactVND(-400000, vi), '-400k');
+        expect(
+          CurrencyHelper.formatCompactVND(999, vi),
+          CurrencyHelper.formatVND(999, vi, showSign: false),
+        );
+        expect(CurrencyHelper.formatCompactVND(18500000, en), '18.5M');
+        expect(CurrencyHelper.formatCompactVND(850000, en), '850K');
+      },
+    );
+
+    test('a small negative amount keeps its minus', () {
+      expect(CurrencyHelper.formatCompactVND(-999, vi), vi.currencyVnd('-999'));
+    });
+  });
 }

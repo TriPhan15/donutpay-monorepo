@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/cubits/amount_visibility_cubit.dart';
 import 'package:finance_ai_app/cubits/language_cubit.dart';
 import 'package:finance_ai_app/cubits/theme_cubit.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -17,6 +18,7 @@ Widget withAppSettings(Widget home, {SettingsRepository? settings}) {
     providers: [
       BlocProvider(create: (_) => ThemeCubit(repository)),
       BlocProvider(create: (_) => LanguageCubit(repository)),
+      BlocProvider(create: (_) => AmountVisibilityCubit(repository)),
     ],
     child: MaterialApp(
       theme: AppTheme.lightTheme,
@@ -29,3 +31,12 @@ Widget withAppSettings(Widget home, {SettingsRepository? settings}) {
     ),
   );
 }
+
+/// Gives [app] the amount visibility the home and statistics tabs read, for a test that builds its own MaterialApp
+/// instead of [withAppSettings].
+Widget withAmountVisibility(Widget app, {SettingsRepository? settings}) =>
+    BlocProvider(
+      create: (_) =>
+          AmountVisibilityCubit(settings ?? FakeSettingsRepository()),
+      child: app,
+    );

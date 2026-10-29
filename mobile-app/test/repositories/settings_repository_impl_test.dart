@@ -296,4 +296,25 @@ void main() {
       }
     });
   });
+
+  group('amounts hidden', () {
+    const key = SettingsRepositoryImpl.amountsHiddenKey;
+
+    test(
+      'amounts are hidden on a new device, and the choice survives a restart',
+      () async {
+        final prefs = await preferences();
+        expect(repository(prefs).amountsHidden, isTrue);
+
+        final saved = await repository(prefs).setAmountsHidden(false);
+
+        expect(saved, isTrue);
+        expect(repository(prefs).amountsHidden, isFalse);
+      },
+    );
+
+    test('a non-bool stored value reads as hidden', () async {
+      expect(repository(await preferences({key: 'no'})).amountsHidden, isTrue);
+    });
+  });
 }

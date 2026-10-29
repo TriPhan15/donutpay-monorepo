@@ -175,7 +175,7 @@ void main() {
 
     unread = 5;
     // The indicator arms after a pull of a quarter of the view, which is 3000 px tall here.
-    await tester.fling(find.text('Tiện ích'), const Offset(0, 1200), 1000);
+    await tester.fling(find.text('Số dư'), const Offset(0, 1200), 1000);
     await tester.pumpAndSettle();
 
     expect(countRequests(), 2);

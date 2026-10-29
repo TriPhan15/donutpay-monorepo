@@ -6,13 +6,14 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/main.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/repositories/settings_repository_impl.dart';
+import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/screens/startup/startup_splash_screen.dart';
-import 'package:finance_ai_app/screens/receipt_scanner/pending_receipts_screen.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -31,6 +32,11 @@ const List<(String, IconData)> _tabs = [
   ('AI', Icons.auto_awesome_rounded),
   ('Cá nhân', Icons.person_rounded),
 ];
+
+/// The channel image_picker talks to when no platform plugin is registered, as in a widget test.
+const MethodChannel _imagePickerChannel = MethodChannel(
+  'plugins.flutter.io/image_picker',
+);
 
 Finder _inBottomBar(Finder finder) =>
     find.descendant(of: find.byType(BottomAppBar), matching: finder);
@@ -354,9 +360,6 @@ void main() {
   group('batch receipt scan', () {
     setUp(() => signInWithSavedTheme(ThemeMode.light));
 
-    Finder inBanner(Finder finder) =>
-        find.descendant(of: find.byType(ScanQueueBanner), matching: finder);
-
     testWidgets(
       'the scan sheet adds "Quét nhiều" and "Chọn nhiều ảnh" to the single scan',
       (tester) async {
@@ -389,66 +392,98 @@ void main() {
       },
     );
 
-    testWidgets(
-      'the queue is resumed and the banner takes no room while it is empty',
-      (tester) async {
-        await openMainScaffold(tester);
-
-        expect(scanQueue.resumeCalls, 1);
-        expect(find.byType(ScanQueueBanner), findsOneWidget);
-        expect(inBanner(find.byType(SizedBox)), findsOneWidget);
-        expect(tester.getSize(find.byType(ScanQueueBanner)), Size.zero);
-        expect(inBanner(find.byType(InkWell)), findsNothing);
-        expect(inBanner(find.byType(LinearProgressIndicator)), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'the banner shows the receipt being read, then how many wait, and opens the pending list',
-      (tester) async {
-        await openMainScaffold(tester);
-
-        scanQueue.progressNotifier.value = const ScanQueueProgress(total: 3);
-        await tester.pump();
-        expect(inBanner(find.text('Đang đọc hóa đơn 1/3')), findsOneWidget);
-        final bar = tester.widget<LinearProgressIndicator>(
-          inBanner(find.byType(LinearProgressIndicator)),
-        );
-        expect(bar.value, 0);
-
-        scanQueue.progressNotifier.value = const ScanQueueProgress(
-          done: 1,
-          total: 3,
-          ready: 1,
-        );
-        await tester.pump();
-        expect(inBanner(find.text('Đang đọc hóa đơn 2/3')), findsOneWidget);
-
-        scanQueue.progressNotifier.value = const ScanQueueProgress(ready: 2);
-        await tester.pump();
-        expect(inBanner(find.text('2 hóa đơn chờ xác nhận')), findsOneWidget);
-        expect(inBanner(find.byType(LinearProgressIndicator)), findsNothing);
-
-        await tester.tap(inBanner(find.text('2 hóa đơn chờ xác nhận')));
-        await tester.pumpAndSettle();
-        expect(find.byType(PendingReceiptsScreen), findsOneWidget);
-        expect(find.text('Chờ xác nhận'), findsOneWidget);
-      },
-    );
-
-    testWidgets('switching tabs keeps the banner', (tester) async {
+    testWidgets('the queue is resumed and the strip is not below the tabs', (
+      tester,
+    ) async {
       await openMainScaffold(tester);
-      scanQueue.progressNotifier.value = const ScanQueueProgress(total: 3);
-      await tester.pump();
 
-      for (final (label, _) in _tabs.reversed) {
-        await tester.tap(_inBottomBar(find.text(label)));
-        await tester.pumpAndSettle();
-        expect(
-          inBanner(find.text('Đang đọc hóa đơn 1/3')),
-          findsOneWidget,
-          reason: label,
+      expect(scanQueue.resumeCalls, 1);
+      // The strip lives in the home band now (T9 C2), once, and nowhere under the tab bar.
+      expect(find.byType(ScanQueueBanner), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(DashboardPage),
+          matching: find.byType(ScanQueueBanner),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'queueing receipts from another tab brings the home tab to the front',
+      (tester) async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_imagePickerChannel, (call) async {
+              return call.method == 'pickMultiImage'
+                  ? ['/tmp/a.jpg', '/tmp/b.jpg']
+                  : null;
+            });
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding
+              .instance
+              .defaultBinaryMessenger
+              .setMockMethodCallHandler(_imagePickerChannel, null),
         );
+        final colors = (await openMainScaffold(tester)).colorScheme;
+        await tester.tap(_inBottomBar(find.text('Thống kê')));
+        await tester.pumpAndSettle();
+        expectSelectedTab(tester, colors, 1);
+
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Chọn nhiều ảnh'));
+        await tester.pumpAndSettle();
+
+        expect(scanQueue.enqueued, [
+          ['/tmp/a.jpg', '/tmp/b.jpg'],
+        ]);
+        expectSelectedTab(tester, colors, 0);
+      },
+    );
+
+    testWidgets('nothing queued keeps the tab that was open', (tester) async {
+      scanQueue.acceptedOf = (_) => 0;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_imagePickerChannel, (call) async {
+            return call.method == 'pickMultiImage' ? ['/tmp/a.jpg'] : null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_imagePickerChannel, null),
+      );
+      final colors = (await openMainScaffold(tester)).colorScheme;
+      await tester.tap(_inBottomBar(find.text('Thống kê')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn nhiều ảnh'));
+      await tester.pumpAndSettle();
+
+      expectSelectedTab(tester, colors, 1);
+    });
+  });
+
+  group('tab bar', () {
+    setUp(() => signInWithSavedTheme(ThemeMode.light));
+
+    testWidgets('tab labels are 12 and one line', (tester) async {
+      await openMainScaffold(tester);
+
+      for (final (label, _) in _tabs) {
+        final text = tester.widget<Text>(_inBottomBar(find.text(label)));
+        expect(text.maxLines, 1, reason: label);
+        expect(text.softWrap, isFalse, reason: label);
+        final style = tester
+            .widget<RichText>(
+              find.descendant(
+                of: _inBottomBar(find.text(label)),
+                matching: find.byType(RichText),
+              ),
+            )
+            .text
+            .style;
+        expect(style?.fontSize, AppTextSize.caption, reason: label);
       }
     });
   });

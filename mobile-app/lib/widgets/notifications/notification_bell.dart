@@ -10,6 +10,7 @@ class NotificationBell extends StatelessWidget {
     super.key,
     required this.unreadCount,
     required this.onPressed,
+    this.color,
   });
 
   /// Above this the badge stops counting and shows "99+".
@@ -17,6 +18,9 @@ class NotificationBell extends StatelessWidget {
 
   final ValueListenable<int> unreadCount;
   final VoidCallback onPressed;
+
+  /// The colour of the bell; the text colour of the theme when null.
+  final Color? color;
 
   /// The text of the badge: null (no badge) when nothing is unread, the number up to [maxShownCount], "99+" above.
   static String? badgeLabel(int count) {
@@ -32,7 +36,7 @@ class NotificationBell extends StatelessWidget {
       valueListenable: unreadCount,
       child: Icon(
         Icons.notifications_outlined,
-        color: Theme.of(context).colorScheme.onSurface,
+        color: color ?? Theme.of(context).colorScheme.onSurface,
       ),
       builder: (context, count, icon) {
         final label = badgeLabel(count);

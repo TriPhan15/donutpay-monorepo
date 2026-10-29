@@ -17,20 +17,20 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 import 'package:finance_ai_app/widgets/budget/budget_progress_card.dart';
+import 'package:finance_ai_app/widgets/budget/home_budget_band.dart';
 
+import '../../helpers/app_settings_scope.dart';
 import '../../helpers/captured_logs.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
-import '../../helpers/vnd.dart';
 
 const String _budgetsCall = 'GET /api/budgets';
 const String _warningTitle = 'Sắp chạm hạn mức ngân sách';
 const String _exceededTitle = 'Đã vượt ngân sách';
 const String _loadFailedNote =
     'Không tải được ngân sách. Kéo xuống để thử lại.';
+const String _homeBudgetFailed = 'Chưa tải được ngân sách';
 const String _emptyPeriodNote = 'Chưa có ngân sách trong kỳ này.';
-
-final DateFormat _day = DateFormat('dd/MM/yyyy');
 
 String _ymd(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
@@ -43,6 +43,9 @@ DateTime _today() {
 DateTime _monthStart() => DateTime(_today().year, _today().month, 1);
 
 DateTime _monthEnd() => DateTime(_today().year, _today().month + 1, 0);
+
+/// Today up to the last day of the month, both counted: what the home band says is left.
+int _daysLeftInMonth() => _monthEnd().day - _today().day + 1;
 
 DateTime _weekStart() => DateTime(
   _today().year,
@@ -90,20 +93,22 @@ class _Tabs {
       GlobalKey<DashboardPageState>();
   final GlobalKey<LedgerPageState> ledger = GlobalKey<LedgerPageState>();
 
-  Widget get app => MaterialApp(
-    // The bell of the home screen reads its tooltip from the app's localizations.
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    locale: const Locale('vi'),
-    home: Scaffold(
-      body: ValueListenableBuilder<int>(
-        valueListenable: index,
-        builder: (_, current, _) => IndexedStack(
-          index: current,
-          children: [
-            DashboardPage(key: dashboard),
-            LedgerPage(key: ledger),
-          ],
+  Widget get app => withAmountVisibility(
+    MaterialApp(
+      // The bell of the home screen reads its tooltip from the app's localizations.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('vi'),
+      home: Scaffold(
+        body: ValueListenableBuilder<int>(
+          valueListenable: index,
+          builder: (_, current, _) => IndexedStack(
+            index: current,
+            children: [
+              DashboardPage(key: dashboard),
+              LedgerPage(key: ledger),
+            ],
+          ),
         ),
       ),
     ),
@@ -182,12 +187,14 @@ void main() {
 
     setUp(() {
       dashboard = GlobalKey<DashboardPageState>();
-      app = MaterialApp(
-        // The bell of the home screen reads its tooltip from the app's localizations.
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('vi'),
-        home: Scaffold(body: DashboardPage(key: dashboard)),
+      app = withAmountVisibility(
+        MaterialApp(
+          // The bell of the home screen reads its tooltip from the app's localizations.
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: Scaffold(body: DashboardPage(key: dashboard)),
+        ),
       );
     });
 
@@ -207,38 +214,40 @@ void main() {
           backend.calls,
           containsAll([_budgetsCall, 'GET /api/transactions/mine']),
         );
-        expect(find.byType(BudgetProgressCard), findsOneWidget);
-        expect(find.text('${vnd(400000)} / ${vnd(1000000)}'), findsOneWidget);
+        expect(find.byType(HomeBudgetBand), findsOneWidget);
         expect(find.text('40%'), findsOneWidget);
+        expect(
+          find.text('Còn 600k cho ${_daysLeftInMonth()} ngày'),
+          findsOneWidget,
+        );
         expect(find.byType(Dialog), findsNothing);
       },
     );
 
-    testWidgets('lists the most used budgets first and at most three of them', (
-      tester,
-    ) async {
-      budgets = [
-        _budget(id: 1, category: 'Ăn uống'),
-        _budget(id: 2, category: 'Di chuyển'),
-        _budget(id: 3, category: 'Giải trí'),
-        _budget(id: 4, category: 'Mua sắm'),
-      ];
-      transactions = [
-        _tx(100000, id: 1, category: 'Ăn uống'), // 10%
-        _tx(700000, id: 2, category: 'Di chuyển'), // 70%
-        _tx(400000, id: 3, category: 'Giải trí'), // 40%
-        _tx(200000, id: 4, category: 'Mua sắm'), // 20%
-      ];
+    testWidgets(
+      'adds up the category budgets of the month and names the one past 80%',
+      (tester) async {
+        budgets = [
+          _budget(id: 1, category: 'Ăn uống'),
+          _budget(id: 2, category: 'Di chuyển'),
+          _budget(id: 3, category: 'Giải trí'),
+          _budget(id: 4, category: 'Mua sắm'),
+        ];
+        transactions = [
+          _tx(100000, id: 1, category: 'Ăn uống'), // 10%
+          _tx(800000, id: 2, category: 'Di chuyển'), // 80%
+          _tx(400000, id: 3, category: 'Giải trí'), // 40%
+          _tx(200000, id: 4, category: 'Mua sắm'), // 20%
+        ];
 
-      await pump(tester, app);
+        await pump(tester, app);
+        await dismissDialog(tester);
 
-      expect(find.byType(BudgetProgressCard), findsNWidgets(3));
-      expect(find.text('Ăn uống'), findsNothing);
-      expect(find.text('+1 ngân sách khác'), findsOneWidget);
-      double top(String name) => tester.getTopLeft(find.text(name)).dy;
-      expect(top('Di chuyển'), lessThan(top('Giải trí')));
-      expect(top('Giải trí'), lessThan(top('Mua sắm')));
-    });
+        // 1 500 000 of 4 000 000.
+        expect(find.text('37%'), findsOneWidget);
+        expect(find.text('Di chuyển đã dùng 80%'), findsOneWidget);
+      },
+    );
 
     testWidgets('a budget without a category counts every expense', (
       tester,
@@ -248,7 +257,6 @@ void main() {
 
       await pump(tester, app);
 
-      expect(find.text('Tất cả danh mục'), findsOneWidget);
       expect(find.text('49%'), findsOneWidget);
     });
 
@@ -271,11 +279,11 @@ void main() {
 
       await pump(tester, app);
 
+      expect(find.text('10%'), findsOneWidget);
       expect(
-        find.text('Tuần · ${_day.format(start)} – ${_day.format(end)}'),
+        find.text('Còn 900k cho ${end.difference(_today()).inDays + 1} ngày'),
         findsOneWidget,
       );
-      expect(find.text('10%'), findsOneWidget);
     });
 
     testWidgets(
@@ -345,17 +353,18 @@ void main() {
             hasLength(1),
           );
         });
-        expect(find.text(_loadFailedNote), findsOneWidget);
-        expect(find.text('Giao dịch gần đây'), findsOneWidget);
-        expect(find.byType(BudgetProgressCard), findsNothing);
+        expect(find.text(_homeBudgetFailed), findsOneWidget);
+        expect(find.text('Gần đây'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
         expect(find.byType(Dialog), findsNothing);
 
         backend.on('GET', '/api/budgets', (_) => okResponse([_budget()]));
-        dashboard.currentState!.reload();
+        // The retry of the band loads the home screen again.
+        await tester.tap(find.text('Thử lại'));
         await tester.pumpAndSettle();
 
-        expect(find.text(_loadFailedNote), findsNothing);
-        expect(find.byType(BudgetProgressCard), findsOneWidget);
+        expect(find.text(_homeBudgetFailed), findsNothing);
+        expect(find.text('85%'), findsOneWidget);
         expect(find.text(_warningTitle), findsOneWidget);
       },
     );
@@ -392,7 +401,7 @@ void main() {
     );
 
     testWidgets(
-      'when the home data itself cannot be loaded the loading state ends and the failure is logged',
+      'when the home data itself cannot be loaded the loading state ends, retry is offered and the failure is logged',
       (tester) async {
         backend.on(
           'GET',
@@ -409,7 +418,8 @@ void main() {
             hasLength(1),
           );
         });
-        expect(find.text('Xin chào,'), findsOneWidget);
+        // The page offers to try again instead of showing zeros.
+        expect(find.text('Chưa tải được trang chủ'), findsOneWidget);
         expect(find.byType(Dialog), findsNothing);
       },
     );
@@ -437,15 +447,14 @@ void main() {
     );
 
     testWidgets(
-      'without any active budget there is no budget block and no alert',
+      'without any active budget the band invites to set one and nothing alerts',
       (tester) async {
         transactions = [_tx(850000)];
 
         await pump(tester, app);
 
-        // Only the shortcut of the utility grid carries the word, there is no budget block.
-        expect(find.text('Ngân sách'), findsOneWidget);
-        expect(find.byType(BudgetProgressCard), findsNothing);
+        expect(find.text('Đặt ngân sách tháng này'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
         expect(find.byType(Dialog), findsNothing);
       },
     );
@@ -464,19 +473,19 @@ void main() {
 
       await pump(tester, app);
 
-      expect(find.byType(BudgetProgressCard), findsNothing);
+      expect(find.text('Đặt ngân sách tháng này'), findsOneWidget);
       expect(find.byType(Dialog), findsNothing);
     });
 
     testWidgets(
-      '"Quản lý" opens the budget screen and the home screen reloads when the user comes back',
+      '"Xem" opens the budget screen and the home screen reloads when the user comes back',
       (tester) async {
         budgets = [_budget()];
         transactions = [_tx(400000)];
         await pump(tester, app);
         expect(budgetRequests(), 1);
 
-        await tester.tap(find.text('Quản lý'));
+        await tester.tap(find.text('Xem'));
         await tester.pumpAndSettle();
         expect(find.byType(BudgetScreen), findsOneWidget);
         final whileOpen = budgetRequests();
@@ -848,9 +857,9 @@ void main() {
         await pump(tester, _Tabs().app);
 
         expect(
-          find.byType(BudgetProgressCard),
+          find.text('85%'),
           findsOneWidget,
-          reason: 'the home screen shows its card again, silently',
+          reason: 'the home screen shows its band again, silently',
         );
         expect(find.byType(Dialog), findsNothing);
       },

@@ -734,6 +734,24 @@ abstract class AppLocalizations {
   /// **'{amount} đ'**
   String currencyVnd(String amount);
 
+  /// A compact amount in thousands of dong, e.g. 850K.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount}K'**
+  String currencyThousandShort(String amount);
+
+  /// A compact amount in millions of dong, e.g. 18.5M.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount}M'**
+  String currencyMillionShort(String amount);
+
+  /// A compact amount in billions of dong, e.g. 1.2B.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount}B'**
+  String currencyBillionShort(String amount);
+
   /// Short name of Monday, under a chart bar.
   ///
   /// In en, this message translates to:
@@ -2814,10 +2832,10 @@ abstract class AppLocalizations {
   /// **'Hello,'**
   String get dashboardGreeting;
 
-  /// Label of the balance card.
+  /// Label of the balance on the home band.
   ///
   /// In en, this message translates to:
-  /// **'Current balance'**
+  /// **'Balance'**
   String get dashboardBalance;
 
   /// Note under the balance: the signed total of the transactions still waiting to be sent, which the balance does not include.
@@ -2826,11 +2844,113 @@ abstract class AppLocalizations {
   /// **'Excludes {amount} from transactions waiting to be sent'**
   String dashboardPendingNotInBalance(String amount);
 
-  /// After the percentage change of the month.
+  /// Pill on the home band: the income of this month, in compact form.
   ///
   /// In en, this message translates to:
-  /// **'vs. last month'**
-  String get dashboardVsLastMonth;
+  /// **'In {amount}'**
+  String dashboardMonthIncome(String amount);
+
+  /// Pill on the home band: the spending of this month, in compact form.
+  ///
+  /// In en, this message translates to:
+  /// **'Out {amount}'**
+  String dashboardMonthExpense(String amount);
+
+  /// Tooltip of the eye button while the amounts are hidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Show amounts'**
+  String get dashboardShowAmounts;
+
+  /// Tooltip of the eye button while the amounts are shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide amounts'**
+  String get dashboardHideAmounts;
+
+  /// Label of the savings shortcut on the home band.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings'**
+  String get dashboardSavingsShort;
+
+  /// Main line of the home budget band: what is left of the budget total and how many days its period still has, today included.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} left for {days, plural, =1{1 day} other{{days} days}}'**
+  String homeBudgetLeft(String amount, int days);
+
+  /// Main line of the home budget band once the total is exceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Over by {amount}'**
+  String homeBudgetOver(String amount);
+
+  /// Second line of the home budget band: the category budget exceeded the most.
+  ///
+  /// In en, this message translates to:
+  /// **'{category} is over by {amount}'**
+  String homeBudgetCategoryOver(String category, String amount);
+
+  /// Second line of the home budget band: the category budget closest to its limit, past 80%.
+  ///
+  /// In en, this message translates to:
+  /// **'{category} has used {percent}%'**
+  String homeBudgetCategoryNear(String category, int percent);
+
+  /// Button of the home budget band that opens the budget screen.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get homeBudgetView;
+
+  /// Home budget band when no budget runs today.
+  ///
+  /// In en, this message translates to:
+  /// **'Set this month\'s budget'**
+  String get homeBudgetEmptyTitle;
+
+  /// Second line of the home budget band when no budget runs today.
+  ///
+  /// In en, this message translates to:
+  /// **'See how much is left for each day'**
+  String get homeBudgetEmptyHint;
+
+  /// Button of the home budget band that opens the budget screen to set a budget.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get homeBudgetSet;
+
+  /// Home budget band when the budgets could not be loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load budgets'**
+  String get homeBudgetFailed;
+
+  /// Title of the recent transactions card on the home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get dashboardRecent;
+
+  /// Link next to the recent transactions title: opens the statistics tab.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get dashboardSeeAll;
+
+  /// Error state of the home screen when its first load failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the home screen'**
+  String get dashboardLoadFailedTitle;
+
+  /// Under the error title of the home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the connection and try again.'**
+  String get dashboardLoadFailedMessage;
 
   /// The recent transaction list is empty.
   ///

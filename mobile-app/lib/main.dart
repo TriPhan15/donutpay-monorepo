@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/cubits/amount_visibility_cubit.dart';
 import 'package:finance_ai_app/cubits/language_cubit.dart';
 import 'package:finance_ai_app/cubits/theme_cubit.dart';
 import 'package:finance_ai_app/di/injection_container.dart';
@@ -68,6 +69,9 @@ class _DonutPayAppState extends State<DonutPayApp> {
       providers: [
         BlocProvider(create: (_) => ThemeCubit(sl<SettingsRepository>())),
         BlocProvider(create: (_) => LanguageCubit(sl<SettingsRepository>())),
+        BlocProvider(
+          create: (_) => AmountVisibilityCubit(sl<SettingsRepository>()),
+        ),
       ],
       child: _DonutPayMaterialApp(
         home: _loading

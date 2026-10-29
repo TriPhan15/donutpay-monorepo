@@ -26,4 +26,11 @@ abstract class SettingsRepository {
 
   /// Keeps only the day of [day]. Same contract as [setThemeMode].
   Future<bool> setLastRecordedDay(DateTime day);
+
+  /// Whether the balance and the month totals are hidden behind dots, on the home and statistics tabs alike. True
+  /// on a new device.
+  bool get amountsHidden;
+
+  /// Same contract as [setThemeMode].
+  Future<bool> setAmountsHidden(bool hidden);
 }

@@ -54,6 +54,15 @@ class FakeSettingsRepository implements SettingsRepository {
     return _save(day);
   }
 
+  @override
+  bool amountsHidden = true;
+
+  @override
+  Future<bool> setAmountsHidden(bool hidden) {
+    amountsHidden = hidden;
+    return _save(hidden);
+  }
+
   Future<bool> _save(Object value) {
     saved.add(value);
     return pendingSave?.future ?? Future.value(saveResult);

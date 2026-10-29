@@ -16,6 +16,7 @@ import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 
+import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
 
@@ -278,11 +279,13 @@ void main() {
       await pump(
         tester,
         // The bell of the home screen reads its tooltip from the app's localizations.
-        const MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: Locale('vi'),
-          home: Scaffold(body: DashboardPage()),
+        withAmountVisibility(
+          const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: Locale('vi'),
+            home: Scaffold(body: DashboardPage()),
+          ),
         ),
       );
 

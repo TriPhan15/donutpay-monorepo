@@ -481,6 +481,33 @@
       }
     }
   },
+  "currencyThousandShort": "{amount}K",
+  "@currencyThousandShort": {
+    "description": "A compact amount in thousands of dong, e.g. 850K.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "currencyMillionShort": "{amount}M",
+  "@currencyMillionShort": {
+    "description": "A compact amount in millions of dong, e.g. 18.5M.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "currencyBillionShort": "{amount}B",
+  "@currencyBillionShort": {
+    "description": "A compact amount in billions of dong, e.g. 1.2B.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "weekdayShortMon": "Mon",
   "@weekdayShortMon": {
     "description": "Short name of Monday, under a chart bar."
@@ -2045,9 +2072,9 @@
   "@dashboardGreeting": {
     "description": "Greeting above the user name."
   },
-  "dashboardBalance": "Current balance",
+  "dashboardBalance": "Balance",
   "@dashboardBalance": {
-    "description": "Label of the balance card."
+    "description": "Label of the balance on the home band."
   },
   "dashboardPendingNotInBalance": "Excludes {amount} from transactions waiting to be sent",
   "@dashboardPendingNotInBalance": {
@@ -2058,9 +2085,116 @@
       }
     }
   },
-  "dashboardVsLastMonth": "vs. last month",
-  "@dashboardVsLastMonth": {
-    "description": "After the percentage change of the month."
+  "dashboardMonthIncome": "In {amount}",
+  "@dashboardMonthIncome": {
+    "description": "Pill on the home band: the income of this month, in compact form.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardMonthExpense": "Out {amount}",
+  "@dashboardMonthExpense": {
+    "description": "Pill on the home band: the spending of this month, in compact form.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardShowAmounts": "Show amounts",
+  "@dashboardShowAmounts": {
+    "description": "Tooltip of the eye button while the amounts are hidden."
+  },
+  "dashboardHideAmounts": "Hide amounts",
+  "@dashboardHideAmounts": {
+    "description": "Tooltip of the eye button while the amounts are shown."
+  },
+  "dashboardSavingsShort": "Savings",
+  "@dashboardSavingsShort": {
+    "description": "Label of the savings shortcut on the home band."
+  },
+  "homeBudgetLeft": "{amount} left for {days, plural, =1{1 day} other{{days} days}}",
+  "@homeBudgetLeft": {
+    "description": "Main line of the home budget band: what is left of the budget total and how many days its period still has, today included.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "homeBudgetOver": "Over by {amount}",
+  "@homeBudgetOver": {
+    "description": "Main line of the home budget band once the total is exceeded.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "homeBudgetCategoryOver": "{category} is over by {amount}",
+  "@homeBudgetCategoryOver": {
+    "description": "Second line of the home budget band: the category budget exceeded the most.",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "homeBudgetCategoryNear": "{category} has used {percent}%",
+  "@homeBudgetCategoryNear": {
+    "description": "Second line of the home budget band: the category budget closest to its limit, past 80%.",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "homeBudgetView": "View",
+  "@homeBudgetView": {
+    "description": "Button of the home budget band that opens the budget screen."
+  },
+  "homeBudgetEmptyTitle": "Set this month's budget",
+  "@homeBudgetEmptyTitle": {
+    "description": "Home budget band when no budget runs today."
+  },
+  "homeBudgetEmptyHint": "See how much is left for each day",
+  "@homeBudgetEmptyHint": {
+    "description": "Second line of the home budget band when no budget runs today."
+  },
+  "homeBudgetSet": "Set",
+  "@homeBudgetSet": {
+    "description": "Button of the home budget band that opens the budget screen to set a budget."
+  },
+  "homeBudgetFailed": "Couldn't load budgets",
+  "@homeBudgetFailed": {
+    "description": "Home budget band when the budgets could not be loaded."
+  },
+  "dashboardRecent": "Recent",
+  "@dashboardRecent": {
+    "description": "Title of the recent transactions card on the home screen."
+  },
+  "dashboardSeeAll": "See all",
+  "@dashboardSeeAll": {
+    "description": "Link next to the recent transactions title: opens the statistics tab."
+  },
+  "dashboardLoadFailedTitle": "Couldn't load the home screen",
+  "@dashboardLoadFailedTitle": {
+    "description": "Error state of the home screen when its first load failed."
+  },
+  "dashboardLoadFailedMessage": "Check the connection and try again.",
+  "@dashboardLoadFailedMessage": {
+    "description": "Under the error title of the home screen."
   },
   "dashboardNoTransactions": "No transactions yet.",
   "@dashboardNoTransactions": {
