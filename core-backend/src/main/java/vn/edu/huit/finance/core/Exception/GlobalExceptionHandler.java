@@ -11,6 +11,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -33,6 +34,7 @@ public class GlobalExceptionHandler {
     private static final String MSG_CONCURRENT_CHANGE =
             "Dữ liệu vừa được thay đổi bởi một yêu cầu khác, vui lòng tải lại rồi thử lại";
     private static final String MSG_SYSTEM_ERROR = "Hệ thống đang gặp sự cố, vui lòng thử lại sau";
+    private static final String TYPE_MISMATCH = "typeMismatch";
     private static final String MSG_UNREADABLE_BODY = "Dữ liệu gửi lên không đúng định dạng";
     private static final String MSG_PARAMETER_INVALID = "Giá trị của tham số %s không hợp lệ";
     private static final String REASON_NOT_OWNER = "Dữ liệu thuộc về người dùng khác";
@@ -61,6 +63,19 @@ public class GlobalExceptionHandler {
                     .build());
         }
         return new ModelAndView("error").addObject("errorMessage", errorMessage);
+    }
+
+    // 400: a form or query bound to a DTO with @Valid @ModelAttribute (admin pages) broke a rule. MethodArgumentNotValid
+    // (a JSON body) is a subclass and keeps its own handler above.
+    @ExceptionHandler(BindException.class)
+    public Object handleBindException(BindException ex, HttpServletRequest request) {
+        // A value that did not even convert ("abc" for a number) gets a short text of ours, not Spring's class names.
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> TYPE_MISMATCH.equals(error.getCode())
+                        ? String.format(MSG_PARAMETER_INVALID, error.getField())
+                        : error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ: " + errorMessage, request);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)

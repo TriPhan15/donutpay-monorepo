@@ -11,6 +11,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
 import vn.edu.huit.finance.core.Exception.SubscriptionPlanNotFoundException;
+import vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto;
 
 /**
  * Membership plans, for administrators only (the caller checks that). Each change and its audit row, naming the
@@ -35,7 +36,7 @@ public class SubscriptionPlanService {
     private AuditLogService auditLogService;
 
     @Transactional
-    public SubscriptionPlan createPlan(SubscriptionPlan values) {
+    public SubscriptionPlan createPlan(SubscriptionPlanRequestDto values) {
         SubscriptionPlan plan = new SubscriptionPlan();
         copyFields(values, plan);
         plan.setActive(true);
@@ -47,7 +48,7 @@ public class SubscriptionPlanService {
     }
 
     @Transactional
-    public SubscriptionPlan updatePlan(Long planId, SubscriptionPlan values) {
+    public SubscriptionPlan updatePlan(Long planId, SubscriptionPlanRequestDto values) {
         SubscriptionPlan plan = findPlan(planId);
         copyFields(values, plan);
         SubscriptionPlan updated = subscriptionPlanRepository.save(plan);
@@ -85,7 +86,7 @@ public class SubscriptionPlanService {
         });
     }
 
-    private static void copyFields(SubscriptionPlan from, SubscriptionPlan to) {
+    private static void copyFields(SubscriptionPlanRequestDto from, SubscriptionPlan to) {
         to.setPlanName(from.getPlanName());
         to.setPrice(from.getPrice());
         to.setDurationDays(from.getDurationDays());

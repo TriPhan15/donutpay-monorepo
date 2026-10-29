@@ -7,6 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import vn.edu.huit.finance.core.Exception.SubscriptionPlanNotFoundException;
+import vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.SubscriptionPlan;
 import vn.edu.huit.finance.core.Repository.SubscriptionPlanRepository;
@@ -29,14 +30,19 @@ class SubscriptionPlanServiceTest {
     @Mock private AuditLogService auditLogService;
     @InjectMocks private SubscriptionPlanService service;
 
-    private static SubscriptionPlan values(String name) {
-        SubscriptionPlan values = new SubscriptionPlan();
-        values.setPlanName(name);
-        values.setPrice(99000.0);
-        values.setDurationDays(30);
-        values.setMaxAiScans(100);
-        values.setWcmSpadeEnabled(true);
-        return values;
+    private static SubscriptionPlanRequestDto values(String name) {
+        return SubscriptionPlanRequestDto.builder().planName(name).price(99000.0).durationDays(30).maxAiScans(100)
+                .wcmSpadeEnabled(true).build();
+    }
+
+    private static SubscriptionPlan plan(String name) {
+        SubscriptionPlan plan = new SubscriptionPlan();
+        plan.setPlanName(name);
+        plan.setPrice(99000.0);
+        plan.setDurationDays(30);
+        plan.setMaxAiScans(100);
+        plan.setWcmSpadeEnabled(true);
+        return plan;
     }
 
     private List<AuditEntry> recorded() {
@@ -46,10 +52,8 @@ class SubscriptionPlanServiceTest {
     }
 
     @Test
-    void aNewPlanIsANewActiveRow_whateverIdOrStatusCameWithIt_andIsRecorded() {
-        SubscriptionPlan sent = values("VIP");
-        sent.setId(3L);
-        sent.setActive(false);
+    void aNewPlanIsANewActiveRow_andIsRecorded() {
+        SubscriptionPlanRequestDto sent = values("VIP");
         when(repository.save(any(SubscriptionPlan.class))).thenAnswer(invocation -> {
             SubscriptionPlan saved = invocation.getArgument(0);
             saved.setId(8L);
@@ -58,7 +62,6 @@ class SubscriptionPlanServiceTest {
 
         SubscriptionPlan created = service.createPlan(sent);
 
-        assertNotSame(sent, created, "the client's object is never what gets saved");
         assertTrue(created.isActive());
         assertEquals("VIP", created.getPlanName());
         assertTrue(created.isWcmSpadeEnabled());
@@ -71,7 +74,7 @@ class SubscriptionPlanServiceTest {
 
     @Test
     void anUpdateAndBothTogglesAreRecorded() {
-        SubscriptionPlan plan = values("VIP");
+        SubscriptionPlan plan = plan("VIP");
         plan.setId(8L);
         plan.setActive(true);
         when(repository.findById(8L)).thenReturn(Optional.of(plan));
@@ -91,7 +94,7 @@ class SubscriptionPlanServiceTest {
 
     @Test
     void aDeletionIsRecorded() {
-        SubscriptionPlan plan = values("VIP");
+        SubscriptionPlan plan = plan("VIP");
         plan.setId(8L);
         when(repository.findById(8L)).thenReturn(Optional.of(plan));
 

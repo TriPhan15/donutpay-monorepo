@@ -25,6 +25,7 @@ import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.AuditLogFilterRequestDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
+import vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto;
 import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.*;
@@ -221,18 +222,10 @@ public class AdminController {
     }
     @PostMapping("/subscriptions/add")
     public String addSubscription(
-            @RequestParam String planName,
-            @RequestParam Double price,
-            @RequestParam Integer durationDays,
-            @RequestParam Integer maxAiScans,
+            @Valid @ModelAttribute SubscriptionPlanRequestDto values,
             @RequestParam(defaultValue = "false") boolean isWcmSpadeEnabled) {
-
-        SubscriptionPlan values = new SubscriptionPlan();
-        values.setPlanName(planName);
-        values.setPrice(price);
-        values.setDurationDays(durationDays);
-        values.setMaxAiScans(maxAiScans);
-        values.setWcmSpadeEnabled(isWcmSpadeEnabled);
+        // The form field is named isWcmSpadeEnabled, which does not bind to the DTO's wcmSpadeEnabled by itself.
+        values.setWcmSpadeEnabled(values.isWcmSpadeEnabled() || isWcmSpadeEnabled);
         subscriptionPlanService.createPlan(values);
 
         return "redirect:/admin/subscriptions";
@@ -335,7 +328,7 @@ public class AdminController {
     @PostMapping("/ajax/subscriptions")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> createSubscriptionAjax(@RequestBody SubscriptionPlan plan) {
+    public ResponseEntity<ApiResponse<Void>> createSubscriptionAjax(@Valid @RequestBody SubscriptionPlanRequestDto plan) {
         subscriptionPlanService.createPlan(plan);
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(201).message("Thành công").build());
     }
@@ -343,7 +336,8 @@ public class AdminController {
     @PutMapping("/ajax/subscriptions/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> updateSubscriptionAjax(@PathVariable Long id, @RequestBody SubscriptionPlan dto) {
+    public ResponseEntity<ApiResponse<Void>> updateSubscriptionAjax(@PathVariable Long id,
+                                                                @Valid @RequestBody SubscriptionPlanRequestDto dto) {
         subscriptionPlanService.updatePlan(id, dto);
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).message("Thành công").build());
     }
