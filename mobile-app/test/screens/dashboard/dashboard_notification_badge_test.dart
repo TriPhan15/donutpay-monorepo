@@ -160,7 +160,7 @@ void main() {
       expect(countRequests(), 1, reason: 'nothing is polled meanwhile');
 
       unread = 0;
-      await tester.tap(find.byType(BackButton));
+      await tester.tap(find.byKey(NotificationScreen.backKey));
       await tester.pumpAndSettle();
 
       expect(find.byType(NotificationScreen), findsNothing);

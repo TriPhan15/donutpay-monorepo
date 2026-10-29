@@ -248,6 +248,36 @@ abstract class AppLocalizations {
   /// **'Notification'**
   String get notificationTypeOther;
 
+  /// Line under the empty-state title of the notification list.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget, transaction and receipt alerts will show up here.'**
+  String get notificationsEmptyHint;
+
+  /// Time of a notification from yesterday in the notification list.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday, {time}'**
+  String notificationsYesterdayAt(String time);
+
+  /// Title of the sheet that shows the whole of a notification.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification details'**
+  String get notificationDetailTitle;
+
+  /// Label of the kind row in the notification details sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get notificationDetailType;
+
+  /// Label of the date and time row in the notification details sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get notificationDetailTime;
+
   /// SnackBar shown on the login screen after the app signed the user out because the session could not be renewed, e.g. the password was changed or reset on another device.
   ///
   /// In en, this message translates to:

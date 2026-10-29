@@ -10,7 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
 import 'package:finance_ai_app/screens/main_tabs.dart';
+import 'package:finance_ai_app/l10n/app_localizations_vi.dart';
 import 'package:finance_ai_app/screens/notifications/notification_screen.dart';
+import 'package:finance_ai_app/screens/notifications/widgets/notification_row.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
@@ -74,8 +77,23 @@ ResponseBody _pageOf(List<Map<String, Object?>> all, RequestOptions request) {
 String _message(int id) => 'Thông báo $id';
 
 /// The row that shows notification [id].
-Finder _tile(int id) =>
-    find.ancestor(of: find.text(_message(id)), matching: find.byType(ListTile));
+Finder _tile(int id) => find.ancestor(
+  of: find.text(_message(id)),
+  matching: find.byType(NotificationRow),
+);
+
+/// The "Đọc tất cả" pill of the band.
+Finder _markAllPill() => find.byKey(NotificationScreen.markAllKey);
+
+/// Whether the pill can be tapped, and how opaque it is.
+(bool, double) _pillState(WidgetTester tester) => (
+  tester.widget<InkWell>(_markAllPill()).onTap != null,
+  tester
+      .widget<Opacity>(
+        find.ancestor(of: _markAllPill(), matching: find.byType(Opacity)),
+      )
+      .opacity,
+);
 
 /// The unread dot of notification [id]: found when the row shows the notification as unread.
 Finder _unreadDot(int id) => find.descendant(
@@ -164,7 +182,14 @@ void main() {
 
         await open(tester);
 
-        expect(find.text('Thông báo'), findsOneWidget, reason: 'the title');
+        expect(
+          find.descendant(
+            of: find.byType(PageBand),
+            matching: find.text('Thông báo'),
+          ),
+          findsOneWidget,
+          reason: 'the title, in the band',
+        );
         expect(
           tester.getTopLeft(find.text(_message(3))).dy,
           lessThan(tester.getTopLeft(find.text(_message(2))).dy),
@@ -181,7 +206,12 @@ void main() {
         expect(_unreadDot(1), findsOneWidget);
         expect(
           find.text(
-            DateFormat.yMd('vi').add_Hm().format(DateTime(2026, 9, 21, 10, 15)),
+            notificationListTime(
+              DateTime(2026, 9, 21, 10, 15),
+              now: DateTime.now(),
+              locale: 'vi',
+              loc: AppLocalizationsVi(),
+            ),
           ),
           findsNWidgets(3),
         );
@@ -258,7 +288,7 @@ void main() {
           '0/20',
           '1/20',
         ], reason: 'nothing to scroll, so the next page is asked for at once');
-        expect(find.byType(ListTile), findsNWidgets(22));
+        expect(find.byType(NotificationRow), findsNWidgets(22));
         expect(find.text(_message(21)), findsOneWidget);
         expect(find.text(_message(19)), findsOneWidget);
       },
@@ -288,11 +318,10 @@ void main() {
 
       expect(find.text(_empty), findsOneWidget);
       expect(
-        tester
-            .widget<TextButton>(find.widgetWithText(TextButton, _markAll))
-            .onPressed,
-        isNull,
+        find.text('Cảnh báo ngân sách, giao dịch và hóa đơn sẽ hiện ở đây.'),
+        findsOneWidget,
       );
+      expect(_markAllPill(), findsNothing);
     });
 
     testWidgets(
@@ -473,6 +502,29 @@ void main() {
 
   group('marking all as read', () {
     testWidgets(
+      'a second tap while the request runs sends nothing, and the pill fades meanwhile',
+      (tester) async {
+        final answer = Completer<ResponseBody>();
+        backend.on('PATCH', _readAll, (_) => answer.future);
+        await open(tester);
+        expect(_pillState(tester), (true, 1.0));
+
+        await tester.tap(_markAllPill());
+        await letTheRequestGo(tester);
+        expect(_pillState(tester), (false, 0.45));
+        await tester.tap(_markAllPill(), warnIfMissed: false);
+        await letTheRequestGo(tester);
+
+        expect(
+          backend.requests.where((request) => request.method == 'PATCH'),
+          hasLength(1),
+        );
+        answer.complete(okResponse(3));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
       'shows every notification as read at once and asks the server once',
       (tester) async {
         final answer = Completer<ResponseBody>();
@@ -496,13 +548,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(_unreadDot(3), findsNothing);
-        expect(
-          tester
-              .widget<TextButton>(find.widgetWithText(TextButton, _markAll))
-              .onPressed,
-          isNull,
-          reason: 'nothing unread is left',
-        );
+        expect(_pillState(tester), (
+          false,
+          0.45,
+        ), reason: 'nothing unread is left');
       },
     );
 
@@ -590,8 +639,13 @@ void main() {
           findsOneWidget,
         );
         expect(
+          find.descendant(of: sheet, matching: find.text('Chi tiết thông báo')),
+          findsOneWidget,
+        );
+        expect(
           find.descendant(of: sheet, matching: find.text('Thông báo')),
           findsOneWidget,
+          reason: 'the type row',
         );
         expect(find.byType(NotificationScreen), findsOneWidget);
         expect(_unreadDot(7), findsNothing);
@@ -788,6 +842,34 @@ void main() {
     );
   });
 
+  testWidgets('the back button of the band closes the screen', (tester) async {
+    await tester.pumpWidget(
+      withAppSettings(
+        Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const NotificationScreen(),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NotificationScreen), findsOneWidget);
+
+    await tester.tap(find.byKey(NotificationScreen.backKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NotificationScreen), findsNothing);
+  });
+
   group('lifecycle', () {
     testWidgets(
       'leaving while the first page is on its way touches nothing and asks for nothing more',
@@ -846,18 +928,24 @@ void main() {
           theme.brightness,
           mode == ThemeMode.dark ? Brightness.dark : Brightness.light,
         );
-        expect(
-          tester.widget<ListTile>(_tile(2)).tileColor,
-          colors.primaryContainer.withValues(alpha: 0.4),
-        );
-        expect(tester.widget<ListTile>(_tile(1)).tileColor, isNull);
+        expect(find.byType(PageBand), findsOneWidget);
         expect(
           paintedColor(tester, find.text(_message(2))),
+          colors.onSurface,
+          reason: 'unread',
+        );
+        expect(
+          paintedColor(tester, find.text(_message(1))),
           colors.onSurfaceVariant,
+          reason: 'read',
         );
         expect(
           paintedColor(tester, find.text('Sắp chạm hạn mức ngân sách')),
           colors.onSurface,
+        );
+        expect(
+          paintedColor(tester, find.text('Đã vượt ngân sách')),
+          colors.onSurfaceVariant,
         );
         expect(
           paintedColor(tester, find.byIcon(Icons.warning_amber_rounded)),
