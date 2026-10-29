@@ -81,7 +81,9 @@ _THOUSANDS_ONLY = re.compile(r"\d{1,3}(?:[.,]\d{3})+")
 _SPACED_SEPARATOR = re.compile(r"(?<=\d)\s*([/.:])\s*(?=\d)|(?<=\d)\s+([/\-])(?=\d)|(?<=\d)([/\-])\s+(?=\d)")
 # Tìm chồng lấn (lookahead) để một mẫu sai như "16-13/08" không nuốt mất ngày đúng "13/08/2020" phía sau
 _DATE_YMD = re.compile(r"(?<!\d)(?=(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})(?!\d))")
-_DATE_DMY = re.compile(r"(?<!\d)(?=(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})(?!\d))")
+# Nhóm 2 và 4 là dấu phân cách: năm 2 chữ số chỉ nhận "/" hoặc "-", vì "10.30.15" thường là giờ 10:30:15, không phải ngày.
+_DATE_DMY = re.compile(r"(?<!\d)(?=(\d{1,2})([/\-.])(\d{1,2})([/\-.])(\d{4}|\d{2})(?!\d))")
+TWO_DIGIT_YEAR_SEPARATORS = frozenset({"/", "-"})
 # "10 tháng 02 năm 2023", "02 thg 2, 2023"
 _DATE_VI_WORDS = re.compile(r"(?<!\d)(\d{1,2})\s*(?:tháng|thg)\s*(\d{1,2}),?\s*(?:năm\s*)?(\d{4})(?!\d)", re.IGNORECASE)
 # "Jan 14, 22"
@@ -256,7 +258,10 @@ def _date_candidates(text: str) -> List[Tuple[int, Tuple[int, int, int], int]]:
     for match in _DATE_YMD.finditer(text):
         add(match, int(match.group(1)), int(match.group(2)), int(match.group(3)), match.end(3))
     for match in _DATE_DMY.finditer(text):
-        add(match, _full_year(int(match.group(3))), int(match.group(2)), int(match.group(1)), match.end(3))
+        year_text = match.group(5)
+        if len(year_text) == 2 and not {match.group(2), match.group(4)} <= TWO_DIGIT_YEAR_SEPARATORS:
+            continue
+        add(match, _full_year(int(year_text)), int(match.group(3)), int(match.group(1)), match.end(5))
     for match in _DATE_VI_WORDS.finditer(text):
         add(match, int(match.group(3)), int(match.group(2)), int(match.group(1)), match.end())
     for match in _DATE_EN_MONTH_FIRST.finditer(text):
@@ -307,7 +312,7 @@ def parse_timestamp(raw: str) -> Optional[str]:
     if found is None:
         return None
     year, month, day, (start, end) = found
-    max_year = datetime.now().year + FUTURE_YEAR_SLACK
+    max_year = local_today().year + FUTURE_YEAR_SLACK
     if not MIN_YEAR <= year <= max_year:
         return None
     time = _find_time(text[:start] + " " + text[end:])
