@@ -853,34 +853,6 @@
   "@credentialsTitle": {
     "description": "App bar title of the account credentials screen."
   },
-  "credentialsNoData": "No account data yet.",
-  "@credentialsNoData": {
-    "description": "Shown when the account could not be loaded."
-  },
-  "credentialsTapToEdit": "Tap the row you want to change.",
-  "@credentialsTapToEdit": {
-    "description": "Hint above the editable rows of the account credentials screen."
-  },
-  "credentialsUsername": "Username",
-  "@credentialsUsername": {
-    "description": "Row label of the username (the email)."
-  },
-  "credentialsUsernameEmail": "Username (email)",
-  "@credentialsUsernameEmail": {
-    "description": "Label of the username field."
-  },
-  "credentialsEditUsername": "Edit username",
-  "@credentialsEditUsername": {
-    "description": "Heading of the username form."
-  },
-  "credentialsUsernameRequired": "Please enter a username.",
-  "@credentialsUsernameRequired": {
-    "description": "Shown when the username field is empty."
-  },
-  "credentialsUsernameChangeUnsupported": "The server does not support changing the username yet.",
-  "@credentialsUsernameChangeUnsupported": {
-    "description": "Shown when the user saves a new username."
-  },
   "credentialsChangePassword": "Change password",
   "@credentialsChangePassword": {
     "description": "Heading of the change password form."
@@ -909,10 +881,6 @@
   "@credentialsChangePasswordSuccessTitle": {
     "description": "Title of the dialog shown after the password change."
   },
-  "credentialsChangePasswordSuccessMessage": "Your new password now applies to your account.",
-  "@credentialsChangePasswordSuccessMessage": {
-    "description": "Message of the dialog shown after the password change."
-  },
   "accountInfoTitle": "Account information",
   "@accountInfoTitle": {
     "description": "App bar title of the account information screen."
@@ -921,17 +889,37 @@
   "@accountInfoSignInAgain": {
     "description": "Shown when an account row is tapped without a session."
   },
+  "accountSecurityTitle": "Security",
+  "@accountSecurityTitle": {
+    "description": "Caption of the security group on the account information screen."
+  },
+  "accountEmailLocked": "The sign-in email cannot be changed",
+  "@accountEmailLocked": {
+    "description": "Spoken label of the lock on the email row of the account information screen."
+  },
+  "accountEditNameTitle": "Edit full name",
+  "@accountEditNameTitle": {
+    "description": "Title of the sheet that edits the full name."
+  },
+  "accountEditPhoneTitle": "Edit phone number",
+  "@accountEditPhoneTitle": {
+    "description": "Title of the sheet that edits the phone number."
+  },  "accountPhoneRequired": "Please enter a phone number.",
+  "@accountPhoneRequired": {
+    "description": "Toast when the phone sheet is saved empty; the server cannot clear the phone."
+  },
+
+  "changePasswordDoneMessage": "Your new password is in use. Other devices need to sign in again.",
+  "@changePasswordDoneMessage": {
+    "description": "Message of the success view after the password change."
+  },
+  "changePasswordMatches": "Matches the new password",
+  "@changePasswordMatches": {
+    "description": "Spoken label of the tick shown when the confirmation matches the new password."
+  },
   "userInfoTitle": "Personal information",
   "@userInfoTitle": {
     "description": "Title of the personal information screen and its row."
-  },
-  "userInfoEdit": "Edit",
-  "@userInfoEdit": {
-    "description": "Tooltip of the edit button of the personal information screen."
-  },
-  "userInfoEmpty": "No personal information yet.",
-  "@userInfoEmpty": {
-    "description": "Shown when the user could not be loaded."
   },
   "userInfoNotSet": "Not set",
   "@userInfoNotSet": {
@@ -952,10 +940,6 @@
   "commonRetry": "Try again",
   "@commonRetry": {
     "description": "Retry button."
-  },
-  "setUserInfoTitle": "Edit information",
-  "@setUserInfoTitle": {
-    "description": "App bar title of the profile edit screen."
   },
   "setUserInfoLoadFailed": "Could not load your personal information. Please try again.",
   "@setUserInfoLoadFailed": {

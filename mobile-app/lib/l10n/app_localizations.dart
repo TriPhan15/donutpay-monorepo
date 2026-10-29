@@ -1262,48 +1262,6 @@ abstract class AppLocalizations {
   /// **'Account'**
   String get credentialsTitle;
 
-  /// Shown when the account could not be loaded.
-  ///
-  /// In en, this message translates to:
-  /// **'No account data yet.'**
-  String get credentialsNoData;
-
-  /// Hint above the editable rows of the account credentials screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap the row you want to change.'**
-  String get credentialsTapToEdit;
-
-  /// Row label of the username (the email).
-  ///
-  /// In en, this message translates to:
-  /// **'Username'**
-  String get credentialsUsername;
-
-  /// Label of the username field.
-  ///
-  /// In en, this message translates to:
-  /// **'Username (email)'**
-  String get credentialsUsernameEmail;
-
-  /// Heading of the username form.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit username'**
-  String get credentialsEditUsername;
-
-  /// Shown when the username field is empty.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter a username.'**
-  String get credentialsUsernameRequired;
-
-  /// Shown when the user saves a new username.
-  ///
-  /// In en, this message translates to:
-  /// **'The server does not support changing the username yet.'**
-  String get credentialsUsernameChangeUnsupported;
-
   /// Heading of the change password form.
   ///
   /// In en, this message translates to:
@@ -1346,12 +1304,6 @@ abstract class AppLocalizations {
   /// **'Password changed'**
   String get credentialsChangePasswordSuccessTitle;
 
-  /// Message of the dialog shown after the password change.
-  ///
-  /// In en, this message translates to:
-  /// **'Your new password now applies to your account.'**
-  String get credentialsChangePasswordSuccessMessage;
-
   /// App bar title of the account information screen.
   ///
   /// In en, this message translates to:
@@ -1364,23 +1316,53 @@ abstract class AppLocalizations {
   /// **'Please log in again.'**
   String get accountInfoSignInAgain;
 
+  /// Caption of the security group on the account information screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get accountSecurityTitle;
+
+  /// Spoken label of the lock on the email row of the account information screen.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in email cannot be changed'**
+  String get accountEmailLocked;
+
+  /// Title of the sheet that edits the full name.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit full name'**
+  String get accountEditNameTitle;
+
+  /// Title of the sheet that edits the phone number.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit phone number'**
+  String get accountEditPhoneTitle;
+
+  /// Toast when the phone sheet is saved empty; the server cannot clear the phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a phone number.'**
+  String get accountPhoneRequired;
+
+  /// Message of the success view after the password change.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new password is in use. Other devices need to sign in again.'**
+  String get changePasswordDoneMessage;
+
+  /// Spoken label of the tick shown when the confirmation matches the new password.
+  ///
+  /// In en, this message translates to:
+  /// **'Matches the new password'**
+  String get changePasswordMatches;
+
   /// Title of the personal information screen and its row.
   ///
   /// In en, this message translates to:
   /// **'Personal information'**
   String get userInfoTitle;
-
-  /// Tooltip of the edit button of the personal information screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit'**
-  String get userInfoEdit;
-
-  /// Shown when the user could not be loaded.
-  ///
-  /// In en, this message translates to:
-  /// **'No personal information yet.'**
-  String get userInfoEmpty;
 
   /// Shown instead of an empty phone number.
   ///
@@ -1411,12 +1393,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get commonRetry;
-
-  /// App bar title of the profile edit screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit information'**
-  String get setUserInfoTitle;
 
   /// Shown when the profile edit screen cannot read the profile.
   ///

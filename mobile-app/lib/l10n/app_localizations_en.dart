@@ -651,28 +651,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialsTitle => 'Account';
 
   @override
-  String get credentialsNoData => 'No account data yet.';
-
-  @override
-  String get credentialsTapToEdit => 'Tap the row you want to change.';
-
-  @override
-  String get credentialsUsername => 'Username';
-
-  @override
-  String get credentialsUsernameEmail => 'Username (email)';
-
-  @override
-  String get credentialsEditUsername => 'Edit username';
-
-  @override
-  String get credentialsUsernameRequired => 'Please enter a username.';
-
-  @override
-  String get credentialsUsernameChangeUnsupported =>
-      'The server does not support changing the username yet.';
-
-  @override
   String get credentialsChangePassword => 'Change password';
 
   @override
@@ -696,23 +674,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialsChangePasswordSuccessTitle => 'Password changed';
 
   @override
-  String get credentialsChangePasswordSuccessMessage =>
-      'Your new password now applies to your account.';
-
-  @override
   String get accountInfoTitle => 'Account information';
 
   @override
   String get accountInfoSignInAgain => 'Please log in again.';
 
   @override
+  String get accountSecurityTitle => 'Security';
+
+  @override
+  String get accountEmailLocked => 'The sign-in email cannot be changed';
+
+  @override
+  String get accountEditNameTitle => 'Edit full name';
+
+  @override
+  String get accountEditPhoneTitle => 'Edit phone number';
+
+  @override
+  String get accountPhoneRequired => 'Please enter a phone number.';
+
+  @override
+  String get changePasswordDoneMessage =>
+      'Your new password is in use. Other devices need to sign in again.';
+
+  @override
+  String get changePasswordMatches => 'Matches the new password';
+
+  @override
   String get userInfoTitle => 'Personal information';
-
-  @override
-  String get userInfoEdit => 'Edit';
-
-  @override
-  String get userInfoEmpty => 'No personal information yet.';
 
   @override
   String get userInfoNotSet => 'Not set';
@@ -728,9 +718,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonRetry => 'Try again';
-
-  @override
-  String get setUserInfoTitle => 'Edit information';
 
   @override
   String get setUserInfoLoadFailed =>

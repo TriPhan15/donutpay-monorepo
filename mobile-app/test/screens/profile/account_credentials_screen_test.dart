@@ -3,19 +3,26 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
+import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
+import '../../helpers/fake_settings_repository.dart';
+import '../../helpers/theme_colors.dart';
 
 const String _changePasswordPath = '/api/auth/change-password';
 const String _oldPassword = 'OldPass123';
-const String _newPassword = 'NewPass456';
+const String _newPassword = 'Matkhau@20';
 
 final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
@@ -31,37 +38,46 @@ void main() {
     backend.reset();
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
-    // In full mode the app never learns the password of the user (see AppRepository.getCurrentUser).
-    backend.on(
-      'GET',
-      '/api/users/me',
-      (_) => okResponse({'id': 1, 'email': 'an@example.com'}),
-    );
     SharedPreferences.setMockInitialValues({});
   });
 
-  Future<void> openPasswordForm(
+  tearDown(() {
+    Intl.defaultLocale = null;
+    AppToast.resetForTest();
+  });
+
+  /// Opens the page pushed over a plain page, so that Xong has somewhere to go back to.
+  Future<void> openPage(
     WidgetTester tester, {
-    Locale locale = const Locale('vi'),
+    AppLanguage language = AppLanguage.vietnamese,
   }) async {
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MaterialApp(
-        locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const AccountCredentialsScreen(userId: 1),
+      withAppSettings(
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const AccountCredentialsScreen(),
+                ),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+        settings: FakeSettingsRepository(language: language),
       ),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.text(lookupAppLocalizations(locale).authPasswordLabel),
-    );
+    await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }
+
+  Finder field(String label) => find.widgetWithText(TextField, label);
 
   Future<void> fillForm(
     WidgetTester tester, {
@@ -69,53 +85,127 @@ void main() {
     String newPassword = _newPassword,
     String? confirmPassword,
   }) async {
+    await tester.enterText(field(_vi.credentialsOldPassword), oldPassword);
     await tester.enterText(
-      find.widgetWithText(TextField, 'Mật khẩu cũ'),
-      oldPassword,
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Mật khẩu mới'),
+      field(_vi.resetPasswordNewPasswordLabel),
       newPassword,
     );
     await tester.enterText(
-      find.widgetWithText(TextField, 'Xác nhận mật khẩu mới'),
+      field(_vi.resetPasswordConfirmPasswordLabel),
       confirmPassword ?? newPassword,
     );
+    await tester.pump();
   }
 
-  Future<void> tapSave(WidgetTester tester) async {
-    await tester.tap(find.text('Lưu thay đổi'));
+  Finder submitButton() => find.byType(FilledButton);
+
+  bool submitEnabled(WidgetTester tester) =>
+      tester.widget<FilledButton>(submitButton()).onPressed != null;
+
+  Future<void> tapSubmit(WidgetTester tester) async {
+    await tester.tap(submitButton());
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.pumpAndSettle();
   }
 
-  Future<void> dismissDialog(WidgetTester tester, String buttonText) async {
-    await tester.tap(find.text(buttonText));
-    await tester.pumpAndSettle();
-  }
+  Finder ruleIcon(PasswordRule rule) => find.descendant(
+    of: find.byKey(ValueKey('password-rule-${rule.name}')),
+    matching: find.byType(Icon),
+  );
+
+  Finder matchTick() =>
+      find.byKey(const ValueKey('change-password-confirm-match'));
 
   List<RequestOptions> changePasswordCalls() =>
       backend.requests.where((r) => r.path == _changePasswordPath).toList();
 
-  group('the password row', () {
-    testWidgets(
-      'shows a hidden password although the server never sends it, and opens the form',
-      (tester) async {
-        await openPasswordForm(tester);
+  group('the five rules', () {
+    final missing = <PasswordRule, String>{
+      PasswordRule.minLength: 'Mk@2',
+      PasswordRule.uppercase: 'matkhau@20',
+      PasswordRule.lowercase: 'MATKHAU@20',
+      PasswordRule.digit: 'Matkhau@xx',
+      PasswordRule.special: 'Matkhau20',
+    };
+    missing.forEach((rule, password) {
+      testWidgets(
+        '"$password" leaves only ${rule.name} open, in orange, and the button faded',
+        (tester) async {
+          await openPage(tester);
+          await fillForm(tester, newPassword: password);
+          final context = tester.element(find.byType(AccountCredentialsScreen));
 
-        expect(find.text('********'), findsOneWidget);
-        expect(find.widgetWithText(TextField, 'Mật khẩu cũ'), findsOneWidget);
-        expect(find.widgetWithText(TextField, 'Mật khẩu mới'), findsOneWidget);
-        expect(
-          find.widgetWithText(TextField, 'Xác nhận mật khẩu mới'),
-          findsOneWidget,
-        );
+          expect(
+            tester.widget<Icon>(ruleIcon(rule)).icon,
+            Icons.radio_button_unchecked,
+          );
+          expect(
+            paintedColor(tester, ruleIcon(rule)),
+            context.colors.warningColor,
+          );
+          for (final other in PasswordRule.values.where((r) => r != rule)) {
+            expect(
+              tester.widget<Icon>(ruleIcon(other)).icon,
+              Icons.check_circle,
+              reason: other.name,
+            );
+          }
+          expect(submitEnabled(tester), isFalse);
+        },
+      );
+    });
+
+    testWidgets('the rules show before anything is typed', (tester) async {
+      await openPage(tester);
+
+      for (final rule in PasswordRule.values) {
+        expect(find.text(rule.label(_vi)), findsOneWidget);
+      }
+      expect(submitEnabled(tester), isFalse);
+    });
+  });
+
+  group('the confirmation and the button', () {
+    testWidgets(
+      'all rules and a matching confirmation light the button and show the tick',
+      (tester) async {
+        await openPage(tester);
+        await fillForm(tester);
+
+        expect(matchTick(), findsOneWidget);
+        expect(submitEnabled(tester), isTrue);
       },
     );
+
+    testWidgets(
+      'changing the new password after a match removes the tick and fades the button',
+      (tester) async {
+        await openPage(tester);
+        await fillForm(tester);
+
+        await tester.enterText(
+          field(_vi.resetPasswordNewPasswordLabel),
+          'Matkhau@21',
+        );
+        await tester.pump();
+
+        expect(matchTick(), findsNothing);
+        expect(submitEnabled(tester), isFalse);
+      },
+    );
+
+    testWidgets('an empty old password keeps the button faded', (tester) async {
+      await openPage(tester);
+      await fillForm(tester, oldPassword: '');
+
+      expect(matchTick(), findsOneWidget);
+      expect(submitEnabled(tester), isFalse);
+    });
   });
 
   group('changing the password on the server', () {
     testWidgets(
-      'sends the old and the new password, nothing else, then confirms and closes the form',
+      'sends the old and the new password, then shows the success view; Xong closes the page',
       (tester) async {
         // The change ends every session of the account; the answer carries the pair this device goes on with.
         backend.on(
@@ -126,10 +216,10 @@ void main() {
             'refreshToken': 'changed-refresh',
           }, message: 'Đổi mật khẩu thành công!'),
         );
-        await openPasswordForm(tester);
+        await openPage(tester);
         await fillForm(tester);
 
-        await tapSave(tester);
+        await tapSubmit(tester);
 
         final calls = changePasswordCalls();
         expect(calls, hasLength(1));
@@ -138,14 +228,27 @@ void main() {
           'oldPassword': _oldPassword,
           'newPassword': _newPassword,
         });
+        expect(
+          find.byKey(const ValueKey('change-password-done')),
+          findsOneWidget,
+        );
         expect(find.text('Đổi mật khẩu thành công'), findsOneWidget);
-
-        await dismissDialog(tester, 'Xong');
-
+        expect(
+          find.text(
+            'Mật khẩu mới đã được áp dụng. Các thiết bị khác cần đăng nhập lại.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.byType(Dialog), findsNothing);
         expect(find.byType(TextField), findsNothing);
         expect(SessionService.currentUserId, 1);
         expect(SessionService.currentToken, 'changed-access');
         expect(SessionService.currentRefreshToken, 'changed-refresh');
+
+        await tester.tap(find.text('Xong'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AccountCredentialsScreen), findsNothing);
+        expect(find.text('open'), findsOneWidget);
       },
     );
 
@@ -160,18 +263,19 @@ void main() {
             'message': 'Mật khẩu cũ không chính xác',
           }),
         );
-        await openPasswordForm(tester);
+        await openPage(tester);
         await fillForm(tester, oldPassword: 'WrongPass1');
 
-        await tapSave(tester);
+        await tapSubmit(tester);
 
         expect(find.text('Đổi mật khẩu thất bại'), findsOneWidget);
         expect(find.text('Mật khẩu cũ không chính xác'), findsOneWidget);
 
-        await dismissDialog(tester, 'Đã hiểu');
+        await tester.tap(find.text('Đã hiểu'));
+        await tester.pumpAndSettle();
 
         final oldField = tester.widget<TextField>(
-          find.widgetWithText(TextField, 'Mật khẩu cũ'),
+          field(_vi.credentialsOldPassword),
         );
         expect(oldField.controller!.text, 'WrongPass1');
         expect(SessionService.currentUserId, 1);
@@ -190,21 +294,18 @@ void main() {
             'message': 'Mật khẩu cũ không chính xác',
           }),
         );
-        await openPasswordForm(tester, locale: const Locale('en'));
+        await openPage(tester, language: AppLanguage.english);
+        await tester.enterText(field(en.credentialsOldPassword), 'WrongPass1');
         await tester.enterText(
-          find.widgetWithText(TextField, en.credentialsOldPassword),
-          'WrongPass1',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextField, en.resetPasswordNewPasswordLabel),
+          field(en.resetPasswordNewPasswordLabel),
           _newPassword,
         );
         await tester.enterText(
-          find.widgetWithText(TextField, en.resetPasswordConfirmPasswordLabel),
+          field(en.resetPasswordConfirmPasswordLabel),
           _newPassword,
         );
-        await tester.tap(find.text(en.commonSaveChanges));
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tapSubmit(tester);
 
         expect(find.text(en.credentialsChangePasswordFailed), findsOneWidget);
         expect(find.text(en.credentialsChangePasswordRejected), findsOneWidget);
@@ -223,10 +324,10 @@ void main() {
             reason: 'no network',
           ),
         );
-        await openPasswordForm(tester);
+        await openPage(tester);
         await fillForm(tester);
 
-        await tapSave(tester);
+        await tapSubmit(tester);
 
         expect(find.text('Đổi mật khẩu thất bại'), findsOneWidget);
         expect(
@@ -246,10 +347,10 @@ void main() {
           _changePasswordPath,
           (_) => jsonResponse(403, {'error': 'Forbidden'}),
         );
-        await openPasswordForm(tester);
+        await openPage(tester);
         await fillForm(tester);
 
-        await tapSave(tester);
+        await tapSubmit(tester);
 
         expect(
           find.text('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
@@ -258,15 +359,44 @@ void main() {
       },
     );
 
+    testWidgets('without a session nothing is sent', (tester) async {
+      await openPage(tester);
+      await fillForm(tester);
+      await SessionService.clearSession();
+
+      await tapSubmit(tester);
+
+      expect(
+        find.text('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'),
+        findsOneWidget,
+      );
+      expect(changePasswordCalls(), isEmpty);
+    });
+
+    testWidgets('a double tap sends one request', (tester) async {
+      final answer = Completer<ResponseBody>();
+      backend.on('PUT', _changePasswordPath, (_) => answer.future);
+      await openPage(tester);
+      await fillForm(tester);
+
+      await tester.tap(submitButton());
+      await tester.tap(submitButton(), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(changePasswordCalls(), hasLength(1));
+      answer.complete(okResponse(null));
+      await tester.pumpAndSettle();
+    });
+
     testWidgets(
       'an answer that arrives after the screen was left changes nothing and throws nothing',
       (tester) async {
         final answer = Completer<ResponseBody>();
         backend.on('PUT', _changePasswordPath, (_) => answer.future);
-        await openPasswordForm(tester);
+        await openPage(tester);
         await fillForm(tester);
 
-        await tester.tap(find.text('Lưu thay đổi'));
+        await tester.tap(submitButton());
         await tester.pump(const Duration(milliseconds: 100));
         expect(changePasswordCalls(), hasLength(1));
 
@@ -279,54 +409,18 @@ void main() {
     );
   });
 
-  group('input that is refused before anything is sent', () {
-    final refusals =
-        <
-          String,
-          ({
-            String oldPassword,
-            String newPassword,
-            String confirmPassword,
-            String message,
-          })
-        >{
-          'an empty old password': (
-            oldPassword: '',
-            newPassword: _newPassword,
-            confirmPassword: _newPassword,
-            message: 'Vui lòng nhập mật khẩu cũ.',
-          ),
-          'a new password that breaks the policy': (
-            oldPassword: _oldPassword,
-            newPassword: 'short',
-            confirmPassword: 'short',
-            message: PasswordPolicy.validate('short', _vi)!,
-          ),
-          'a confirmation that does not match': (
-            oldPassword: _oldPassword,
-            newPassword: _newPassword,
-            confirmPassword: 'Other789x',
-            message: 'Mật khẩu mới không khớp.',
-          ),
-        };
+  testWidgets(
+    'a 73-character password that meets the rules is refused before anything is sent',
+    (tester) async {
+      final tooLong = 'Aa1@${'b' * 69}';
+      await openPage(tester);
+      await fillForm(tester, newPassword: tooLong);
+      expect(submitEnabled(tester), isTrue);
 
-    for (final entry in refusals.entries) {
-      testWidgets('${entry.key} is reported and the server is not called', (
-        tester,
-      ) async {
-        await openPasswordForm(tester);
-        await fillForm(
-          tester,
-          oldPassword: entry.value.oldPassword,
-          newPassword: entry.value.newPassword,
-          confirmPassword: entry.value.confirmPassword,
-        );
+      await tapSubmit(tester);
 
-        await tapSave(tester);
-
-        expect(find.text(entry.value.message), findsOneWidget);
-        expect(changePasswordCalls(), isEmpty);
-      });
-    }
-  });
+      expect(find.text(PasswordPolicy.validate(tooLong, _vi)!), findsOneWidget);
+      expect(changePasswordCalls(), isEmpty);
+    },
+  );
 }

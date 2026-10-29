@@ -10,7 +10,6 @@ import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
 import 'package:finance_ai_app/screens/profile/account_info_screen.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/profile/savings_page.dart';
-import 'package:finance_ai_app/screens/profile/user_info_screen.dart';
 import 'package:finance_ai_app/screens/savings/widgets/contribute_goal_card.dart';
 import 'package:finance_ai_app/screens/savings/widgets/quick_amount_grid.dart';
 import 'package:finance_ai_app/screens/savings/widgets/savings_goal_list.dart';
@@ -256,122 +255,172 @@ void main() {
         },
       );
 
-      testWidgets('AccountInfoScreen: rows and divider follow the theme', (
-        tester,
-      ) async {
-        await start(tester, const AccountInfoScreen(), mode);
-        await tester.pumpAndSettle();
-        final theme = themeOf(tester, AccountInfoScreen);
-        final colors = theme.colorScheme;
-
-        expect(
-          materialColor(tester, find.byType(Scaffold)),
-          theme.scaffoldBackgroundColor,
-        );
-        for (final icon in [Icons.person_outline, Icons.badge_outlined]) {
-          expect(paintedColor(tester, find.byIcon(icon)), colors.primary);
-        }
-        for (final title in ['Tài khoản', 'Thông tin cá nhân']) {
-          expect(
-            paintedColor(tester, find.text(title)),
-            colors.onSurface,
-            reason: title,
-          );
-        }
-        expect(
-          paintedColor(tester, find.byIcon(Icons.chevron_right).first),
-          colors.onSurfaceVariant,
-        );
-        expect(
-          tester.widget<Divider>(find.byType(Divider)).color,
-          colors.onSurfaceVariant.withValues(alpha: 0.1),
-        );
-      });
-
       testWidgets(
-        'AccountCredentialsScreen: card rows, divider and the password form follow the theme',
+        'AccountInfoScreen: band, captions, rows, lock and dividers follow the theme',
         (tester) async {
-          await start(tester, const AccountCredentialsScreen(userId: 1), mode);
+          await start(tester, const AccountInfoScreen(), mode);
           await tester.pumpAndSettle();
-          final colors = themeOf(tester, AccountCredentialsScreen).colorScheme;
-
-          expect(materialColor(tester, find.byType(Scaffold)), colors.surface);
-          expect(
-            paintedColor(tester, find.byIcon(Icons.lock_outline_rounded)),
-            colors.primary,
-          );
-          expect(
-            paintedColor(tester, find.text('Chạm vào dòng cần sửa.')),
-            colors.onSurfaceVariant,
-          );
-          expect(materialColor(tester, find.byType(Card)), colors.surface);
-          expect(
-            paintedColor(tester, find.text('Tên đăng nhập')),
-            colors.onSurfaceVariant,
-          );
-          expect(
-            paintedColor(tester, find.text('an@example.com')),
-            colors.onSurface,
-          );
-          expect(
-            paintedColor(tester, find.byIcon(Icons.edit_rounded).first),
-            colors.primary,
-          );
-          expect(
-            _dividerColor(tester, find.byType(Divider)),
-            colors.outlineVariant,
-          );
-
-          await tester.tap(find.text('Mật khẩu'));
-          await tester.pumpAndSettle();
-
-          expect(
-            paintedColor(tester, find.text('Đổi mật khẩu')),
-            colors.onSurface,
-          );
-          expect(
-            paintedColor(tester, find.byIcon(Icons.visibility_off).first),
-            colors.onSurfaceVariant,
-          );
-          expect(
-            paintedColor(tester, find.text('Hủy')),
-            colors.onSurfaceVariant,
-          );
-        },
-      );
-
-      testWidgets(
-        'UserInfoScreen: rows, dividers and the edit button follow the theme',
-        (tester) async {
-          await start(tester, const UserInfoScreen(), mode);
-          await tester.pumpAndSettle();
-          final theme = themeOf(tester, UserInfoScreen);
+          final theme = themeOf(tester, AccountInfoScreen);
           final colors = theme.colorScheme;
+          final context = tester.element(find.byType(AccountInfoScreen));
 
           expect(
             materialColor(tester, find.byType(Scaffold)),
             theme.scaffoldBackgroundColor,
           );
           expect(
-            paintedColor(tester, find.text('Họ và tên')),
-            colors.onSurfaceVariant,
+            boxDecoration(tester, find.text('Thông tin tài khoản')).gradient,
+            context.colors.headerGradient,
           );
-          expect(paintedColor(tester, find.text('an')), colors.onSurface);
+          expect(paintedColor(tester, find.text('A')), BandColors.primary);
+          expect(
+            paintedColor(tester, find.text('an').first),
+            BandColors.primary,
+          );
+          expect(
+            paintedColor(tester, find.text('an@example.com').first),
+            BandColors.secondary,
+          );
+          for (final caption in ['Thông tin cá nhân', 'Bảo mật']) {
+            expect(
+              paintedColor(tester, find.text(caption)),
+              colors.onSurfaceVariant,
+              reason: caption,
+            );
+          }
+          for (final label in ['Họ và tên', 'Email', 'Số điện thoại']) {
+            expect(
+              paintedColor(tester, find.text(label)),
+              colors.onSurface,
+              reason: label,
+            );
+          }
           expect(
             paintedColor(tester, find.text('******5678')),
+            colors.onSurfaceVariant,
+          );
+          final emailRow = find.byKey(const ValueKey('account-row-email'));
+          expect(
+            paintedColor(
+              tester,
+              find.descendant(
+                of: emailRow,
+                matching: find.byIcon(Icons.lock_outline_rounded),
+              ),
+            ),
+            colors.onSurfaceVariant,
+          );
+          expect(_materialAround(tester, emailRow), colors.surface);
+          expect(
+            _dividerColor(tester, find.byType(Divider).first),
+            colors.outlineVariant,
+          );
+          expect(
+            paintedColor(tester, find.text('Đổi mật khẩu')),
+            colors.onSurface,
+          );
+        },
+      );
+
+      testWidgets(
+        'AccountCredentialsScreen: band, card, rules, tick and the success view follow the theme',
+        (tester) async {
+          backend.on(
+            'PUT',
+            '/api/auth/change-password',
+            (_) => okResponse(null),
+          );
+          await start(tester, const AccountCredentialsScreen(), mode);
+          await tester.pumpAndSettle();
+          final theme = themeOf(tester, AccountCredentialsScreen);
+          final colors = theme.colorScheme;
+          final semantic = tester
+              .element(find.byType(AccountCredentialsScreen))
+              .colors;
+
+          expect(
+            materialColor(tester, find.byType(Scaffold)),
+            theme.scaffoldBackgroundColor,
+          );
+          expect(
+            paintedColor(tester, find.text('Đổi mật khẩu').first),
+            BandColors.primary,
+          );
+          expect(
+            _materialAround(
+              tester,
+              find.widgetWithText(TextField, 'Mật khẩu cũ'),
+            ),
+            colors.surface,
+          );
+
+          await tester.enterText(
+            find.widgetWithText(TextField, 'Mật khẩu cũ'),
+            'OldPass123',
+          );
+          await tester.enterText(
+            find.widgetWithText(TextField, 'Mật khẩu mới'),
+            'Matkhau20',
+          );
+          await tester.pump();
+          Finder ruleIcon(String name) => find.descendant(
+            of: find.byKey(ValueKey('password-rule-$name')),
+            matching: find.byType(Icon),
+          );
+          expect(
+            paintedColor(tester, ruleIcon('special')),
+            semantic.warningColor,
+          );
+          expect(
+            paintedColor(tester, ruleIcon('digit')),
+            semantic.successColor,
+          );
+
+          await tester.enterText(
+            find.widgetWithText(TextField, 'Mật khẩu mới'),
+            'Matkhau@20',
+          );
+          await tester.enterText(
+            find.widgetWithText(TextField, 'Xác nhận mật khẩu mới'),
+            'Matkhau@20',
+          );
+          await tester.pump();
+          final tick = find.byKey(
+            const ValueKey('change-password-confirm-match'),
+          );
+          expect(paintedColor(tester, tick), semantic.successColor);
+          final confirm = tester.widget<InputDecorator>(
+            find.descendant(
+              of: find.widgetWithText(TextField, 'Xác nhận mật khẩu mới'),
+              matching: find.byType(InputDecorator),
+            ),
+          );
+          expect(
+            confirm.decoration.enabledBorder?.borderSide.color,
+            semantic.successColor,
+          );
+
+          await tester.tap(find.byType(FilledButton));
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.pumpAndSettle();
+
+          final done = find.byIcon(Icons.check_rounded).first;
+          expect(paintedColor(tester, done), semantic.successColor);
+          expect(
+            boxColor(tester, done),
+            semantic.successColor.withValues(alpha: 0.14),
+          );
+          expect(
+            paintedColor(tester, find.text('Đổi mật khẩu thành công')),
             colors.onSurface,
           );
           expect(
-            paintedColor(tester, find.byIcon(Icons.edit_rounded)),
-            colors.primary,
+            paintedColor(
+              tester,
+              find.textContaining('Các thiết bị khác cần đăng nhập lại'),
+            ),
+            colors.onSurfaceVariant,
           );
-          expect(find.byType(Divider), findsNWidgets(2));
-          for (var i = 0; i < 2; i++) {
-            expect(
-              _dividerColor(tester, find.byType(Divider).at(i)),
-              colors.outlineVariant,
-            );
-          }
         },
       );
     });
