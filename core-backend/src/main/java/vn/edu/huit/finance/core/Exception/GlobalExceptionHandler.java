@@ -14,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.ModelAndView;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.DuplicateReceiptResponseDto;
@@ -31,6 +32,7 @@ public class GlobalExceptionHandler {
     private static final String MSG_SYSTEM_ERROR = "Hệ thống đang gặp sự cố, vui lòng thử lại sau";
     private static final String REASON_NOT_OWNER = "Dữ liệu thuộc về người dùng khác";
     private static final String REASON_ROLE = "Phân quyền theo vai trò";
+    private static final String MSG_UPLOAD_TOO_LARGE = "Ảnh quá lớn (tối đa 15MB), vui lòng chụp lại với độ phân giải thấp hơn";
 
     // Every 403 is recorded (AUTH_ACCESS_DENIED), in a row written on its own: the request's transaction has rolled back.
     @Autowired
@@ -160,6 +162,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuditLogWriteException.class)
     public Object handleAuditLogWrite(AuditLogWriteException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidUploadException.class)
+    public Object handleInvalidUpload(InvalidUploadException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    // 413: the file is over the limit of ImageUploadService, or over spring.servlet.multipart.max-file-size.
+    @ExceptionHandler({UploadTooLargeException.class, MaxUploadSizeExceededException.class})
+    public Object handleUploadTooLarge(Exception ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE, MSG_UPLOAD_TOO_LARGE, request);
+    }
+
+    // 503 with a fixed text: the image storage failed; the cause was logged by ImageUploadService.
+    @ExceptionHandler(FileStorageUnavailableException.class)
+    public Object handleFileStorageUnavailable(FileStorageUnavailableException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
     }
 
     // 403: PUT /api/users/{id} with another user's id. Recorded like any other 403 about somebody else's data.

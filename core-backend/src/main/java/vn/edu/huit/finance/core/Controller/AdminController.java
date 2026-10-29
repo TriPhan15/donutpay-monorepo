@@ -65,6 +65,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 public class AdminController {
     private static final int DEFAULT_PAGE_SIZE = 10;
+    static final int MAX_PAGE_SIZE = 100;
     private static final int TOP_SPENDERS_LIMIT = 5;
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
@@ -189,7 +190,7 @@ public class AdminController {
         Page<User> usersPage = userRepo.findAll(PageRequest.of(Math.max(userPage, 0), normalizePageSize(size), Sort.by(Sort.Direction.DESC, "id")));
         model.addAttribute("users", usersPage.getContent());
         model.addAttribute("usersPage", usersPage);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", normalizePageSize(size));
         return "admin/users";
     }
 
@@ -412,8 +413,9 @@ public class AdminController {
         return error.getDefaultMessage();
     }
 
-    private int normalizePageSize(int size) {
-        return size > 0 ? size : DEFAULT_PAGE_SIZE;
+    /** Cỡ trang của các trang admin: mặc định khi không hợp lệ, tối đa MAX_PAGE_SIZE để ?size=1000000 không tải cả bảng. */
+    static int normalizePageSize(int size) {
+        return size > 0 ? Math.min(size, MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE;
     }
 
     private String formatCurrencyWithoutDecimal(BigDecimal amount) {
