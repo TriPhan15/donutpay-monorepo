@@ -88,28 +88,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Object[]> findPopularVendors(@org.springframework.data.repository.query.Param("userId") Long userId);
 
 
-    @Query("SELECT t FROM Transaction t " +
-           "JOIN FETCH t.user " +
-           "JOIN FETCH t.category " +
-           "LEFT JOIN FETCH t.receipt r " +
-           "WHERE t.user.id = :userId " +
-           "AND (:categoryId IS NULL OR t.category.id = :categoryId) " +
-           "AND (:minPrice IS NULL OR t.amount >= :minPrice) " +
-           "AND (:maxPrice IS NULL OR t.amount <= :maxPrice) " +
-           "AND (CAST(:vendorName AS String) IS NULL OR LOWER(r.vendorName) LIKE LOWER(CONCAT('%', CAST(:vendorName AS String), '%'))) " +
-           "AND (CAST(:startDate AS date) IS NULL OR t.transactionDate >= :startDate) " +
-           "AND (CAST(:endDate AS date) IS NULL OR t.transactionDate <= :endDate)")
-    List<Transaction> filterTransactions(
-            @Param("userId") Long userId,
-            @Param("categoryId") Long categoryId,
-            @Param("minPrice") BigDecimal minPrice,
-            @Param("maxPrice") BigDecimal maxPrice,
-            @Param("vendorName") String vendorName,
-            @Param("startDate") java.time.LocalDate startDate,
-            @Param("endDate") java.time.LocalDate endDate,
-            org.springframework.data.domain.Sort sort
-    );
-
     Transaction findTopByUserIdOrderByAmountDesc(Long userId);
 
 
