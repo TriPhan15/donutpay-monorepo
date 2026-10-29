@@ -2,25 +2,26 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
-import 'package:finance_ai_app/models/user_model.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/repositories/app_repository.dart';
-import 'package:finance_ai_app/widgets/common/custom_text_field.dart';
-import 'package:finance_ai_app/widgets/common/primary_button.dart';
+import 'package:finance_ai_app/widgets/auth/auth_text_field.dart';
+import 'package:finance_ai_app/widgets/auth/password_rule_list.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
-enum _EditingField { email, password }
-
+/// "Đổi mật khẩu" (T9 spec 3.8, mockups R9 + R5 + R10): three fields with an eye button, the five rules always shown
+/// under the new password (met in green, open in orange), a green outline and tick on the confirmation once it matches,
+/// and the button faded until both hold. A change that succeeds swaps the form for a large tick and Xong.
 class AccountCredentialsScreen extends StatefulWidget {
-  final int userId;
-
-  const AccountCredentialsScreen({super.key, required this.userId});
+  const AccountCredentialsScreen({super.key});
 
   @override
   State<AccountCredentialsScreen> createState() =>
@@ -28,126 +29,104 @@ class AccountCredentialsScreen extends StatefulWidget {
 }
 
 class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
-  /// Shown instead of the real password: the server never sends it.
-  static const String _serverPasswordMask = '********';
+  static const double _cardRadius = 20;
+  static const double _matchBorderWidth = 1.5;
+  static const double _tickSlot = 30;
 
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _currentController = TextEditingController();
+  final _newController = TextEditingController();
+  final _confirmController = TextEditingController();
 
-  bool _isLoading = true;
-  UserModel? _user;
-
-  _EditingField? _editingField;
+  bool _busy = false;
+  bool _done = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
+    for (final controller in [
+      _currentController,
+      _newController,
+      _confirmController,
+    ]) {
+      controller.addListener(_onChanged);
+    }
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _currentController.dispose();
+    _newController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadUser() async {
-    final user = await AppRepository.instance.getCurrentUser(widget.userId);
-    if (!mounted) return;
+  void _onChanged() => setState(() {});
 
-    if (user != null) {
-      _emailController.text = user.email;
-      _passwordController.text = user.password;
-    }
+  bool get _confirmMatches =>
+      _confirmController.text.isNotEmpty &&
+      _confirmController.text == _newController.text;
 
-    setState(() {
-      _user = user;
-      _isLoading = false;
-    });
-  }
+  bool get _ready =>
+      _currentController.text.isNotEmpty &&
+      PasswordPolicy.meetsAllRules(_newController.text) &&
+      _confirmMatches;
 
-  void _startEdit(_EditingField field) {
-    if (_isLoading || _user == null) return;
-    setState(() {
-      _editingField = field;
-    });
-  }
-
-  void _cancelEdit() {
-    final current = _user;
-    if (current != null) {
-      _emailController.text = current.email;
-      _passwordController.text = current.password;
-    }
-
-    setState(() {
-      _editingField = null;
-    });
-  }
-
-  void _saveEmail() {
-    if (_user == null) return;
-
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      AppToast.error(context, context.loc.credentialsUsernameRequired);
-      return;
-    }
-
-    AppToast.info(context, context.loc.credentialsUsernameChangeUnsupported);
-  }
-
-  Future<void> _changePassword({
-    required String currentPassword,
-    required String newPassword,
-    required String confirmPassword,
-  }) async {
-    if (_user == null) return;
+  Future<void> _submit() async {
+    if (_busy) return;
+    final loc = context.loc;
+    final currentPassword = _currentController.text;
+    final newPassword = _newController.text;
+    final confirmPassword = _confirmController.text;
 
     if (currentPassword.isEmpty) {
-      AppToast.error(context, context.loc.credentialsOldPasswordRequired);
+      AppToast.error(context, loc.credentialsOldPasswordRequired);
       return;
     }
     if (newPassword.isEmpty) {
-      AppToast.error(context, context.loc.resetPasswordPasswordRequired);
+      AppToast.error(context, loc.resetPasswordPasswordRequired);
       return;
     }
     if (confirmPassword.isEmpty) {
-      AppToast.error(context, context.loc.resetPasswordConfirmRequired);
+      AppToast.error(context, loc.resetPasswordConfirmRequired);
       return;
     }
     // The server never sends the password, so only the server can tell that the old one is wrong.
-    final policyError = PasswordPolicy.validate(newPassword, context.loc);
+    final policyError = PasswordPolicy.validate(newPassword, loc);
     if (policyError != null) {
       AppToast.error(context, policyError);
       return;
     }
     if (newPassword != confirmPassword) {
-      AppToast.error(context, context.loc.credentialsPasswordMismatch);
+      AppToast.error(context, loc.credentialsPasswordMismatch);
       return;
     }
 
-    await _changePasswordOnServer(
+    setState(() => _busy = true);
+    final changed = await _changePasswordOnServer(
       currentPassword: currentPassword,
       newPassword: newPassword,
     );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _done = changed;
+    });
   }
 
-  /// PUT /api/auth/change-password. The server checks the old password; on failure the form stays open with
-  /// what the user typed, on success it closes. The token that made the call is revoked by the server, the next request
-  /// renews it silently (see the 401 interceptor of RemoteApiHelper).
-  Future<void> _changePasswordOnServer({
+  /// PUT /api/auth/change-password. The server checks the old password; on failure the form stays with what the user
+  /// typed. The token that made the call is revoked by the server, RemoteApiHelper stores the pair the answer carries.
+  Future<bool> _changePasswordOnServer({
     required String currentPassword,
     required String newPassword,
   }) async {
     if (SessionService.currentUserId == null) {
+      setState(() => _busy = false);
       await AppDialog.error(
         context,
         title: context.loc.credentialsChangePasswordFailed,
         message: context.loc.errorSessionExpired,
       );
-      return;
+      return false;
     }
 
     try {
@@ -157,22 +136,17 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
       );
     } catch (e) {
       UserFacingError.log('Change password', e);
-      if (!mounted) return;
+      if (!mounted) return false;
+      // The spinner stops before the dialog opens: the page is waiting for the user, not for the server.
+      setState(() => _busy = false);
       await AppDialog.error(
         context,
         title: context.loc.credentialsChangePasswordFailed,
         message: _messageOf(e, context.loc),
       );
-      return;
+      return false;
     }
-
-    if (!mounted) return;
-    setState(() => _editingField = null);
-    await AppDialog.success(
-      context,
-      title: context.loc.credentialsChangePasswordSuccessTitle,
-      message: context.loc.credentialsChangePasswordSuccessMessage,
-    );
+    return true;
   }
 
   /// 401 and 403 mean the token is gone, whatever the server wrote; anything else follows [UserFacingError.messageOf].
@@ -188,251 +162,173 @@ class _AccountCredentialsScreenState extends State<AccountCredentialsScreen> {
     );
   }
 
-  Widget _buildEditableInfoRow(
-    ColorScheme colors, {
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 160,
-              child: Text(
-                label,
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                value,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Icon(Icons.edit_rounded, size: 20, color: colors.primary),
-          ],
-        ),
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return Scaffold(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PageBand(title: loc.credentialsChangePassword),
+          Expanded(child: _done ? const _DoneView() : _form(context)),
+          FormSubmitBar(
+            label: _done ? loc.dialogDone : loc.credentialsChangePassword,
+            onPressed: _done
+                ? () => Navigator.pop(context)
+                : (_ready ? _submit : null),
+            busy: _busy,
+          ),
+        ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = _user;
-    final colors = Theme.of(context).colorScheme;
+  Widget _form(BuildContext context) {
     final loc = context.loc;
-
-    return Scaffold(
-      backgroundColor: colors.surface,
-      appBar: AppBar(title: Text(loc.credentialsTitle)),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : (user == null)
-          ? Center(
-              child: Text(
-                loc.credentialsNoData,
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(24.0),
+    final colors = Theme.of(context).colorScheme;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Material(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(_cardRadius),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  Icons.lock_outline_rounded,
-                  size: 72,
-                  color: colors.primary,
+                AuthTextField(
+                  controller: _currentController,
+                  label: loc.credentialsOldPassword,
+                  icon: Icons.lock_outline_rounded,
+                  isPassword: true,
+                  textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  loc.credentialsTapToEdit,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: colors.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
+                AuthTextField(
+                  controller: _newController,
+                  label: loc.resetPasswordNewPasswordLabel,
+                  icon: Icons.lock_reset_rounded,
+                  isPassword: true,
+                  textInputAction: TextInputAction.next,
                 ),
-                const SizedBox(height: 20),
-                Card(
-                  margin: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      _buildEditableInfoRow(
-                        colors,
-                        label: loc.credentialsUsername,
-                        value: user.email,
-                        onTap: () => _startEdit(_EditingField.email),
-                      ),
-                      // The theme divider: the white 6% line of the old dark design did not show on the light card.
-                      const Divider(height: 1),
-                      _buildEditableInfoRow(
-                        colors,
-                        label: loc.authPasswordLabel,
-                        value: _serverPasswordMask,
-                        onTap: () => _startEdit(_EditingField.password),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 10),
+                PasswordRuleList(
+                  password: _newController.text,
+                  pendingColor: context.colors.warningColor,
                 ),
-                if (_editingField == _EditingField.password) ...[
-                  const SizedBox(height: 24),
-                  Text(
-                    loc.credentialsChangePassword,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  _PasswordChangeForm(
-                    onSave: _changePassword,
-                    onCancel: _cancelEdit,
-                  ),
-                ],
-                if (_editingField == _EditingField.email) ...[
-                  const SizedBox(height: 24),
-                  Text(
-                    loc.credentialsEditUsername,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: _emailController,
-                    label: loc.credentialsUsernameEmail,
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 20),
-                  PrimaryButton(
-                    text: loc.commonSaveChanges,
-                    onPressed: _saveEmail,
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: _cancelEdit,
-                    child: Text(
-                      loc.dialogCancel,
-                      style: TextStyle(color: colors.onSurfaceVariant),
-                    ),
-                  ),
-                ],
+                const SizedBox(height: 12),
+                _confirmField(context),
               ],
-            ),
-    );
-  }
-}
-
-class _PasswordChangeForm extends StatefulWidget {
-  final Future<void> Function({
-    required String currentPassword,
-    required String newPassword,
-    required String confirmPassword,
-  })
-  onSave;
-  final VoidCallback onCancel;
-
-  const _PasswordChangeForm({required this.onSave, required this.onCancel});
-
-  @override
-  State<_PasswordChangeForm> createState() => _PasswordChangeFormState();
-}
-
-class _PasswordChangeFormState extends State<_PasswordChangeForm> {
-  final _currentController = TextEditingController();
-  final _newController = TextEditingController();
-  final _confirmController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscureCurrent = true;
-  bool _obscureNew = true;
-  bool _obscureConfirm = true;
-
-  @override
-  void dispose() {
-    _currentController.dispose();
-    _newController.dispose();
-    _confirmController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleSave() async {
-    setState(() => _isLoading = true);
-    await widget.onSave(
-      currentPassword: _currentController.text,
-      newPassword: _newController.text,
-      confirmPassword: _confirmController.text,
-    );
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    return Column(
-      children: [
-        CustomTextField(
-          controller: _currentController,
-          label: loc.credentialsOldPassword,
-          isPassword: true,
-          obscureText: _obscureCurrent,
-          obscuringCharacter: '*',
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscureCurrent ? Icons.visibility_off : Icons.visibility,
-            ),
-            onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
-          ),
-        ),
-        const SizedBox(height: 12),
-        CustomTextField(
-          controller: _newController,
-          label: loc.resetPasswordNewPasswordLabel,
-          isPassword: true,
-          obscureText: _obscureNew,
-          obscuringCharacter: '*',
-          suffixIcon: IconButton(
-            icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility),
-            onPressed: () => setState(() => _obscureNew = !_obscureNew),
-          ),
-        ),
-        const SizedBox(height: 12),
-        CustomTextField(
-          controller: _confirmController,
-          label: loc.resetPasswordConfirmPasswordLabel,
-          isPassword: true,
-          obscureText: _obscureConfirm,
-          obscuringCharacter: '*',
-          suffixIcon: IconButton(
-            icon: Icon(
-              _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-            ),
-            onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-          ),
-        ),
-        const SizedBox(height: 20),
-        PrimaryButton(
-          text: loc.commonSaveChanges,
-          onPressed: _isLoading ? () {} : _handleSave,
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: widget.onCancel,
-          child: Text(
-            loc.dialogCancel,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// The confirmation field; once it matches the new password its outline turns green and a tick shows beside it.
+  Widget _confirmField(BuildContext context) {
+    final loc = context.loc;
+    final field = AuthTextField(
+      controller: _confirmController,
+      label: loc.resetPasswordConfirmPasswordLabel,
+      icon: Icons.lock_outline_rounded,
+      isPassword: true,
+      textInputAction: TextInputAction.done,
+      onFieldSubmitted: (_) {
+        if (_ready) _submit();
+      },
+    );
+    // The same tree whether it matches or not, so the field keeps its focus and its eye state while the user types.
+    final matches = _confirmMatches;
+    final success = context.colors.successColor;
+    final theme = Theme.of(context);
+    final base = theme.inputDecorationTheme;
+    final side = BorderSide(color: success, width: _matchBorderWidth);
+    InputBorder green(InputBorder? border) =>
+        (border ?? const OutlineInputBorder()).copyWith(borderSide: side);
+    return Row(
+      children: [
+        Expanded(
+          child: Theme(
+            data: matches
+                ? theme.copyWith(
+                    inputDecorationTheme: base.copyWith(
+                      enabledBorder: green(base.enabledBorder),
+                      focusedBorder: green(base.focusedBorder),
+                    ),
+                  )
+                : theme,
+            child: field,
+          ),
+        ),
+        SizedBox(
+          width: _tickSlot,
+          child: matches
+              ? Icon(
+                  Icons.check_circle_rounded,
+                  key: const ValueKey('change-password-confirm-match'),
+                  color: success,
+                  size: 22,
+                  semanticLabel: loc.changePasswordMatches,
+                )
+              : null,
+        ),
+      ],
+    );
+  }
+}
+
+/// What replaces the form once the password has changed: a large tick, the title and what it means for other devices.
+class _DoneView extends StatelessWidget {
+  const _DoneView();
+
+  static const double _circleSize = 80;
+  static const double _iconSize = 40;
+  static const double _tint = 0.14;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final colors = Theme.of(context).colorScheme;
+    final success = context.colors.successColor;
+    return SingleChildScrollView(
+      key: const ValueKey('change-password-done'),
+      padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+      child: Column(
+        children: [
+          Container(
+            width: _circleSize,
+            height: _circleSize,
+            decoration: BoxDecoration(
+              color: success.withValues(alpha: _tint),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.check_rounded, color: success, size: _iconSize),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            loc.credentialsChangePasswordSuccessTitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: colors.onSurface,
+              fontSize: AppTextSize.pageTitle,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            loc.changePasswordDoneMessage,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: AppTextSize.body,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

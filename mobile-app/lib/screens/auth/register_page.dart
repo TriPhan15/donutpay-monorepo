@@ -11,6 +11,7 @@ import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
 import 'package:finance_ai_app/widgets/auth/auth_social_buttons.dart';
 import 'package:finance_ai_app/widgets/auth/auth_text_field.dart';
+import 'package:finance_ai_app/widgets/auth/password_rule_list.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 
@@ -33,28 +34,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isSocialLoading = false;
 
   bool get _isBusy => _isSubmitting || _isSocialLoading;
-  bool _hasMinLength = false;
-  bool _hasUppercase = false;
-  bool _hasLowercase = false;
-  bool _hasNumber = false;
-  bool _hasSpecialChar = false;
+  // What the password field holds, for the rule checklist under it.
+  String _password = '';
 
   void _checkPassword(String password) {
-    setState(() {
-      _hasMinLength = PasswordPolicy.hasMinLength(password);
-      _hasUppercase = password.contains(RegExp(r'[A-Z]'));
-      _hasLowercase = password.contains(RegExp(r'[a-z]'));
-      _hasNumber = password.contains(RegExp(r'[0-9]'));
-      _hasSpecialChar = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
-    });
+    setState(() => _password = password);
   }
-
-  bool _isPasswordValid() =>
-      _hasMinLength &&
-      _hasUppercase &&
-      _hasLowercase &&
-      _hasNumber &&
-      _hasSpecialChar;
 
   Future<void> _handleRegister() async {
     if (_isBusy) return;
@@ -76,7 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     final policyError = PasswordPolicy.validate(password, context.loc);
-    if (!_isPasswordValid() || policyError != null) {
+    if (!PasswordPolicy.meetsAllRules(password) || policyError != null) {
       await AppDialog.error(
         context,
         title: context.loc.registerWeakPasswordTitle,
@@ -220,18 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onChanged: _checkPassword,
           ),
           const SizedBox(height: 10),
-          _PasswordRules(
-            rules: [
-              (
-                loc.registerRuleMinLength(PasswordPolicy.minLength),
-                _hasMinLength,
-              ),
-              (loc.registerRuleUppercase, _hasUppercase),
-              (loc.registerRuleLowercase, _hasLowercase),
-              (loc.registerRuleDigit, _hasNumber),
-              (loc.registerRuleSpecial, _hasSpecialChar),
-            ],
-          ),
+          PasswordRuleList(password: _password),
           const SizedBox(height: 16),
           PrimaryButton(
             text: _isSubmitting ? loc.authProcessing : loc.registerSubmit,
@@ -280,67 +254,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The password rules in two columns, always shown (T9 auth mockup H). A met rule is ticked in the success colour; an
-/// open one stays a ring in the secondary text colour.
-class _PasswordRules extends StatelessWidget {
-  const _PasswordRules({required this.rules});
-
-  static const int _columns = 2;
-  static const double _iconSize = 16;
-
-  final List<(String, bool)> rules;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final success = context.colors.successColor;
-    return Column(
-      children: [
-        for (var row = 0; row < rules.length; row += _columns)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = row; i < row + _columns; i++)
-                  Expanded(
-                    child: i < rules.length
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                rules[i].$2
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                color: rules[i].$2
-                                    ? success
-                                    : colors.onSurfaceVariant,
-                                size: _iconSize,
-                              ),
-                              const SizedBox(width: 5),
-                              Expanded(
-                                child: Text(
-                                  rules[i].$1,
-                                  style: TextStyle(
-                                    color: rules[i].$2
-                                        ? success
-                                        : colors.onSurfaceVariant,
-                                    fontSize: AppTextSize.caption,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 }

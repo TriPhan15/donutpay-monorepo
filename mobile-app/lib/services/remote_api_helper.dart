@@ -598,16 +598,17 @@ class RemoteApiHelper {
     return Map<String, dynamic>.from(res.data);
   }
 
-  /// PUT /api/users/{id} with the fields of core-backend's UserUpdateDto that a user may change; the server refuses an
-  /// id that is not the caller's (JWT). Returns the updated user (UserResponseDto).
+  /// PUT /api/users/{id} with the fields of core-backend's UserUpdateDto that a user may change; a field left null is
+  /// not sent and the server keeps it. The server refuses an id that is not the caller's (JWT). Returns the updated user
+  /// (UserResponseDto).
   Future<Map<String, dynamic>> updateUserProfile({
     required int userId,
-    required String username,
+    String? username,
     String? phone,
   }) async {
     final res = await _dio.put(
       '/api/users/$userId',
-      data: {'username': username, 'phone': ?phone},
+      data: {'username': ?username, 'phone': ?phone},
     );
     return Map<String, dynamic>.from(res.data['data'] ?? {});
   }

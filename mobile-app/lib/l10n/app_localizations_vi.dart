@@ -644,28 +644,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get credentialsTitle => 'Tài khoản';
 
   @override
-  String get credentialsNoData => 'Chưa có dữ liệu tài khoản.';
-
-  @override
-  String get credentialsTapToEdit => 'Chạm vào dòng cần sửa.';
-
-  @override
-  String get credentialsUsername => 'Tên đăng nhập';
-
-  @override
-  String get credentialsUsernameEmail => 'Tên đăng nhập (Email)';
-
-  @override
-  String get credentialsEditUsername => 'Chỉnh sửa tên đăng nhập';
-
-  @override
-  String get credentialsUsernameRequired => 'Vui lòng nhập tên đăng nhập.';
-
-  @override
-  String get credentialsUsernameChangeUnsupported =>
-      'Máy chủ chưa hỗ trợ đổi tên đăng nhập.';
-
-  @override
   String get credentialsChangePassword => 'Đổi mật khẩu';
 
   @override
@@ -688,23 +666,35 @@ class AppLocalizationsVi extends AppLocalizations {
   String get credentialsChangePasswordSuccessTitle => 'Đổi mật khẩu thành công';
 
   @override
-  String get credentialsChangePasswordSuccessMessage =>
-      'Mật khẩu mới đã được áp dụng cho tài khoản của bạn.';
-
-  @override
   String get accountInfoTitle => 'Thông tin tài khoản';
 
   @override
   String get accountInfoSignInAgain => 'Vui lòng đăng nhập lại.';
 
   @override
+  String get accountSecurityTitle => 'Bảo mật';
+
+  @override
+  String get accountEmailLocked => 'Email dùng để đăng nhập, không đổi được';
+
+  @override
+  String get accountEditNameTitle => 'Sửa họ và tên';
+
+  @override
+  String get accountEditPhoneTitle => 'Sửa số điện thoại';
+
+  @override
+  String get accountPhoneRequired => 'Vui lòng nhập số điện thoại.';
+
+  @override
+  String get changePasswordDoneMessage =>
+      'Mật khẩu mới đã được áp dụng. Các thiết bị khác cần đăng nhập lại.';
+
+  @override
+  String get changePasswordMatches => 'Khớp với mật khẩu mới';
+
+  @override
   String get userInfoTitle => 'Thông tin cá nhân';
-
-  @override
-  String get userInfoEdit => 'Chỉnh sửa';
-
-  @override
-  String get userInfoEmpty => 'Chưa có thông tin cá nhân.';
 
   @override
   String get userInfoNotSet => 'Chưa cập nhật';
@@ -720,9 +710,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get commonRetry => 'Thử lại';
-
-  @override
-  String get setUserInfoTitle => 'Thiết lập thông tin';
 
   @override
   String get setUserInfoLoadFailed =>

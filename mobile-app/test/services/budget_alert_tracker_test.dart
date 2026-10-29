@@ -7,12 +7,20 @@ import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 
 const int _user = 1;
 
+// The budgets of these tests are in the current month: markShown forgets flags of periods that ended more than
+// 30 days before the real clock, so a fixed month would make the tests fail once that month is old enough.
+final DateTime _today = DateTime.now();
+String _ymd(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+final String _monthStart = _ymd(DateTime(_today.year, _today.month, 1));
+final String _monthEnd = _ymd(DateTime(_today.year, _today.month + 1, 0));
+
 BudgetProgress _progress(
   double spent, {
   int id = 1,
   double limit = 1000000,
-  String start = '2026-09-01',
-  String end = '2026-09-30',
+  String? start,
+  String? end,
 }) => BudgetProgress(
   budget: BudgetModel(
     id: id,
@@ -20,8 +28,8 @@ BudgetProgress _progress(
     categoryName: 'Ăn uống',
     amount: limit,
     periodType: BudgetPeriodType.month,
-    startDate: start,
-    endDate: end,
+    startDate: start ?? _monthStart,
+    endDate: end ?? _monthEnd,
   ),
   spent: spent,
 );
@@ -135,7 +143,11 @@ void main() {
     expect(
       _levels(
         tracker.pending(_user, [
-          _progress(900000, start: '2026-10-01', end: '2026-10-31'),
+          _progress(
+            900000,
+            start: _ymd(DateTime(_today.year, _today.month + 1, 1)),
+            end: _ymd(DateTime(_today.year, _today.month + 2, 0)),
+          ),
         ]),
       ),
       [BudgetAlertLevel.warning],
@@ -175,7 +187,9 @@ void main() {
     'two callers that load at the same time read the stored flags only once and agree',
     () async {
       SharedPreferences.setMockInitialValues({
-        'budget_alerts_shown': ['1|1|2026-09-01|2026-09-30|1000000.0|warning'],
+        'budget_alerts_shown': [
+          '1|1|$_monthStart|$_monthEnd|1000000.0|warning',
+        ],
       });
       final tracker = BudgetAlertTracker();
 
@@ -231,7 +245,9 @@ void main() {
 
       await tracker.markShown(
         _user,
-        tracker.pending(_user, [_progress(900000)]),
+        tracker.pending(_user, [
+          _progress(900000, start: '2026-09-01', end: '2026-09-30'),
+        ]),
         now: DateTime(2026, 9, 20),
       );
 

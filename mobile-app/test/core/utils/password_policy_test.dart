@@ -8,6 +8,8 @@ final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
 // The cases mirror core-backend/.../Security/StrongPasswordTest.java: same boundaries, same verdicts.
 void main() {
+  _ruleTests();
+
   group('PasswordPolicy.validate accepts', () {
     final accepted = <String, String>{
       'the shortest allowed (8 characters)': 'abcdefg1',
@@ -61,5 +63,40 @@ void main() {
   test('the boundaries are the ones the backend enforces', () {
     expect(PasswordPolicy.minLength, 8);
     expect(PasswordPolicy.maxLength, 72);
+  });
+}
+
+void _ruleTests() {
+  final cases = <PasswordRule, (String met, String open)>{
+    PasswordRule.minLength: ('Abcdef1!', 'Abc1!'),
+    PasswordRule.uppercase: ('abcA', 'abc'),
+    PasswordRule.lowercase: ('ABCa', 'ABC'),
+    PasswordRule.digit: ('a1', 'ab'),
+    // The underscore is not in the special-character list of the Register page.
+    PasswordRule.special: ('a@', 'a_'),
+  };
+  group('PasswordRule', () {
+    cases.forEach((rule, pair) {
+      test('${rule.name} is met by "${pair.$1}" and not by "${pair.$2}"', () {
+        expect(rule.isMetBy(pair.$1), isTrue);
+        expect(rule.isMetBy(pair.$2), isFalse);
+      });
+    });
+
+    test('the labels are the Register checklist texts', () {
+      expect(PasswordRule.values.map((r) => r.label(_vi)), [
+        _vi.registerRuleMinLength(PasswordPolicy.minLength),
+        _vi.registerRuleUppercase,
+        _vi.registerRuleLowercase,
+        _vi.registerRuleDigit,
+        _vi.registerRuleSpecial,
+      ]);
+    });
+
+    test('meetsAllRules needs every rule', () {
+      expect(PasswordPolicy.meetsAllRules('Matkhau@20'), isTrue);
+      expect(PasswordPolicy.meetsAllRules('Matkhau20'), isFalse);
+      expect(PasswordPolicy.meetsAllRules(''), isFalse);
+    });
   });
 }

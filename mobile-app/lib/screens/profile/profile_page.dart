@@ -154,14 +154,13 @@ class _ProfilePageState extends State<ProfilePage> {
     ).then((_) => _load());
   }
 
-  /// The password form of the account screen (T9 spec 3.10: "Đổi mật khẩu" opens the screen of 3.8).
+  /// The change-password page of the account screen (T9 spec 3.10: "Đổi mật khẩu" opens the page of 3.8).
   void _openChangePassword() {
-    final userId = SessionService.currentUserId;
-    if (userId == null) {
+    if (SessionService.currentUserId == null) {
       AppToast.error(context, context.loc.accountInfoSignInAgain);
       return;
     }
-    _push(AccountCredentialsScreen(userId: userId));
+    _push(const AccountCredentialsScreen());
   }
 
   @override
