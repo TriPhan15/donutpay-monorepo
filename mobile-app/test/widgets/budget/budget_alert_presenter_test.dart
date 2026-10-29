@@ -13,6 +13,14 @@ import '../../helpers/captured_logs.dart';
 
 const int _user = 1;
 
+// The budgets of these tests are in the current month: markShown forgets flags of periods that ended more than
+// 30 days before the real clock, so a fixed month would make the tests fail once that month is old enough.
+final DateTime _today = DateTime.now();
+String _ymd(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+final String _monthStart = _ymd(DateTime(_today.year, _today.month, 1));
+final String _monthEnd = _ymd(DateTime(_today.year, _today.month + 1, 0));
+
 BudgetProgress _progress(
   double spent, {
   int id = 1,
@@ -26,8 +34,8 @@ BudgetProgress _progress(
     categoryName: name,
     amount: limit,
     periodType: periodType,
-    startDate: '2026-09-01',
-    endDate: '2026-09-30',
+    startDate: _monthStart,
+    endDate: _monthEnd,
   ),
   spent: spent,
 );
