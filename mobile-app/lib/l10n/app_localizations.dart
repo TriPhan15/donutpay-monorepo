@@ -1856,23 +1856,11 @@ abstract class AppLocalizations {
   /// **'Amount'**
   String get addTransactionAmountLabel;
 
-  /// The typed amount is not usable.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter a valid amount.'**
-  String get addTransactionInvalidAmount;
-
   /// Example note in the add form.
   ///
   /// In en, this message translates to:
   /// **'e.g. Coffee at Highlands'**
   String get addTransactionNoteHint;
-
-  /// Save button of the add form.
-  ///
-  /// In en, this message translates to:
-  /// **'Save transaction'**
-  String get addTransactionSubmit;
 
   /// The server saved the new transaction.
   ///
@@ -1880,17 +1868,77 @@ abstract class AppLocalizations {
   /// **'New transaction added.'**
   String get addTransactionSaved;
 
+  /// Last category tile of a transaction form: opens the full category list.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get categoryMoreTile;
+
+  /// Tab of the add-transaction form for spending.
+  ///
+  /// In en, this message translates to:
+  /// **'Expense'**
+  String get transactionTabExpense;
+
+  /// Tab of the add-transaction form for income.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get transactionTabIncome;
+
+  /// Tab of the add-transaction form: type the transaction in.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get addTransactionManualTab;
+
+  /// Tab of the add-transaction form: opens the receipt scanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan receipt'**
+  String get addTransactionScanTab;
+
+  /// Button that saves a new spending.
+  ///
+  /// In en, this message translates to:
+  /// **'Add expense'**
+  String get addTransactionSubmitExpense;
+
+  /// Button that saves a new income.
+  ///
+  /// In en, this message translates to:
+  /// **'Add income'**
+  String get addTransactionSubmitIncome;
+
+  /// Asked before the scanner replaces a form with typed data.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this transaction?'**
+  String get addTransactionDiscardTitle;
+
+  /// Body of the discard question.
+  ///
+  /// In en, this message translates to:
+  /// **'The amount and note you typed will not be saved.'**
+  String get addTransactionDiscardMessage;
+
+  /// Confirms leaving the form for the scanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard and scan'**
+  String get addTransactionDiscardConfirm;
+
+  /// Footer of the edit form's summary card: the type and the moment of the transaction.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind}, {time}'**
+  String editTransactionSummaryLine(String kind, String time);
+
   /// Title of the edit form and the Ledger button that opens it.
   ///
   /// In en, this message translates to:
   /// **'Edit transaction'**
   String get editTransactionTitle;
-
-  /// Label of the amount field of the edit form.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount (₫)'**
-  String get editTransactionAmountLabel;
 
   /// Title when the transaction has no server id.
   ///
@@ -1903,24 +1951,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This transaction doesn\'t have a server ID yet.'**
   String get editTransactionNoServerIdMessage;
-
-  /// The amount must be above zero.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter an amount greater than 0.'**
-  String get editTransactionAmountPositive;
-
-  /// Title when the user saves without changing anything.
-  ///
-  /// In en, this message translates to:
-  /// **'No changes yet'**
-  String get editTransactionNoChangesTitle;
-
-  /// Asks the user to change something first.
-  ///
-  /// In en, this message translates to:
-  /// **'Change the amount, category or note before saving.'**
-  String get editTransactionNoChangesMessage;
 
   /// Title when the server did not save the edit.
   ///

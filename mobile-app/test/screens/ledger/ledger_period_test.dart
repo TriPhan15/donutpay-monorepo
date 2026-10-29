@@ -199,7 +199,9 @@ void main() {
       await tester.pumpAndSettle();
       // The form opens on today, whatever period the Ledger shows.
       await tester.enterText(find.byType(TextField).at(0), '45000');
-      await tester.tap(find.text('Lưu giao dịch'));
+      // The button follows the amount: one frame before the tap.
+      await tester.pump();
+      await tester.tap(find.text('Thêm giao dịch chi'));
       await tester.pump(_requestStep);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Xong'));

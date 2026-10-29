@@ -18,6 +18,8 @@ import 'package:finance_ai_app/screens/ledger/widgets/stats_header_band.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 
 import '../../helpers/app_settings_scope.dart';
@@ -267,83 +269,90 @@ void main() {
 
       group('AddTransactionPage', () {
         testWidgets(
-          'the type toggle, amount, labels, boxes and save button follow the theme',
+          'the band, tabs, amount, tiles and bottom button follow the theme',
           (tester) async {
             final theme = await show(tester, const AddTransactionPage(), mode);
             final colors = theme.colorScheme;
             final money = theme.extension<SemanticColors>()!;
-            TextStyle? amountStyle() =>
-                tester.widget<TextField>(find.byType(TextField).first).style;
+            Color? tabColor(String label) => tester
+                .widget<Material>(
+                  find
+                      .ancestor(
+                        of: find.text(label),
+                        matching: find.byType(Material),
+                      )
+                      .first,
+                )
+                .color;
 
-            // Expense is chosen at first.
-            expect(boxColor(tester, find.text('Tiền chi')), colors.error);
-            expect(paintedColor(tester, find.text('Tiền chi')), colors.onError);
-            expect(boxColor(tester, find.text('Tiền thu')), Colors.transparent);
+            final band = tester.widget<Container>(
+              find
+                  .descendant(
+                    of: find.byType(PageBand),
+                    matching: find.byType(Container),
+                  )
+                  .first,
+            );
             expect(
-              paintedColor(tester, find.text('Tiền thu')),
+              (band.decoration as BoxDecoration).gradient,
+              money.headerGradient,
+            );
+            expect(paintedColor(tester, find.text('Nhập tay')), colors.primary);
+            expect(
+              paintedColor(tester, find.text('Quét hóa đơn')),
               colors.onSurfaceVariant,
             );
-            expect(amountStyle()?.color, money.expenseColor);
 
-            for (final label in [
-              'Số tiền',
-              'Danh mục',
-              'Ngày giao dịch',
-              'Ghi chú (tùy chọn)',
-            ]) {
-              expect(
-                paintedColor(tester, find.text(label)),
-                colors.onSurfaceVariant,
-                reason: label,
-              );
-            }
-            expect(paintedColor(tester, find.text('đ')), colors.onSurface);
+            // Spending is chosen at first: its tab has the colour of the card and red text.
+            expect(tabColor('Chi tiêu'), colors.surface);
             expect(
-              tester.widget<Divider>(find.byType(Divider)).color,
-              colors.onSurfaceVariant.withValues(alpha: 0.3),
+              paintedColor(tester, find.text('Chi tiêu')),
+              money.expenseColor,
             );
-            expect(boxColor(tester, find.text('Ăn uống')), colors.surface);
+            expect(tabColor('Thu nhập'), colors.surfaceContainerHighest);
             expect(
-              paintedColor(tester, find.text('Ăn uống')),
-              colors.onSurface,
+              paintedColor(tester, find.text('Thu nhập')),
+              colors.onSurfaceVariant,
+            );
+
+            final amount = tester
+                .widget<TextField>(find.byType(TextField).first)
+                .style;
+            expect(amount?.color, colors.onSurface);
+            expect(amount?.fontSize, AppTextSize.amountLarge);
+
+            expect(paintedColor(tester, find.text('Ăn uống')), colors.primary);
+            expect(
+              paintedColor(tester, find.text('Di chuyển')),
+              colors.onSurfaceVariant,
+            );
+            expect(
+              paintedColor(tester, find.text('Khác')),
+              colors.onSurfaceVariant,
             );
             expect(
               boxColor(tester, find.byIcon(Icons.calendar_today_rounded)),
               colors.surface,
             );
-            expect(
-              paintedColor(tester, find.text('VD: Mua cafe Highlands')),
-              colors.onSurfaceVariant,
-            );
-            final noteDecoration = tester
-                .widget<InputDecorator>(
-                  find.descendant(
-                    of: find.byType(TextField).last,
-                    matching: find.byType(InputDecorator),
-                  ),
-                )
-                .decoration;
-            expect(noteDecoration.fillColor, colors.surface);
-            final save = _button('Lưu giao dịch');
+            final save = _button('Thêm giao dịch chi');
             expect(materialColor(tester, save), colors.primary);
             expect(
-              paintedColor(tester, find.text('Lưu giao dịch')),
+              paintedColor(tester, find.text('Thêm giao dịch chi')),
               colors.onPrimary,
             );
 
-            await tester.tap(find.text('Tiền thu'));
+            await tester.tap(find.text('Thu nhập'));
             await tester.pumpAndSettle();
 
-            expect(boxColor(tester, find.text('Tiền thu')), colors.primary);
             expect(
-              paintedColor(tester, find.text('Tiền thu')),
-              colors.onPrimary,
+              paintedColor(tester, find.text('Thu nhập')),
+              money.successColor,
             );
             expect(
-              paintedColor(tester, find.text('Tiền chi')),
+              paintedColor(tester, find.text('Chi tiêu')),
               colors.onSurfaceVariant,
             );
-            expect(amountStyle()?.color, colors.primary);
+            expect(find.text('Thêm giao dịch thu'), findsOneWidget);
           },
         );
 
@@ -356,7 +365,7 @@ void main() {
             mode,
           )).colorScheme;
 
-          await tester.tap(find.text('Ăn uống'));
+          await tester.tap(find.text('Khác'));
           await tester.pumpAndSettle();
 
           expect(
@@ -421,7 +430,7 @@ void main() {
       });
 
       testWidgets(
-        'EditTransactionPage: summary card, chips and labels follow the theme',
+        'EditTransactionPage: summary card, tiles, labels and button follow the theme',
         (tester) async {
           final transaction = TransactionModel(
             id: '5',
@@ -437,35 +446,54 @@ void main() {
             mode,
           )).colorScheme;
 
+          final theme = Theme.of(
+            tester.element(find.byType(EditTransactionPage)),
+          );
+          final money = theme.extension<SemanticColors>()!;
+
+          // The summary card is the head card of the detail page, on the card surface.
           expect(
-            boxDecoration(tester, find.text('Khoản chi')),
-            AppTheme.cardDecoration(colors),
+            boxColor(tester, find.text('Cà phê Highlands')),
+            colors.surface,
           );
           expect(
-            paintedColor(tester, find.text('Khoản chi')),
+            paintedColor(tester, find.text('Khoản chi, 20/09/2026 08:30')),
+            colors.onSurfaceVariant,
+          );
+          // A rich text (the star is red), so the finder lands on the RichText itself.
+          expect(
+            tester
+                .widget<RichText>(find.text('Danh mục *', findRichText: true))
+                .text
+                .style
+                ?.color,
             colors.onSurface,
           );
-          expect(
-            paintedColor(tester, find.text('20/09/2026 08:30')),
-            colors.onSurfaceVariant,
-          );
-          expect(
-            paintedColor(tester, find.text('Danh mục')),
-            colors.onSurfaceVariant,
-          );
-
-          ChoiceChip chip(String label) =>
-              tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, label));
-          expect(chip('Ăn uống').selectedColor, colors.primary);
-          expect(chip('Ăn uống').backgroundColor, colors.surface);
-          expect(paintedColor(tester, find.text('Ăn uống')), colors.onPrimary);
+          expect(paintedColor(tester, find.text('Ăn uống')), colors.primary);
           expect(
             paintedColor(tester, find.text('Di chuyển')),
-            colors.onSurface,
+            colors.onSurfaceVariant,
+          );
+          final band = tester.widget<Container>(
+            find
+                .descendant(
+                  of: find.byType(PageBand),
+                  matching: find.byType(Container),
+                )
+                .first,
           );
           expect(
-            chip('Di chuyển').side?.color,
-            colors.onSurfaceVariant.withValues(alpha: 0.3),
+            (band.decoration as BoxDecoration).gradient,
+            money.headerGradient,
+          );
+          // Nothing changed yet: the button keeps its colours, faded.
+          expect(
+            materialColor(tester, _button('Lưu thay đổi')),
+            colors.primary,
+          );
+          expect(
+            paintedColor(tester, find.text('Lưu thay đổi')),
+            colors.onPrimary,
           );
         },
       );

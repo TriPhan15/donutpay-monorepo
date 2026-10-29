@@ -986,22 +986,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addTransactionAmountLabel => 'Amount';
 
   @override
-  String get addTransactionInvalidAmount => 'Please enter a valid amount.';
-
-  @override
   String get addTransactionNoteHint => 'e.g. Coffee at Highlands';
-
-  @override
-  String get addTransactionSubmit => 'Save transaction';
 
   @override
   String get addTransactionSaved => 'New transaction added.';
 
   @override
-  String get editTransactionTitle => 'Edit transaction';
+  String get categoryMoreTile => 'More';
 
   @override
-  String get editTransactionAmountLabel => 'Amount (₫)';
+  String get transactionTabExpense => 'Expense';
+
+  @override
+  String get transactionTabIncome => 'Income';
+
+  @override
+  String get addTransactionManualTab => 'Manual';
+
+  @override
+  String get addTransactionScanTab => 'Scan receipt';
+
+  @override
+  String get addTransactionSubmitExpense => 'Add expense';
+
+  @override
+  String get addTransactionSubmitIncome => 'Add income';
+
+  @override
+  String get addTransactionDiscardTitle => 'Discard this transaction?';
+
+  @override
+  String get addTransactionDiscardMessage =>
+      'The amount and note you typed will not be saved.';
+
+  @override
+  String get addTransactionDiscardConfirm => 'Discard and scan';
+
+  @override
+  String editTransactionSummaryLine(String kind, String time) {
+    return '$kind, $time';
+  }
+
+  @override
+  String get editTransactionTitle => 'Edit transaction';
 
   @override
   String get editTransactionNoServerIdTitle => 'Can\'t edit this transaction';
@@ -1009,17 +1036,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editTransactionNoServerIdMessage =>
       'This transaction doesn\'t have a server ID yet.';
-
-  @override
-  String get editTransactionAmountPositive =>
-      'Please enter an amount greater than 0.';
-
-  @override
-  String get editTransactionNoChangesTitle => 'No changes yet';
-
-  @override
-  String get editTransactionNoChangesMessage =>
-      'Change the amount, category or note before saving.';
 
   @override
   String get editTransactionSaveFailedTitle => 'Couldn\'t save the transaction';

@@ -4,9 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
-import 'package:finance_ai_app/core/theme/band_colors.dart';
-import 'package:finance_ai_app/core/theme/category_colors.dart';
-import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -14,10 +11,12 @@ import 'package:finance_ai_app/screens/ledger/edit_transaction_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_image_viewer.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
+import 'package:finance_ai_app/widgets/transactions/transaction_head_card.dart';
 
 /// The details of one transaction (T9 spec, 3.4, layout B): a thin blue band, a head card with the amount, the rows
 /// Danh mục / Thời gian / Hóa đơn / Đồng bộ, the receipt photo, and "Sửa giao dịch" / "Xóa" at the bottom.
@@ -41,9 +40,6 @@ class TransactionDetailPage extends StatefulWidget {
 class _TransactionDetailPageState extends State<TransactionDetailPage> {
   static const double _gutter = 16;
   static const double _cardRadius = 20;
-  static const double _bandRadius = 28;
-  static const double _tileSize = 48;
-  static const double _backSize = 36;
   static const double _photoMaxHeight = 360;
   static const double _photoErrorHeight = 160;
   static const String _timePattern = 'dd/MM/yyyy HH:mm';
@@ -218,10 +214,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          _band(context),
+          PageBand(
+            key: TransactionDetailPage.bandKey,
+            buttonKey: TransactionDetailPage.backKey,
+            title: loc.transactionDetailTitle,
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(_gutter, _gutter, _gutter, 0),
-            child: _headCard(context),
+            child: TransactionHeadCard(transaction: _tx),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(_gutter, 12, _gutter, 0),
@@ -248,129 +248,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         ],
       ),
       bottomNavigationBar: hasButtons ? _buttons(context) : null,
-    );
-  }
-
-  Widget _band(BuildContext context) {
-    final topInset = MediaQuery.paddingOf(context).top;
-    return Container(
-      key: TransactionDetailPage.bandKey,
-      padding: EdgeInsets.fromLTRB(_gutter, 12 + topInset, _gutter, 16),
-      decoration: BoxDecoration(
-        gradient: context.colors.headerGradient,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(_bandRadius),
-        ),
-      ),
-      child: Row(
-        children: [
-          Material(
-            color: BandColors.tint,
-            shape: const CircleBorder(),
-            child: InkWell(
-              key: TransactionDetailPage.backKey,
-              customBorder: const CircleBorder(),
-              onTap: () => Navigator.maybePop(context),
-              child: SizedBox(
-                width: _backSize,
-                height: _backSize,
-                child: Icon(
-                  Icons.arrow_back_rounded,
-                  color: BandColors.primary,
-                  size: 20,
-                  semanticLabel: MaterialLocalizations.of(
-                    context,
-                  ).backButtonTooltip,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              context.loc.transactionDetailTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: BandColors.primary,
-                fontSize: AppTextSize.pageTitle,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _headCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final loc = context.loc;
-    // Income is told apart by the green of the theme; spending takes the colour of its category.
-    final accent = _tx.isExpense
-        ? CategoryColors.accentFor(_tx.category, colors)
-        : context.colors.successColor;
-    final amount = _tx.isExpense
-        ? CurrencyHelper.formatVND(-_tx.amount, loc)
-        : CurrencyHelper.formatVND(_tx.amount, loc);
-    return Container(
-      padding: const EdgeInsets.all(_gutter),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(_cardRadius),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: _tileSize,
-            height: _tileSize,
-            decoration: BoxDecoration(
-              color: CategoryColors.tileFor(accent, theme.brightness),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              TransactionCategories.iconFor(_tx.category),
-              color: accent,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  TransactionCategories.displayName(loc, _tx.title),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.onSurface,
-                    fontSize: AppTextSize.title,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    amount,
-                    maxLines: 1,
-                    style: TextStyle(
-                      color: _tx.isExpense
-                          ? colors.onSurface
-                          : context.colors.successColor,
-                      fontSize: AppTextSize.amount,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

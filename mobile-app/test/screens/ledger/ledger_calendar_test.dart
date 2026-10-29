@@ -145,7 +145,7 @@ void main() {
     await pumpLedger(tester);
     await tap(tester, find.text('Lịch'));
     await tap(tester, find.text('+ Thêm'));
-    expect(find.text('Lưu giao dịch'), findsOneWidget);
+    expect(find.text('Thêm giao dịch chi'), findsOneWidget);
   });
 
   testWidgets(

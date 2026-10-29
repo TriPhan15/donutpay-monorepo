@@ -3,14 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
-import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/category_shortcuts.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_fields.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_tabs.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/inputs/date_field.dart';
+import 'package:finance_ai_app/widgets/transactions/category_picker_sheet.dart';
 
+/// The add form (T9 spec, 3.3, layout 2): the band with a close button, the tabs Nhập tay / Quét hóa đơn, the card
+/// tabs Chi tiêu / Thu nhập over a white card (amount, category tiles, day, note) and the button held at the bottom,
+/// faded until the form is valid.
+///
 /// Always opens on the current moment, whatever period the screen that opened it shows: a new transaction is most
 /// often about today, and the date field gets to another day in one tap.
 class AddTransactionPage extends StatefulWidget {
@@ -24,114 +35,143 @@ class AddTransactionPage extends StatefulWidget {
 }
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
+  static const double _gutter = 16;
+  static const double _cardRadius = 20;
+
   bool _isExpense = true;
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
-  String _selectedCategory = TransactionCategories.otherExpense;
   DateTime _selectedDate = DateTime.now();
   bool _isSaving = false;
+
+  /// The transactions the often used categories are counted from; empty until (and unless) they are read.
+  List<TransactionModel> _history = const [];
+  List<String> _shortcuts = const [];
+
+  /// "Khác" until the categories of the server are known, so the form can be saved at once, even offline.
+  String _selectedCategory = TransactionCategories.otherExpense;
+
+  /// Once the user picked a category, a late answer of the server neither changes the choice nor moves the tiles.
+  bool _categoryTouched = false;
 
   @override
   void initState() {
     super.initState();
-    _initCategories();
+    _amountController.addListener(_onAmountChanged);
+    // Categories cached by an earlier screen give the tiles at once; otherwise _load fetches them.
+    _offerDefaultCategories();
+    _load();
   }
 
-  Future<void> _initCategories() async {
-    if (TransactionCategories.expenseSelectable.isEmpty) {
+  @override
+  void dispose() {
+    _amountController.removeListener(_onAmountChanged);
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _onAmountChanged() => setState(() {});
+
+  Future<void> _load() async {
+    if (TransactionCategories.forType(isExpense: _isExpense).isEmpty) {
       await TransactionCategories.loadFromApi();
-    }
-    if (mounted && TransactionCategories.expenseSelectable.isNotEmpty) {
+      if (!mounted) return;
       setState(() {
-        _selectedCategory = TransactionCategories.expenseSelectable.first;
+        if (!_categoryTouched) _offerDefaultCategories();
       });
     }
+    final userId = SessionService.currentUserId;
+    if (userId == null) return;
+    try {
+      final history = await AppRepository.instance.getTransactions(userId);
+      if (!mounted) return;
+      setState(() {
+        _history = history;
+        if (!_categoryTouched) _offerDefaultCategories();
+      });
+    } catch (e) {
+      // The tiles keep the order of the server; nothing to tell the user.
+      debugPrint('Lỗi tải giao dịch để gợi ý danh mục: $e');
+    }
+  }
+
+  /// The often used categories of the current type, the first one selected. Without any category from the server the
+  /// form falls back to "Khác", so a transaction can still be recorded.
+  void _offerDefaultCategories() {
+    _shortcuts = CategoryShortcuts.pick(
+      available: TransactionCategories.forType(isExpense: _isExpense),
+      history: _history,
+      isExpense: _isExpense,
+    );
+    _selectedCategory = _shortcuts.isNotEmpty
+        ? _shortcuts.first
+        : TransactionCategories.otherExpense;
   }
 
   void _setIsExpense(bool isExpense) {
     if (_isExpense == isExpense) return;
     setState(() {
       _isExpense = isExpense;
-      final categories = TransactionCategories.forType(isExpense: _isExpense);
-      if (!categories.contains(_selectedCategory)) {
-        _selectedCategory = categories.isNotEmpty
-            ? categories.first
-            : TransactionCategories.otherExpense;
-      }
+      _categoryTouched = false;
+      _offerDefaultCategories();
+    });
+  }
+
+  void _selectCategory(String category) {
+    setState(() {
+      _categoryTouched = true;
+      _selectedCategory = category;
     });
   }
 
   Future<void> _pickCategory() async {
     if (TransactionCategories.forType(isExpense: _isExpense).isEmpty) {
       await TransactionCategories.loadFromApi();
+      if (!mounted) return;
     }
-
-    if (!mounted) return;
-    final categories = TransactionCategories.forType(isExpense: _isExpense);
-
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        final colors = Theme.of(context).colorScheme;
-        final loc = context.loc;
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-                child: Text(
-                  _isExpense
-                      ? loc.transactionPickExpenseCategory
-                      : loc.transactionPickIncomeCategory,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ...categories.map((category) {
-                final selected = category == _selectedCategory;
-                return ListTile(
-                  leading: Icon(
-                    TransactionCategories.iconFor(category),
-                    color: selected ? colors.primary : colors.onSurfaceVariant,
-                  ),
-                  title: Text(
-                    TransactionCategories.displayName(loc, category),
-                    style: TextStyle(
-                      color: selected
-                          ? colors.onSurface
-                          : colors.onSurfaceVariant,
-                      fontWeight: selected
-                          ? FontWeight.w700
-                          : FontWeight.normal,
-                    ),
-                  ),
-                  trailing: selected
-                      ? Icon(Icons.check_rounded, color: colors.primary)
-                      : null,
-                  onTap: () => Navigator.pop(context, category),
-                );
-              }),
-            ],
-          ),
-        );
-      },
+    final picked = await showCategoryPickerSheet(
+      context,
+      categories: TransactionCategories.forType(isExpense: _isExpense),
+      selected: _selectedCategory,
+      isExpense: _isExpense,
     );
-
     if (!mounted || picked == null) return;
-    setState(() {
-      _selectedCategory = picked;
-    });
+    _selectCategory(picked);
+  }
+
+  double? get _amount => MoneyInputFormatter.parse(_amountController.text);
+
+  bool get _isValid => _amount != null;
+
+  bool get _hasTypedData =>
+      _amountController.text.trim().isNotEmpty ||
+      _noteController.text.trim().isNotEmpty;
+
+  /// Hands over to the scan sheet of MainScaffold: the form closes first, so the review form the scan leads to is not
+  /// stacked on top of it. Typed data is not dropped without asking.
+  Future<void> _openScanner() async {
+    final scanner = MainTabs.scanner;
+    if (scanner == null) return;
+    if (_hasTypedData) {
+      final loc = context.loc;
+      final confirmed = await AppDialog.confirm(
+        context,
+        title: loc.addTransactionDiscardTitle,
+        message: loc.addTransactionDiscardMessage,
+        confirmText: loc.addTransactionDiscardConfirm,
+      );
+      if (!confirmed) return;
+    }
+    if (!mounted) return;
+    Navigator.pop(context);
+    scanner();
   }
 
   Future<void> _saveTransaction() async {
-    if (_isSaving || !mounted) return;
+    final amount = _amount;
+    final category = _selectedCategory;
+    if (_isSaving || !mounted || amount == null) return;
     final loc = context.loc;
     final userId = SessionService.currentUserId;
     if (userId == null) {
@@ -143,23 +183,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       return;
     }
 
-    final amount = MoneyInputFormatter.parse(_amountController.text);
-    if (amount == null) {
-      await AppDialog.error(
-        context,
-        title: loc.commonInvalidAmountTitle,
-        message: loc.addTransactionInvalidAmount,
-      );
-      return;
-    }
-
-    final title = _noteController.text.trim().isEmpty
-        ? _selectedCategory
-        : _noteController.text.trim();
-
+    final note = _noteController.text.trim();
     final transaction = TransactionModel.draft(
-      title: title,
-      category: _selectedCategory,
+      title: note.isEmpty ? category : note,
+      category: category,
       amount: amount,
       date: _selectedDate,
       isExpense: _isExpense,
@@ -211,201 +238,81 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   }
 
   @override
-  void dispose() {
-    _amountController.dispose();
-    _noteController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final semantic = theme.semanticColors;
-    final labelStyle = TextStyle(color: colors.onSurfaceVariant, fontSize: 14);
+    final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          loc.addTransactionTitle,
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTypeToggle(colors, loc),
-            const SizedBox(height: 32),
-            Text(loc.addTransactionAmountLabel, style: labelStyle),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [MoneyInputFormatter(loc.localeName)],
-              style: TextStyle(
-                color: _isExpense ? semantic.expenseColor : colors.primary,
-                fontSize: 40,
-                fontWeight: FontWeight.bold,
-              ),
-              decoration: InputDecoration(
-                hintText: '0',
-                hintStyle: TextStyle(
-                  color: colors.onSurfaceVariant.withValues(alpha: 0.3),
-                  fontSize: 40,
-                ),
-                suffixText: loc.currencySymbol,
-                suffixStyle: TextStyle(color: colors.onSurface, fontSize: 24),
-                border: InputBorder.none,
-              ),
-            ),
-            Divider(color: colors.onSurfaceVariant.withValues(alpha: 0.3)),
-            const SizedBox(height: 24),
-            Text(loc.transactionCategoryLabel, style: labelStyle),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: _pickCategory,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: colors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        TransactionCategories.iconFor(_selectedCategory),
-                        color: colors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        TransactionCategories.displayName(
-                          loc,
-                          _selectedCategory,
-                        ),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(loc.transactionDateLabel, style: labelStyle),
-            const SizedBox(height: 8),
-            DateField(
-              forTransaction: true,
-              value: _selectedDate,
-              onChanged: (date) => setState(() => _selectedDate = date),
-            ),
-            const SizedBox(height: 24),
-            Text(loc.transactionNoteOptional, style: labelStyle),
-            const SizedBox(height: 8),
-            // Text, hint and fill come from the theme: onSurface, onSurfaceVariant and the surface colour.
-            TextField(
-              controller: _noteController,
-              decoration: InputDecoration(
-                hintText: loc.addTransactionNoteHint,
-                filled: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                onPressed: _isSaving ? null : _saveTransaction,
-                child: Text(
-                  loc.addTransactionSubmit,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeToggle(ColorScheme colors, AppLocalizations loc) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
+      body: Column(
         children: [
+          PageBand(
+            title: loc.addTransactionTitle,
+            action: PageBandAction.close,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _gutter),
+            child: EntryModeTabs(onScan: _openScanner),
+          ),
           Expanded(
-            child: GestureDetector(
-              onTap: () => _setIsExpense(true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _isExpense ? colors.error : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    loc.transactionExpenseMoney,
-                    style: TextStyle(
-                      color: _isExpense
-                          ? colors.onError
-                          : colors.onSurfaceVariant,
-                      fontWeight: FontWeight.bold,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(_gutter, 12, _gutter, _gutter),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TransactionTypeTabs(
+                    isExpense: _isExpense,
+                    onChanged: _setIsExpense,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(_gutter),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(_cardRadius),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AmountField(controller: _amountController),
+                        const SizedBox(height: _gutter),
+                        FormFieldLabel(
+                          loc.transactionCategoryLabel,
+                          required: true,
+                        ),
+                        const SizedBox(height: 8),
+                        CategoryShortcutGrid(
+                          shortcuts: _shortcuts,
+                          selected: _selectedCategory,
+                          onSelected: _selectCategory,
+                          onMore: _pickCategory,
+                        ),
+                        const SizedBox(height: _gutter),
+                        FormFieldLabel(loc.transactionDateLabel),
+                        const SizedBox(height: 8),
+                        DateField(
+                          forTransaction: true,
+                          value: _selectedDate,
+                          onChanged: (date) =>
+                              setState(() => _selectedDate = date),
+                        ),
+                        const SizedBox(height: _gutter),
+                        NoteField(
+                          controller: _noteController,
+                          hintText: loc.addTransactionNoteHint,
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _setIsExpense(false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: !_isExpense ? colors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    loc.transactionIncomeMoney,
-                    style: TextStyle(
-                      color: !_isExpense
-                          ? colors.onPrimary
-                          : colors.onSurfaceVariant,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          FormSubmitBar(
+            label: _isExpense
+                ? loc.addTransactionSubmitExpense
+                : loc.addTransactionSubmitIncome,
+            busy: _isSaving,
+            onPressed: _isValid ? _saveTransaction : null,
           ),
         ],
       ),

@@ -14,6 +14,7 @@ import 'package:finance_ai_app/repositories/settings_repository_impl.dart';
 import 'package:finance_ai_app/screens/ledger/transaction_detail_page.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
 import 'package:finance_ai_app/screens/startup/startup_splash_screen.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
@@ -327,6 +328,19 @@ void main() {
           reason: text,
         );
       }
+    });
+    testWidgets('MainTabs.scanner opens the same scan sheet', (tester) async {
+      await openMainScaffold(tester);
+
+      MainTabs.scanner!();
+      await tester.pumpAndSettle();
+
+      final sheet = find.byType(BottomSheet);
+      expect(sheet, findsOneWidget);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Quét hóa đơn bằng AI')),
+        findsOneWidget,
+      );
     });
   });
 

@@ -11,6 +11,8 @@ import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ledger/add_transaction_page.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
+import 'package:finance_ai_app/screens/main_tabs.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
@@ -19,7 +21,8 @@ import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
 
 const String _checkout = '/api/transactions/checkout';
-const String _saveLabel = 'Lưu giao dịch';
+const String _saveLabel = 'Thêm giao dịch chi';
+const String _mine = '/api/transactions/mine';
 
 /// Dio hands a request from one step to the next with zero-length timers, which only fire when the fake clock moves.
 const Duration _requestStep = Duration(milliseconds: 100);
@@ -31,14 +34,28 @@ final RegExp _uuidV4 = RegExp(
 final List<Map<String, Object?>> _serverCategories = [
   {'id': 10, 'name': 'Ăn uống', 'type': 'EXPENSE'},
   {'id': 11, 'name': 'Di chuyển', 'type': 'EXPENSE'},
+  {'id': 12, 'name': 'Mua sắm', 'type': 'EXPENSE'},
+  {'id': 13, 'name': 'Hóa đơn', 'type': 'EXPENSE'},
+  {'id': 14, 'name': 'Sức khỏe', 'type': 'EXPENSE'},
   {'id': 6, 'name': 'Thu nhập', 'type': 'INCOME'},
+  {'id': 7, 'name': 'Lương', 'type': 'INCOME'},
 ];
+
+Map<String, Object?> _serverTx(String category) => {
+  'id': category.hashCode,
+  'title': category,
+  'amount': 10000,
+  'date': '2026-10-20T08:00:00',
+  'category': category,
+  'isExpense': true,
+};
 
 /// Stands for the Ledger: a button that opens the form and reports what the form popped with.
 class _Launcher extends StatelessWidget {
   final void Function(bool? saved) onClosed;
+  final ValueChanged<DateTime>? onSaved;
 
-  const _Launcher({required this.onClosed});
+  const _Launcher({required this.onClosed, this.onSaved});
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +65,9 @@ class _Launcher extends StatelessWidget {
           onPressed: () async {
             final saved = await Navigator.push<bool>(
               context,
-              MaterialPageRoute(builder: (_) => const AddTransactionPage()),
+              MaterialPageRoute(
+                builder: (_) => AddTransactionPage(onSaved: onSaved),
+              ),
             );
             onClosed(saved);
           },
@@ -91,9 +110,11 @@ void main() {
   Future<void> openForm(
     WidgetTester tester, {
     Locale locale = const Locale('vi'),
+    ValueChanged<DateTime>? onSaved,
+    Size size = const Size(600, 2000),
   }) async {
     // Tall, so that the whole form is on screen, and wide, because the test font is much wider than a real one.
-    tester.view.physicalSize = const Size(600, 2000);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
@@ -102,6 +123,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: _Launcher(
+          onSaved: onSaved,
           onClosed: (saved) {
             closed = true;
             result = saved;
@@ -122,8 +144,11 @@ void main() {
   /// clock, so the request would still be inside Dio, and pumpAndSettle would wait for an answer that a test holds back.
   Future<void> pumpForRequest(WidgetTester tester) => tester.pump(_requestStep);
 
-  Future<void> typeAmount(WidgetTester tester, String text) =>
-      tester.enterText(find.byType(TextField).at(0), text);
+  /// The button follows the amount, so a frame is pumped before the next tap.
+  Future<void> typeAmount(WidgetTester tester, String text) async {
+    await tester.enterText(find.byType(TextField).at(0), text);
+    await tester.pump();
+  }
 
   List<Map<String, dynamic>> sentBodies() => [
     for (final request in backend.requests)
@@ -241,8 +266,8 @@ void main() {
         await tester.tap(find.text(_saveLabel));
         await pumpForRequest(tester);
 
-        final button = tester.widget<ElevatedButton>(
-          find.widgetWithText(ElevatedButton, _saveLabel),
+        final button = tester.widget<FilledButton>(
+          find.widgetWithText(FilledButton, _saveLabel),
         );
         expect(button.onPressed, isNull);
         expect(
@@ -269,17 +294,214 @@ void main() {
       },
     );
 
+    testWidgets('onSaved is told the date of the saved transaction', (
+      tester,
+    ) async {
+      backend.on('POST', _checkout, (_) => okResponse({'transactionId': 5}));
+      DateTime? saved;
+      await openForm(tester, onSaved: (date) => saved = date);
+
+      await typeAmount(tester, '45000');
+      await tapText(tester, _saveLabel);
+      await tapText(tester, 'Xong');
+
+      final now = DateTime.now();
+      expect(saved, isNotNull);
+      expect(
+        DateTime(saved!.year, saved!.month, saved!.day),
+        DateTime(now.year, now.month, now.day),
+      );
+    });
+  });
+
+  group('valid form', () {
+    double opacityOfSave(WidgetTester tester) => tester
+        .widget<Opacity>(
+          find.ancestor(
+            of: find.text(_saveLabel),
+            matching: find.byType(Opacity),
+          ),
+        )
+        .opacity;
+
+    testWidgets('the button is faded until a positive amount is typed', (
+      tester,
+    ) async {
+      await openForm(tester);
+      expect(opacityOfSave(tester), FormSubmitBar.disabledOpacity);
+
+      await typeAmount(tester, '55000');
+      await tester.pump();
+      expect(opacityOfSave(tester), 1);
+
+      await typeAmount(tester, '0');
+      await tester.pump();
+      expect(opacityOfSave(tester), FormSubmitBar.disabledOpacity);
+
+      await tester.tap(find.text(_saveLabel), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(store.rows, isEmpty);
+      expect(sentBodies(), isEmpty);
+    });
+
     testWidgets(
-      'an invalid amount is refused before anything is stored or sent',
+      'the form can be saved before the categories arrive, as "Khác"',
       (tester) async {
+        final categories = Completer<ResponseBody>();
+        backend.on('GET', '/api/categories', (_) => categories.future);
+        backend.on('POST', _checkout, (_) => okResponse({'transactionId': 5}));
         await openForm(tester);
 
-        await typeAmount(tester, '');
+        await typeAmount(tester, '45000');
+        expect(opacityOfSave(tester), 1);
         await tapText(tester, _saveLabel);
+        await tapText(tester, 'Xong');
 
-        expect(find.text('Số tiền không hợp lệ'), findsOneWidget);
-        expect(store.rows, isEmpty);
-        expect(sentBodies(), isEmpty);
+        expect(sentBodies().single['categoryName'], 'Khác');
+        categories.complete(okResponse(_serverCategories));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
+      'switching to income keeps the amount and picks the first income category',
+      (tester) async {
+        backend.on('POST', _checkout, (_) => okResponse({'transactionId': 5}));
+        await openForm(tester);
+        await typeAmount(tester, '45000');
+
+        await tapText(tester, 'Thu nhập');
+
+        expect(find.text('Thêm giao dịch thu'), findsOneWidget);
+        expect(find.text('45.000'), findsOneWidget);
+        await tapText(tester, 'Thêm giao dịch thu');
+        await tapText(tester, 'Xong');
+        final body = sentBodies().single;
+        expect(body['categoryName'], 'Thu nhập');
+        expect(body['isExpense'], isFalse);
+      },
+    );
+  });
+
+  group('category tiles', () {
+    testWidgets('the most used category comes first and is selected', (
+      tester,
+    ) async {
+      backend.on(
+        'GET',
+        _mine,
+        (_) => okResponse([
+          _serverTx('Mua sắm'),
+          _serverTx('Mua sắm'),
+          _serverTx('Mua sắm'),
+          _serverTx('Ăn uống'),
+        ]),
+      );
+      backend.on('POST', _checkout, (_) => okResponse({'transactionId': 5}));
+      await openForm(tester);
+
+      final shopping = tester.getTopLeft(find.text('Mua sắm')).dx;
+      final food = tester.getTopLeft(find.text('Ăn uống')).dx;
+      expect(shopping, lessThan(food));
+
+      await typeAmount(tester, '45000');
+      await tapText(tester, _saveLabel);
+      await tapText(tester, 'Xong');
+      expect(sentBodies().single['categoryName'], 'Mua sắm');
+    });
+
+    testWidgets(
+      'without a transaction list the first categories of the server are offered, without a dialog',
+      (tester) {
+        return withCapturedLogs((_) async {
+          backend.on(
+            'GET',
+            _mine,
+            (_) => jsonResponse(500, {'code': 500, 'message': 'down'}),
+          );
+          await openForm(tester);
+
+          expect(find.text('Ăn uống'), findsOneWidget);
+          expect(find.text('Di chuyển'), findsOneWidget);
+          expect(find.text('Mua sắm'), findsOneWidget);
+          expect(find.text('Khác'), findsOneWidget);
+          expect(find.byType(AlertDialog), findsNothing);
+          expect(find.byType(Dialog), findsNothing);
+        });
+      },
+    );
+
+    testWidgets(
+      '"Khác" opens the full list and the picked category takes the fourth tile',
+      (tester) async {
+        backend.on('POST', _checkout, (_) => okResponse({'transactionId': 5}));
+        await openForm(tester);
+
+        await tapText(tester, 'Khác');
+        expect(find.text('Chọn danh mục chi'), findsOneWidget);
+        await tapText(tester, 'Sức khỏe');
+
+        expect(find.text('Khác'), findsNothing);
+        expect(find.text('Sức khỏe'), findsOneWidget);
+        await typeAmount(tester, '45000');
+        await tapText(tester, _saveLabel);
+        await tapText(tester, 'Xong');
+        expect(sentBodies().single['categoryName'], 'Sức khỏe');
+      },
+    );
+  });
+
+  group('scan tab', () {
+    var scans = 0;
+    void scanSpy() => scans++;
+
+    setUp(() {
+      scans = 0;
+      MainTabs.attachScanner(scanSpy);
+    });
+    tearDown(() => MainTabs.detachScanner(scanSpy));
+
+    testWidgets('an empty form closes and the scanner opens', (tester) async {
+      await openForm(tester);
+
+      await tapText(tester, 'Quét hóa đơn');
+
+      expect(closed, isTrue);
+      expect(result, isNot(isTrue));
+      expect(scans, 1);
+    });
+
+    testWidgets('a typed amount is not dropped without asking', (tester) async {
+      await openForm(tester);
+      await typeAmount(tester, '45000');
+
+      await tapText(tester, 'Quét hóa đơn');
+      expect(find.text('Bỏ giao dịch đang nhập?'), findsOneWidget);
+      await tapText(tester, 'Hủy');
+
+      expect(closed, isFalse);
+      expect(scans, 0);
+      expect(find.text('45.000'), findsOneWidget);
+
+      await tapText(tester, 'Quét hóa đơn');
+      await tapText(tester, 'Bỏ và quét');
+      expect(closed, isTrue);
+      expect(scans, 1);
+    });
+  });
+
+  group('small screen', () {
+    testWidgets(
+      'with the keyboard open on 320 x 568 the button stays above it and nothing overflows',
+      (tester) async {
+        tester.view.viewInsets = const FakeViewPadding(bottom: 260);
+        addTearDown(tester.view.resetViewInsets);
+        await openForm(tester, size: const Size(320, 568));
+
+        expect(tester.takeException(), isNull);
+        expect(find.text(_saveLabel).hitTestable(), findsOneWidget);
+        final button = tester.getBottomLeft(find.byType(FilledButton)).dy;
+        expect(button, lessThanOrEqualTo(568 - 260));
       },
     );
   });
@@ -347,7 +569,7 @@ void main() {
         expect(find.text('Add transaction'), findsOneWidget);
         expect(find.text('Ăn uống'), findsNothing);
         await typeAmount(tester, '45000');
-        await tapText(tester, 'Save transaction');
+        await tapText(tester, 'Add expense');
 
         expect(find.text('Could not save'), findsOneWidget);
         expect(

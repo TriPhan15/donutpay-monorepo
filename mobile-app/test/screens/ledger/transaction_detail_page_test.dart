@@ -104,7 +104,12 @@ void main() {
     expect(title.style?.color, Colors.white);
     expect(find.byKey(TransactionDetailPage.backKey), findsOneWidget);
     final band = tester.widget<Container>(
-      find.byKey(TransactionDetailPage.bandKey),
+      find
+          .descendant(
+            of: find.byKey(TransactionDetailPage.bandKey),
+            matching: find.byType(Container),
+          )
+          .first,
     );
     final context = tester.element(find.byType(TransactionDetailPage));
     expect(

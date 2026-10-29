@@ -228,6 +228,8 @@ void main() {
           reason: 'the edit form is open',
         );
         await tester.enterText(find.byType(TextField).first, '50000');
+        // The button follows the amount: one frame before the tap.
+        await tester.pump();
         await tapText(tester, 'Lưu thay đổi');
         await tapText(tester, 'Xong');
 

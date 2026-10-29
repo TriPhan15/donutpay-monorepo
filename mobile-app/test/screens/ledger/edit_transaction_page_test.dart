@@ -10,12 +10,15 @@ import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/screens/ledger/edit_transaction_page.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 
 import '../../helpers/captured_logs.dart';
 import '../../helpers/fake_backend.dart';
+import '../../helpers/vnd.dart';
 
 const String _putPath = '/api/transactions/5';
 const String _saveLabel = 'Lưu thay đổi';
@@ -136,14 +139,48 @@ void main() {
   TextField field(WidgetTester tester, int index) =>
       tester.widget<TextField>(find.byType(TextField).at(index));
 
-  ChoiceChip chip(WidgetTester tester, String label) =>
-      tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, label));
+  Finder inGrid(String label) => find.descendant(
+    of: find.byType(CategoryShortcutGrid),
+    matching: find.text(label),
+  );
 
-  Future<void> typeAmount(WidgetTester tester, String text) =>
-      tester.enterText(find.byType(TextField).at(0), text);
+  /// Whether the category tile that shows [label] is the selected one.
+  bool tileSelected(WidgetTester tester, String label) =>
+      tester
+          .widget<Semantics>(
+            find
+                .ancestor(
+                  of: inGrid(label),
+                  matching: find.byWidgetPredicate(
+                    (widget) =>
+                        widget is Semantics && widget.properties.button == true,
+                  ),
+                )
+                .first,
+          )
+          .properties
+          .selected ==
+      true;
 
-  Future<void> typeNote(WidgetTester tester, String text) =>
-      tester.enterText(find.byType(TextField).at(1), text);
+  double saveOpacity(WidgetTester tester) => tester
+      .widget<Opacity>(
+        find.ancestor(
+          of: find.text(_saveLabel),
+          matching: find.byType(Opacity),
+        ),
+      )
+      .opacity;
+
+  // The button follows the fields, so a frame is pumped before the next tap.
+  Future<void> typeAmount(WidgetTester tester, String text) async {
+    await tester.enterText(find.byType(TextField).at(0), text);
+    await tester.pump();
+  }
+
+  Future<void> typeNote(WidgetTester tester, String text) async {
+    await tester.enterText(find.byType(TextField).at(1), text);
+    await tester.pump();
+  }
 
   List<RequestOptions> puts() =>
       backend.requests.where((r) => r.method == 'PUT').toList();
@@ -157,15 +194,15 @@ void main() {
         expect(find.text('Sửa giao dịch'), findsOneWidget);
         expect(field(tester, 0).controller!.text, '45.000');
         expect(field(tester, 1).controller!.text, 'Cà phê Highlands');
-        expect(chip(tester, 'Ăn uống').selected, isTrue);
-        expect(chip(tester, 'Di chuyển').selected, isFalse);
+        expect(tileSelected(tester, 'Ăn uống'), isTrue);
+        expect(tileSelected(tester, 'Di chuyển'), isFalse);
         expect(
           find.text('Thu nhập'),
           findsNothing,
           reason: 'an expense is only offered the expense categories',
         );
-        expect(find.text('Khoản chi'), findsOneWidget);
-        expect(find.text('20/09/2026 08:30'), findsOneWidget);
+        expect(find.text('Khoản chi, 20/09/2026 08:30'), findsOneWidget);
+        expect(find.text(vnd(-45000)), findsOneWidget);
       },
     );
 
@@ -175,8 +212,8 @@ void main() {
         _tx(isExpense: false, category: 'Thu nhập', title: 'Lương tháng 9'),
       );
 
-      expect(find.text('Khoản thu'), findsOneWidget);
-      expect(chip(tester, 'Thu nhập').selected, isTrue);
+      expect(find.textContaining('Khoản thu, '), findsOneWidget);
+      expect(tileSelected(tester, 'Thu nhập'), isTrue);
       expect(find.text('Ăn uống'), findsNothing);
     });
 
@@ -194,9 +231,10 @@ void main() {
       (tester) async {
         await openForm(tester, _tx(category: 'Khác', title: 'Khác'));
 
-        expect(chip(tester, 'Khác').selected, isTrue);
-        // Khác, Ăn uống, Di chuyển.
-        expect(find.byType(ChoiceChip), findsNWidgets(3));
+        // Ăn uống, Di chuyển, and Khác in the fourth tile instead of the "more" label.
+        expect(inGrid('Khác'), findsOneWidget);
+        expect(tileSelected(tester, 'Khác'), isTrue);
+        expect(tileSelected(tester, 'Ăn uống'), isFalse);
       },
     );
 
@@ -208,9 +246,9 @@ void main() {
 
           await openForm(tester, _tx());
 
-          // The category alone.
-          expect(find.byType(ChoiceChip), findsNWidgets(1));
-          expect(chip(tester, 'Ăn uống').selected, isTrue);
+          // The category alone, in the fourth tile.
+          expect(inGrid('Khác'), findsNothing);
+          expect(tileSelected(tester, 'Ăn uống'), isTrue);
           expect(
             find.text(
               'Không tải được danh sách danh mục. Bạn vẫn có thể sửa số tiền và ghi chú.',
@@ -285,8 +323,8 @@ void main() {
       await openForm(tester, _tx());
 
       await tapText(tester, 'Di chuyển');
-      expect(chip(tester, 'Di chuyển').selected, isTrue);
-      expect(chip(tester, 'Ăn uống').selected, isFalse);
+      expect(tileSelected(tester, 'Di chuyển'), isTrue);
+      expect(tileSelected(tester, 'Ăn uống'), isFalse);
       await typeNote(tester, '  Grab đi làm  ');
       await tapText(tester, _saveLabel);
       await tapText(tester, 'Xong');
@@ -355,17 +393,23 @@ void main() {
       },
     );
 
-    testWidgets('saving without a change says so and sends nothing', (
-      tester,
-    ) async {
+    testWidgets('the button is faded until something changes', (tester) async {
       await openForm(tester, _tx());
+      expect(saveOpacity(tester), FormSubmitBar.disabledOpacity);
 
-      await tapText(tester, _saveLabel);
-
-      expect(find.text('Chưa có thay đổi'), findsOneWidget);
-      await tapText(tester, 'Đã hiểu');
+      await tester.tap(find.text(_saveLabel), warnIfMissed: false);
+      await tester.pumpAndSettle();
       expect(puts(), isEmpty);
       expect(closed, isFalse);
+
+      await typeAmount(tester, '50000');
+      expect(saveOpacity(tester), 1);
+      await typeAmount(tester, '45000');
+      expect(
+        saveOpacity(tester),
+        FormSubmitBar.disabledOpacity,
+        reason: 'changed back to what it was',
+      );
     });
 
     testWidgets('the same amount typed differently is not a change', (
@@ -374,11 +418,8 @@ void main() {
       await openForm(tester, _tx());
 
       await typeAmount(tester, '45.000 đ');
-      await tapText(tester, _saveLabel);
 
-      expect(find.text('Chưa có thay đổi'), findsOneWidget);
-      await tapText(tester, 'Đã hiểu');
-      expect(puts(), isEmpty);
+      expect(saveOpacity(tester), FormSubmitBar.disabledOpacity);
     });
 
     testWidgets(
@@ -387,25 +428,22 @@ void main() {
         await openForm(tester, _tx(amount: 45000.5));
 
         expect(field(tester, 0).controller!.text, '45.001');
-        await tapText(tester, _saveLabel);
-
-        expect(find.text('Chưa có thay đổi'), findsOneWidget);
-        await tapText(tester, 'Đã hiểu');
-        expect(puts(), isEmpty);
+        expect(saveOpacity(tester), FormSubmitBar.disabledOpacity);
       },
     );
 
     for (final typed in ['', '0', 'abc']) {
-      testWidgets('an amount of "$typed" is refused before anything is sent', (
+      testWidgets('an amount of "$typed" fades the button, nothing is sent', (
         tester,
       ) async {
         await openForm(tester, _tx());
+        await typeNote(tester, 'Ghi chú mới');
 
         await typeAmount(tester, typed);
-        await tapText(tester, _saveLabel);
+        expect(saveOpacity(tester), FormSubmitBar.disabledOpacity);
+        await tester.tap(find.text(_saveLabel), warnIfMissed: false);
+        await tester.pumpAndSettle();
 
-        expect(find.text('Số tiền không hợp lệ'), findsOneWidget);
-        await tapText(tester, 'Đã hiểu');
         expect(puts(), isEmpty);
         expect(closed, isFalse);
       });
@@ -469,8 +507,8 @@ void main() {
         expect(find.text(_saveLabel), findsOneWidget);
         expect(
           tester
-              .widget<ElevatedButton>(
-                find.widgetWithText(ElevatedButton, _saveLabel),
+              .widget<FilledButton>(
+                find.widgetWithText(FilledButton, _saveLabel),
               )
               .onPressed,
           isNotNull,
@@ -557,8 +595,8 @@ void main() {
         expect(find.text(_savingLabel), findsOneWidget);
         expect(
           tester
-              .widget<ElevatedButton>(
-                find.widgetWithText(ElevatedButton, _savingLabel),
+              .widget<FilledButton>(
+                find.widgetWithText(FilledButton, _savingLabel),
               )
               .onPressed,
           isNull,
@@ -613,7 +651,7 @@ void main() {
         await openForm(tester, _tx(), locale: const Locale('en'));
 
         expect(find.text('Edit transaction'), findsOneWidget);
-        expect(find.text('Expense'), findsOneWidget);
+        expect(find.textContaining('Expense, '), findsOneWidget);
         await typeAmount(tester, '50000');
         await tapText(tester, 'Save changes');
 

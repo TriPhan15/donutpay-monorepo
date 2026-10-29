@@ -21,4 +21,17 @@ abstract final class MainTabs {
     final show = _show;
     return show == null ? null : () => show(tab);
   }
+
+  static VoidCallback? _scanner;
+
+  /// Lets a form pushed over MainScaffold (the add form's "Quét hóa đơn" tab) open the scan options sheet of the scan
+  /// button. Same attach / detach contract as [attach].
+  static void attachScanner(VoidCallback openScanner) => _scanner = openScanner;
+
+  static void detachScanner(VoidCallback openScanner) {
+    if (_scanner == openScanner) _scanner = null;
+  }
+
+  /// Opens the scan options sheet, or null when no MainScaffold is there to show it.
+  static VoidCallback? get scanner => _scanner;
 }

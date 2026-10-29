@@ -973,22 +973,49 @@ class AppLocalizationsVi extends AppLocalizations {
   String get addTransactionAmountLabel => 'Số tiền';
 
   @override
-  String get addTransactionInvalidAmount => 'Vui lòng nhập số tiền hợp lệ.';
-
-  @override
   String get addTransactionNoteHint => 'VD: Mua cafe Highlands';
-
-  @override
-  String get addTransactionSubmit => 'Lưu giao dịch';
 
   @override
   String get addTransactionSaved => 'Đã thêm giao dịch mới.';
 
   @override
-  String get editTransactionTitle => 'Sửa giao dịch';
+  String get categoryMoreTile => 'Khác';
 
   @override
-  String get editTransactionAmountLabel => 'Số tiền (₫)';
+  String get transactionTabExpense => 'Chi tiêu';
+
+  @override
+  String get transactionTabIncome => 'Thu nhập';
+
+  @override
+  String get addTransactionManualTab => 'Nhập tay';
+
+  @override
+  String get addTransactionScanTab => 'Quét hóa đơn';
+
+  @override
+  String get addTransactionSubmitExpense => 'Thêm giao dịch chi';
+
+  @override
+  String get addTransactionSubmitIncome => 'Thêm giao dịch thu';
+
+  @override
+  String get addTransactionDiscardTitle => 'Bỏ giao dịch đang nhập?';
+
+  @override
+  String get addTransactionDiscardMessage =>
+      'Số tiền và ghi chú vừa nhập sẽ không được lưu.';
+
+  @override
+  String get addTransactionDiscardConfirm => 'Bỏ và quét';
+
+  @override
+  String editTransactionSummaryLine(String kind, String time) {
+    return '$kind, $time';
+  }
+
+  @override
+  String get editTransactionTitle => 'Sửa giao dịch';
 
   @override
   String get editTransactionNoServerIdTitle => 'Không sửa được giao dịch';
@@ -996,17 +1023,6 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get editTransactionNoServerIdMessage =>
       'Giao dịch này chưa có mã trên máy chủ.';
-
-  @override
-  String get editTransactionAmountPositive =>
-      'Vui lòng nhập số tiền lớn hơn 0.';
-
-  @override
-  String get editTransactionNoChangesTitle => 'Chưa có thay đổi';
-
-  @override
-  String get editTransactionNoChangesMessage =>
-      'Hãy sửa số tiền, danh mục hoặc ghi chú trước khi lưu.';
 
   @override
   String get editTransactionSaveFailedTitle => 'Không lưu được giao dịch';

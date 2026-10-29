@@ -1297,29 +1297,65 @@
   "@addTransactionAmountLabel": {
     "description": "Label of the amount field of the add form."
   },
-  "addTransactionInvalidAmount": "Please enter a valid amount.",
-  "@addTransactionInvalidAmount": {
-    "description": "The typed amount is not usable."
-  },
   "addTransactionNoteHint": "e.g. Coffee at Highlands",
   "@addTransactionNoteHint": {
     "description": "Example note in the add form."
-  },
-  "addTransactionSubmit": "Save transaction",
-  "@addTransactionSubmit": {
-    "description": "Save button of the add form."
   },
   "addTransactionSaved": "New transaction added.",
   "@addTransactionSaved": {
     "description": "The server saved the new transaction."
   },
+  "categoryMoreTile": "More",
+  "@categoryMoreTile": {
+    "description": "Last category tile of a transaction form: opens the full category list."
+  },
+  "transactionTabExpense": "Expense",
+  "@transactionTabExpense": {
+    "description": "Tab of the add-transaction form for spending."
+  },
+  "transactionTabIncome": "Income",
+  "@transactionTabIncome": {
+    "description": "Tab of the add-transaction form for income."
+  },
+  "addTransactionManualTab": "Manual",
+  "@addTransactionManualTab": {
+    "description": "Tab of the add-transaction form: type the transaction in."
+  },
+  "addTransactionScanTab": "Scan receipt",
+  "@addTransactionScanTab": {
+    "description": "Tab of the add-transaction form: opens the receipt scanner."
+  },
+  "addTransactionSubmitExpense": "Add expense",
+  "@addTransactionSubmitExpense": {
+    "description": "Button that saves a new spending."
+  },
+  "addTransactionSubmitIncome": "Add income",
+  "@addTransactionSubmitIncome": {
+    "description": "Button that saves a new income."
+  },
+  "addTransactionDiscardTitle": "Discard this transaction?",
+  "@addTransactionDiscardTitle": {
+    "description": "Asked before the scanner replaces a form with typed data."
+  },
+  "addTransactionDiscardMessage": "The amount and note you typed will not be saved.",
+  "@addTransactionDiscardMessage": {
+    "description": "Body of the discard question."
+  },
+  "addTransactionDiscardConfirm": "Discard and scan",
+  "@addTransactionDiscardConfirm": {
+    "description": "Confirms leaving the form for the scanner."
+  },
+  "editTransactionSummaryLine": "{kind}, {time}",
+  "@editTransactionSummaryLine": {
+    "description": "Footer of the edit form's summary card: the type and the moment of the transaction.",
+    "placeholders": {
+      "kind": {"type": "String"},
+      "time": {"type": "String"}
+    }
+  },
   "editTransactionTitle": "Edit transaction",
   "@editTransactionTitle": {
     "description": "Title of the edit form and the Ledger button that opens it."
-  },
-  "editTransactionAmountLabel": "Amount (₫)",
-  "@editTransactionAmountLabel": {
-    "description": "Label of the amount field of the edit form."
   },
   "editTransactionNoServerIdTitle": "Can't edit this transaction",
   "@editTransactionNoServerIdTitle": {
@@ -1328,18 +1364,6 @@
   "editTransactionNoServerIdMessage": "This transaction doesn't have a server ID yet.",
   "@editTransactionNoServerIdMessage": {
     "description": "The transaction has no server id, so it cannot be edited."
-  },
-  "editTransactionAmountPositive": "Please enter an amount greater than 0.",
-  "@editTransactionAmountPositive": {
-    "description": "The amount must be above zero."
-  },
-  "editTransactionNoChangesTitle": "No changes yet",
-  "@editTransactionNoChangesTitle": {
-    "description": "Title when the user saves without changing anything."
-  },
-  "editTransactionNoChangesMessage": "Change the amount, category or note before saving.",
-  "@editTransactionNoChangesMessage": {
-    "description": "Asks the user to change something first."
   },
   "editTransactionSaveFailedTitle": "Couldn't save the transaction",
   "@editTransactionSaveFailedTitle": {

@@ -68,11 +68,15 @@ class _MainScaffoldState extends State<MainScaffold>
     if (mounted) setState(() => _currentIndex = tab.index);
   }
 
+  /// Handed to [MainTabs.attachScanner]; tear-offs of one method are equal, so detaching recognises it.
+  void _openScanner() => _showScannerOptions(context);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     MainTabs.attach(_showTab);
+    MainTabs.attachScanner(_openScanner);
     _resendOutbox();
     // Reads on the receipts that the user queued before the app was closed.
     unawaited(ReceiptScanQueue.instance.resume());
@@ -81,6 +85,7 @@ class _MainScaffoldState extends State<MainScaffold>
   @override
   void dispose() {
     MainTabs.detach(_showTab);
+    MainTabs.detachScanner(_openScanner);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
