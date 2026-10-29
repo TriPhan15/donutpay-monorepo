@@ -1349,11 +1349,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentWithdrawal => 'Withdrawal';
 
   @override
-  String paymentOrderCode(String code) {
-    return 'Code: $code';
-  }
-
-  @override
   String get paymentCancelOrder => 'Cancel order';
 
   @override
@@ -1381,23 +1376,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkedDemoWallet => 'Demo wallet';
 
   @override
-  String linkedSyncFrom(String wallet) {
-    return 'Sync from $wallet';
-  }
-
-  @override
-  String get linkedAmountPrompt => 'Amount to add to your spending budget:';
-
-  @override
-  String get linkedAmountHint => 'e.g. 100000';
-
-  @override
   String get linkedSync => 'Sync';
-
-  @override
-  String linkedMinAmount(String amount) {
-    return 'The minimum amount is $amount.';
-  }
 
   @override
   String linkedSynced(String amount) {
@@ -1413,17 +1392,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkedHistoryTooltip => 'Sync history';
 
   @override
-  String get linkedWalletsHeading => 'Linked e-wallets';
-
-  @override
   String get linkedWalletsDescription =>
       'Sync money from a wallet into your budget to manage spending.';
 
   @override
-  String get linkedSyncing => 'Syncing... finish the payment on the gateway.';
+  String get linkedLinked => 'Linked';
 
   @override
-  String get linkedLinked => 'Linked';
+  String linkedSyncingFrom(String amount, String wallet) {
+    return 'Syncing $amount from $wallet… finish the payment on the gateway.';
+  }
+
+  @override
+  String get linkedSheetTitle => 'Sync money';
+
+  @override
+  String linkedSheetFrom(String wallet) {
+    return 'From $wallet';
+  }
+
+  @override
+  String get linkedSheetTarget => 'Into your spending budget';
+
+  @override
+  String get linkedAmountLabel => 'Amount to add';
+
+  @override
+  String linkedMinAmountHint(String amount, String wallet) {
+    return 'Minimum $amount. You will be taken to the $wallet gateway to pay.';
+  }
+
+  @override
+  String get linkedContinuePayment => 'Continue to payment';
+
+  @override
+  String get paymentOrderDetails => 'Order details';
+
+  @override
+  String get paymentDetailWallet => 'Wallet';
+
+  @override
+  String get paymentDetailCode => 'Order code';
+
+  @override
+  String get paymentDetailTime => 'Time';
 
   @override
   String get commonDelete => 'Delete';

@@ -10,6 +10,7 @@ import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/common/demo_badge.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 
 import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
@@ -81,13 +82,16 @@ void main() {
     expect(find.text(_demoBadge), findsOneWidget);
   });
 
-  testWidgets('the page shows the badge in its title and a notice in full', (
+  testWidgets('the page shows the badge in its band and a notice in full', (
     tester,
   ) async {
     await pump(tester, const LinkedServicesPage());
 
     expect(
-      find.descendant(of: find.byType(AppBar), matching: find.text(_demoBadge)),
+      find.descendant(
+        of: find.byType(PageBand),
+        matching: find.text(_demoBadge),
+      ),
       findsOneWidget,
     );
     expect(

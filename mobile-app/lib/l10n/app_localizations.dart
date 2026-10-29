@@ -2468,12 +2468,6 @@ abstract class AppLocalizations {
   /// **'Withdrawal'**
   String get paymentWithdrawal;
 
-  /// The order code.
-  ///
-  /// In en, this message translates to:
-  /// **'Code: {code}'**
-  String paymentOrderCode(String code);
-
   /// Button that cancels a pending order.
   ///
   /// In en, this message translates to:
@@ -2522,35 +2516,11 @@ abstract class AppLocalizations {
   /// **'Demo wallet'**
   String get linkedDemoWallet;
 
-  /// Title of the sync dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync from {wallet}'**
-  String linkedSyncFrom(String wallet);
-
-  /// Sync dialog prompt.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount to add to your spending budget:'**
-  String get linkedAmountPrompt;
-
-  /// Example amount in the sync dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'e.g. 100000'**
-  String get linkedAmountHint;
-
   /// Button that syncs money from a wallet.
   ///
   /// In en, this message translates to:
   /// **'Sync'**
   String get linkedSync;
-
-  /// The amount is below the minimum.
-  ///
-  /// In en, this message translates to:
-  /// **'The minimum amount is {amount}.'**
-  String linkedMinAmount(String amount);
 
   /// The payment succeeded.
   ///
@@ -2570,29 +2540,83 @@ abstract class AppLocalizations {
   /// **'Sync history'**
   String get linkedHistoryTooltip;
 
-  /// Heading of the wallet list.
-  ///
-  /// In en, this message translates to:
-  /// **'Linked e-wallets'**
-  String get linkedWalletsHeading;
-
   /// Explains the wallet list.
   ///
   /// In en, this message translates to:
   /// **'Sync money from a wallet into your budget to manage spending.'**
   String get linkedWalletsDescription;
 
-  /// Shown while a payment is pending.
-  ///
-  /// In en, this message translates to:
-  /// **'Syncing... finish the payment on the gateway.'**
-  String get linkedSyncing;
-
   /// Status of a linked wallet.
   ///
   /// In en, this message translates to:
   /// **'Linked'**
   String get linkedLinked;
+
+  /// Banner while a sync waits for the payment gateway.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing {amount} from {wallet}… finish the payment on the gateway.'**
+  String linkedSyncingFrom(String amount, String wallet);
+
+  /// Title of the amount sheet of a wallet sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync money'**
+  String get linkedSheetTitle;
+
+  /// Wallet card of the amount sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'From {wallet}'**
+  String linkedSheetFrom(String wallet);
+
+  /// Second line of the wallet card of the amount sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Into your spending budget'**
+  String get linkedSheetTarget;
+
+  /// Label of the amount field of a wallet sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount to add'**
+  String get linkedAmountLabel;
+
+  /// Line under the quick amounts of a wallet sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum {amount}. You will be taken to the {wallet} gateway to pay.'**
+  String linkedMinAmountHint(String amount, String wallet);
+
+  /// Button of the amount sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to payment'**
+  String get linkedContinuePayment;
+
+  /// Title of the order details sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Order details'**
+  String get paymentOrderDetails;
+
+  /// Wallet row of the order details sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallet'**
+  String get paymentDetailWallet;
+
+  /// Order code row of the order details sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Order code'**
+  String get paymentDetailCode;
+
+  /// Time row of the order details sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get paymentDetailTime;
 
   /// Button that deletes an item.
   ///
