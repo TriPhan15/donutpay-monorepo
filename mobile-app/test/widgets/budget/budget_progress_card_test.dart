@@ -130,10 +130,10 @@ void main() {
 
   group('BudgetProgressCard in both themes', () {
     testWidgets(
-      'the track is the neutral container colour: the old grey in light, a raised tone in dark',
+      'the track is the container colour: the pale blue-grey in light, a raised tone in dark',
       (tester) async {
         await _pump(tester, BudgetProgressCard(progress: _progress(500000)));
-        expect(_bar(tester).backgroundColor, const Color(0xFFEBEBEC));
+        expect(_bar(tester).backgroundColor, const Color(0xFFDFE9F2));
 
         await _pump(
           tester,

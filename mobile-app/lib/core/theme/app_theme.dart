@@ -3,16 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:finance_ai_app/core/theme/app_typography.dart';
+
 class AppTheme {
-  static const Color primary = Color(0xFF4A2545);
-  static const Color primaryDark = Color(0xFF2E1729);
-  static const Color gradientStart = Color(0xFF5C2E54);
-  static const Color gradientEnd = Color(0xFF2E1729);
+  // T9 sky blue palette (docs/superpowers/specs/2026-10-27-t9-redesign-design.md, 2.1). The legacy names stay, so every
+  // screen that reads them or the colour scheme follows the new values.
+  static const Color primary = Color(0xFF0284C7);
+  static const Color primaryDark = Color(0xFF0369A1);
+  static const Color gradientStart = Color(0xFF38BDF8);
+  static const Color gradientEnd = Color(0xFF0369A1);
 
   static const Color cardDarkGradStart = Color(0xFF2B2B3A);
   static const Color cardDarkGradEnd = Color(0xFF16161F);
 
-  static const Color bgLight = Color(0xFFF4F4F6);
+  static const Color bgLight = Color(0xFFF3F8FC);
   static const Color bgDark = Color(0xFFF4F4F6);
   static const Color navyDark = Color(0xFFFFFFFF);
   static const Color navyLight = Color(0xFFFFFFFF);
@@ -20,41 +24,67 @@ class AppTheme {
   static const Color cardDark = Color(0xFFFFFFFF);
 
   static const Color mintAccent = primary;
-  static const Color mintLight = Color(0xFFEFE9EE);
+  static const Color mintLight = Color(0xFFE0F2FE);
 
-  static const Color textWhite = Color(0xFF1F1B24);
-  static const Color textGray = Color(0xFF9A9AA0);
-  static const Color textPrimary = Color(0xFF1F1B24);
-  static const Color textSecondary = Color(0xFF9A9AA0);
+  static const Color textWhite = Color(0xFF0F2236);
+  static const Color textGray = Color(0xFF5B6F82);
+  static const Color textPrimary = Color(0xFF0F2236);
+  static const Color textSecondary = Color(0xFF5B6F82);
 
-  static const Color dangerColor = Color(0xFFE0457B);
-  static const Color warningColor = Colors.orange;
-  static const Color positive = Color(0xFF3DBE8B);
-  static const Color negative = Color(0xFFE0457B);
+  static const Color dangerColor = Color(0xFFE5484D);
+  static const Color warningColor = Color(0xFFB7791F);
+  static const Color positive = Color(0xFF0E9F6E);
+  static const Color negative = Color(0xFFE5484D);
+
+  /// The part a progress bar is about to add (a savings contribution being typed), the same in both themes.
+  static const Color pendingProgress = Color(0xFF7DD3FC);
 
   static const Color _lightSurface = Colors.white;
-  static const Color _lightBorder = Color(0xFFE7E7EC);
+  static const Color _lightBorder = Color(0xFFE1EBF3);
 
-  // Neutral greys for the light container roles (tracks, skeletons, tooltips): the seed would tint them pink, which
-  // the light screens never were. The highest one is the old track colour, textGray at 20% on white.
-  static const Color _lightContainerLow = Color(0xFFF9F9FA);
-  static const Color _lightContainerHigh = Color(0xFFEFEFF1);
-  static const Color _lightContainerHighest = Color(0xFFEBEBEC);
+  // Pale blue-greys for the light container roles (tracks, skeletons, tooltips), from the page colour down to the
+  // track colour.
+  static const Color _lightContainerLow = Color(0xFFF6F9FC);
+  static const Color _lightContainerHigh = Color(0xFFE8F0F6);
+  static const Color _lightContainerHighest = Color(0xFFDFE9F2);
 
   // Dark mode has its own tones and never falls back on the light-only colours above.
-  static const Color _darkBackground = Color(0xFF141117);
-  static const Color _darkSurface = Color(0xFF1F1B24);
-  static const Color _darkTextPrimary = Color(0xFFF4F4F6);
-  static const Color _darkTextSecondary = Color(0xFFB3ADB9);
-  static const Color _darkBorder = Color(0xFF4A4351);
-  static const Color _darkPrimary = Color(0xFFF2B3E5);
-  static const Color _darkOnPrimary = Color(0xFF4C1F48);
-  static const Color _darkPrimaryContainer = Color(0xFF66355F);
-  static const Color _darkOnPrimaryContainer = Color(0xFFFFD7F4);
-  static const Color _darkPositive = Color(0xFF5CD6A4);
-  static const Color _darkNegative = Color(0xFFFF7AA2);
-  static const Color _darkOnNegative = Color(0xFF4A0A24);
-  static const Color _darkWarning = Color(0xFFFFB74D);
+  static const Color _darkBackground = Color(0xFF0B1724);
+  static const Color _darkSurface = Color(0xFF13233A);
+  static const Color _darkContainerLow = Color(0xFF0F1D2E);
+  static const Color _darkContainerHigh = Color(0xFF172A40);
+  static const Color _darkContainerHighest = Color(0xFF1A3047);
+  static const Color _darkTextPrimary = Color(0xFFE6EEF6);
+  static const Color _darkTextSecondary = Color(0xFF93A7BA);
+  static const Color _darkBorder = Color(0xFF22384D);
+  static const Color _darkPrimary = Color(0xFF38BDF8);
+  static const Color _darkOnPrimary = Color(0xFF082F49);
+  static const Color _darkPrimaryContainer = Color(0xFF16344F);
+  static const Color _darkOnPrimaryContainer = Color(0xFF7DD3FC);
+  static const Color _darkPositive = Color(0xFF34D399);
+  static const Color _darkNegative = Color(0xFFFB7185);
+  static const Color _darkOnNegative = Color(0xFF3A0A10);
+  static const Color _darkWarning = Color(0xFFF5C04A);
+  static const Color _darkGradientStart = Color(0xFF0B4F7A);
+  static const Color _darkGradientEnd = Color(0xFF082F49);
+
+  // The 160 degree direction of the design: top to bottom, leaning slightly to the right.
+  static const Alignment _gradientBegin = Alignment(-0.35, -1);
+  static const Alignment _gradientEnd = Alignment(0.35, 1);
+
+  /// The light header band, the auth screens and the splash screen: #38BDF8 to #0369A1.
+  static const LinearGradient brandGradient = LinearGradient(
+    begin: _gradientBegin,
+    end: _gradientEnd,
+    colors: [gradientStart, gradientEnd],
+  );
+
+  /// The header band in dark mode: the same direction, deeper blues.
+  static const LinearGradient headerGradientDark = LinearGradient(
+    begin: _gradientBegin,
+    end: _gradientEnd,
+    colors: [_darkGradientStart, _darkGradientEnd],
+  );
 
   static const SystemUiOverlayStyle lightOverlayStyle = SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -77,37 +107,15 @@ class AppTheme {
   static SystemUiOverlayStyle overlayStyleFor(Brightness brightness) =>
       brightness == Brightness.dark ? darkOverlayStyle : lightOverlayStyle;
 
-  static const TextStyle _tabularFigures = TextStyle(
-    fontFeatures: [FontFeature.tabularFigures()],
-  );
-
-  static const TextTheme _tabularTypography = TextTheme(
-    displayLarge: _tabularFigures,
-    displayMedium: _tabularFigures,
-    displaySmall: _tabularFigures,
-    headlineLarge: _tabularFigures,
-    headlineMedium: _tabularFigures,
-    headlineSmall: _tabularFigures,
-    titleLarge: _tabularFigures,
-    titleMedium: _tabularFigures,
-    titleSmall: _tabularFigures,
-    bodyLarge: _tabularFigures,
-    bodyMedium: _tabularFigures,
-    bodySmall: _tabularFigures,
-    labelLarge: _tabularFigures,
-    labelMedium: _tabularFigures,
-    labelSmall: _tabularFigures,
-  );
-
   static List<BoxShadow> get softShadow => [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.06),
+      color: primaryDark.withValues(alpha: 0.08),
       blurRadius: 16,
       offset: const Offset(0, 6),
     ),
   ];
 
-  /// [softShadow] on a light surface; nothing on a dark one, where a black shadow does not show.
+  /// [softShadow] on a light surface; nothing on a dark one, where a shadow does not show.
   static List<BoxShadow>? softShadowFor(ColorScheme colors) =>
       colors.brightness == Brightness.light ? softShadow : null;
 
@@ -136,8 +144,8 @@ class AppTheme {
     borderRadius: BorderRadius.circular(20),
   );
 
-  // The light roles repeat the legacy constants, so a screen moved from AppTheme.* to the colour scheme looks the same
-  // in light mode.
+  // The light roles repeat the constants above, so a screen that still reads AppTheme.* matches one that reads the
+  // colour scheme.
   static final ThemeData lightTheme = _buildTheme(
     colorScheme:
         ColorScheme.fromSeed(
@@ -147,7 +155,7 @@ class AppTheme {
           primary: primary,
           onPrimary: Colors.white,
           primaryContainer: mintLight,
-          onPrimaryContainer: primary,
+          onPrimaryContainer: primaryDark,
           secondary: primary,
           onSecondary: Colors.white,
           surface: _lightSurface,
@@ -180,6 +188,11 @@ class AppTheme {
           secondary: _darkPrimary,
           onSecondary: _darkOnPrimary,
           surface: _darkSurface,
+          surfaceContainerLowest: _darkBackground,
+          surfaceContainerLow: _darkContainerLow,
+          surfaceContainer: _darkSurface,
+          surfaceContainerHigh: _darkContainerHigh,
+          surfaceContainerHighest: _darkContainerHighest,
           onSurface: _darkTextPrimary,
           onSurfaceVariant: _darkTextSecondary,
           outlineVariant: _darkBorder,
@@ -215,10 +228,8 @@ class AppTheme {
           TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
         },
       ),
-      textTheme: GoogleFonts.poppinsTextTheme(
-        base.textTheme,
-      ).apply(bodyColor: text, displayColor: text).merge(_tabularTypography),
-      primaryTextTheme: base.primaryTextTheme.merge(_tabularTypography),
+      textTheme: AppTypography.textTheme(base.textTheme, text),
+      primaryTextTheme: AppTypography.tabular(base.primaryTextTheme),
       iconTheme: IconThemeData(color: text),
       appBarTheme: AppBarTheme(
         backgroundColor: background,
@@ -227,10 +238,10 @@ class AppTheme {
         centerTitle: true,
         systemOverlayStyle: overlayStyle,
         iconTheme: IconThemeData(color: text),
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.beVietnamPro(
           color: text,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
+          fontSize: AppTextSize.pageTitle,
+          fontWeight: FontWeight.w700,
         ),
       ),
       cardTheme: CardThemeData(
@@ -287,7 +298,10 @@ class AppTheme {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           elevation: 0,
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: GoogleFonts.beVietnamPro(
+            fontSize: AppTextSize.title,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -316,25 +330,31 @@ class AppTheme {
 
 /// Fintech colours that the [ColorScheme] has no role for. Errors use [ColorScheme.error].
 class SemanticColors extends ThemeExtension<SemanticColors> {
-  /// [successColor] and [warningColor] default to the light palette, so that two-colour instances keep compiling.
+  /// Everything but the two money colours defaults to the light palette, so that two-colour instances keep compiling.
   const SemanticColors({
     required this.incomeColor,
     required this.expenseColor,
     this.successColor = AppTheme.positive,
     this.warningColor = AppTheme.warningColor,
+    this.headerGradient = AppTheme.brandGradient,
+    this.pendingProgressColor = AppTheme.pendingProgress,
   });
 
   const SemanticColors.defaultLight()
     : incomeColor = AppTheme.positive,
       expenseColor = AppTheme.negative,
       successColor = AppTheme.positive,
-      warningColor = AppTheme.warningColor;
+      warningColor = AppTheme.warningColor,
+      headerGradient = AppTheme.brandGradient,
+      pendingProgressColor = AppTheme.pendingProgress;
 
   const SemanticColors.defaultDark()
     : incomeColor = AppTheme._darkPositive,
       expenseColor = AppTheme._darkNegative,
       successColor = AppTheme._darkPositive,
-      warningColor = AppTheme._darkWarning;
+      warningColor = AppTheme._darkWarning,
+      headerGradient = AppTheme.headerGradientDark,
+      pendingProgressColor = AppTheme.pendingProgress;
 
   static const SemanticColors light = SemanticColors.defaultLight();
 
@@ -345,18 +365,28 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
   final Color successColor;
   final Color warningColor;
 
+  /// The background of the header band at the top of a page.
+  final LinearGradient headerGradient;
+
+  /// The part of a progress bar that the current input is about to add.
+  final Color pendingProgressColor;
+
   @override
   SemanticColors copyWith({
     Color? incomeColor,
     Color? expenseColor,
     Color? successColor,
     Color? warningColor,
+    LinearGradient? headerGradient,
+    Color? pendingProgressColor,
   }) {
     return SemanticColors(
       incomeColor: incomeColor ?? this.incomeColor,
       expenseColor: expenseColor ?? this.expenseColor,
       successColor: successColor ?? this.successColor,
       warningColor: warningColor ?? this.warningColor,
+      headerGradient: headerGradient ?? this.headerGradient,
+      pendingProgressColor: pendingProgressColor ?? this.pendingProgressColor,
     );
   }
 
@@ -371,6 +401,16 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
       expenseColor: Color.lerp(expenseColor, other.expenseColor, t)!,
       successColor: Color.lerp(successColor, other.successColor, t)!,
       warningColor: Color.lerp(warningColor, other.warningColor, t)!,
+      headerGradient: LinearGradient.lerp(
+        headerGradient,
+        other.headerGradient,
+        t,
+      )!,
+      pendingProgressColor: Color.lerp(
+        pendingProgressColor,
+        other.pendingProgressColor,
+        t,
+      )!,
     );
   }
 
@@ -381,9 +421,17 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
           other.incomeColor == incomeColor &&
           other.expenseColor == expenseColor &&
           other.successColor == successColor &&
-          other.warningColor == warningColor;
+          other.warningColor == warningColor &&
+          other.headerGradient == headerGradient &&
+          other.pendingProgressColor == pendingProgressColor;
 
   @override
-  int get hashCode =>
-      Object.hash(incomeColor, expenseColor, successColor, warningColor);
+  int get hashCode => Object.hash(
+    incomeColor,
+    expenseColor,
+    successColor,
+    warningColor,
+    headerGradient,
+    pendingProgressColor,
+  );
 }

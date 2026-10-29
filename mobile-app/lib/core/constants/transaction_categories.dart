@@ -13,6 +13,7 @@ class TransactionCategories {
   /// Essential default expense categories, by the name core-backend stores (DefaultCategory key in each comment).
   static const String groceries = 'Siêu thị & Chợ'; // groceries
   static const String transport = 'Di chuyển'; // transport
+  static const String shopping = 'Mua sắm'; // shopping
   static const String housing = 'Nhà ở'; // housing
   static const String utilities = 'Điện nước'; // utilities
   static const String telecom = 'Internet & Điện thoại'; // telecom
@@ -49,7 +50,7 @@ class TransactionCategories {
     housing: (loc) => loc.categoryHousing, // housing
     utilities: (loc) => loc.categoryUtilities, // utilities
     telecom: (loc) => loc.categoryTelecom, // telecom
-    'Mua sắm': (loc) => loc.categoryShopping, // shopping
+    shopping: (loc) => loc.categoryShopping, // shopping
     health: (loc) => loc.categoryHealth, // health
     education: (loc) => loc.categoryEducation, // education
     'Giải trí': (loc) => loc.categoryEntertainment, // entertainment

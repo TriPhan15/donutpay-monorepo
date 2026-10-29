@@ -11,6 +11,7 @@ import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/repositories/settings_repository.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
+import 'package:finance_ai_app/screens/startup/startup_splash_screen.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
@@ -70,25 +71,11 @@ class _DonutPayAppState extends State<DonutPayApp> {
       ],
       child: _DonutPayMaterialApp(
         home: _loading
-            ? const _StartupLoadingScreen()
+            ? const StartupSplashScreen()
             : _loggedIn
             ? const MainScaffold()
             : const LoginScreen(),
       ),
-    );
-  }
-}
-
-/// Shown while the session is checked. It is built under the MaterialApp, so it already has the saved light or dark
-/// theme; the spinner takes the primary colour from the theme.
-class _StartupLoadingScreen extends StatelessWidget {
-  const _StartupLoadingScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: const Center(child: CircularProgressIndicator()),
     );
   }
 }

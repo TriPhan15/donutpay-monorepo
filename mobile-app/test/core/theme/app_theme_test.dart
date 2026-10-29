@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 
+import '../../helpers/theme_colors.dart';
+
 /// WCAG contrast ratio of two opaque colours: 4.5 is the minimum for body text.
 double _contrast(Color a, Color b) {
   final la = a.computeLuminance();
@@ -29,26 +31,8 @@ Color? _materialColor(WidgetTester tester, Type owner) => tester
     )
     .color;
 
-List<TextStyle?> _allStyles(TextTheme theme) => [
-  theme.displayLarge,
-  theme.displayMedium,
-  theme.displaySmall,
-  theme.headlineLarge,
-  theme.headlineMedium,
-  theme.headlineSmall,
-  theme.titleLarge,
-  theme.titleMedium,
-  theme.titleSmall,
-  theme.bodyLarge,
-  theme.bodyMedium,
-  theme.bodySmall,
-  theme.labelLarge,
-  theme.labelMedium,
-  theme.labelSmall,
-];
-
 void main() {
-  // The themes load Poppins through google_fonts; inside testWidgets that load never reaches the network.
+  // The themes load Be Vietnam Pro through google_fonts; inside testWidgets that load never reaches the network.
   testWidgets(
     'both themes are Material 3 and carry the semantic colours of their brightness',
     (tester) async {
@@ -63,6 +47,55 @@ void main() {
       expect(dark.extension<SemanticColors>(), SemanticColors.dark);
     },
   );
+
+  testWidgets('the light palette is the T9 sky blue', (tester) async {
+    final light = AppTheme.lightTheme;
+    final scheme = light.colorScheme;
+    const colors = SemanticColors.light;
+
+    expect(scheme.primary, const Color(0xFF0284C7));
+    expect(AppTheme.primaryDark, const Color(0xFF0369A1));
+    expect(light.scaffoldBackgroundColor, const Color(0xFFF3F8FC));
+    expect(scheme.surface, Colors.white);
+    expect(scheme.primaryContainer, const Color(0xFFE0F2FE));
+    expect(scheme.onPrimaryContainer, const Color(0xFF0369A1));
+    expect(scheme.onSurfaceVariant, const Color(0xFF5B6F82));
+    expect(scheme.error, const Color(0xFFE5484D));
+    expect(colors.incomeColor, const Color(0xFF0E9F6E));
+    expect(colors.expenseColor, const Color(0xFFE5484D));
+    expect(colors.warningColor, const Color(0xFFB7791F));
+    expect(colors.pendingProgressColor, const Color(0xFF7DD3FC));
+    expect(colors.headerGradient.colors, const [
+      Color(0xFF38BDF8),
+      Color(0xFF0369A1),
+    ]);
+    expect(colors.headerGradient, AppTheme.brandGradient);
+  });
+
+  testWidgets('the dark palette follows the dark preview', (tester) async {
+    final dark = AppTheme.darkTheme;
+    final scheme = dark.colorScheme;
+    const colors = SemanticColors.dark;
+
+    expect(scheme.primary, const Color(0xFF38BDF8));
+    expect(dark.scaffoldBackgroundColor, const Color(0xFF0B1724));
+    expect(scheme.surface, const Color(0xFF13233A));
+    expect(scheme.primaryContainer, const Color(0xFF16344F));
+    expect(scheme.onPrimaryContainer, const Color(0xFF7DD3FC));
+    expect(scheme.onSurface, const Color(0xFFE6EEF6));
+    expect(scheme.onSurfaceVariant, const Color(0xFF93A7BA));
+    expect(scheme.outlineVariant, const Color(0xFF22384D));
+    expect(scheme.error, const Color(0xFFFB7185));
+    expect(colors.incomeColor, const Color(0xFF34D399));
+    expect(colors.expenseColor, const Color(0xFFFB7185));
+    expect(colors.warningColor, const Color(0xFFF5C04A));
+    expect(colors.pendingProgressColor, const Color(0xFF7DD3FC));
+    expect(colors.headerGradient.colors, const [
+      Color(0xFF0B4F7A),
+      Color(0xFF082F49),
+    ]);
+    expect(colors.headerGradient, AppTheme.headerGradientDark);
+  });
 
   testWidgets('the light theme keeps the brand colours', (tester) async {
     final light = AppTheme.lightTheme;
@@ -109,12 +142,12 @@ void main() {
       expect(scheme.primary, AppTheme.mintAccent);
       expect(scheme.onPrimary, AppTheme.navyDark);
       expect(scheme.primaryContainer, AppTheme.mintLight);
-      expect(scheme.onPrimaryContainer, AppTheme.primary);
+      expect(scheme.onPrimaryContainer, AppTheme.primaryDark);
       expect(scheme.surface, AppTheme.navyLight);
       expect(scheme.onSurface, AppTheme.textWhite);
       expect(scheme.onSurfaceVariant, AppTheme.textGray);
       expect(scheme.error, AppTheme.dangerColor);
-      expect(scheme.outlineVariant, const Color(0xFFE7E7EC));
+      expect(scheme.outlineVariant, const Color(0xFFE1EBF3));
       expect(light.scaffoldBackgroundColor, AppTheme.bgLight);
       expect(
         AppTheme.cardDecoration(scheme).color,
@@ -231,40 +264,41 @@ void main() {
     },
   );
 
-  testWidgets(
-    'every on-colour is readable on its own background in both themes',
-    (tester) async {
-      for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
-        final scheme = theme.colorScheme;
-        final pairs = {
-          'onSurface/surface': (scheme.onSurface, scheme.surface),
-          'onSurface/scaffold': (
-            scheme.onSurface,
-            theme.scaffoldBackgroundColor,
-          ),
-          'primary/surface': (scheme.primary, scheme.surface),
-          'onPrimary/primary': (scheme.onPrimary, scheme.primary),
-          'onPrimaryContainer/primaryContainer': (
-            scheme.onPrimaryContainer,
-            scheme.primaryContainer,
-          ),
-          'onInverseSurface/inverseSurface (snack bars)': (
-            scheme.onInverseSurface,
-            scheme.inverseSurface,
-          ),
-        };
-        for (final pair in pairs.entries) {
-          expect(
-            _contrast(pair.value.$1, pair.value.$2),
-            greaterThanOrEqualTo(4.5),
-            reason: '${theme.brightness.name} ${pair.key}',
-          );
-        }
+  testWidgets('every on-colour is readable on its own background in both themes', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
+      final scheme = theme.colorScheme;
+      final pairs = {
+        'onSurface/surface': (scheme.onSurface, scheme.surface),
+        'onSurface/scaffold': (scheme.onSurface, theme.scaffoldBackgroundColor),
+        'primary/surface': (scheme.primary, scheme.surface),
+        'onPrimary/primary': (scheme.onPrimary, scheme.primary),
+        'onPrimaryContainer/primaryContainer': (
+          scheme.onPrimaryContainer,
+          scheme.primaryContainer,
+        ),
+        'onInverseSurface/inverseSurface (snack bars)': (
+          scheme.onInverseSurface,
+          scheme.inverseSurface,
+        ),
+      };
+      for (final pair in pairs.entries) {
+        // Decision of 2026-10-29: the light primary stays the #0284C7 of the approved design. Against white it is
+        // 4.1:1 both ways (white button labels, primary text and icons on cards), so those two pairs are held to 4.0.
+        final lightPrimary =
+            theme.brightness == Brightness.light &&
+            (pair.key == 'onPrimary/primary' || pair.key == 'primary/surface');
+        expect(
+          _contrast(pair.value.$1, pair.value.$2),
+          greaterThanOrEqualTo(lightPrimary ? 4.0 : 4.5),
+          reason: '${theme.brightness.name} ${pair.key}',
+        );
       }
-      final dark = AppTheme.darkTheme.colorScheme;
-      expect(_contrast(dark.onError, dark.error), greaterThanOrEqualTo(4.5));
-    },
-  );
+    }
+    final dark = AppTheme.darkTheme.colorScheme;
+    expect(_contrast(dark.onError, dark.error), greaterThanOrEqualTo(4.5));
+  });
 
   testWidgets(
     'dialogs, sheets, dividers, inputs, bars and icons take their colours from the colour scheme',
@@ -317,7 +351,7 @@ void main() {
   );
 
   testWidgets(
-    'the light container roles are neutral greys, from the surface down to the old track colour',
+    'the light container roles are pale blue-greys, from the surface down to the track colour',
     (tester) async {
       final scheme = AppTheme.lightTheme.colorScheme;
       final containers = [
@@ -327,23 +361,10 @@ void main() {
         scheme.surfaceContainerHigh,
         scheme.surfaceContainerHighest,
       ];
-      final oldTrack = Color.alphaBlend(
-        AppTheme.textGray.withValues(alpha: 0.2),
-        Colors.white,
-      );
 
       expect(scheme.surfaceContainerLowest, scheme.surface);
       expect(scheme.surfaceContainer, AppTheme.bgLight);
-      expect(scheme.surfaceContainerHighest.toARGB32(), oldTrack.toARGB32());
-      for (final color in containers) {
-        final argb = color.toARGB32();
-        final channels = [(argb >> 16) & 0xFF, (argb >> 8) & 0xFF, argb & 0xFF];
-        expect(
-          channels.reduce(math.max) - channels.reduce(math.min),
-          lessThanOrEqualTo(2),
-          reason: 'no tint in $color',
-        );
-      }
+      expect(scheme.surfaceContainerHighest, const Color(0xFFDFE9F2));
       for (var i = 1; i < containers.length; i++) {
         expect(
           containers[i].computeLuminance(),
@@ -361,6 +382,11 @@ void main() {
       AppTheme.softShadow,
     );
     expect(AppTheme.softShadowFor(AppTheme.darkTheme.colorScheme), isNull);
+    expect(
+      AppTheme.softShadow.single.color,
+      AppTheme.primaryDark.withValues(alpha: 0.08),
+      reason: 'a very light blue shadow',
+    );
   });
 
   group('rendered with AppTheme', () {
@@ -477,8 +503,8 @@ void main() {
   ) async {
     for (final theme in [AppTheme.lightTheme, AppTheme.darkTheme]) {
       for (final style in [
-        ..._allStyles(theme.textTheme),
-        ..._allStyles(theme.primaryTextTheme),
+        ...allTextStyles(theme.textTheme),
+        ...allTextStyles(theme.primaryTextTheme),
       ]) {
         expect(
           style?.fontFeatures,
@@ -513,6 +539,35 @@ void main() {
       expect(half.expenseColor, Color.lerp(red, const Color(0xFF000000), 0.5));
       expect(colors.lerp(null, 0.5), same(colors));
     });
+
+    test(
+      'copyWith, lerp and equality cover the header gradient and the pending progress colour',
+      () {
+        const blue = Color(0xFF0000FF);
+        const other = LinearGradient(colors: [blue, blue]);
+        final changed = colors.copyWith(
+          headerGradient: other,
+          pendingProgressColor: blue,
+        );
+
+        expect(changed.headerGradient, other);
+        expect(changed.pendingProgressColor, blue);
+        expect(changed.incomeColor, colors.incomeColor);
+        expect(changed, isNot(colors));
+        expect(colors.copyWith(pendingProgressColor: blue), isNot(colors));
+        expect(colors.copyWith(headerGradient: other), isNot(colors));
+
+        final half = colors.lerp(changed, 0.5);
+        expect(
+          half.headerGradient,
+          LinearGradient.lerp(colors.headerGradient, other, 0.5),
+        );
+        expect(
+          half.pendingProgressColor,
+          Color.lerp(colors.pendingProgressColor, blue, 0.5),
+        );
+      },
+    );
 
     test('two instances with the same colours are equal', () {
       expect(

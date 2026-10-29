@@ -11,6 +11,7 @@ import 'package:finance_ai_app/main.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/repositories/settings_repository_impl.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
+import 'package:finance_ai_app/screens/startup/startup_splash_screen.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/pending_receipts_screen.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
@@ -62,19 +63,6 @@ Color _bottomBarColor(WidgetTester tester) => tester
       ),
     )
     .color;
-
-/// The colour the spinner paints. The painter class is private, but its valueColor is what reaches the canvas.
-Color _spinnerColor(WidgetTester tester) {
-  final paint = tester.widget<CustomPaint>(
-    find
-        .descendant(
-          of: find.byType(CircularProgressIndicator),
-          matching: find.byType(CustomPaint),
-        )
-        .first,
-  );
-  return (paint.painter! as dynamic).valueColor as Color;
-}
 
 void main() {
   final backend = FakeBackend();
@@ -174,15 +162,14 @@ void main() {
     group('saved ${mode.name} theme', () {
       setUp(() => signInWithSavedTheme(mode));
 
-      testWidgets('the startup loading screen already uses it', (tester) async {
+      testWidgets('the startup splash screen is built under it', (
+        tester,
+      ) async {
         await startApp(tester);
 
-        final colors = Theme.of(
-          tester.element(find.byType(CircularProgressIndicator)),
-        ).colorScheme;
-        expect(colors.brightness, brightness);
-        expect(_materialColor(tester, find.byType(Scaffold)), colors.surface);
-        expect(_spinnerColor(tester), colors.primary);
+        final splash = find.byType(StartupSplashScreen);
+        expect(splash, findsOneWidget);
+        expect(Theme.of(tester.element(splash)).brightness, brightness);
 
         await tester.pumpAndSettle();
         expect(find.byType(MainScaffold), findsOneWidget);
@@ -337,34 +324,31 @@ void main() {
   group('light mode', () {
     setUp(() => signInWithSavedTheme(ThemeMode.light));
 
-    testWidgets(
-      'keeps the colours the loading screen and MainScaffold had before the migration',
-      (tester) async {
-        await startApp(tester);
-        expect(_materialColor(tester, find.byType(Scaffold)), Colors.white);
-        expect(_spinnerColor(tester), AppTheme.mintAccent);
+    testWidgets('keeps the colours MainScaffold had before the migration', (
+      tester,
+    ) async {
+      await startApp(tester);
 
-        await tester.pumpAndSettle();
-        expect(
-          _materialColor(tester, find.byType(MainScaffold)),
-          AppTheme.bgLight,
-        );
-        expect(_bottomBarColor(tester), Colors.white);
-        expect(
-          _materialColor(tester, find.byType(FloatingActionButton)),
-          AppTheme.primary,
-        );
-        expect(_paintedColor(tester, _scanButtonIcon()), Colors.white);
-        expect(
-          _paintedColor(tester, _inBottomBar(find.text('Trang chủ'))),
-          AppTheme.primary,
-        );
-        expect(
-          _paintedColor(tester, _inBottomBar(find.text('Cá nhân'))),
-          AppTheme.textGray,
-        );
-      },
-    );
+      await tester.pumpAndSettle();
+      expect(
+        _materialColor(tester, find.byType(MainScaffold)),
+        AppTheme.bgLight,
+      );
+      expect(_bottomBarColor(tester), Colors.white);
+      expect(
+        _materialColor(tester, find.byType(FloatingActionButton)),
+        AppTheme.primary,
+      );
+      expect(_paintedColor(tester, _scanButtonIcon()), Colors.white);
+      expect(
+        _paintedColor(tester, _inBottomBar(find.text('Trang chủ'))),
+        AppTheme.primary,
+      );
+      expect(
+        _paintedColor(tester, _inBottomBar(find.text('Cá nhân'))),
+        AppTheme.textGray,
+      );
+    });
   });
 
   group('batch receipt scan', () {

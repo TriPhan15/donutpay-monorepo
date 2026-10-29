@@ -52,3 +52,22 @@ double contrastRatio(Color a, Color b) {
 /// [color] as it looks painted over [background], for colours with transparency.
 Color over(Color color, Color background) =>
     Color.alphaBlend(color, background);
+
+/// Every role of [theme], in Material order, to check them all at once.
+List<TextStyle?> allTextStyles(TextTheme theme) => [
+  theme.displayLarge,
+  theme.displayMedium,
+  theme.displaySmall,
+  theme.headlineLarge,
+  theme.headlineMedium,
+  theme.headlineSmall,
+  theme.titleLarge,
+  theme.titleMedium,
+  theme.titleSmall,
+  theme.bodyLarge,
+  theme.bodyMedium,
+  theme.bodySmall,
+  theme.labelLarge,
+  theme.labelMedium,
+  theme.labelSmall,
+];

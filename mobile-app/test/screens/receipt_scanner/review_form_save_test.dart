@@ -89,7 +89,7 @@ void main() {
   late FakeLocalStore store;
 
   setUpAll(() async {
-    // The themes load Poppins through google_fonts once, and that fetch fails in a test (there is no network). Started
+    // The themes load Be Vietnam Pro through google_fonts once, and that fetch fails in a test (there is no network). Started
     // here, in a zone that ignores the failure, it cannot fail the first test that gives real time to I/O (runAsync).
     runZonedGuarded(() => [AppTheme.lightTheme, AppTheme.darkTheme], (_, _) {});
     await initializeDateFormatting('vi_VN');
