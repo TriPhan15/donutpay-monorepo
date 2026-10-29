@@ -255,10 +255,31 @@ class AppLocalizationsVi extends AppLocalizations {
   String get scanSheetTitle => 'Quét hóa đơn bằng AI';
 
   @override
-  String get scanWithAi => 'Quét AI';
+  String get scanSheetSubtitle => 'Chọn cách đưa hóa đơn vào';
 
   @override
-  String get scanFromGallery => 'Từ thư viện';
+  String get scanOptionCamera => 'Quét bằng camera';
+
+  @override
+  String get scanOptionCameraHint => 'Một hóa đơn, kiểm tra và lưu ngay';
+
+  @override
+  String get scanOptionGallery => 'Chọn từ thư viện';
+
+  @override
+  String get scanOptionGalleryHint => 'Một ảnh có sẵn trong máy';
+
+  @override
+  String get scanOptionBatch => 'Quét nhiều';
+
+  @override
+  String get scanOptionBatchHint => 'Chụp liên tục, AI đọc dần ở nền';
+
+  @override
+  String get scanOptionBatchGallery => 'Chọn nhiều ảnh';
+
+  @override
+  String get scanOptionBatchGalleryHint => 'Nhiều ảnh cùng lúc, xác nhận sau';
 
   @override
   String get scanScannerFailedTitle => 'Không mở được trình quét';
@@ -923,9 +944,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get commonInvalidAmountTitle => 'Số tiền không hợp lệ';
 
   @override
-  String get commonSummary => 'Tổng kết';
-
-  @override
   String get currencySymbol => 'đ';
 
   @override
@@ -1161,14 +1179,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reviewTitle => 'Xác nhận hóa đơn';
 
   @override
-  String get reviewDateFallback =>
-      'Không đọc được ngày trên hóa đơn, đang dùng thời điểm hiện tại. Chạm để chọn lại.';
-
-  @override
-  String get reviewFieldNeedsCheck =>
-      'AI chưa chắc chắn ở trường này, vui lòng kiểm tra lại.';
-
-  @override
   String get reviewNoTotal =>
       'Donut chưa đọc được tổng tiền từ ảnh — vui lòng nhập tay.';
 
@@ -1190,10 +1200,47 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reviewLater => 'Để sau';
 
   @override
-  String get reviewTotalPositive => 'Vui lòng nhập tổng tiền lớn hơn 0.';
+  String get reviewSaved => 'Đã lưu giao dịch từ hóa đơn.';
 
   @override
-  String get reviewSaved => 'Đã lưu giao dịch từ hóa đơn.';
+  String get reviewStepPhoto => 'Ảnh';
+
+  @override
+  String get reviewStepCheck => 'Kiểm tra';
+
+  @override
+  String get reviewStepSave => 'Lưu';
+
+  @override
+  String get reviewZoom => 'Phóng to';
+
+  @override
+  String get reviewCompare => 'Đối chiếu';
+
+  @override
+  String get reviewNeedsCheck => 'Cần kiểm tra';
+
+  @override
+  String get reviewStoreHint => 'Chưa chắc tên cửa hàng, hãy sửa nếu sai.';
+
+  @override
+  String get reviewTotalHint => 'Chưa chắc tổng tiền, hãy so với ảnh.';
+
+  @override
+  String get reviewDateHint =>
+      'Chưa đọc được ngày, hãy chọn lại nếu không phải hôm nay.';
+
+  @override
+  String get reviewTotal => 'Tổng tiền';
+
+  @override
+  String get reviewDateDoubtHint => 'Chưa chắc ngày, hãy so với ảnh.';
+
+  @override
+  String get reviewSaveAndScan => 'Lưu & quét tiếp';
+
+  @override
+  String get reviewSave => 'Lưu';
 
   @override
   String get reviewAnalyzing => 'Đang phân tích hóa đơn...';
@@ -1202,32 +1249,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reviewPleaseWait => 'Vui lòng đợi trong giây lát';
 
   @override
-  String get reviewExtracted => 'Trích xuất thành công';
-
-  @override
-  String get reviewCheckDetails =>
-      'Vui lòng kiểm tra lại thông tin bên dưới và đối chiếu với ảnh gốc trước khi lưu.';
-
-  @override
-  String get reviewGeneralInfo => 'Thông tin chung';
-
-  @override
   String get reviewStoreName => 'Tên cửa hàng';
-
-  @override
-  String get reviewTotalLabel => 'Tổng tiền (đ)';
-
-  @override
-  String get reviewSubtotal => 'Tạm tính:';
-
-  @override
-  String get reviewTax => 'Thuế VAT/Khác:';
-
-  @override
-  String get reviewGrandTotal => 'TỔNG TIỀN:';
-
-  @override
-  String get reviewSubmit => 'Xác nhận và lưu';
 
   @override
   String get paymentHistoryTitle => 'Lịch sử nạp/rút';
@@ -1924,12 +1946,6 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get scanBatchCamera => 'Quét nhiều';
-
-  @override
-  String get scanBatchGallery => 'Chọn nhiều ảnh';
-
-  @override
   String scanQueueAdded(int count) {
     return 'Đã thêm $count hóa đơn vào hàng chờ';
   }
@@ -1971,9 +1987,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get pendingStatusReading => 'Đang đọc';
 
   @override
-  String get pendingStatusReady => 'Sẵn sàng';
-
-  @override
   String get pendingStatusFailed => 'Lỗi';
 
   @override
@@ -1984,11 +1997,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pendingDiscardConfirm => 'Bỏ hóa đơn này khỏi danh sách?';
-
-  @override
-  String pendingConfirmAll(int count) {
-    return 'Xác nhận tất cả hợp lệ ($count)';
-  }
 
   @override
   String pendingConfirmAllAsk(int count) {
@@ -2008,6 +2016,61 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pendingErrorMissingImage => 'Ảnh không còn trên máy.';
+
+  @override
+  String pendingGroupReady(int count) {
+    return 'Sẵn sàng $count';
+  }
+
+  @override
+  String pendingGroupProcessing(int count) {
+    return 'Đang xử lý $count';
+  }
+
+  @override
+  String pendingTabReading(int count) {
+    return 'Đang đọc $count';
+  }
+
+  @override
+  String pendingTabFailed(int count) {
+    return 'Lỗi $count';
+  }
+
+  @override
+  String get pendingReadingTitle => 'Đang đọc…';
+
+  @override
+  String pendingPhotoTitle(int index) {
+    return 'Ảnh $index';
+  }
+
+  @override
+  String get pendingQuickSave => 'Lưu';
+
+  @override
+  String get pendingReview => 'Kiểm tra';
+
+  @override
+  String pendingReadyFooter(int count) {
+    return '$count hóa đơn sẵn sàng';
+  }
+
+  @override
+  String pendingSelected(int count) {
+    return 'Đã chọn $count';
+  }
+
+  @override
+  String get pendingSelectAll => 'Chọn tất cả';
+
+  @override
+  String pendingSaveSelected(int count) {
+    return 'Lưu $count hóa đơn đã chọn';
+  }
+
+  @override
+  String get pendingConfirmAllShort => 'Xác nhận tất cả';
 
   @override
   String toastStackCount(int count) {

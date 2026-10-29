@@ -330,13 +330,41 @@
   "@scanSheetTitle": {
     "description": "Title of the sheet opened by the scan button."
   },
-  "scanWithAi": "AI scan",
-  "@scanWithAi": {
-    "description": "Scan sheet option that opens the document scanner."
+  "scanSheetSubtitle": "Choose how to add receipts",
+  "@scanSheetSubtitle": {
+    "description": "Line under the scan sheet title."
   },
-  "scanFromGallery": "From gallery",
-  "@scanFromGallery": {
-    "description": "Scan sheet option that picks a receipt photo from the gallery."
+  "scanOptionCamera": "Scan with camera",
+  "@scanOptionCamera": {
+    "description": "Scan sheet: one receipt with the camera."
+  },
+  "scanOptionCameraHint": "One receipt, check and save now",
+  "@scanOptionCameraHint": {
+    "description": "Explains the camera option."
+  },
+  "scanOptionGallery": "Pick from gallery",
+  "@scanOptionGallery": {
+    "description": "Scan sheet: one photo from the gallery."
+  },
+  "scanOptionGalleryHint": "One photo already on the phone",
+  "@scanOptionGalleryHint": {
+    "description": "Explains the gallery option."
+  },
+  "scanOptionBatch": "Scan many",
+  "@scanOptionBatch": {
+    "description": "Scan sheet: several receipts with the camera."
+  },
+  "scanOptionBatchHint": "Keep shooting, AI reads them in the background",
+  "@scanOptionBatchHint": {
+    "description": "Explains the batch camera option."
+  },
+  "scanOptionBatchGallery": "Pick many photos",
+  "@scanOptionBatchGallery": {
+    "description": "Scan sheet: several photos from the gallery."
+  },
+  "scanOptionBatchGalleryHint": "Several photos at once, confirm later",
+  "@scanOptionBatchGalleryHint": {
+    "description": "Explains the batch gallery option."
   },
   "scanScannerFailedTitle": "Couldn't open the scanner",
   "@scanScannerFailedTitle": {
@@ -1233,10 +1261,6 @@
   "@commonInvalidAmountTitle": {
     "description": "Title of the dialog shown when the typed amount is not a positive number."
   },
-  "commonSummary": "Summary",
-  "@commonSummary": {
-    "description": "Heading of a totals block (Ledger, receipt form)."
-  },
   "currencySymbol": "đ",
   "@currencySymbol": {
     "description": "The VND symbol shown after an amount field; the unit stays VND in every language."
@@ -1549,14 +1573,6 @@
   "@reviewTitle": {
     "description": "Title of the receipt review form."
   },
-  "reviewDateFallback": "Couldn't read the date on the receipt, so the current time is used. Tap to choose another.",
-  "@reviewDateFallback": {
-    "description": "Shown under the date when the scan found no date."
-  },
-  "reviewFieldNeedsCheck": "The AI isn't sure about this field. Please check it.",
-  "@reviewFieldNeedsCheck": {
-    "description": "Shown under a scanned field (store, total, date) that the AI post-processing marked as not valid."
-  },
   "reviewNoTotal": "Donut couldn't read the total from the photo. Please enter it manually.",
   "@reviewNoTotal": {
     "description": "The scan found no total."
@@ -1581,13 +1597,61 @@
   "@reviewLater": {
     "description": "Cancel button: do not save now."
   },
-  "reviewTotalPositive": "Please enter a total greater than 0.",
-  "@reviewTotalPositive": {
-    "description": "The total must be above zero."
-  },
   "reviewSaved": "Transaction saved from the receipt.",
   "@reviewSaved": {
     "description": "The server saved the receipt transaction."
+  },
+  "reviewStepPhoto": "Photo",
+  "@reviewStepPhoto": {
+    "description": "Done step of the receipt review band."
+  },
+  "reviewStepCheck": "Check",
+  "@reviewStepCheck": {
+    "description": "Current step of the receipt review band."
+  },
+  "reviewStepSave": "Save",
+  "@reviewStepSave": {
+    "description": "Last step of the receipt review band."
+  },
+  "reviewZoom": "Zoom",
+  "@reviewZoom": {
+    "description": "Pill on the receipt photo that opens the viewer."
+  },
+  "reviewCompare": "Compare",
+  "@reviewCompare": {
+    "description": "Pill in the review band: photo and fields side by side."
+  },
+  "reviewNeedsCheck": "Check this",
+  "@reviewNeedsCheck": {
+    "description": "Marks a field the AI is not sure about."
+  },
+  "reviewStoreHint": "Store name may be wrong, please correct it.",
+  "@reviewStoreHint": {
+    "description": "Hint under an unsure store name."
+  },
+  "reviewTotalHint": "Total may be wrong, compare it with the photo.",
+  "@reviewTotalHint": {
+    "description": "Hint under an unsure total."
+  },
+  "reviewDateHint": "Could not read the date; pick it if it was not today.",
+  "@reviewDateHint": {
+    "description": "Hint under a date the AI could not read."
+  },
+  "reviewTotal": "Total",
+  "@reviewTotal": {
+    "description": "Label of the receipt total field."
+  },
+  "reviewDateDoubtHint": "Date may be wrong, compare it with the photo.",
+  "@reviewDateDoubtHint": {
+    "description": "Hint under a date the AI read but doubts."
+  },
+  "reviewSaveAndScan": "Save & scan next",
+  "@reviewSaveAndScan": {
+    "description": "Secondary button: saves and goes on scanning."
+  },
+  "reviewSave": "Save",
+  "@reviewSave": {
+    "description": "Main button of the receipt review form."
   },
   "reviewAnalyzing": "Analyzing the receipt...",
   "@reviewAnalyzing": {
@@ -1597,41 +1661,9 @@
   "@reviewPleaseWait": {
     "description": "Shown while the scan runs."
   },
-  "reviewExtracted": "Extraction complete",
-  "@reviewExtracted": {
-    "description": "Heading once the scan answered."
-  },
-  "reviewCheckDetails": "Check the details below against the original photo before saving.",
-  "@reviewCheckDetails": {
-    "description": "Asks the user to check the scanned fields."
-  },
-  "reviewGeneralInfo": "General information",
-  "@reviewGeneralInfo": {
-    "description": "Section heading of the review form."
-  },
   "reviewStoreName": "Store name",
   "@reviewStoreName": {
     "description": "Label of the store name field."
-  },
-  "reviewTotalLabel": "Total (đ)",
-  "@reviewTotalLabel": {
-    "description": "Label of the total field."
-  },
-  "reviewSubtotal": "Subtotal:",
-  "@reviewSubtotal": {
-    "description": "Totals card row."
-  },
-  "reviewTax": "VAT/Other taxes:",
-  "@reviewTax": {
-    "description": "Totals card row."
-  },
-  "reviewGrandTotal": "TOTAL:",
-  "@reviewGrandTotal": {
-    "description": "Totals card row: the grand total."
-  },
-  "reviewSubmit": "Confirm & save",
-  "@reviewSubmit": {
-    "description": "Save button of the review form."
   },
   "paymentHistoryTitle": "Deposit/withdrawal history",
   "@paymentHistoryTitle": {
@@ -2686,14 +2718,6 @@
       }
     }
   },
-  "scanBatchCamera": "Scan several",
-  "@scanBatchCamera": {
-    "description": "Scan sheet option: scan up to 20 receipts in one go with the document scanner."
-  },
-  "scanBatchGallery": "Pick several",
-  "@scanBatchGallery": {
-    "description": "Scan sheet option: pick up to 20 receipt photos from the gallery."
-  },
   "scanQueueAdded": "{count, plural, =1{1 receipt added to the queue} other{{count} receipts added to the queue}}",
   "@scanQueueAdded": {
     "description": "Toast after receipts were queued for reading.",
@@ -2768,10 +2792,6 @@
   "@pendingStatusReading": {
     "description": "Status chip: the receipt is being read."
   },
-  "pendingStatusReady": "Ready",
-  "@pendingStatusReady": {
-    "description": "Status chip: the receipt is read and waits for a confirmation."
-  },
   "pendingStatusFailed": "Failed",
   "@pendingStatusFailed": {
     "description": "Status chip: the receipt could not be read."
@@ -2787,15 +2807,6 @@
   "pendingDiscardConfirm": "Remove this receipt from the list?",
   "@pendingDiscardConfirm": {
     "description": "Question before a receipt is removed from the queue."
-  },
-  "pendingConfirmAll": "Confirm all valid ({count})",
-  "@pendingConfirmAll": {
-    "description": "Bottom button that saves every receipt needing no review.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
   },
   "pendingConfirmAllAsk": "{count, plural, =1{Save 1 valid receipt as a transaction?} other{Save {count} valid receipts as transactions?}}",
   "@pendingConfirmAllAsk": {
@@ -2832,6 +2843,98 @@
   "pendingErrorMissingImage": "The photo is no longer on this device.",
   "@pendingErrorMissingImage": {
     "description": "Why a receipt failed: the image copy is gone."
+  },
+  "pendingGroupReady": "Ready {count}",
+  "@pendingGroupReady": {
+    "description": "Group / tab title of the ready receipts.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingGroupProcessing": "Processing {count}",
+  "@pendingGroupProcessing": {
+    "description": "Group title of the receipts not ready yet.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingTabReading": "Reading {count}",
+  "@pendingTabReading": {
+    "description": "Tab of the receipts waiting or being read.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingTabFailed": "Failed {count}",
+  "@pendingTabFailed": {
+    "description": "Tab of the receipts whose reading failed.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingReadingTitle": "Reading…",
+  "@pendingReadingTitle": {
+    "description": "Title of a card whose receipt is not read yet."
+  },
+  "pendingPhotoTitle": "Photo {index}",
+  "@pendingPhotoTitle": {
+    "description": "Title of a failed receipt: its place in the list.",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingQuickSave": "Save",
+  "@pendingQuickSave": {
+    "description": "Quick button of a ready receipt."
+  },
+  "pendingReview": "Check",
+  "@pendingReview": {
+    "description": "Quick button of a ready receipt with a doubted field."
+  },
+  "pendingReadyFooter": "{count} receipts ready",
+  "@pendingReadyFooter": {
+    "description": "Line above the bottom button: receipts that can be saved now.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingSelected": "{count} selected",
+  "@pendingSelected": {
+    "description": "Band title in the selection mode.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingSelectAll": "Select all",
+  "@pendingSelectAll": {
+    "description": "Selects every receipt that can be saved now."
+  },
+  "pendingSaveSelected": "Save {count} selected",
+  "@pendingSaveSelected": {
+    "description": "Bottom button in the selection mode.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingConfirmAllShort": "Confirm all",
+  "@pendingConfirmAllShort": {
+    "description": "Bottom button: saves every receipt that can be saved now."
   },
   "toastStackCount": "{count, plural, =1{1 notification · tap to see} other{{count} notifications · tap to see}}",
   "@toastStackCount": {

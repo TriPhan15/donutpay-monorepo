@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:finance_ai_app/models/scan_queue_item.dart';
@@ -18,12 +20,18 @@ class FakeScanQueue implements ReceiptScanQueue {
   final List<int> removed = [];
   final List<int> confirmed = [];
   int confirmAllCalls = 0;
+
+  /// The id sets given to [confirmItems], in call order.
+  final List<Set<int>> confirmedItems = [];
   int resumeCalls = 0;
 
   /// How many images [enqueue] takes, out of those it is given.
   int Function(List<String> imagePaths) acceptedOf = _all;
 
-  /// What [confirmAllValid] answers.
+  /// When set, [confirmAllValid] waits for it: a test can act while a bulk save runs.
+  Completer<void>? confirmGate;
+
+  /// What [confirmAllValid] and [confirmItems] answer.
   BulkConfirmResult bulkResult = BulkConfirmResult.none;
 
   static int _all(List<String> imagePaths) => imagePaths.length;
@@ -36,6 +44,8 @@ class FakeScanQueue implements ReceiptScanQueue {
     removed.clear();
     confirmed.clear();
     confirmAllCalls = 0;
+    confirmedItems.clear();
+    confirmGate = null;
     resumeCalls = 0;
     acceptedOf = _all;
     bulkResult = BulkConfirmResult.none;
@@ -74,6 +84,17 @@ class FakeScanQueue implements ReceiptScanQueue {
   @override
   Future<BulkConfirmResult> confirmAllValid() async {
     confirmAllCalls++;
+    await confirmGate?.future;
+    return bulkResult;
+  }
+
+  /// Records [ids] and, like the real queue, drops them from [queueItems] when [bulkResult] says they were saved.
+  @override
+  Future<BulkConfirmResult> confirmItems(Set<int> ids) async {
+    confirmedItems.add(Set.of(ids));
+    if (bulkResult.saved > 0) {
+      queueItems.removeWhere((item) => ids.contains(item.id));
+    }
     return bulkResult;
   }
 }

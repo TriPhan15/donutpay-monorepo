@@ -9,6 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/app_language.dart';
+import 'package:finance_ai_app/widgets/common/pill_segmented.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
+import 'package:finance_ai_app/models/pending_queue_view.dart';
+import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/receipt_scan_result.dart';
 import 'package:finance_ai_app/models/scan_queue_item.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -30,7 +34,19 @@ const String _photo = 'assets/images/logo.png';
 const String _scan = '/donut/scan';
 const String _upload = '/api/upload';
 const String _checkout = '/api/transactions/checkout';
-const String _save = 'Xác nhận và lưu';
+
+/// The main button of the review form ("Lưu" is also a step of its band).
+final Finder _save = find.widgetWithText(FilledButton, 'Lưu');
+final Finder _saveAndScan = find.widgetWithText(
+  OutlinedButton,
+  'Lưu & quét tiếp',
+);
+
+String _money(double amount) => CurrencyHelper.formatVND(
+  amount,
+  AppLanguage.vietnamese.localizations,
+  showSign: false,
+);
 
 ReceiptScanResult _result({
   String storeName = 'Highlands',
@@ -144,27 +160,55 @@ void main() {
   Finder inDialog(String text) =>
       find.descendant(of: find.byType(Dialog), matching: find.text(text));
 
-  ElevatedButton confirmAllButton(WidgetTester tester) =>
-      tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+  double bottomOpacity(WidgetTester tester) => tester
+      .widget<Opacity>(
+        find.ancestor(
+          of: find.widgetWithText(FilledButton, 'Xác nhận tất cả'),
+          matching: find.byType(Opacity),
+        ),
+      )
+      .opacity;
 
-  testWidgets('every status shows its chip, and a failure its reason', (
-    tester,
-  ) async {
-    queue.queueItems.addAll(_everyStatus());
-    await openScreen(tester);
+  Future<void> swipeAway(WidgetTester tester, String title) async {
+    await tester.drag(find.text(title), const Offset(-500, 0));
+    await tester.pumpAndSettle();
+  }
 
-    for (final chip in ['Đang chờ', 'Đang đọc', 'Sẵn sàng', 'Lỗi']) {
-      expect(find.text(chip), findsOneWidget, reason: chip);
-    }
-    expect(find.text('Highlands'), findsOneWidget);
-    expect(find.text('Không kết nối được dịch vụ AI.'), findsOneWidget);
-    expect(find.text('Đọc lại'), findsOneWidget, reason: 'only the failed one');
-    expect(
-      find.text('Bỏ'),
-      findsNWidgets(2),
-      reason: 'the ready and the failed one',
-    );
-  });
+  /// Opens the review form of a card and waits until it shows its buttons.
+  Future<void> openReview(WidgetTester tester, String title) async {
+    await tester.tap(find.text(title));
+    await tester.pump();
+    await settle(tester, () => _save.evaluate().isNotEmpty);
+  }
+
+  /// Taps a button of the review form and closes the success dialog.
+  Future<void> saveReview(WidgetTester tester, Finder button) async {
+    await tester.tap(button);
+    await tester.pump();
+    await settle(tester, () => find.byType(Dialog).evaluate().isNotEmpty);
+    await tester.tap(find.text('Xong'));
+    await tester.pump();
+    await settle(tester, () => true);
+  }
+
+  testWidgets(
+    'up to five receipts are grouped, each status labelled and a failure gives its reason',
+    (tester) async {
+      queue.queueItems.addAll(_everyStatus());
+      await openScreen(tester);
+
+      expect(find.text('Sẵn sàng 1'), findsOneWidget);
+      expect(find.text('Đang xử lý 3'), findsOneWidget);
+      expect(find.byType(PillSegmented<PendingTab>), findsNothing);
+      for (final label in ['Đang chờ', 'Đang đọc', 'Lỗi']) {
+        expect(find.text(label), findsOneWidget, reason: label);
+      }
+      expect(find.text('Highlands'), findsOneWidget);
+      expect(find.text('Không kết nối được dịch vụ AI.'), findsOneWidget);
+      expect(find.text('Đọc lại'), findsOneWidget, reason: 'the failed one');
+      expect(find.text('Lưu'), findsOneWidget, reason: 'the ready one');
+    },
+  );
 
   testWidgets('the reason of each failure code comes from the texts', (
     tester,
@@ -177,13 +221,17 @@ void main() {
 
     expect(find.text('Dịch vụ AI không đọc được hóa đơn này.'), findsOneWidget);
     expect(find.text('Ảnh không còn trên máy.'), findsOneWidget);
+    expect(find.text('Ảnh 1'), findsOneWidget);
+    expect(find.text('Ảnh 2'), findsOneWidget);
   });
 
-  testWidgets('an empty queue says so', (tester) async {
+  testWidgets('an empty queue says so, without the bottom button', (
+    tester,
+  ) async {
     await openScreen(tester);
 
     expect(find.text('Không có hóa đơn nào đang chờ.'), findsOneWidget);
-    expect(find.text('Xác nhận tất cả hợp lệ (0)'), findsOneWidget);
+    expect(find.text('Xác nhận tất cả'), findsNothing);
   });
 
   testWidgets('"Đọc lại" queues the failed receipt again', (tester) async {
@@ -196,32 +244,41 @@ void main() {
     expect(queue.retried, [4]);
   });
 
-  testWidgets('"Bỏ" asks first, and removes the receipt only once confirmed', (
-    tester,
-  ) async {
-    queue.queueItems.addAll([
-      _item(3, ScanQueueStatus.ready, result: _result()),
-    ]);
+  testWidgets(
+    'a swipe to the left asks first, and removes the receipt only once confirmed',
+    (tester) async {
+      queue.queueItems.addAll([
+        _item(3, ScanQueueStatus.ready, result: _result()),
+      ]);
+      await openScreen(tester);
+
+      await swipeAway(tester, 'Highlands');
+      expect(find.text('Bỏ hóa đơn này khỏi danh sách?'), findsOneWidget);
+      expect(queue.removed, isEmpty, reason: 'nothing goes before the answer');
+
+      await tester.tap(inDialog('Hủy'));
+      await tester.pumpAndSettle();
+      expect(queue.removed, isEmpty);
+      expect(find.text('Highlands'), findsOneWidget);
+
+      await swipeAway(tester, 'Highlands');
+      await tester.tap(inDialog('Bỏ'));
+      await tester.pumpAndSettle();
+
+      expect(queue.removed, [3]);
+      expect(find.text('Highlands'), findsNothing);
+      expect(find.text('Không có hóa đơn nào đang chờ.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('a receipt being read cannot be swiped away', (tester) async {
+    queue.queueItems.add(_item(2, ScanQueueStatus.reading));
     await openScreen(tester);
 
-    await tester.tap(find.text('Bỏ'));
-    await tester.pumpAndSettle();
-    expect(find.text('Bỏ hóa đơn này khỏi danh sách?'), findsOneWidget);
-    expect(queue.removed, isEmpty, reason: 'nothing goes before the answer');
+    await swipeAway(tester, 'Đang đọc…');
 
-    await tester.tap(inDialog('Hủy'));
-    await tester.pumpAndSettle();
-    expect(queue.removed, isEmpty);
-    expect(find.text('Highlands'), findsOneWidget);
-
-    await tester.tap(find.text('Bỏ'));
-    await tester.pumpAndSettle();
-    await tester.tap(inDialog('Bỏ'));
-    await tester.pumpAndSettle();
-
-    expect(queue.removed, [3]);
-    expect(find.text('Highlands'), findsNothing);
-    expect(find.text('Không có hóa đơn nào đang chờ.'), findsOneWidget);
+    expect(find.byType(Dialog), findsNothing);
+    expect(find.text('Đang đọc…'), findsOneWidget);
   });
 
   testWidgets(
@@ -232,9 +289,7 @@ void main() {
       ]);
       await openScreen(tester);
 
-      await tester.tap(find.text('Highlands'));
-      await tester.pump();
-      await settle(tester, () => find.text(_save).evaluate().isNotEmpty);
+      await openReview(tester, 'Highlands');
 
       expect(find.byType(ReviewFormPage), findsOneWidget);
       expect(
@@ -247,12 +302,7 @@ void main() {
       );
       expect(backend.calls, isNot(contains('POST $_scan')));
 
-      await tester.tap(find.text(_save));
-      await tester.pump();
-      await settle(tester, () => find.byType(Dialog).evaluate().isNotEmpty);
-      expect(find.text('Thành công'), findsOneWidget);
-      await tester.tap(find.text('Xong'));
-      await tester.pumpAndSettle();
+      await saveReview(tester, _save);
 
       expect(find.byType(ReviewFormPage), findsNothing);
       expect(queue.confirmed, [3]);
@@ -261,6 +311,91 @@ void main() {
       expect(backend.calls, isNot(contains('POST $_scan')));
     },
   );
+
+  testWidgets(
+    '"Lưu & quét tiếp" opens the next ready receipt, and the last one goes back to the list',
+    (tester) async {
+      queue.queueItems.addAll([
+        _item(3, ScanQueueStatus.ready, result: _result()),
+        _item(4, ScanQueueStatus.ready, result: _result(storeName: 'Circle K')),
+      ]);
+      await openScreen(tester);
+
+      await openReview(tester, 'Highlands');
+      await saveReview(tester, _saveAndScan);
+
+      expect(queue.confirmed, [3]);
+      expect(find.byType(ReviewFormPage), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ReviewFormPage),
+          matching: find.text('Circle K'),
+        ),
+        findsOneWidget,
+      );
+
+      await saveReview(tester, _saveAndScan);
+
+      expect(queue.confirmed, [3, 4]);
+      expect(find.byType(ReviewFormPage), findsNothing);
+      expect(find.text('Không có hóa đơn nào đang chờ.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '"Lưu & quét tiếp" goes to the receipt after the saved one, not back to the first',
+    (tester) async {
+      queue.queueItems.addAll([
+        _item(3, ScanQueueStatus.ready, result: _result(storeName: 'A')),
+        _item(4, ScanQueueStatus.ready, result: _result(storeName: 'B')),
+        _item(5, ScanQueueStatus.ready, result: _result(storeName: 'C')),
+      ]);
+      await openScreen(tester);
+
+      await openReview(tester, 'B');
+      await saveReview(tester, _saveAndScan);
+
+      expect(queue.confirmed, [4]);
+      expect(
+        find.descendant(
+          of: find.byType(ReviewFormPage),
+          matching: find.text('C'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('while "Xác nhận tất cả" runs, a card does not open the form', (
+    tester,
+  ) async {
+    queue.queueItems.addAll([
+      _item(3, ScanQueueStatus.ready, result: _result()),
+    ]);
+    queue.confirmGate = Completer<void>();
+    await openScreen(tester);
+
+    await tester.tap(find.text('Xác nhận tất cả'));
+    await tester.pumpAndSettle();
+    await tester.tap(inDialog('Đồng ý'));
+    // Past the closing animation of the question, so the tap reaches the card.
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.byType(Dialog), findsNothing);
+    await tester.tap(find.text('Highlands'));
+    // The busy spinner never settles: give the tap time to push a page, if it did.
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Counted also while a pushed page would still be sliding in.
+    expect(find.byType(ReviewFormPage, skipOffstage: false), findsNothing);
+    queue.confirmGate!.complete();
+    await tester.pump();
+    await tester.pump(
+      AppToast.displayDuration + AppToast.transitionDuration * 2,
+    );
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('the list loads again when the progress of the queue changes', (
     tester,
@@ -275,8 +410,67 @@ void main() {
     expect(find.text('Highlands'), findsOneWidget);
   });
 
+  testWidgets('while the queue reads, a strip shows how far it is', (
+    tester,
+  ) async {
+    queue.queueItems.addAll(_everyStatus());
+    queue.progressNotifier.value = const ScanQueueProgress(done: 1, total: 3);
+    await openScreen(tester);
+
+    expect(find.text('Đang đọc hóa đơn 2/3'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+  });
+
   testWidgets(
-    '"Xác nhận tất cả hợp lệ" is disabled while no receipt is valid',
+    'a ready receipt with a doubted field offers "Kiểm tra", which opens the form',
+    (tester) async {
+      queue.queueItems.add(
+        _item(
+          3,
+          ScanQueueStatus.ready,
+          result: _result(invalidFields: {ReceiptScanResult.totalCostField}),
+        ),
+      );
+      await openScreen(tester);
+
+      expect(find.text('Lưu'), findsNothing);
+      await tester.tap(find.text('Kiểm tra'));
+      await tester.pump();
+      await settle(tester, () => _save.evaluate().isNotEmpty);
+
+      expect(find.byType(ReviewFormPage), findsOneWidget);
+      expect(queue.confirmedItems, isEmpty);
+    },
+  );
+
+  testWidgets('the quick "Lưu" saves that receipt alone', (tester) async {
+    queue.queueItems.addAll([
+      _item(3, ScanQueueStatus.ready, result: _result()),
+      _item(5, ScanQueueStatus.queued),
+    ]);
+    queue.bulkResult = const BulkConfirmResult(
+      saved: 1,
+      duplicates: 0,
+      notSaved: 0,
+    );
+    await openScreen(tester);
+
+    await tester.tap(find.text('Lưu'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(queue.confirmedItems, [
+      {3},
+    ]);
+    expect(find.text('Highlands'), findsNothing);
+    await tester.pump(
+      AppToast.displayDuration + AppToast.transitionDuration * 2,
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets(
+    '"Xác nhận tất cả" is faded while no receipt can be saved at once',
     (tester) async {
       queue.queueItems.addAll([
         _item(
@@ -289,10 +483,13 @@ void main() {
       ]);
       await openScreen(tester);
 
-      expect(find.text('Xác nhận tất cả hợp lệ (0)'), findsOneWidget);
-      expect(confirmAllButton(tester).onPressed, isNull);
+      expect(find.text('0 hóa đơn sẵn sàng'), findsOneWidget);
+      expect(bottomOpacity(tester), FormSubmitBar.disabledOpacity);
 
-      await tester.tap(find.byType(ElevatedButton));
+      await tester.tap(
+        find.widgetWithText(FilledButton, 'Xác nhận tất cả'),
+        warnIfMissed: false,
+      );
       await tester.pumpAndSettle();
       expect(find.byType(Dialog), findsNothing);
       expect(queue.confirmAllCalls, 0);
@@ -300,7 +497,7 @@ void main() {
   );
 
   testWidgets(
-    '"Xác nhận tất cả hợp lệ" asks, saves the valid receipts and sums up the outcome',
+    '"Xác nhận tất cả" shows count and total, asks, saves and sums up the outcome',
     (tester) async {
       queue.queueItems.addAll([
         _item(3, ScanQueueStatus.ready, result: _result()),
@@ -318,10 +515,11 @@ void main() {
       );
       await openScreen(tester);
 
-      expect(find.text('Xác nhận tất cả hợp lệ (2)'), findsOneWidget);
-      expect(confirmAllButton(tester).onPressed, isNotNull);
+      expect(find.text('2 hóa đơn sẵn sàng'), findsOneWidget);
+      expect(find.text(_money(90000)), findsOneWidget);
+      expect(bottomOpacity(tester), 1);
 
-      await tester.tap(find.text('Xác nhận tất cả hợp lệ (2)'));
+      await tester.tap(find.text('Xác nhận tất cả'));
       await tester.pumpAndSettle();
       expect(
         find.text('Lưu 2 hóa đơn hợp lệ thành giao dịch?'),
@@ -343,6 +541,110 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+
+  group('more than five receipts', () {
+    List<ScanQueueItem> six() => [
+      _item(1, ScanQueueStatus.ready, result: _result(storeName: 'A')),
+      _item(2, ScanQueueStatus.ready, result: _result(storeName: 'B')),
+      _item(3, ScanQueueStatus.ready, result: _result(storeName: 'C')),
+      _item(4, ScanQueueStatus.queued),
+      _item(5, ScanQueueStatus.reading),
+      _item(6, ScanQueueStatus.failed, error: ScanQueueError.server),
+    ];
+
+    testWidgets('tabs, ready first; another tab shows only its receipts', (
+      tester,
+    ) async {
+      queue.queueItems.addAll(six());
+      await openScreen(tester);
+
+      expect(find.byType(PillSegmented<PendingTab>), findsOneWidget);
+      expect(find.text('Sẵn sàng 3'), findsOneWidget);
+      expect(find.text('A'), findsOneWidget);
+      expect(find.text('Ảnh 6'), findsNothing);
+
+      await tester.tap(find.text('Lỗi 1'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A'), findsNothing);
+      expect(find.text('Ảnh 6'), findsOneWidget);
+    });
+  });
+
+  group('selection mode', () {
+    List<ScanQueueItem> twoReady() => [
+      _item(3, ScanQueueStatus.ready, result: _result()),
+      _item(4, ScanQueueStatus.ready, result: _result(storeName: 'Circle K')),
+      _item(5, ScanQueueStatus.queued),
+    ];
+
+    testWidgets(
+      'a long press selects, "Chọn tất cả" takes every savable one, and the bottom saves them',
+      (tester) async {
+        queue.queueItems.addAll(twoReady());
+        queue.bulkResult = const BulkConfirmResult(
+          saved: 2,
+          duplicates: 0,
+          notSaved: 0,
+        );
+        await openScreen(tester);
+
+        await tester.longPress(find.text('Highlands'));
+        await tester.pumpAndSettle();
+        expect(find.text('Đã chọn 1'), findsOneWidget);
+        expect(find.text('Lưu 1 hóa đơn đã chọn'), findsOneWidget);
+        expect(find.byType(Checkbox), findsNWidgets(2));
+
+        await tester.tap(find.text('Chọn tất cả'));
+        await tester.pumpAndSettle();
+        expect(find.text('Đã chọn 2'), findsOneWidget);
+
+        await tester.tap(find.text('Lưu 2 hóa đơn đã chọn'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(queue.confirmedItems, [
+          {3, 4},
+        ]);
+        expect(find.text('Đã chọn 2'), findsNothing);
+        await tester.pump(
+          AppToast.displayDuration + AppToast.transitionDuration * 2,
+        );
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets('the Back key leaves the selection, not the screen', (
+      tester,
+    ) async {
+      queue.queueItems.addAll(twoReady());
+      await openScreen(tester);
+
+      await tester.longPress(find.text('Highlands'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đã chọn 1'), findsNothing);
+      expect(find.text('Chờ xác nhận'), findsOneWidget);
+      expect(find.byType(PendingReceiptsScreen), findsOneWidget);
+    });
+
+    testWidgets('a tap in the selection ticks instead of opening the form', (
+      tester,
+    ) async {
+      queue.queueItems.addAll(twoReady());
+      await openScreen(tester);
+
+      await tester.longPress(find.text('Highlands'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Circle K'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReviewFormPage), findsNothing);
+      expect(find.text('Đã chọn 2'), findsOneWidget);
+    });
+  });
 
   for (final language in AppLanguage.values) {
     testWidgets('nothing overflows at 320 dp in ${language.name}', (

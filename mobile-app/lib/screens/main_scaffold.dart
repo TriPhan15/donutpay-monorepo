@@ -13,6 +13,7 @@ import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
 import 'package:finance_ai_app/screens/main_tabs.dart';
+import 'package:finance_ai_app/models/review_exit.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
@@ -21,6 +22,7 @@ import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
+import 'package:finance_ai_app/widgets/receipt/scan_options_sheet.dart';
 
 /// What the ML Kit document scanner throws when the user closes it without scanning: not an error to show.
 const String _scannerCancelledMessage = 'Operation cancelled';
@@ -104,78 +106,20 @@ class _MainScaffoldState extends State<MainScaffold>
     unawaited(AppRepository.instance.resendUnsyncedTransactions(userId));
   }
 
-  void _showScannerOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        final colors = Theme.of(context).colorScheme;
-        final loc = context.loc;
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.onSurfaceVariant.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                loc.scanSheetTitle,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildScanOptionBtn(
-                    colors,
-                    Icons.document_scanner_rounded,
-                    loc.scanWithAi,
-                    () => _startAutoScanner(context),
-                  ),
-                  _buildScanOptionBtn(
-                    colors,
-                    Icons.photo_library_rounded,
-                    loc.scanFromGallery,
-                    () => _pickImageAndScan(context, ImageSource.gallery),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildScanOptionBtn(
-                    colors,
-                    Icons.burst_mode_rounded,
-                    loc.scanBatchCamera,
-                    () => _startBatchScanner(context),
-                  ),
-                  _buildScanOptionBtn(
-                    colors,
-                    Icons.collections_rounded,
-                    loc.scanBatchGallery,
-                    () => _pickImagesForQueue(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
+  /// The scan sheet closes itself before the picked way starts, so an error dialog of that way shows over this page.
+  Future<void> _showScannerOptions(BuildContext context) async {
+    final option = await showScanOptionsSheet(context);
+    if (option == null || !context.mounted) return;
+    switch (option) {
+      case ScanOption.cameraOne:
+        await _startAutoScanner(context);
+      case ScanOption.galleryOne:
+        await _pickImageAndScan(context, ImageSource.gallery);
+      case ScanOption.cameraMany:
+        await _startBatchScanner(context);
+      case ScanOption.galleryMany:
+        await _pickImagesForQueue(context);
+    }
   }
 
   Future<void> _startAutoScanner(BuildContext context) async {
@@ -191,8 +135,7 @@ class _MainScaffoldState extends State<MainScaffold>
       final result = await documentScanner.scanDocument();
       final images = result.images;
       if (images != null && images.isNotEmpty && context.mounted) {
-        Navigator.pop(context);
-        final saved = await Navigator.push<bool>(
+        final saved = await Navigator.push<ReviewExit>(
           context,
           MaterialPageRoute(
             builder: (_) => ReviewFormPage(
@@ -201,9 +144,7 @@ class _MainScaffoldState extends State<MainScaffold>
             ),
           ),
         );
-        if (saved == true && mounted) {
-          setState(() => _currentIndex = 1);
-        }
+        if (mounted) _afterReview(saved);
       }
     } catch (e) {
       if (e is PlatformException && e.message == _scannerCancelledMessage) {
@@ -244,8 +185,7 @@ class _MainScaffoldState extends State<MainScaffold>
 
     final imagePath = image?.path;
     if (imagePath != null && context.mounted) {
-      Navigator.pop(context);
-      final saved = await Navigator.push<bool>(
+      final saved = await Navigator.push<ReviewExit>(
         context,
         MaterialPageRoute(
           builder: (_) => ReviewFormPage(
@@ -254,9 +194,19 @@ class _MainScaffoldState extends State<MainScaffold>
           ),
         ),
       );
-      if (saved == true && mounted) {
-        setState(() => _currentIndex = 1);
-      }
+      if (mounted) _afterReview(saved);
+    }
+  }
+
+  /// After a review opened from a single scan: "Lưu & quét tiếp" opens the scan sheet again, "Lưu" shows the Ledger.
+  void _afterReview(ReviewExit? exit) {
+    switch (exit) {
+      case ReviewExit.savedScanNext:
+        _showScannerOptions(context);
+      case ReviewExit.saved:
+        setState(() => _currentIndex = _ledgerTabIndex);
+      case null:
+        break;
     }
   }
 
@@ -274,7 +224,6 @@ class _MainScaffoldState extends State<MainScaffold>
       final result = await documentScanner.scanDocument();
       final images = result.images;
       if (images != null && images.isNotEmpty && context.mounted) {
-        Navigator.pop(context);
         await _enqueueBatch(images);
       }
     } catch (e) {
@@ -310,7 +259,6 @@ class _MainScaffoldState extends State<MainScaffold>
       return;
     }
     if (images.isEmpty || !context.mounted) return;
-    Navigator.pop(context);
     await _enqueueBatch([for (final image in images) image.path]);
   }
 
@@ -346,7 +294,7 @@ class _MainScaffoldState extends State<MainScaffold>
     AppToast.error(context, context.loc.scanQueueStorageFailed);
   }
 
-  /// The options sheet stays open behind the dialog, so the user can pick the other way at once.
+  /// The scan sheet is already closed: the user opens it again to pick another way.
   /// The texts are picked only once the screen is known to be still there, in the language it shows.
   Future<void> _showScanError(
     String Function(AppLocalizations loc) title,
@@ -355,32 +303,6 @@ class _MainScaffoldState extends State<MainScaffold>
     if (!mounted) return;
     final loc = context.loc;
     await AppDialog.error(context, title: title(loc), message: message(loc));
-  }
-
-  Widget _buildScanOptionBtn(
-    ColorScheme colors,
-    IconData icon,
-    String label,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: colors.primary, size: 32),
-          ),
-          const SizedBox(height: 12),
-          Text(label, style: const TextStyle(fontSize: 14)),
-        ],
-      ),
-    );
   }
 
   @override

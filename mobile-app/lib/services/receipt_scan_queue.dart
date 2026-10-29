@@ -213,7 +213,14 @@ class ReceiptScanQueue {
   /// uploaded first, then the transaction goes through [AppRepository.createTransaction]. A saved item (also one that
   /// waits in the outbox) leaves the queue; a duplicate or a failure keeps it. A call while one runs does nothing.
   /// dataChangedNotifier moves once for the whole run, not once per saved receipt.
-  Future<BulkConfirmResult> confirmAllValid() async {
+  Future<BulkConfirmResult> confirmAllValid() => _confirm(null);
+
+  /// Saves the items of [ids] by the rules of [confirmAllValid]: an id that is not a ready item whose scan needs no
+  /// review is skipped and not counted. Shares the guard of [confirmAllValid], so a call while either runs does nothing.
+  Future<BulkConfirmResult> confirmItems(Set<int> ids) => _confirm(ids);
+
+  /// Saves every valid ready item, or only those of [ids] when given.
+  Future<BulkConfirmResult> _confirm(Set<int>? ids) async {
     final userId = SessionService.currentUserId;
     if (userId == null || _confirming) return BulkConfirmResult.none;
     _confirming = true;
@@ -224,7 +231,8 @@ class ReceiptScanQueue {
       final valid = [
         for (final item in await _store.getScanQueueItems(userId))
           if (item.status == ScanQueueStatus.ready &&
-              (item.result?.allValid ?? false))
+              (item.result?.allValid ?? false) &&
+              (ids == null || ids.contains(item.id)))
             item,
       ];
       await RemoteApiHelper.instance.batchDataChanges(() async {

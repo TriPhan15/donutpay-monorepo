@@ -37,9 +37,18 @@ class FormFieldLabel extends StatelessWidget {
 /// The amount of a transaction form (T9 spec, 2.2: typed in 30), outlined with the floating label "Số tiền *",
 /// grouped as the language groups it while typing.
 class AmountField extends StatelessWidget {
-  const AmountField({super.key, required this.controller});
+  const AmountField({
+    super.key,
+    required this.controller,
+    this.label,
+    this.onChanged,
+  });
 
   final TextEditingController controller;
+
+  /// "Số tiền" when null.
+  final String? label;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +56,7 @@ class AmountField extends StatelessWidget {
     final loc = context.loc;
     return TextField(
       controller: controller,
+      onChanged: onChanged,
       keyboardType: TextInputType.number,
       inputFormatters: [MoneyInputFormatter(loc.localeName)],
       style: TextStyle(
@@ -55,7 +65,10 @@ class AmountField extends StatelessWidget {
         fontWeight: FontWeight.w700,
       ),
       decoration: InputDecoration(
-        label: FormFieldLabel(loc.addTransactionAmountLabel, required: true),
+        label: FormFieldLabel(
+          label ?? loc.addTransactionAmountLabel,
+          required: true,
+        ),
         floatingLabelBehavior: FloatingLabelBehavior.always,
         hintText: '0',
         hintStyle: TextStyle(

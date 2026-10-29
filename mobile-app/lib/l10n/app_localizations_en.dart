@@ -257,10 +257,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scanSheetTitle => 'Scan a receipt with AI';
 
   @override
-  String get scanWithAi => 'AI scan';
+  String get scanSheetSubtitle => 'Choose how to add receipts';
 
   @override
-  String get scanFromGallery => 'From gallery';
+  String get scanOptionCamera => 'Scan with camera';
+
+  @override
+  String get scanOptionCameraHint => 'One receipt, check and save now';
+
+  @override
+  String get scanOptionGallery => 'Pick from gallery';
+
+  @override
+  String get scanOptionGalleryHint => 'One photo already on the phone';
+
+  @override
+  String get scanOptionBatch => 'Scan many';
+
+  @override
+  String get scanOptionBatchHint =>
+      'Keep shooting, AI reads them in the background';
+
+  @override
+  String get scanOptionBatchGallery => 'Pick many photos';
+
+  @override
+  String get scanOptionBatchGalleryHint =>
+      'Several photos at once, confirm later';
 
   @override
   String get scanScannerFailedTitle => 'Couldn\'t open the scanner';
@@ -936,9 +959,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonInvalidAmountTitle => 'Invalid amount';
 
   @override
-  String get commonSummary => 'Summary';
-
-  @override
   String get currencySymbol => 'đ';
 
   @override
@@ -1189,14 +1209,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewTitle => 'Confirm receipt';
 
   @override
-  String get reviewDateFallback =>
-      'Couldn\'t read the date on the receipt, so the current time is used. Tap to choose another.';
-
-  @override
-  String get reviewFieldNeedsCheck =>
-      'The AI isn\'t sure about this field. Please check it.';
-
-  @override
   String get reviewNoTotal =>
       'Donut couldn\'t read the total from the photo. Please enter it manually.';
 
@@ -1219,10 +1231,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewLater => 'Later';
 
   @override
-  String get reviewTotalPositive => 'Please enter a total greater than 0.';
+  String get reviewSaved => 'Transaction saved from the receipt.';
 
   @override
-  String get reviewSaved => 'Transaction saved from the receipt.';
+  String get reviewStepPhoto => 'Photo';
+
+  @override
+  String get reviewStepCheck => 'Check';
+
+  @override
+  String get reviewStepSave => 'Save';
+
+  @override
+  String get reviewZoom => 'Zoom';
+
+  @override
+  String get reviewCompare => 'Compare';
+
+  @override
+  String get reviewNeedsCheck => 'Check this';
+
+  @override
+  String get reviewStoreHint => 'Store name may be wrong, please correct it.';
+
+  @override
+  String get reviewTotalHint =>
+      'Total may be wrong, compare it with the photo.';
+
+  @override
+  String get reviewDateHint =>
+      'Could not read the date; pick it if it was not today.';
+
+  @override
+  String get reviewTotal => 'Total';
+
+  @override
+  String get reviewDateDoubtHint =>
+      'Date may be wrong, compare it with the photo.';
+
+  @override
+  String get reviewSaveAndScan => 'Save & scan next';
+
+  @override
+  String get reviewSave => 'Save';
 
   @override
   String get reviewAnalyzing => 'Analyzing the receipt...';
@@ -1231,32 +1282,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewPleaseWait => 'This will only take a moment';
 
   @override
-  String get reviewExtracted => 'Extraction complete';
-
-  @override
-  String get reviewCheckDetails =>
-      'Check the details below against the original photo before saving.';
-
-  @override
-  String get reviewGeneralInfo => 'General information';
-
-  @override
   String get reviewStoreName => 'Store name';
-
-  @override
-  String get reviewTotalLabel => 'Total (đ)';
-
-  @override
-  String get reviewSubtotal => 'Subtotal:';
-
-  @override
-  String get reviewTax => 'VAT/Other taxes:';
-
-  @override
-  String get reviewGrandTotal => 'TOTAL:';
-
-  @override
-  String get reviewSubmit => 'Confirm & save';
 
   @override
   String get paymentHistoryTitle => 'Deposit/withdrawal history';
@@ -1963,12 +1989,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get scanBatchCamera => 'Scan several';
-
-  @override
-  String get scanBatchGallery => 'Pick several';
-
-  @override
   String scanQueueAdded(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -2034,9 +2054,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pendingStatusReading => 'Reading';
 
   @override
-  String get pendingStatusReady => 'Ready';
-
-  @override
   String get pendingStatusFailed => 'Failed';
 
   @override
@@ -2047,11 +2064,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pendingDiscardConfirm => 'Remove this receipt from the list?';
-
-  @override
-  String pendingConfirmAll(int count) {
-    return 'Confirm all valid ($count)';
-  }
 
   @override
   String pendingConfirmAllAsk(int count) {
@@ -2079,6 +2091,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get pendingErrorMissingImage =>
       'The photo is no longer on this device.';
+
+  @override
+  String pendingGroupReady(int count) {
+    return 'Ready $count';
+  }
+
+  @override
+  String pendingGroupProcessing(int count) {
+    return 'Processing $count';
+  }
+
+  @override
+  String pendingTabReading(int count) {
+    return 'Reading $count';
+  }
+
+  @override
+  String pendingTabFailed(int count) {
+    return 'Failed $count';
+  }
+
+  @override
+  String get pendingReadingTitle => 'Reading…';
+
+  @override
+  String pendingPhotoTitle(int index) {
+    return 'Photo $index';
+  }
+
+  @override
+  String get pendingQuickSave => 'Save';
+
+  @override
+  String get pendingReview => 'Check';
+
+  @override
+  String pendingReadyFooter(int count) {
+    return '$count receipts ready';
+  }
+
+  @override
+  String pendingSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get pendingSelectAll => 'Select all';
+
+  @override
+  String pendingSaveSelected(int count) {
+    return 'Save $count selected';
+  }
+
+  @override
+  String get pendingConfirmAllShort => 'Confirm all';
 
   @override
   String toastStackCount(int count) {

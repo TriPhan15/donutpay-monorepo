@@ -1,22 +1,29 @@
-import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart' show DatabaseException;
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/theme/band_colors.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
-import 'package:finance_ai_app/core/utils/date_helper.dart';
-import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/pending_queue_view.dart';
+import 'package:finance_ai_app/models/review_exit.dart';
 import 'package:finance_ai_app/models/scan_queue_item.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
+import 'package:finance_ai_app/screens/receipt_scanner/widgets/pending_receipt_card.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
-import 'package:finance_ai_app/widgets/common/primary_button.dart';
+import 'package:finance_ai_app/widgets/common/app_state_view.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
+import 'package:finance_ai_app/widgets/common/pill_segmented.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
-/// The receipts of the scan queue of the user: each one with its status, a review of the read ones, another reading of
-/// the failed ones, and one button that saves every receipt needing no review. The list follows the queue while it
-/// reads.
+/// The receipts of the scan queue of the user (T9 spec, 3.1 "Chờ xác nhận"): grouped up to five, in tabs above that;
+/// a quick save, a review or another reading per receipt; a swipe to drop one; a long press to select several; and the
+/// count and total of the receipts that can be saved at once over "Xác nhận tất cả". The list follows the queue while
+/// it reads.
 class PendingReceiptsScreen extends StatefulWidget {
   /// Shows a saved transaction in the Ledger, for the review form ("View the saved one" of a duplicate).
   final ValueChanged<int>? onOpenTransaction;
@@ -28,6 +35,8 @@ class PendingReceiptsScreen extends StatefulWidget {
 }
 
 class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
+  static const double _gutter = 16;
+
   final ReceiptScanQueue _queue = ReceiptScanQueue.instance;
 
   /// Null until the first load.
@@ -37,6 +46,12 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
   int _loadSeq = 0;
 
   bool _confirming = false;
+
+  /// The tab picked by the user; null follows [PendingQueueView.defaultTab].
+  PendingTab? _tab;
+
+  bool _selecting = false;
+  final Set<int> _selected = {};
 
   @override
   void initState() {
@@ -64,7 +79,14 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
       return;
     }
     if (!mounted || seq != _loadSeq) return;
-    setState(() => _items = items);
+    setState(() {
+      _items = items;
+      // A receipt saved or dropped meanwhile cannot stay selected.
+      final savable = {
+        for (final item in PendingQueueView.of(items).quickSavable) item.id,
+      };
+      _selected.retainWhere(savable.contains);
+    });
   }
 
   /// Runs [action] on the queue, then shows the queue as it is now.
@@ -80,8 +102,9 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
     await _reload();
   }
 
+  /// Opens the review form; after "Lưu & quét tiếp" the next ready receipt follows, until none is left.
   Future<void> _review(ScanQueueItem item) async {
-    final saved = await Navigator.push<bool>(
+    final exit = await Navigator.push<ReviewExit>(
       context,
       MaterialPageRoute(
         builder: (_) => ReviewFormPage(
@@ -93,8 +116,16 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
         ),
       ),
     );
-    if (!mounted || saved != true) return;
+    if (!mounted || exit == null) return;
+    // Picked while the saved receipt is still in the list, so "next" is the one after it.
+    final next = PendingQueueView.of(_items ?? const []).nextReady(item.id);
     await _change(() => _queue.markConfirmed(item.id));
+    if (!mounted || exit != ReviewExit.savedScanNext || next == null) return;
+    // It may have been saved or dropped meanwhile.
+    final stillReady = PendingQueueView.of(
+      _items ?? const [],
+    ).ready.where((candidate) => candidate.id == next.id);
+    if (stillReady.isNotEmpty) await _review(stillReady.first);
   }
 
   /// The review form has closed itself; this list closes too, so the Ledger shows the transaction.
@@ -103,39 +134,54 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
     widget.onOpenTransaction?.call(id);
   }
 
-  Future<void> _discard(ScanQueueItem item) async {
+  Future<bool> _askDiscard() async {
     final loc = context.loc;
-    final discard = await AppDialog.confirm(
+    return AppDialog.confirm(
       context,
       title: loc.pendingDiscardConfirm,
       confirmText: loc.pendingDiscard,
       danger: true,
     );
-    if (!mounted || !discard) return;
-    await _change(() => _queue.remove(item.id));
+  }
+
+  /// The card is already gone from the screen (the swipe); the queue follows.
+  Future<void> _discard(ScanQueueItem item) {
+    setState(() => _items = [...?_items]..remove(item));
+    return _change(() => _queue.remove(item.id));
   }
 
   Future<void> _retry(ScanQueueItem item) =>
       _change(() => _queue.retry(item.id));
 
-  Future<void> _confirmAll(int count) async {
-    final loc = context.loc;
-    final go = await AppDialog.confirm(
-      context,
-      title: loc.pendingConfirmAllAsk(count),
-    );
-    if (!mounted || !go) return;
+  /// Saves [ids] (null: every receipt that can be saved at once) and sums up the outcome.
+  Future<void> _save(Set<int>? ids) async {
+    if (_confirming) return;
     setState(() => _confirming = true);
     BulkConfirmResult? result;
     try {
-      result = await _queue.confirmAllValid();
+      result = ids == null
+          ? await _queue.confirmAllValid()
+          : await _queue.confirmItems(ids);
     } on DatabaseException catch (e) {
-      debugPrint('Lỗi xác nhận hàng loạt hóa đơn: $e');
+      debugPrint('Lỗi xác nhận hóa đơn: $e');
     }
     if (!mounted) return;
-    setState(() => _confirming = false);
+    setState(() {
+      _confirming = false;
+      _selecting = false;
+      _selected.clear();
+    });
     _showConfirmOutcome(result);
     await _reload();
+  }
+
+  Future<void> _confirmAll(int count) async {
+    final go = await AppDialog.confirm(
+      context,
+      title: context.loc.pendingConfirmAllAsk(count),
+    );
+    if (!mounted || !go) return;
+    await _save(null);
   }
 
   /// "Saved x, duplicates y, not saved z"; a success only when every receipt was saved.
@@ -157,316 +203,340 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
     }
   }
 
-  static bool _isValid(ScanQueueItem item) =>
-      item.status == ScanQueueStatus.ready && (item.result?.allValid ?? false);
+  void _startSelecting(ScanQueueItem item) {
+    setState(() {
+      _selecting = true;
+      _selected.add(item.id);
+    });
+  }
+
+  void _toggle(ScanQueueItem item) {
+    setState(() {
+      if (!_selected.remove(item.id)) _selected.add(item.id);
+    });
+  }
+
+  void _stopSelecting() {
+    setState(() {
+      _selecting = false;
+      _selected.clear();
+    });
+  }
+
+  /// The title of [item]: its store, "Đang đọc…" or "Ảnh n" by its place in the whole list.
+  String _titleOf(ScanQueueItem item, List<ScanQueueItem> all) {
+    final loc = context.loc;
+    final store = item.result?.storeName ?? '';
+    return switch (item.status) {
+      ScanQueueStatus.ready when store.isNotEmpty => store,
+      ScanQueueStatus.ready => loc.pendingReadingTitle,
+      ScanQueueStatus.failed => loc.pendingPhotoTitle(all.indexOf(item) + 1),
+      _ => loc.pendingReadingTitle,
+    };
+  }
+
+  Widget _card(ScanQueueItem item, List<ScanQueueItem> all, bool savable) {
+    // While a save runs nothing opens or drops a receipt it may be saving.
+    final ready = item.status == ScanQueueStatus.ready && !_confirming;
+    final failed = item.status == ScanQueueStatus.failed;
+    final card = PendingReceiptCard(
+      item: item,
+      title: _titleOf(item, all),
+      selecting: _selecting && savable,
+      selected: _selected.contains(item.id),
+      onTap: _selecting
+          ? (savable ? () => _toggle(item) : null)
+          : (ready ? () => _review(item) : null),
+      onLongPress: savable && !_selecting ? () => _startSelecting(item) : null,
+      onQuickSave: savable && !_confirming ? () => _save({item.id}) : null,
+      onReview: ready && !savable ? () => _review(item) : null,
+      onRetry: failed ? () => _retry(item) : null,
+    );
+    // A receipt being read is still the queue's: only a ready or failed one can be dropped.
+    if (_selecting || _confirming || !(ready || failed)) return card;
+    return Dismissible(
+      key: ValueKey('pending-${item.id}'),
+      direction: DismissDirection.endToStart,
+      background: const _DiscardBackground(),
+      confirmDismiss: (_) => _askDiscard(),
+      onDismissed: (_) => _discard(item),
+      child: card,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final items = _items;
-    final validCount = items?.where(_isValid).length ?? 0;
-    return Scaffold(
-      appBar: AppBar(title: Text(loc.pendingReceiptsTitle)),
-      body: items == null
-          ? const Center(child: CircularProgressIndicator())
-          : items.isEmpty
-          ? _EmptyQueue(message: loc.pendingReceiptsEmpty)
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return _PendingReceiptTile(
-                  item: item,
-                  onReview: item.status == ScanQueueStatus.ready
-                      ? () => _review(item)
-                      : null,
-                  onRetry: item.status == ScanQueueStatus.failed
-                      ? () => _retry(item)
-                      : null,
-                  onDiscard:
-                      item.status == ScanQueueStatus.ready ||
-                          item.status == ScanQueueStatus.failed
-                      ? () => _discard(item)
-                      : null,
-                );
-              },
-            ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: PrimaryButton(
-            text: loc.pendingConfirmAll(validCount),
-            onPressed: validCount == 0 || _confirming
-                ? null
-                : () => _confirmAll(validCount),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyQueue extends StatelessWidget {
-  final String message;
-
-  const _EmptyQueue({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    final view = PendingQueueView.of(items ?? const []);
+    final savable = {for (final item in view.quickSavable) item.id};
+    return PopScope(
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _selecting) _stopSelecting();
+      },
+      child: Scaffold(
+        body: Column(
           children: [
-            Icon(
-              Icons.receipt_long_rounded,
-              size: 56,
-              color: colors.onSurfaceVariant.withValues(alpha: 0.5),
+            _selecting
+                ? PageBand(
+                    title: loc.pendingSelected(_selected.length),
+                    action: PageBandAction.close,
+                    onAction: _stopSelecting,
+                    trailing: _BandPill(
+                      label: loc.pendingSelectAll,
+                      onTap: () => setState(() => _selected.addAll(savable)),
+                    ),
+                  )
+                : PageBand(title: loc.pendingReceiptsTitle),
+            ValueListenableBuilder<ScanQueueProgress>(
+              valueListenable: _queue.progress,
+              builder: (_, progress, _) => progress.isReading
+                  ? _ReadingStrip(progress: progress)
+                  : const SizedBox.shrink(),
             ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: colors.onSurfaceVariant),
+            Expanded(
+              child: items == null
+                  ? const AppStateView.loading()
+                  : items.isEmpty
+                  ? AppStateView.empty(
+                      icon: Icons.receipt_long_outlined,
+                      title: loc.pendingReceiptsEmpty,
+                    )
+                  : _list(view, items, savable),
             ),
+            if (items != null && items.isNotEmpty) _bottomBar(view),
           ],
         ),
       ),
     );
   }
+
+  Widget _list(
+    PendingQueueView view,
+    List<ScanQueueItem> all,
+    Set<int> savable,
+  ) {
+    final loc = context.loc;
+    Widget cards(List<ScanQueueItem> group) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final item in group)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _card(item, all, savable.contains(item.id)),
+          ),
+      ],
+    );
+    final children = <Widget>[];
+    if (view.useTabs) {
+      final tab = _tab ?? view.defaultTab;
+      children
+        ..add(
+          PillSegmented<PendingTab>(
+            options: [
+              (
+                PendingTab.ready,
+                loc.pendingGroupReady(view.inTab(PendingTab.ready).length),
+              ),
+              (
+                PendingTab.reading,
+                loc.pendingTabReading(view.inTab(PendingTab.reading).length),
+              ),
+              (
+                PendingTab.failed,
+                loc.pendingTabFailed(view.inTab(PendingTab.failed).length),
+              ),
+            ],
+            selected: tab,
+            onChanged: (picked) => setState(() => _tab = picked),
+          ),
+        )
+        ..add(const SizedBox(height: 12))
+        ..add(cards(view.inTab(tab)));
+    } else {
+      for (final (title, group) in [
+        (loc.pendingGroupReady(view.ready.length), view.ready),
+        (loc.pendingGroupProcessing(view.processing.length), view.processing),
+      ]) {
+        if (group.isEmpty) continue;
+        children
+          ..add(_GroupTitle(title))
+          ..add(cards(group));
+      }
+    }
+    return ListView(padding: const EdgeInsets.all(_gutter), children: children);
+  }
+
+  Widget _bottomBar(PendingQueueView view) {
+    final loc = context.loc;
+    final colors = Theme.of(context).colorScheme;
+    final count = _selecting ? _selected.length : view.quickSavable.length;
+    final total = _selecting
+        ? view.quickSavable
+              .where((item) => _selected.contains(item.id))
+              .fold<double>(0, (sum, item) => sum + (item.result?.amount ?? 0))
+        : view.quickSavableTotal;
+    final enabled = count > 0 && !_confirming;
+    return FormSubmitBar(
+      label: _selecting
+          ? loc.pendingSaveSelected(count)
+          : loc.pendingConfirmAllShort,
+      busy: _confirming,
+      onPressed: !enabled
+          ? null
+          : _selecting
+          ? () => _save(Set.of(_selected))
+          : () => _confirmAll(count),
+      header: Row(
+        children: [
+          Expanded(
+            child: Text(
+              loc.pendingReadyFooter(count),
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: AppTextSize.secondary,
+              ),
+            ),
+          ),
+          Text(
+            CurrencyHelper.formatVND(total, loc, showSign: false),
+            style: TextStyle(
+              color: colors.onSurface,
+              fontSize: AppTextSize.title,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-/// One receipt of the queue, a card like the rows of the Ledger.
-class _PendingReceiptTile extends StatelessWidget {
-  static const double _thumbSize = 56;
-  static const double _radius = 20;
+class _GroupTitle extends StatelessWidget {
+  const _GroupTitle(this.text);
 
-  final ScanQueueItem item;
-  final VoidCallback? onReview;
-  final VoidCallback? onRetry;
-  final VoidCallback? onDiscard;
-
-  const _PendingReceiptTile({
-    required this.item,
-    this.onReview,
-    this.onRetry,
-    this.onDiscard,
-  });
-
-  static String _errorText(AppLocalizations loc, String? error) =>
-      switch (error) {
-        ScanQueueError.network => loc.pendingErrorNetwork,
-        ScanQueueError.missingImage => loc.pendingErrorMissingImage,
-        _ => loc.pendingErrorServer,
-      };
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final loc = context.loc;
-    final result = item.result;
-    final storeName = result?.storeName ?? '';
-    final amount = result?.amount;
-    final dateText = DateHelper.formatTransactionDate(
-      loc,
-      result?.date ?? item.createdAt,
-    );
-    final details = [
-      if (amount != null)
-        CurrencyHelper.formatVND(amount, loc, showSign: false),
-      if (storeName.isNotEmpty) dateText,
-    ].join(' • ');
-
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(_radius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onReview,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Thumbnail(path: item.imagePath, size: _thumbSize),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      storeName.isNotEmpty ? storeName : dateText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    if (details.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        details,
-                        style: TextStyle(
-                          color: colors.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                    if (item.status == ScanQueueStatus.failed) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        _errorText(loc, item.error),
-                        style: TextStyle(color: colors.error, fontSize: 12),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _StatusChip(status: item.status),
-                        if (onRetry != null)
-                          _TileAction(
-                            label: loc.pendingRetry,
-                            color: colors.primary,
-                            onPressed: onRetry!,
-                          ),
-                        if (onDiscard != null)
-                          _TileAction(
-                            label: loc.pendingDiscard,
-                            color: colors.error,
-                            onPressed: onDiscard!,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontSize: AppTextSize.secondary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-class _Thumbnail extends StatelessWidget {
-  final String path;
-  final double size;
+/// "Đang đọc hóa đơn 2/3" and a thin bar under the band while the queue reads.
+class _ReadingStrip extends StatelessWidget {
+  const _ReadingStrip({required this.progress});
 
-  const _Thumbnail({required this.path, required this.size});
+  final ScanQueueProgress progress;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final placeholder = ColoredBox(
-      color: colors.primary.withValues(alpha: 0.10),
-      child: Icon(Icons.receipt_long_rounded, color: colors.primary),
-    );
-    final pixels = (size * MediaQuery.devicePixelRatioOf(context)).round();
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox.square(
-        dimension: size,
-        child: Image.file(
-          File(path),
-          fit: BoxFit.cover,
-          cacheWidth: pixels,
-          errorBuilder: (_, _, _) => placeholder,
-          frameBuilder: (_, child, frame, wasSynchronouslyLoaded) =>
-              wasSynchronouslyLoaded || frame != null ? child : placeholder,
-        ),
+    final current = min(progress.done + 1, progress.total);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sync_rounded, size: 16, color: colors.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  context.loc.scanQueueReading(current, progress.total),
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontSize: AppTextSize.secondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: progress.done / progress.total,
+              minHeight: 3,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _TileAction extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback onPressed;
-
-  const _TileAction({
-    required this.label,
-    required this.color,
-    required this.onPressed,
-  });
+/// What a swipe to the left uncovers: "Bỏ" on the expense colour.
+class _DiscardBackground extends StatelessWidget {
+  const _DiscardBackground();
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: color,
-        visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-      ),
-      child: Text(label),
-    );
-  }
-}
-
-/// The status of a receipt of the queue, a pill like the receipt badge of the Ledger.
-class _StatusChip extends StatelessWidget {
-  final ScanQueueStatus status;
-
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final loc = context.loc;
-    final (color, icon, label) = switch (status) {
-      ScanQueueStatus.queued => (
-        theme.colorScheme.onSurfaceVariant,
-        Icons.schedule_rounded,
-        loc.pendingStatusQueued,
-      ),
-      ScanQueueStatus.reading => (
-        theme.semanticColors.warningColor,
-        Icons.sync_rounded,
-        loc.pendingStatusReading,
-      ),
-      ScanQueueStatus.ready => (
-        theme.semanticColors.successColor,
-        Icons.check_circle_rounded,
-        loc.pendingStatusReady,
-      ),
-      ScanQueueStatus.failed => (
-        theme.colorScheme.error,
-        Icons.error_rounded,
-        loc.pendingStatusFailed,
-      ),
-    };
+    final color = context.colors.expenseColor;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(right: 20),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
+          Icon(Icons.delete_outline_rounded, color: color),
+          const SizedBox(width: 6),
+          Text(
+            context.loc.pendingDiscard,
+            style: TextStyle(
+              color: color,
+              fontSize: AppTextSize.body,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BandPill extends StatelessWidget {
+  const _BandPill({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: BandColors.tint,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: BandColors.primary,
+              fontSize: AppTextSize.caption,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }

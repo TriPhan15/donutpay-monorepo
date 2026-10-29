@@ -15,6 +15,7 @@ import 'package:finance_ai_app/screens/ledger/transaction_detail_page.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/screens/main_tabs.dart';
+import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
 import 'package:finance_ai_app/screens/startup/startup_splash_screen.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
@@ -240,7 +241,11 @@ void main() {
             .map((decoration) => decoration.color);
 
         expect(_materialColor(tester, sheet), colors.surface);
-        for (final text in ['Quét hóa đơn bằng AI', 'Quét AI', 'Từ thư viện']) {
+        for (final text in [
+          'Quét hóa đơn bằng AI',
+          'Quét bằng camera',
+          'Chọn từ thư viện',
+        ]) {
           expect(
             _paintedColor(
               tester,
@@ -266,7 +271,7 @@ void main() {
           fills,
           containsAll([
             colors.onSurfaceVariant.withValues(alpha: 0.3),
-            colors.primary.withValues(alpha: 0.10),
+            colors.primaryContainer,
           ]),
         );
 
@@ -279,6 +284,77 @@ void main() {
 
   group('home tab shortcuts', () {
     setUp(() => signInWithSavedTheme(ThemeMode.light));
+
+    testWidgets(
+      '"Lưu & quét tiếp" after a single scan opens the scan sheet again',
+      (tester) async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_imagePickerChannel, (call) async {
+              return call.method == 'pickImage'
+                  ? 'assets/images/logo.png'
+                  : null;
+            });
+        addTearDown(
+          () => TestDefaultBinaryMessengerBinding
+              .instance
+              .defaultBinaryMessenger
+              .setMockMethodCallHandler(_imagePickerChannel, null),
+        );
+        backend.on(
+          'POST',
+          '/donut/scan',
+          (_) => jsonResponse(200, {
+            'seller': {
+              'seller_name': 'Highlands',
+              'timestamp': '20/09/2026 08:30',
+              'total_cost_number': 45000,
+            },
+          }),
+        );
+        backend.on(
+          'POST',
+          '/api/upload',
+          (_) => jsonResponse(200, {'url': 'https://example.com/r.png'}),
+        );
+        backend.on(
+          'POST',
+          '/api/transactions/checkout',
+          (_) => okResponse({'transactionId': 5, 'finalAmount': 45000}),
+        );
+        // Reading and uploading the photo is real file I/O, which the fake clock does not run.
+        Future<void> settle(bool Function() done) async {
+          for (var i = 0; i < 40 && !done(); i++) {
+            await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 50)),
+            );
+            await tester.pump(const Duration(milliseconds: 100));
+          }
+          await tester.pumpAndSettle();
+        }
+
+        await openMainScaffold(tester);
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Chọn từ thư viện'));
+        await tester.pump();
+        final saveAndScan = find.widgetWithText(
+          OutlinedButton,
+          'Lưu & quét tiếp',
+        );
+        await settle(() => saveAndScan.evaluate().isNotEmpty);
+        expect(find.byType(ReviewFormPage), findsOneWidget);
+
+        await tester.tap(saveAndScan);
+        await tester.pump();
+        await settle(() => find.text('Xong').evaluate().isNotEmpty);
+        await tester.tap(find.text('Xong'));
+        await tester.pump();
+        await settle(() => find.byType(BottomSheet).evaluate().isNotEmpty);
+
+        expect(find.byType(ReviewFormPage), findsNothing);
+        expect(find.text('Chọn cách đưa hóa đơn vào'), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'a recent transaction opens the Ledger tab and its detail page, as a transaction notification does',
@@ -321,7 +397,11 @@ void main() {
 
       final sheet = find.byType(BottomSheet);
       expect(sheet, findsOneWidget);
-      for (final text in ['Quét hóa đơn bằng AI', 'Quét AI', 'Từ thư viện']) {
+      for (final text in [
+        'Quét hóa đơn bằng AI',
+        'Quét bằng camera',
+        'Chọn từ thư viện',
+      ]) {
         expect(
           find.descendant(of: sheet, matching: find.text(text)),
           findsOneWidget,
@@ -378,7 +458,7 @@ void main() {
     setUp(() => signInWithSavedTheme(ThemeMode.light));
 
     testWidgets(
-      'the scan sheet adds "Quét nhiều" and "Chọn nhiều ảnh" to the single scan',
+      'the scan sheet offers the single scans and "Quét nhiều" / "Chọn nhiều ảnh"',
       (tester) async {
         await openMainScaffold(tester);
         await tester.tap(find.byType(FloatingActionButton));
@@ -386,8 +466,8 @@ void main() {
 
         final sheet = find.byType(BottomSheet);
         for (final text in [
-          'Quét AI',
-          'Từ thư viện',
+          'Quét bằng camera',
+          'Chọn từ thư viện',
           'Quét nhiều',
           'Chọn nhiều ảnh',
         ]) {

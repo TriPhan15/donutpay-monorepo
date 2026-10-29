@@ -665,6 +665,55 @@ void main() {
       expect(checkoutBodies().map((b) => b['note']), ['A', 'C']);
     });
 
+    test('confirmItems saves only the given ids', () async {
+      final items = await readyItems([_scanned('A'), _scanned('B')]);
+      uploadsSucceed();
+      backend.on('POST', _checkout, (_) => _created());
+
+      final result = await queue.confirmItems({items[0].id});
+
+      expect(result.saved, 1);
+      expect(checkoutBodies().map((b) => b['note']), ['A']);
+      expect((await queue.items()).single.result!.storeName, 'B');
+    });
+
+    test('confirmItems skips a receipt that needs a review', () async {
+      final items = await readyItems([_scanned('B', sellerValid: false)]);
+      uploadsSucceed();
+      backend.on('POST', _checkout, (_) => _created());
+
+      final result = await queue.confirmItems({items.single.id});
+
+      expect(result.saved, 0);
+      expect(result.notSaved, 0);
+      expect(requestsTo(_checkout), 0);
+      expect(await queue.items(), hasLength(1));
+    });
+
+    test('confirmItems while confirmAllValid runs does nothing', () async {
+      final items = await readyItems([_scanned('A'), _scanned('B')]);
+      uploadsSucceed();
+      final arrived = Completer<void>();
+      final gate = Completer<void>();
+      backend.on('POST', _checkout, (_) async {
+        if (!arrived.isCompleted) arrived.complete();
+        await gate.future;
+        return _created();
+      });
+
+      final first = queue.confirmAllValid();
+      await arrived.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TestFailure('the first checkout never arrived'),
+      );
+      final second = await queue.confirmItems({items[0].id});
+      gate.complete();
+      await first;
+
+      expect(second.saved, 0);
+      expect(requestsTo(_checkout), 2);
+    });
+
     test('a second call while confirming does nothing', () async {
       await readyItems([_scanned('A'), _scanned('B')]);
       uploadsSucceed();

@@ -542,17 +542,59 @@ abstract class AppLocalizations {
   /// **'Scan a receipt with AI'**
   String get scanSheetTitle;
 
-  /// Scan sheet option that opens the document scanner.
+  /// Line under the scan sheet title.
   ///
   /// In en, this message translates to:
-  /// **'AI scan'**
-  String get scanWithAi;
+  /// **'Choose how to add receipts'**
+  String get scanSheetSubtitle;
 
-  /// Scan sheet option that picks a receipt photo from the gallery.
+  /// Scan sheet: one receipt with the camera.
   ///
   /// In en, this message translates to:
-  /// **'From gallery'**
-  String get scanFromGallery;
+  /// **'Scan with camera'**
+  String get scanOptionCamera;
+
+  /// Explains the camera option.
+  ///
+  /// In en, this message translates to:
+  /// **'One receipt, check and save now'**
+  String get scanOptionCameraHint;
+
+  /// Scan sheet: one photo from the gallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick from gallery'**
+  String get scanOptionGallery;
+
+  /// Explains the gallery option.
+  ///
+  /// In en, this message translates to:
+  /// **'One photo already on the phone'**
+  String get scanOptionGalleryHint;
+
+  /// Scan sheet: several receipts with the camera.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan many'**
+  String get scanOptionBatch;
+
+  /// Explains the batch camera option.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep shooting, AI reads them in the background'**
+  String get scanOptionBatchHint;
+
+  /// Scan sheet: several photos from the gallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick many photos'**
+  String get scanOptionBatchGallery;
+
+  /// Explains the batch gallery option.
+  ///
+  /// In en, this message translates to:
+  /// **'Several photos at once, confirm later'**
+  String get scanOptionBatchGalleryHint;
 
   /// Error dialog title when the document scanner fails to open.
   ///
@@ -1760,12 +1802,6 @@ abstract class AppLocalizations {
   /// **'Invalid amount'**
   String get commonInvalidAmountTitle;
 
-  /// Heading of a totals block (Ledger, receipt form).
-  ///
-  /// In en, this message translates to:
-  /// **'Summary'**
-  String get commonSummary;
-
   /// The VND symbol shown after an amount field; the unit stays VND in every language.
   ///
   /// In en, this message translates to:
@@ -2186,18 +2222,6 @@ abstract class AppLocalizations {
   /// **'Confirm receipt'**
   String get reviewTitle;
 
-  /// Shown under the date when the scan found no date.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t read the date on the receipt, so the current time is used. Tap to choose another.'**
-  String get reviewDateFallback;
-
-  /// Shown under a scanned field (store, total, date) that the AI post-processing marked as not valid.
-  ///
-  /// In en, this message translates to:
-  /// **'The AI isn\'t sure about this field. Please check it.'**
-  String get reviewFieldNeedsCheck;
-
   /// The scan found no total.
   ///
   /// In en, this message translates to:
@@ -2234,17 +2258,89 @@ abstract class AppLocalizations {
   /// **'Later'**
   String get reviewLater;
 
-  /// The total must be above zero.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter a total greater than 0.'**
-  String get reviewTotalPositive;
-
   /// The server saved the receipt transaction.
   ///
   /// In en, this message translates to:
   /// **'Transaction saved from the receipt.'**
   String get reviewSaved;
+
+  /// Done step of the receipt review band.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get reviewStepPhoto;
+
+  /// Current step of the receipt review band.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get reviewStepCheck;
+
+  /// Last step of the receipt review band.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get reviewStepSave;
+
+  /// Pill on the receipt photo that opens the viewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom'**
+  String get reviewZoom;
+
+  /// Pill in the review band: photo and fields side by side.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare'**
+  String get reviewCompare;
+
+  /// Marks a field the AI is not sure about.
+  ///
+  /// In en, this message translates to:
+  /// **'Check this'**
+  String get reviewNeedsCheck;
+
+  /// Hint under an unsure store name.
+  ///
+  /// In en, this message translates to:
+  /// **'Store name may be wrong, please correct it.'**
+  String get reviewStoreHint;
+
+  /// Hint under an unsure total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total may be wrong, compare it with the photo.'**
+  String get reviewTotalHint;
+
+  /// Hint under a date the AI could not read.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the date; pick it if it was not today.'**
+  String get reviewDateHint;
+
+  /// Label of the receipt total field.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get reviewTotal;
+
+  /// Hint under a date the AI read but doubts.
+  ///
+  /// In en, this message translates to:
+  /// **'Date may be wrong, compare it with the photo.'**
+  String get reviewDateDoubtHint;
+
+  /// Secondary button: saves and goes on scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Save & scan next'**
+  String get reviewSaveAndScan;
+
+  /// Main button of the receipt review form.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get reviewSave;
 
   /// Shown while the scan runs.
   ///
@@ -2258,59 +2354,11 @@ abstract class AppLocalizations {
   /// **'This will only take a moment'**
   String get reviewPleaseWait;
 
-  /// Heading once the scan answered.
-  ///
-  /// In en, this message translates to:
-  /// **'Extraction complete'**
-  String get reviewExtracted;
-
-  /// Asks the user to check the scanned fields.
-  ///
-  /// In en, this message translates to:
-  /// **'Check the details below against the original photo before saving.'**
-  String get reviewCheckDetails;
-
-  /// Section heading of the review form.
-  ///
-  /// In en, this message translates to:
-  /// **'General information'**
-  String get reviewGeneralInfo;
-
   /// Label of the store name field.
   ///
   /// In en, this message translates to:
   /// **'Store name'**
   String get reviewStoreName;
-
-  /// Label of the total field.
-  ///
-  /// In en, this message translates to:
-  /// **'Total (đ)'**
-  String get reviewTotalLabel;
-
-  /// Totals card row.
-  ///
-  /// In en, this message translates to:
-  /// **'Subtotal:'**
-  String get reviewSubtotal;
-
-  /// Totals card row.
-  ///
-  /// In en, this message translates to:
-  /// **'VAT/Other taxes:'**
-  String get reviewTax;
-
-  /// Totals card row: the grand total.
-  ///
-  /// In en, this message translates to:
-  /// **'TOTAL:'**
-  String get reviewGrandTotal;
-
-  /// Save button of the review form.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm & save'**
-  String get reviewSubmit;
 
   /// Title of the payment history page.
   ///
@@ -3438,18 +3486,6 @@ abstract class AppLocalizations {
   /// **'Congratulations! You reached your goal \"{title}\"'**
   String savingsGoalReached(String title);
 
-  /// Scan sheet option: scan up to 20 receipts in one go with the document scanner.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan several'**
-  String get scanBatchCamera;
-
-  /// Scan sheet option: pick up to 20 receipt photos from the gallery.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick several'**
-  String get scanBatchGallery;
-
   /// Toast after receipts were queued for reading.
   ///
   /// In en, this message translates to:
@@ -3510,12 +3546,6 @@ abstract class AppLocalizations {
   /// **'Reading'**
   String get pendingStatusReading;
 
-  /// Status chip: the receipt is read and waits for a confirmation.
-  ///
-  /// In en, this message translates to:
-  /// **'Ready'**
-  String get pendingStatusReady;
-
   /// Status chip: the receipt could not be read.
   ///
   /// In en, this message translates to:
@@ -3539,12 +3569,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove this receipt from the list?'**
   String get pendingDiscardConfirm;
-
-  /// Bottom button that saves every receipt needing no review.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm all valid ({count})'**
-  String pendingConfirmAll(int count);
 
   /// Question before the valid receipts are saved.
   ///
@@ -3575,6 +3599,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The photo is no longer on this device.'**
   String get pendingErrorMissingImage;
+
+  /// Group / tab title of the ready receipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready {count}'**
+  String pendingGroupReady(int count);
+
+  /// Group title of the receipts not ready yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing {count}'**
+  String pendingGroupProcessing(int count);
+
+  /// Tab of the receipts waiting or being read.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading {count}'**
+  String pendingTabReading(int count);
+
+  /// Tab of the receipts whose reading failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed {count}'**
+  String pendingTabFailed(int count);
+
+  /// Title of a card whose receipt is not read yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading…'**
+  String get pendingReadingTitle;
+
+  /// Title of a failed receipt: its place in the list.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo {index}'**
+  String pendingPhotoTitle(int index);
+
+  /// Quick button of a ready receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get pendingQuickSave;
+
+  /// Quick button of a ready receipt with a doubted field.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get pendingReview;
+
+  /// Line above the bottom button: receipts that can be saved now.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} receipts ready'**
+  String pendingReadyFooter(int count);
+
+  /// Band title in the selection mode.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String pendingSelected(int count);
+
+  /// Selects every receipt that can be saved now.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get pendingSelectAll;
+
+  /// Bottom button in the selection mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Save {count} selected'**
+  String pendingSaveSelected(int count);
+
+  /// Bottom button: saves every receipt that can be saved now.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm all'**
+  String get pendingConfirmAllShort;
 
   /// Label under a stack of toasts: how many there are and that a tap opens the list.
   ///

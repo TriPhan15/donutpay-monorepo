@@ -4,11 +4,10 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:finance_ai_app/core/utils/currency_helper.dart';
-import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
@@ -19,13 +18,6 @@ import '../../helpers/theme_colors.dart';
 
 /// A real file of the project, so that the scan can read it: it stands for the photo of the receipt.
 const String _photo = 'assets/images/logo.png';
-
-/// Amounts as the Vietnamese screens write them.
-String _money(num amount) => CurrencyHelper.formatVND(
-  amount.toDouble(),
-  AppLanguage.vietnamese.localizations,
-  showSign: false,
-);
 
 void main() {
   final backend = FakeBackend();
@@ -136,11 +128,49 @@ void main() {
       });
 
       testWidgets(
-        'ReviewFormPage: photo, fields, category, totals and the save button follow the theme',
+        'ReviewFormPage: band, photo, fields, category and buttons follow the theme',
         (tester) async {
+          backend.on(
+            'POST',
+            '/donut/scan',
+            (_) => jsonResponse(200, {
+              'seller': {
+                'seller_name': 'Highlands',
+                'timestamp': '20/09/2026 08:30',
+                'total_cost_number': 45000,
+              },
+              'normalized': {
+                'seller': {
+                  'raw': 'Highlands',
+                  'value': 'Highlands',
+                  'valid': false,
+                },
+                'timestamp': {
+                  'raw': '',
+                  'value': '',
+                  'iso': '2026-09-20T08:30:00',
+                  'valid': true,
+                },
+                'total_cost': {'raw': '45000', 'value': 45000, 'valid': true},
+              },
+            }),
+          );
           final theme = await openForm(tester, mode);
           final colors = theme.colorScheme;
           final semantic = theme.extension<SemanticColors>()!;
+
+          final band = tester.widget<Container>(
+            find
+                .descendant(
+                  of: find.byType(PageBand),
+                  matching: find.byType(Container),
+                )
+                .first,
+          );
+          expect(
+            (band.decoration as BoxDecoration).gradient,
+            semantic.headerGradient,
+          );
 
           // The photo of the receipt keeps its own colours: nothing filters or tints it.
           expect(find.byType(ColorFiltered), findsNothing);
@@ -148,20 +178,8 @@ void main() {
           expect(photo.color, isNull);
           expect(photo.colorBlendMode, isNull);
 
-          expect(
-            paintedColor(tester, find.text('Trích xuất thành công')),
-            colors.primary,
-          );
-          expect(
-            paintedColor(tester, find.text('Thông tin chung')),
-            colors.onSurface,
-          );
-
-          // The two text fields: fill, borders, label, prefix icon, text and cursor from the theme.
-          final store = find.ancestor(
-            of: find.text('Highlands'),
-            matching: find.byType(TextFormField),
-          );
+          // The store field: fill, label, prefix icon, text and cursor from the theme.
+          final store = find.byKey(ReviewFormPage.storeFieldKey);
           final decoration = tester
               .widget<InputDecorator>(
                 find.descendant(
@@ -172,19 +190,7 @@ void main() {
               .decoration;
           expect(decoration.fillColor, colors.surface);
           expect(
-            (decoration.enabledBorder! as OutlineInputBorder).borderSide.color,
-            colors.outlineVariant,
-          );
-          expect(
-            (decoration.focusedBorder! as OutlineInputBorder).borderSide.color,
-            colors.primary,
-          );
-          expect(
             paintedColor(tester, find.text('Tên cửa hàng')),
-            colors.onSurfaceVariant,
-          );
-          expect(
-            paintedColor(tester, find.byIcon(Icons.storefront)),
             colors.onSurfaceVariant,
           );
           final editable = tester.widget<EditableText>(
@@ -193,48 +199,39 @@ void main() {
           expect(editable.style.color, colors.onSurface);
           expect(editable.cursorColor, colors.primary);
 
-          // Category box.
-          final category = boxDecoration(tester, find.text('Ăn uống'));
-          expect(category.color, colors.surface);
-          expect((category.border! as Border).top.color, colors.outlineVariant);
-          expect(paintedColor(tester, find.text('Ăn uống')), colors.onSurface);
-
-          // Totals: the grand total is the amount spent.
-          expect(materialColor(tester, find.byType(Card)), colors.surface);
+          // The doubted store name: "Cần kiểm tra" and its hint in the warning colour.
           expect(
-            paintedColor(tester, find.text('Tạm tính:')),
-            colors.onSurfaceVariant,
+            paintedColor(tester, find.text('Cần kiểm tra')),
+            semantic.warningColor,
           );
           expect(
-            paintedColor(tester, find.text('TỔNG TIỀN:')),
-            colors.onSurface,
-          );
-          final totals = find.text(_money(45000));
-          expect(paintedColor(tester, totals.first), colors.onSurface);
-          expect(paintedColor(tester, totals.last), semantic.expenseColor);
-          final divider =
-              tester
-                      .widget<Container>(
-                        find.descendant(
-                          of: find.byType(Divider),
-                          matching: find.byType(Container),
-                        ),
-                      )
-                      .decoration!
-                  as BoxDecoration;
-          expect(
-            (divider.border! as Border).bottom.color,
-            colors.outlineVariant,
+            paintedColor(
+              tester,
+              find.text('Chưa chắc tên cửa hàng, hãy sửa nếu sai.'),
+            ),
+            semantic.warningColor,
           );
 
-          final save = find.ancestor(
-            of: find.text('Xác nhận và lưu'),
-            matching: find.byType(ElevatedButton),
-          );
-          expect(materialColor(tester, save), colors.primary);
+          // The guessed category is the selected tile.
+          expect(paintedColor(tester, find.text('Ăn uống')), colors.primary);
+
           expect(
-            paintedColor(tester, find.text('Xác nhận và lưu')),
+            materialColor(tester, find.widgetWithText(FilledButton, 'Lưu')),
+            colors.primary,
+          );
+          expect(
+            paintedColor(
+              tester,
+              find.descendant(
+                of: find.byType(FilledButton),
+                matching: find.text('Lưu'),
+              ),
+            ),
             colors.onPrimary,
+          );
+          expect(
+            paintedColor(tester, find.text('Lưu & quét tiếp')),
+            colors.primary,
           );
         },
       );
@@ -244,7 +241,7 @@ void main() {
       ) async {
         final colors = (await openForm(tester, mode)).colorScheme;
 
-        await tester.tap(find.text('Ăn uống'));
+        await tester.tap(find.text('Khác'));
         await tester.pumpAndSettle();
 
         final sheet = find.byType(BottomSheet);
@@ -281,25 +278,4 @@ void main() {
       });
     });
   }
-
-  testWidgets(
-    'light mode keeps the colours the review form had before the migration',
-    (tester) async {
-      await openForm(tester, ThemeMode.light);
-
-      expect(
-        paintedColor(tester, find.text('Trích xuất thành công')),
-        AppTheme.mintAccent,
-      );
-      expect(paintedColor(tester, find.text('Tạm tính:')), AppTheme.textGray);
-      expect(
-        paintedColor(tester, find.text(_money(45000)).last),
-        AppTheme.dangerColor,
-      );
-      expect(
-        boxDecoration(tester, find.text('Ăn uống')).color,
-        AppTheme.navyLight,
-      );
-    },
-  );
 }

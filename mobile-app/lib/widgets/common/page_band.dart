@@ -16,6 +16,8 @@ class PageBand extends StatelessWidget {
     this.action = PageBandAction.back,
     this.buttonKey,
     this.onAction,
+    this.trailing,
+    this.bottom,
   });
 
   static const double _gutter = 16;
@@ -30,6 +32,12 @@ class PageBand extends StatelessWidget {
   /// Called by the button; closes the page ([Navigator.maybePop]) when null.
   final VoidCallback? onAction;
 
+  /// Shown at the end of the title row, such as a white translucent pill.
+  final Widget? trailing;
+
+  /// Shown under the title row, inside the band.
+  final Widget? bottom;
+
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
@@ -43,42 +51,56 @@ class PageBand extends StatelessWidget {
           bottom: Radius.circular(_radius),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Material(
-            color: BandColors.tint,
-            shape: const CircleBorder(),
-            child: InkWell(
-              key: buttonKey,
-              customBorder: const CircleBorder(),
-              onTap: onAction ?? () => Navigator.maybePop(context),
-              child: SizedBox(
-                width: _buttonSize,
-                height: _buttonSize,
-                child: Icon(
-                  isClose ? Icons.close_rounded : Icons.arrow_back_rounded,
-                  color: BandColors.primary,
-                  size: _iconSize,
-                  semanticLabel: isClose
-                      ? material.closeButtonTooltip
-                      : material.backButtonTooltip,
+          Row(
+            children: [
+              Material(
+                color: BandColors.tint,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  key: buttonKey,
+                  customBorder: const CircleBorder(),
+                  onTap: onAction ?? () => Navigator.maybePop(context),
+                  child: SizedBox(
+                    width: _buttonSize,
+                    height: _buttonSize,
+                    child: Icon(
+                      isClose ? Icons.close_rounded : Icons.arrow_back_rounded,
+                      color: BandColors.primary,
+                      size: _iconSize,
+                      semanticLabel: isClose
+                          ? material.closeButtonTooltip
+                          : material.backButtonTooltip,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: BandColors.primary,
-                fontSize: AppTextSize.pageTitle,
-                fontWeight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: BandColors.primary,
+                    fontSize: AppTextSize.pageTitle,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-            ),
+              if (trailing case final Widget trailing) ...[
+                const SizedBox(width: 8),
+                trailing,
+              ],
+            ],
           ),
+          if (bottom case final Widget bottom) ...[
+            const SizedBox(height: 12),
+            bottom,
+          ],
         ],
       ),
     );
