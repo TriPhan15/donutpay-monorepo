@@ -90,6 +90,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     Transaction findTopByUserIdOrderByAmountDesc(Long userId);
 
+    /** Every transaction of a category, with its owner, for CategoryService.renameCategory. */
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.user WHERE t.category.id = :categoryId")
+    List<Transaction> findAllByCategory_Id(@Param("categoryId") Long categoryId);
+
 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.category LEFT JOIN FETCH t.receipt WHERE t.user.id = :userId AND t.voucherCode IS NOT NULL")
     List<Transaction> findByUserIdAndVoucherCodeNotNull(@Param("userId") Long userId);

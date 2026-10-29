@@ -25,6 +25,8 @@ import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.AuditLogFilterRequestDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
+import vn.edu.huit.finance.core.Dto.CategoryRenameRequestDto;
+import vn.edu.huit.finance.core.Dto.CategoryRequestDto;
 import vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto;
 import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
@@ -415,16 +417,17 @@ public class AdminController {
     @PostMapping("/ajax/categories")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> addCategoryAjax(@RequestParam String name, @RequestParam String type) {
-        categoryService.createCategory(name, type);
+    public ResponseEntity<ApiResponse<Void>> addCategoryAjax(@Valid @ModelAttribute CategoryRequestDto dto) {
+        categoryService.createCategory(dto.getName(), dto.getType());
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(201).message("Thêm thành công").build());
     }
 
     @PutMapping("/ajax/categories/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> updateCategoryAjax(@PathVariable Long id, @RequestParam String name) {
-        categoryService.renameCategory(id, name);
+    public ResponseEntity<ApiResponse<Void>> updateCategoryAjax(@PathVariable Long id,
+                                                             @Valid @ModelAttribute CategoryRenameRequestDto dto) {
+        categoryService.renameCategory(id, dto.getName());
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).message("Cập nhật thành công").build());
     }
 
