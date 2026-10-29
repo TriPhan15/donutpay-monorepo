@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -117,7 +116,7 @@ public class AuthService {
             "Bạn đã nhập sai OTP quá số lần cho phép. Vui lòng yêu cầu gửi lại mã mới.";
 
     @Autowired
-    private JavaMailSender mailSender;
+    private AsyncMailSender mailSender;
 
     @Autowired
     private UserRepository userRepository;
@@ -203,9 +202,10 @@ public class AuthService {
     /**
      * Mails a new OTP when the email has an account, and answers the same way when it has none (the controller's text
      * does not say which): the request limit runs first, for known and unknown emails alike, so neither the answer
-     * text nor the request limit depends on whether the email is registered. The mail is sent synchronously, so the
-     * response time can still differ (known gap). Re-requesting cannot be used to guess the code either: the limit
-     * is what bounds how many fresh codes (each with its own 3 guesses) an email can get.
+     * text nor the request limit depends on whether the email is registered. The mail is handed to AsyncMailSender and
+     * sent outside the request, so the response time does not tell either, and an SMTP failure is only logged instead
+     * of turning into a 500. Re-requesting cannot be used to guess the code: the limit is what bounds how many fresh
+     * codes (each with its own 3 guesses) an email can get.
      */
     public void generateAndSendOtp(String email) {
         if (!otpStore.tryRegisterIssue(email, clock.instant(), OTP_REQUEST_COOLDOWN, OTP_MAX_REQUESTS_PER_WINDOW,

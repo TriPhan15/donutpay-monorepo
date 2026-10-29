@@ -15,7 +15,7 @@ import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import vn.edu.huit.finance.core.Service.AsyncMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Propagation;
@@ -87,7 +87,7 @@ class PasswordAuditTrailTest {
     // Real behaviour; a spy only so that one test can make the audit insert fail.
     @SpyBean private ActionLogRepository actionLogRepository;
     @MockBean private CurrentUserProvider currentUserProvider;
-    @MockBean private JavaMailSender mailSender;
+    @MockBean private AsyncMailSender mailSender;
 
     private Long aliceId;
 

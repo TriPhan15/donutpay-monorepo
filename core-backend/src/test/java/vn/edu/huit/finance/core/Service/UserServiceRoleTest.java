@@ -18,6 +18,7 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.AdminAccountProtectedException;
 import vn.edu.huit.finance.core.Exception.InvalidRoleException;
 import vn.edu.huit.finance.core.Exception.ProfileAccessDeniedException;
+import vn.edu.huit.finance.core.Exception.ProfileUpdateRefusedException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
@@ -404,6 +405,45 @@ class UserServiceRoleTest {
         when(userRepository.findById(ID)).thenReturn(Optional.empty());
 
         assertThrows(UserNotFoundException.class, () -> service.deleteUser(ID));
+    }
+
+    // ---- the username rule, at the service (A8) ----
+
+    @ParameterizedTest
+    @ValueSource(strings = {"bob@example.com", "alice@other.com", "ALICE@example.com", "a@b"})
+    void aUsernameWithAnAtThatIsNotTheOwnersEmailIsRefused(String username) {
+        User alice = user("ROLE_USER", true);
+        when(userRepository.findById(ID)).thenReturn(Optional.of(alice));
+        UserUpdateDto dto = new UserUpdateDto();
+        dto.setUsername(username);
+
+        assertThrows(ProfileUpdateRefusedException.class, () -> service.updateOwnProfile(ID, dto));
+
+        assertEquals("alice", alice.getUsername());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void theOwnersOwnEmailIsAcceptedAsUsername() {
+        User alice = whenLoaded(user("ROLE_USER", true));
+        UserUpdateDto dto = new UserUpdateDto();
+        dto.setUsername("alice@example.com");
+
+        service.updateOwnProfile(ID, dto);
+
+        assertEquals("alice@example.com", alice.getUsername());
+        verify(userRepository).save(alice);
+    }
+
+    @Test
+    void aUsernameWithoutAnAtIsAccepted() {
+        User alice = whenLoaded(user("ROLE_USER", true));
+        UserUpdateDto dto = new UserUpdateDto();
+        dto.setUsername("alice_2026");
+
+        service.updateOwnProfile(ID, dto);
+
+        assertEquals("alice_2026", alice.getUsername());
     }
 
     // ---- updateOwnProfile with the caller (A3) ----
