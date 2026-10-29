@@ -88,6 +88,24 @@ class AppLocalizationsVi extends AppLocalizations {
   String get notificationTypeOther => 'Thông báo';
 
   @override
+  String get notificationsEmptyHint =>
+      'Cảnh báo ngân sách, giao dịch và hóa đơn sẽ hiện ở đây.';
+
+  @override
+  String notificationsYesterdayAt(String time) {
+    return 'Hôm qua, $time';
+  }
+
+  @override
+  String get notificationDetailTitle => 'Chi tiết thông báo';
+
+  @override
+  String get notificationDetailType => 'Loại';
+
+  @override
+  String get notificationDetailTime => 'Thời gian';
+
+  @override
   String get sessionEnded =>
       'Phiên đăng nhập đã kết thúc, có thể do mật khẩu vừa được thay đổi. Vui lòng đăng nhập lại.';
 

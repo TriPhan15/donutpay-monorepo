@@ -89,6 +89,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationTypeOther => 'Notification';
 
   @override
+  String get notificationsEmptyHint =>
+      'Budget, transaction and receipt alerts will show up here.';
+
+  @override
+  String notificationsYesterdayAt(String time) {
+    return 'Yesterday, $time';
+  }
+
+  @override
+  String get notificationDetailTitle => 'Notification details';
+
+  @override
+  String get notificationDetailType => 'Type';
+
+  @override
+  String get notificationDetailTime => 'Time';
+
+  @override
   String get sessionEnded =>
       'Your session has ended, for example because your password was changed. Please sign in again.';
 
