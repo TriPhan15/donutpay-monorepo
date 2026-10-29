@@ -489,8 +489,7 @@ void main() {
         expect(find.byType(BudgetScreen), findsOneWidget);
         final whileOpen = budgetRequests();
 
-        // pageBack() looks for the English "Back" tooltip; the app is in Vietnamese here.
-        await tester.tap(find.byType(BackButton));
+        await tester.tap(find.byKey(BudgetScreen.backKey));
         await tester.pumpAndSettle();
 
         expect(find.byType(BudgetScreen), findsNothing);

@@ -1,35 +1,58 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
 
-import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
-import 'package:finance_ai_app/core/theme/app_theme.dart';
-import 'package:finance_ai_app/core/utils/currency_helper.dart';
+import 'package:finance_ai_app/core/theme/band_colors.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
+import 'package:finance_ai_app/models/budget_overview.dart';
+import 'package:finance_ai_app/models/budget_progress.dart';
+import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/budget/budget_form_sheet.dart';
+import 'package:finance_ai_app/screens/budget/widgets/budget_band_summary.dart';
+import 'package:finance_ai_app/screens/budget/widgets/budget_group_card.dart';
+import 'package:finance_ai_app/screens/budget/widgets/budget_period_tabs.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/widgets/common/primary_button.dart';
+import 'package:finance_ai_app/widgets/common/app_state_view.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 
 const int _httpUnauthorized = 401;
 const int _httpForbidden = 403;
 
-/// Lists the spending limits of the user, stored in the backend, and lets them add, edit and delete them.
+/// The spending limits of the user that run today (T9 spec, 3.5): Tuần / Tháng / Năm tabs and the total in the blue
+/// band, then the exceeded budgets and the others in two cards. Tap a budget to edit it, swipe it left to delete it.
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
+
+  static const Key bandKey = ValueKey('budget-band');
+  static const Key addKey = ValueKey('budget-add');
+  static const Key backKey = ValueKey('budget-back');
 
   @override
   State<BudgetScreen> createState() => _BudgetScreenState();
 }
 
 class _BudgetScreenState extends State<BudgetScreen> {
+  static const double _gutter = 16;
+  static const double _addButtonSize = 36;
+  static const double _sheetRadius = 24;
+  static const double _bottomPadding = 32;
+  static const double _groupGap = 12;
+
   List<BudgetModel> _budgets = [];
+  List<TransactionModel> _transactions = [];
+  String? _period;
   bool _isLoading = true;
+
+  /// The message of the last failed load; null once a load succeeds.
+  String? _loadError;
+
+  String get _currentPeriod => _period ?? BudgetPeriodType.month;
 
   @override
   void initState() {
@@ -54,26 +77,40 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final userId = SessionService.currentUserId;
     if (userId == null) {
       setState(() => _isLoading = false);
-      await _showSessionExpired();
+      // Not awaited: a pull to refresh must not keep its spinner turning until the dialog is closed.
+      unawaited(_showSessionExpired());
       return;
     }
+    if (_loadError != null) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     final List<BudgetModel> budgets;
+    final List<TransactionModel> transactions;
     try {
-      budgets = await AppRepository.instance.getBudgets(userId);
+      // Started together: the spending of each budget needs both. The first error is the one reported.
+      final results = await Future.wait<Object>([
+        AppRepository.instance.getBudgets(userId),
+        AppRepository.instance.getTransactions(userId),
+      ]);
+      budgets = results[0] as List<BudgetModel>;
+      transactions = results[1] as List<TransactionModel>;
     } catch (e) {
       debugPrint('Lỗi tải ngân sách: $e');
       if (!mounted) return;
-      setState(() => _isLoading = false);
-      await AppDialog.error(
-        context,
-        title: context.loc.budgetLoadFailedTitle,
-        message: _messageOf(e, context.loc),
-      );
+      setState(() {
+        _isLoading = false;
+        _loadError = _messageOf(e, context.loc);
+      });
       return;
     }
     if (!mounted) return;
     setState(() {
       _budgets = budgets;
+      _transactions = transactions;
+      _period ??= BudgetOverview.initialPeriod(budgets, DateTime.now());
       _isLoading = false;
     });
   }
@@ -97,10 +134,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(_sheetRadius)),
       ),
       builder: (_) => BudgetFormSheet(
         budget: budget,
+        initialPeriodType: _currentPeriod,
+        history: _transactions,
         loadCategories: () =>
             AppRepository.instance.getExpenseCategories(userId),
         onSubmit: (edited) => _submit(userId, edited),
@@ -122,9 +161,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
     }
   }
 
-  Future<void> _delete(BudgetModel budget) async {
+  /// Asks, then deletes; true once the budget is gone, so that its row leaves the list.
+  Future<bool> _delete(BudgetProgress progress) async {
+    final budget = progress.budget;
     final budgetId = budget.id;
-    if (budgetId == null) return;
+    if (budgetId == null) return false;
     final loc = context.loc;
     final confirmed = await AppDialog.confirm(
       context,
@@ -133,221 +174,150 @@ class _BudgetScreenState extends State<BudgetScreen> {
       confirmText: loc.commonDelete,
       danger: true,
     );
-    if (!confirmed || !mounted) return;
+    if (!confirmed || !mounted) return false;
 
     try {
       await AppRepository.instance.deleteBudget(budgetId);
     } catch (e) {
       debugPrint('Lỗi xóa ngân sách: $e');
-      if (!mounted) return;
+      if (!mounted) return false;
       await AppDialog.error(
         context,
         title: context.loc.budgetDeleteFailedTitle,
         message: _messageOf(e, context.loc),
       );
-      return;
+      return false;
     }
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() => _budgets = _budgets.where((b) => b.id != budgetId).toList());
     await AppDialog.success(context, title: context.loc.budgetDeleted);
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
+    final overview = BudgetOverview.of(
+      budgets: _budgets,
+      transactions: _transactions,
+      periodType: _currentPeriod,
+      today: DateTime.now(),
+    );
+    final total = overview.total;
     return Scaffold(
-      backgroundColor: colors.surface,
-      // Transparent so that it shows the page colour; icons and title take the app bar theme.
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          context.loc.budgetTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add_rounded, color: colors.primary),
-            onPressed: () => _openForm(),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const _BudgetSkeleton()
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            PageBand(
+              key: BudgetScreen.bandKey,
+              buttonKey: BudgetScreen.backKey,
+              title: loc.budgetTitle,
+              trailing: _AddButton(
+                size: _addButtonSize,
+                tooltip: loc.budgetCreate,
+                onPressed: () => _openForm(),
+              ),
+              bottom: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_budgets.isEmpty)
-                    _EmptyState(onCreate: _openForm)
-                  else
-                    for (final budget in _budgets)
-                      _BudgetCard(
-                        budget: budget,
-                        onEdit: () => _openForm(budget),
-                        onDelete: () => _delete(budget),
-                      ),
+                  BudgetPeriodTabs(
+                    selected: _currentPeriod,
+                    onChanged: (type) => setState(() => _period = type),
+                  ),
+                  if (!_isLoading && _loadError == null && total != null) ...[
+                    const SizedBox(height: _groupGap),
+                    BudgetBandSummary(summary: total),
+                  ],
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                _gutter,
+                _gutter,
+                _gutter,
+                _bottomPadding,
+              ),
+              child: _buildBody(loc, overview),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(AppLocalizations loc, BudgetOverview overview) {
+    if (_isLoading) return const AppStateView.loading();
+    final error = _loadError;
+    if (error != null) {
+      return AppStateView.error(
+        title: loc.budgetLoadFailedTitle,
+        message: error,
+        onRetry: _load,
+      );
+    }
+    if (overview.isEmpty) {
+      return AppStateView.empty(
+        icon: Icons.track_changes_rounded,
+        title: loc.budgetEmptyPeriod,
+        message: loc.budgetEmptyHint,
+        actionLabel: loc.budgetCreate,
+        onAction: _openForm,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (overview.over.isNotEmpty)
+          BudgetGroupCard(
+            kind: BudgetGroupKind.over,
+            items: overview.over,
+            onTap: (progress) => _openForm(progress.budget),
+            onDelete: _delete,
+          ),
+        if (overview.over.isNotEmpty && overview.within.isNotEmpty)
+          const SizedBox(height: _groupGap),
+        if (overview.within.isNotEmpty)
+          BudgetGroupCard(
+            kind: BudgetGroupKind.within,
+            items: overview.within,
+            onTap: (progress) => _openForm(progress.budget),
+            onDelete: _delete,
+          ),
+      ],
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final VoidCallback onCreate;
+/// The round white translucent "+" at the end of the band.
+class _AddButton extends StatelessWidget {
+  final double size;
+  final String tooltip;
+  final VoidCallback onPressed;
 
-  const _EmptyState({required this.onCreate});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final loc = context.loc;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.pie_chart_outline_rounded,
-            color: colors.onSurfaceVariant,
-            size: 48,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            loc.budgetEmpty,
-            style: TextStyle(color: colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            loc.budgetEmptyHint,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-          ),
-          const SizedBox(height: 20),
-          PrimaryButton(text: loc.budgetCreate, onPressed: onCreate),
-        ],
-      ),
-    );
-  }
-}
-
-class _BudgetCard extends StatelessWidget {
-  static final DateFormat _displayDate = DateFormat('dd/MM/yyyy');
-
-  final BudgetModel budget;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _BudgetCard({
-    required this.budget,
-    required this.onEdit,
-    required this.onDelete,
+  const _AddButton({
+    required this.size,
+    required this.tooltip,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final categoryName = budget.categoryName;
-    final loc = context.loc;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Material(
+      color: BandColors.tint,
+      shape: const CircleBorder(),
       child: InkWell(
-        onTap: onEdit,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
-          decoration: AppTheme.cardDecoration(colors),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  categoryName == null
-                      ? Icons.pie_chart_rounded
-                      : TransactionCategories.iconFor(categoryName),
-                  color: colors.onPrimaryContainer,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      budget.categoryLabel(loc),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${BudgetPeriodType.label(loc, budget.periodType)} · '
-                      '${_displayDate.format(budget.start)} – ${_displayDate.format(budget.end)}',
-                      style: TextStyle(
-                        color: colors.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                CurrencyHelper.formatVND(budget.amount, loc, showSign: false),
-                style: TextStyle(
-                  color: colors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.delete_outline_rounded,
-                  color: colors.error,
-                  size: 20,
-                ),
-                onPressed: onDelete,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Three card-shaped placeholders that shimmer from the container colour of the theme to its surface.
-class _BudgetSkeleton extends StatelessWidget {
-  const _BudgetSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    // The shimmer paints over the boxes, so their own colour only has to be opaque.
-    final box = BoxDecoration(
-      color: colors.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(20),
-    );
-    return Shimmer.fromColors(
-      baseColor: colors.surfaceContainerHighest,
-      highlightColor: colors.surface,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        physics: const NeverScrollableScrollPhysics(),
-        children: List.generate(
-          3,
-          (_) => Container(
-            height: 76,
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: box,
+        key: BudgetScreen.addKey,
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: SizedBox.square(
+          dimension: size,
+          child: Icon(
+            Icons.add_rounded,
+            color: BandColors.primary,
+            semanticLabel: tooltip,
           ),
         ),
       ),

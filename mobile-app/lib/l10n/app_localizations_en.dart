@@ -1445,9 +1445,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get budgetDeleted => 'Budget deleted';
 
   @override
-  String get budgetEmpty => 'No budgets yet.';
-
-  @override
   String get budgetEmptyHint =>
       'Set a weekly or monthly spending limit to stay in control.';
 
@@ -1459,10 +1456,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get budgetAmountLabel => 'Budget amount (₫)';
-
-  @override
-  String get budgetAmountPositive =>
-      'Please enter a budget amount greater than 0.';
 
   @override
   String get budgetPeriodLabel => 'Period';
@@ -1917,9 +1910,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get periodThisYear => 'This year';
 
   @override
-  String get budgetPeriodDayLabel => 'Period that contains';
-
-  @override
   String get budgetCustomCategoryLabel => 'Category name';
 
   @override
@@ -1933,6 +1923,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String budgetCustomCategoryTooLong(int max) {
     return 'At most $max characters';
   }
+
+  @override
+  String get budgetGroupOver => 'Over budget';
+
+  @override
+  String get budgetGroupWithin => 'On track';
+
+  @override
+  String budgetGroupCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count budgets',
+      one: '1 budget',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String budgetLeft(String amount) {
+    return '$amount left';
+  }
+
+  @override
+  String budgetOver(String amount) {
+    return '$amount over';
+  }
+
+  @override
+  String budgetAmounts(String spent, String limit) {
+    return '$spent / $limit';
+  }
+
+  @override
+  String get budgetEmptyPeriod => 'No budget for this period';
 
   @override
   String ledgerYearLabel(String year) {
