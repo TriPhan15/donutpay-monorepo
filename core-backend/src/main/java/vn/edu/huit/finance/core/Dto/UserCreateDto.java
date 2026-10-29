@@ -2,8 +2,8 @@ package vn.edu.huit.finance.core.Dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
+import vn.edu.huit.finance.core.Security.StrongPassword;
 
 @Data
 public class UserCreateDto {
@@ -17,8 +17,8 @@ public class UserCreateDto {
     @NotBlank(message = "Số điện thoại không được để trống")
     private String phone;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must contain at least 6 characters")
+    // Cùng chính sách với đăng ký và đổi mật khẩu (tối thiểu 8 ký tự, có chữ và số).
+    @StrongPassword
     private String password;
 
     @NotBlank(message = "Role is required")

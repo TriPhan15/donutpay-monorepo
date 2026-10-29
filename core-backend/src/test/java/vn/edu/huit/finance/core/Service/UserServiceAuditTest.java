@@ -77,7 +77,7 @@ class UserServiceAuditTest {
 
     @Test
     void anAccountCreatedByAnAdministratorIsRecordedWithItsRole_neverItsPassword() {
-        when(passwordEncoder.encode("secret1")).thenReturn("$2a$04$hash");
+        when(passwordEncoder.encode("secret123")).thenReturn("$2a$04$hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(77L);
@@ -87,7 +87,7 @@ class UserServiceAuditTest {
         dto.setUsername("new");
         dto.setEmail("new@example.com");
         dto.setPhone("0900000002");
-        dto.setPassword("secret1");
+        dto.setPassword("secret123");
         dto.setRole("admin");
 
         service.createUser(dto);
@@ -95,7 +95,7 @@ class UserServiceAuditTest {
         AuditEntry entry = recorded().get(0);
         assertByTheCallerAbout(entry, AuditAction.USER_CREATED, 77L);
         assertEquals("Quản trị viên tạo tài khoản new@example.com, vai trò ROLE_ADMIN", entry.description());
-        assertFalse(entry.description().contains("secret1"));
+        assertFalse(entry.description().contains("secret123"));
         assertFalse(entry.description().contains("$2a$04$hash"));
     }
 

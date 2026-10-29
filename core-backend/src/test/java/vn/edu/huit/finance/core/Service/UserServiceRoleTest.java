@@ -54,7 +54,7 @@ class UserServiceRoleTest {
         dto.setUsername("new");
         dto.setEmail("new@example.com");
         dto.setPhone("0900000002");
-        dto.setPassword("secret1");
+        dto.setPassword("secret123");
         dto.setRole(role);
         return dto;
     }
@@ -76,7 +76,7 @@ class UserServiceRoleTest {
     @ParameterizedTest
     @ValueSource(strings = {"ADMIN", "admin", "ROLE_ADMIN", " role_admin "})
     void createUserStoresEverySpellingOfAdminAsRoleAdmin(String spelling) {
-        when(passwordEncoder.encode("secret1")).thenReturn("hash");
+        when(passwordEncoder.encode("secret123")).thenReturn("hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User created = service.createUser(createDto(spelling));
@@ -87,7 +87,7 @@ class UserServiceRoleTest {
     @ParameterizedTest
     @ValueSource(strings = {"USER", "user", "ROLE_USER"})
     void createUserStoresEverySpellingOfUserAsRoleUser(String spelling) {
-        when(passwordEncoder.encode("secret1")).thenReturn("hash");
+        when(passwordEncoder.encode("secret123")).thenReturn("hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertEquals("ROLE_USER", service.createUser(createDto(spelling)).getRole());
