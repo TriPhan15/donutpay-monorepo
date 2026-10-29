@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -14,6 +13,8 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ledger/add_transaction_page.dart';
 import 'package:finance_ai_app/screens/ledger/edit_transaction_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
+import 'package:finance_ai_app/screens/ledger/transaction_detail_page.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/stats_header_band.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -73,9 +74,6 @@ Finder _button(String label) => find
 
 Finder _inSheet(Finder finder) =>
     find.descendant(of: find.byType(BottomSheet), matching: finder);
-
-Finder _inDialog(Finder finder) =>
-    find.descendant(of: find.byType(AlertDialog), matching: finder);
 
 void main() {
   final backend = FakeBackend();
@@ -138,354 +136,131 @@ void main() {
     group('${mode.name} theme', () {
       group('LedgerPage', () {
         testWidgets(
-          'page, date stepper, period, chart, cards, list and summary follow the theme',
+          'the band, the view toggle and the list follow the theme, with no budget block',
           (tester) async {
             final theme = await show(tester, const LedgerPage(), mode);
             final colors = theme.colorScheme;
-            final money = theme.extension<SemanticColors>()!;
-
-            expect(
-              materialColor(tester, find.byType(Scaffold)),
-              theme.scaffoldBackgroundColor,
+            final band = tester.widget<Container>(
+              find.byKey(StatsHeaderBand.bandKey),
             );
             expect(
-              paintedColor(tester, find.text('Sổ sách')),
-              colors.onSurface,
+              (band.decoration as BoxDecoration).gradient,
+              theme.extension<SemanticColors>()!.headerGradient,
+            );
+            expect(paintedColor(tester, find.text('Thống kê')), Colors.white);
+            expect(
+              paintedColor(tester, find.text('Biểu đồ')),
+              colors.onPrimary,
             );
             expect(
-              paintedColor(tester, find.byIcon(Icons.tune_rounded)),
-              colors.onSurfaceVariant,
-              reason: 'no filter is on',
-            );
-            expect(
-              paintedColor(tester, find.byIcon(Icons.add_box_rounded)),
-              colors.primary,
-            );
-
-            // Date stepper: a surface pill, with a shadow only where it shows.
-            final stepper = boxDecoration(tester, find.text('Lịch'));
-            expect(stepper.color, colors.surface);
-            expect(stepper.boxShadow, AppTheme.softShadowFor(colors));
-            expect(paintedColor(tester, find.text('Lịch')), colors.onSurface);
-            expect(
-              paintedColor(tester, find.byIcon(Icons.calendar_today_rounded)),
-              colors.primary,
-            );
-            expect(
-              boxColor(tester, find.byIcon(Icons.chevron_left_rounded)),
-              colors.surface,
-            );
-            expect(
-              paintedColor(tester, find.byIcon(Icons.chevron_left_rounded)),
-              colors.onSurface,
-            );
-
-            // Period picker: a tonal pill.
-            expect(
-              boxColor(tester, find.text('Tháng')),
-              colors.primaryContainer,
-            );
-            expect(
-              paintedColor(tester, find.text('Tháng')),
-              colors.onPrimaryContainer,
-            );
-
-            // Chart: income and expense series, grid and labels in theme text colours.
-            final chart = tester.widget<BarChart>(find.byType(BarChart)).data;
-            expect(chart.barGroups.last.barRods.map((rod) => rod.color), [
-              money.incomeColor,
-              money.expenseColor,
-            ]);
-            expect(
-              chart.gridData.getDrawingHorizontalLine(0).color,
-              colors.onSurfaceVariant.withValues(alpha: 0.15),
-            );
-            expect(
-              paintedColor(tester, find.text('Th${DateTime.now().month}')),
+              paintedColor(tester, find.text('Danh mục')),
               colors.onSurfaceVariant,
             );
-            final legend = find.ancestor(
-              of: find.text('Thu'),
-              matching: find.byType(Row),
-            );
-            final dot = tester.widget<Container>(
-              find
-                  .descendant(
-                    of: legend.first,
-                    matching: find.byType(Container),
-                  )
-                  .first,
-            );
-            expect((dot.decoration! as BoxDecoration).color, money.incomeColor);
-            expect(
-              paintedColor(tester, find.text('Thu')),
-              colors.onSurfaceVariant,
-            );
-
-            // Stat cards.
-            final statCard = boxDecoration(tester, find.text('Thu nhập'));
-            expect(statCard, AppTheme.cardDecoration(colors));
-            expect(
-              paintedColor(tester, find.text('Thu nhập')),
-              colors.onSurfaceVariant,
-            );
-            expect(
-              paintedColor(tester, find.text(_money(5000000)).first),
-              colors.onSurface,
-            );
-            expect(
-              paintedColor(tester, find.byIcon(Icons.south_west_rounded)),
-              money.incomeColor,
-            );
-            expect(
-              paintedColor(tester, find.byIcon(Icons.north_east_rounded)),
-              money.expenseColor,
-            );
-
-            // Transactions: amounts in the income and expense colours on surface cards.
-            expect(boxColor(tester, find.text('Ăn trưa')), colors.surface);
-            expect(
-              paintedColor(tester, find.text('Ăn trưa')),
-              colors.onSurface,
-            );
-            expect(
-              paintedColor(tester, find.textContaining('Ăn uống •')),
-              colors.onSurfaceVariant,
-            );
-            expect(
-              paintedColor(tester, find.text('+ ${_money(5000000)}')),
-              money.incomeColor,
-            );
-            expect(
-              paintedColor(tester, find.text('- ${_money(50000)}')),
-              money.expenseColor,
-            );
-            if (mode == ThemeMode.dark) {
-              for (final amount in [money.incomeColor, money.expenseColor]) {
-                expect(
-                  contrastRatio(amount, colors.surface),
-                  greaterThanOrEqualTo(4.5),
-                );
-              }
-            }
-
-            // Summary.
-            expect(
-              paintedColor(tester, find.text('Tổng thu')),
-              colors.onSurfaceVariant,
-            );
-            expect(paintedColor(tester, find.text('Số dư')), colors.onSurface);
-            expect(
-              paintedColor(tester, find.text(_money(4950000))),
-              money.incomeColor,
-            );
-            expect(
-              paintedColor(tester, find.text(_money(50000)).last),
-              money.expenseColor,
-            );
-            expect(paintedColor(tester, find.text('Excel')), colors.primary);
-            final divider =
-                tester
-                        .widget<Container>(
-                          find.descendant(
-                            of: find.byType(Divider),
-                            matching: find.byType(Container),
-                          ),
-                        )
-                        .decoration!
-                    as BoxDecoration;
-            expect(
-              (divider.border! as Border).bottom.color,
-              colors.outlineVariant,
-            );
+            expect(find.text('Ngân sách'), findsNothing);
+            expect(find.text('Ăn trưa'), findsOneWidget);
+            expect(find.text('Lương tháng'), findsOneWidget);
           },
         );
 
         testWidgets(
-          'the filter sheet follows the theme, and the filter icon turns primary when a filter is on',
+          'the filter sheet follows the theme, and the filter button turns white when a filter is on',
           (tester) async {
             final colors = (await show(
               tester,
               const LedgerPage(),
               mode,
             )).colorScheme;
+            Color? filterFill() => tester
+                .widget<Material>(
+                  find
+                      .descendant(
+                        of: find.byKey(StatsHeaderBand.filterKey),
+                        matching: find.byType(Material),
+                      )
+                      .first,
+                )
+                .color;
+            expect(filterFill(), isNot(Colors.white));
 
-            await tester.tap(find.byIcon(Icons.tune_rounded));
+            await tester.tap(find.byKey(StatsHeaderBand.filterKey));
             await tester.pumpAndSettle();
-
             expect(
               materialColor(tester, find.byType(BottomSheet)),
               colors.surface,
             );
-            expect(
-              paintedColor(tester, find.text('Bộ lọc & Sắp xếp thông minh')),
-              colors.onSurface,
-            );
-            expect(
-              paintedColor(tester, find.text('1. Loại giao dịch')),
-              colors.primary,
-            );
-            final apply = _button('Áp dụng bộ lọc');
-            expect(materialColor(tester, apply), colors.primary);
-            expect(
-              paintedColor(tester, find.text('Áp dụng bộ lọc')),
-              colors.onPrimary,
-            );
-
-            await tester.tap(find.text('Chỉ Khoản Chi'));
+            expect(find.text('Xem 2 giao dịch'), findsOneWidget);
+            await tester.tap(_inSheet(find.text('Chi')));
             await tester.pumpAndSettle();
-            await tester.tap(apply);
+            await tester.tap(find.text('Xem 1 giao dịch'));
             await tester.pumpAndSettle();
 
             expect(find.byType(BottomSheet), findsNothing);
-            expect(
-              paintedColor(tester, find.byIcon(Icons.tune_rounded)),
-              colors.primary,
-            );
+            expect(filterFill(), Colors.white);
+            expect(find.text('Ăn trưa'), findsOneWidget);
+            expect(find.text('Lương tháng'), findsNothing);
           },
         );
 
-        testWidgets(
-          'the details sheet and the delete dialog follow the theme',
-          (tester) async {
-            final theme = await show(tester, const LedgerPage(), mode);
-            final colors = theme.colorScheme;
-            final money = theme.extension<SemanticColors>()!;
+        testWidgets('the details page and the delete dialog follow the theme', (
+          tester,
+        ) async {
+          final theme = await show(tester, const LedgerPage(), mode);
+          final colors = theme.colorScheme;
 
-            await tester.tap(find.text('Ăn trưa'));
+          await tester.tap(find.text('Ăn trưa'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(TransactionDetailPage), findsOneWidget);
+          expect(paintedColor(tester, find.text('Ăn trưa')), colors.onSurface);
+          expect(
+            paintedColor(tester, find.text('Danh mục')),
+            colors.onSurfaceVariant,
+          );
+          expect(
+            paintedColor(tester, find.text('-${_money(50000)}')),
+            colors.onSurface,
+          );
+          final edit = _button('Sửa giao dịch');
+          expect(materialColor(tester, edit), colors.primary);
+          expect(
+            paintedColor(tester, find.text('Sửa giao dịch')),
+            colors.onPrimary,
+          );
+          final delete = _button('Xóa');
+          expect(materialColor(tester, delete), colors.errorContainer);
+          expect(paintedColor(tester, find.text('Xóa')), colors.error);
+
+          await tester.tap(delete);
+          await tester.pumpAndSettle();
+
+          expect(
+            paintedColor(tester, find.text('Xóa giao dịch?')),
+            colors.onSurface,
+          );
+          await tester.tap(find.text('Hủy'));
+          await tester.pumpAndSettle();
+          expect(find.text('Xóa giao dịch?'), findsNothing);
+          expect(find.byType(TransactionDetailPage), findsOneWidget);
+        });
+
+        testWidgets(
+          'the period label opens the date sheet on the theme surface',
+          (tester) async {
+            final colors = (await show(
+              tester,
+              const LedgerPage(),
+              mode,
+            )).colorScheme;
+            final now = DateTime.now();
+
+            await tester.tap(find.text('Tháng ${now.month}/${now.year}'));
             await tester.pumpAndSettle();
 
+            expect(find.text('Chọn ngày'), findsOneWidget);
             expect(
               materialColor(tester, find.byType(BottomSheet)),
               colors.surface,
             );
-            expect(
-              paintedColor(tester, _inSheet(find.text('Ăn trưa'))),
-              colors.onSurface,
-            );
-            expect(
-              paintedColor(tester, _inSheet(find.text('Ăn uống'))),
-              colors.onSurfaceVariant,
-            );
-            expect(
-              paintedColor(tester, find.text('Số tiền:')),
-              colors.onSurfaceVariant,
-            );
-            expect(
-              paintedColor(tester, find.text('-${_money(50000)}')),
-              money.expenseColor,
-            );
-            expect(
-              paintedColor(
-                tester,
-                find.text(DateFormat('dd/MM/yyyy - HH:mm').format(_day)),
-              ),
-              colors.onSurface,
-            );
-            expect(
-              paintedColor(tester, find.byIcon(Icons.close)),
-              colors.onSurfaceVariant,
-            );
-            final edit = _button('Sửa giao dịch');
-            expect(materialColor(tester, edit), colors.primary);
-            expect(
-              paintedColor(tester, find.text('Sửa giao dịch')),
-              colors.onPrimary,
-            );
-            final delete = _button('Xóa giao dịch này');
-            expect(
-              materialColor(tester, delete),
-              colors.error.withValues(alpha: 0.1),
-            );
-            expect(
-              paintedColor(tester, find.text('Xóa giao dịch này')),
-              colors.error,
-            );
-
-            await tester.tap(delete);
-            await tester.pumpAndSettle();
-
-            expect(
-              materialColor(tester, find.byType(AlertDialog)),
-              colors.surface,
-            );
-            expect(
-              paintedColor(tester, find.text('Xóa giao dịch?')),
-              colors.onSurface,
-            );
-            expect(
-              paintedColor(tester, find.textContaining('hoàn lại tiền')),
-              colors.onSurfaceVariant,
-            );
-            expect(
-              paintedColor(tester, _inDialog(find.text('Hủy'))),
-              colors.onSurfaceVariant,
-            );
-            expect(materialColor(tester, _button('Xóa ngay')), colors.error);
-            expect(paintedColor(tester, find.text('Xóa ngay')), colors.onError);
-            if (mode == ThemeMode.dark) {
-              expect(
-                contrastRatio(colors.onError, colors.error),
-                greaterThanOrEqualTo(4.5),
-              );
-            }
-
-            await tester.tap(_inDialog(find.text('Hủy')));
-            await tester.pumpAndSettle();
-            expect(find.byType(AlertDialog), findsNothing);
-          },
-        );
-
-        testWidgets('the date picker opens on the theme surface', (
-          tester,
-        ) async {
-          final colors = (await show(
-            tester,
-            const LedgerPage(),
-            mode,
-          )).colorScheme;
-
-          await tester.tap(find.text('Lịch'));
-          await tester.pumpAndSettle();
-
-          final picker = find.byType(DatePickerDialog);
-          expect(materialColor(tester, picker), colors.surface);
-          expect(
-            DatePickerTheme.of(tester.element(picker)).headerForegroundColor,
-            colors.onSurface,
-          );
-
-          await tester.tap(
-            find
-                .descendant(of: picker, matching: find.byType(TextButton))
-                .first,
-          );
-          await tester.pumpAndSettle();
-          expect(picker, findsNothing);
-        });
-
-        testWidgets(
-          'the notice about a list that could not be loaded uses the warning colour',
-          (tester) async {
-            backend.on(
-              'GET',
-              '/api/transactions/mine',
-              (_) => jsonResponse(500, {'code': 500, 'message': 'down'}),
-            );
-            final theme = await show(tester, const LedgerPage(), mode);
-            final colors = theme.colorScheme;
-            final money = theme.extension<SemanticColors>()!;
-            final notice = find.textContaining('Không tải được danh sách');
-
-            expect(
-              boxColor(tester, notice),
-              money.warningColor.withValues(alpha: 0.12),
-            );
-            expect(
-              paintedColor(tester, find.byIcon(Icons.cloud_off_rounded)),
-              money.warningColor,
-            );
-            expect(paintedColor(tester, notice), colors.onSurface);
           },
         );
       });
@@ -696,40 +471,4 @@ void main() {
       );
     });
   }
-
-  testWidgets(
-    'light mode keeps the colours the Ledger had before the migration',
-    (tester) async {
-      await show(tester, const LedgerPage(), ThemeMode.light);
-
-      // Same white card; since batch 5 cards have no shadow (see AppTheme.cardDecoration).
-      final statCard = boxDecoration(tester, find.text('Thu nhập'));
-      expect(statCard.color, AppTheme.card.color);
-      expect(statCard.borderRadius, AppTheme.card.borderRadius);
-      expect(statCard.boxShadow, isNull);
-      expect(paintedColor(tester, find.text('Thu nhập')), AppTheme.textGray);
-      expect(
-        paintedColor(tester, find.text('+ ${_money(5000000)}')),
-        AppTheme.positive,
-      );
-      expect(
-        paintedColor(tester, find.text('- ${_money(50000)}')),
-        AppTheme.dangerColor,
-      );
-      final stepper = boxDecoration(tester, find.text('Lịch'));
-      expect(stepper.color, Colors.white);
-      expect(stepper.boxShadow, AppTheme.softShadow);
-      expect(paintedColor(tester, find.text('Lịch')), AppTheme.textPrimary);
-      expect(boxColor(tester, find.text('Tháng')), AppTheme.mintLight);
-      expect(
-        paintedColor(tester, find.text('Tháng')),
-        AppTheme.primaryDark,
-        reason: 'content on the pale primary tile is the deep primary (T9)',
-      );
-      expect(
-        paintedColor(tester, find.byIcon(Icons.tune_rounded)),
-        AppTheme.textGray,
-      );
-    },
-  );
 }

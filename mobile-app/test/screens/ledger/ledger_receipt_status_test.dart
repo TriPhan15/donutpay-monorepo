@@ -10,6 +10,7 @@ import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
+import 'package:finance_ai_app/screens/ledger/transaction_detail_page.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -24,7 +25,7 @@ const String _processingLabel = 'Đang xử lý';
 const String _successLabel = 'Hoàn tất';
 const String _failedLabel = 'Lỗi · cần xác nhận lại';
 const String _editLabel = 'Sửa giao dịch';
-const String _deleteLabel = 'Xóa giao dịch này';
+const String _deleteLabel = 'Xóa';
 
 /// Amounts as the Vietnamese screens write them.
 String _money(num amount) => CurrencyHelper.formatVND(
@@ -99,7 +100,7 @@ void main() {
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(app);
+    await tester.pumpWidget(withAmountVisibility(app));
     await tester.pumpAndSettle();
   }
 
@@ -182,11 +183,11 @@ void main() {
 
         await tapText(tester, 'Giao dịch 1');
 
-        expect(find.text('Trạng thái hóa đơn:'), findsOneWidget);
+        expect(find.text('Hóa đơn'), findsOneWidget);
         expect(
           find.text(_failedLabel),
-          findsNWidgets(2),
-          reason: 'once in the list and once in the details',
+          findsOneWidget,
+          reason: 'on the details page, the list is behind it',
         );
         expect(find.text(_editLabel), findsOneWidget);
         expect(find.text(_deleteLabel), findsOneWidget);
@@ -201,7 +202,7 @@ void main() {
 
         await tapText(tester, 'Giao dịch 1');
 
-        expect(find.text('Trạng thái hóa đơn:'), findsNothing);
+        expect(find.text('Hóa đơn'), findsNothing);
         expect(find.byType(ReceiptStatusBadge), findsNothing);
         expect(find.text(_editLabel), findsOneWidget);
       },
@@ -216,7 +217,7 @@ void main() {
           return okResponse(transactions.single);
         });
         await pump(tester, app);
-        expect(find.text('- ${_money(45000)}'), findsOneWidget);
+        expect(find.text('-${_money(45000)}'), findsOneWidget);
 
         await tapText(tester, 'Giao dịch 1');
         await tapText(tester, _editLabel);
@@ -239,8 +240,8 @@ void main() {
           findsNothing,
           reason: 'back on the ledger',
         );
-        expect(find.text('- ${_money(50000)}'), findsOneWidget);
-        expect(find.text('- ${_money(45000)}'), findsNothing);
+        expect(find.text('-${_money(50000)}'), findsOneWidget);
+        expect(find.text('-${_money(45000)}'), findsNothing);
       },
     );
 
@@ -255,9 +256,12 @@ void main() {
       await tapText(tester, _editLabel);
       await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
-
       expect(find.text('Lưu thay đổi'), findsNothing);
-      expect(find.text('- ${_money(45000)}'), findsOneWidget);
+      expect(find.byType(TransactionDetailPage), findsOneWidget);
+      await tester.tap(find.byKey(TransactionDetailPage.backKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text('-${_money(45000)}'), findsOneWidget);
       expect(backend.requests.where((r) => r.method == 'PUT'), isEmpty);
       expect(
         backend.requests
@@ -310,17 +314,17 @@ void main() {
         ),
       );
 
-      expect(find.text('Ledger'), findsOneWidget);
-      expect(find.text('Recent transactions'), findsOneWidget);
-      expect(find.textContaining('Food & drinks •'), findsOneWidget);
+      expect(find.text('Statistics'), findsOneWidget);
+      expect(find.text('Transactions'), findsOneWidget);
+      expect(find.text('Food & drinks'), findsOneWidget);
       expect(find.textContaining('Ăn uống'), findsNothing);
-      expect(find.text('- 45,000 đ'), findsOneWidget);
+      expect(find.text('-45,000 đ'), findsOneWidget);
 
       await tapText(tester, 'Giao dịch 1');
 
-      expect(find.text('Receipt status:'), findsOneWidget);
+      expect(find.text('Receipt'), findsOneWidget);
       expect(find.text('Edit transaction'), findsOneWidget);
-      expect(find.text('Delete this transaction'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
     },
   );
 }

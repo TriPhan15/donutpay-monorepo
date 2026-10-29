@@ -950,7 +950,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transactionNotSentMessage =>
-      'The transaction is saved on this device but hasn\'t reached the server yet. When you\'re back online, open the Ledger, select the transaction and tap \"Resend\". Resending won\'t create a duplicate.';
+      'The transaction is saved on this device but hasn\'t reached the server yet. When you\'re back online, open Statistics, select the transaction and tap \"Resend\". Resending won\'t create a duplicate.';
 
   @override
   String get transactionCategoryLabel => 'Category';
@@ -1039,13 +1039,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t load the category list. You can still edit the amount and note.';
 
   @override
-  String get ledgerTitle => 'Ledger';
+  String get ledgerTitle => 'Statistics';
 
   @override
   String get ledgerSearchHint => 'Search name, category...';
-
-  @override
-  String get ledgerCalendar => 'Calendar';
 
   @override
   String get ledgerLegendIncome => 'Income';
@@ -1074,86 +1071,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get ledgerIncome => 'Income';
-
-  @override
-  String get ledgerExpense => 'Spending';
-
-  @override
-  String get ledgerRecent => 'Recent transactions';
-
-  @override
   String get ledgerEmptyPeriod => 'No transactions in this period.';
 
   @override
-  String get ledgerTotalIncome => 'Total income';
-
-  @override
-  String get ledgerTotalExpense => 'Total spending';
-
-  @override
   String get ledgerBalance => 'Balance';
-
-  @override
-  String get ledgerFilterTitle => 'Smart filter & sort';
-
-  @override
-  String get ledgerFilterType => '1. Transaction type';
-
-  @override
-  String get ledgerFilterAll => 'All';
-
-  @override
-  String get ledgerFilterExpenseOnly => 'Expenses only';
-
-  @override
-  String get ledgerFilterIncomeOnly => 'Income only';
-
-  @override
-  String get ledgerFilterAmount => '2. Amount range';
-
-  @override
-  String get ledgerFilterAnyAmount => 'Any amount';
-
-  @override
-  String get ledgerFilterSort => '3. Sort by';
-
-  @override
-  String get ledgerSortNewest => 'Newest';
-
-  @override
-  String get ledgerSortOldest => 'Oldest';
-
-  @override
-  String get ledgerSortHighest => 'Highest amount';
-
-  @override
-  String get ledgerFilterApply => 'Apply filters';
-
-  @override
-  String get ledgerDetailAmount => 'Amount:';
-
-  @override
-  String get ledgerDetailTime => 'Time:';
-
-  @override
-  String get ledgerDetailReceiptStatus => 'Receipt status:';
-
-  @override
-  String get ledgerDetailSync => 'Sync:';
 
   @override
   String get ledgerDetailUnsyncedHint =>
       'The server hasn\'t confirmed this transaction yet. When you\'re back online, tap \"Resend\". Resending won\'t create a duplicate.';
 
   @override
-  String get ledgerDetailReceiptImage => 'Original receipt photo:';
-
-  @override
   String get ledgerResend => 'Resend';
-
-  @override
-  String get ledgerDelete => 'Delete this transaction';
 
   @override
   String get ledgerDeleteTitle => 'Delete transaction?';
@@ -1438,42 +1366,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get budgetTitle => 'Budgets';
-
-  @override
-  String get budgetManage => 'Manage';
-
-  @override
-  String get budgetEmptyPeriod => 'No budgets in this period.';
-
-  @override
-  String get budgetLoadFailedPullToRetry =>
-      'Couldn\'t load your budgets. Pull down to try again.';
-
-  @override
-  String budgetMoreCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '+$count more budgets',
-      one: '+1 more budget',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String budgetOverBy(String amount) {
-    return 'Over the limit by $amount';
-  }
-
-  @override
-  String budgetNearLimitLeft(String amount) {
-    return 'Almost at the limit · Left: $amount';
-  }
-
-  @override
-  String budgetLeft(String amount) {
-    return 'Left: $amount';
-  }
 
   @override
   String get budgetAlertWarningTitle => 'Budget almost used up';
@@ -2246,4 +2138,157 @@ class AppLocalizationsEn extends AppLocalizations {
   String dateFieldYesterdayValue(String date) {
     return 'Yesterday, $date';
   }
+
+  @override
+  String get filterTitle => 'Filter';
+
+  @override
+  String get filterAll => 'All';
+
+  @override
+  String get filterExpense => 'Out';
+
+  @override
+  String get filterIncome => 'In';
+
+  @override
+  String get filterAnyAmount => 'Any';
+
+  @override
+  String get filterUnder100k => '<100K';
+
+  @override
+  String get filter100kTo500k => '100–500K';
+
+  @override
+  String get filterOver500k => '>500K';
+
+  @override
+  String get filterNewest => 'Newest';
+
+  @override
+  String get filterOldest => 'Oldest';
+
+  @override
+  String get filterLargest => 'Largest';
+
+  @override
+  String get filterReset => 'Reset';
+
+  @override
+  String filterShowCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transactions',
+      one: '1 transaction',
+    );
+    return 'Show $_temp0';
+  }
+
+  @override
+  String get transactionDetailTitle => 'Transaction details';
+
+  @override
+  String get transactionDetailCategory => 'Category';
+
+  @override
+  String get transactionDetailTime => 'Time';
+
+  @override
+  String get transactionDetailReceipt => 'Receipt';
+
+  @override
+  String get transactionDetailSync => 'Sync';
+
+  @override
+  String get transactionDetailReceiptImage => 'Receipt photo';
+
+  @override
+  String get transactionDetailDelete => 'Delete';
+
+  @override
+  String statsIncome(String amount) {
+    return 'In $amount';
+  }
+
+  @override
+  String statsExpense(String amount) {
+    return 'Out $amount';
+  }
+
+  @override
+  String statsLeft(String amount) {
+    return 'Left $amount';
+  }
+
+  @override
+  String get statsViewChart => 'Chart';
+
+  @override
+  String get statsViewCalendar => 'Calendar';
+
+  @override
+  String get statsViewCategories => 'Categories';
+
+  @override
+  String statsMonthLabel(String month, String year) {
+    return '$month/$year';
+  }
+
+  @override
+  String get statsSearch => 'Search transactions';
+
+  @override
+  String get statsExport => 'Export to Excel';
+
+  @override
+  String get statsPickDate => 'Pick a date';
+
+  @override
+  String get statsAdd => '+ Add';
+
+  @override
+  String get statsTapBarHint => 'Tap a bar to see the amounts';
+
+  @override
+  String get statsSpent => 'spent';
+
+  @override
+  String statsCategoryLine(int percent, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count times',
+      one: '1 time',
+    );
+    return '$percent%, $_temp0';
+  }
+
+  @override
+  String get statsByCategory => 'By category';
+
+  @override
+  String get statsNoSpending => 'No spending in this period';
+
+  @override
+  String get statsTransactions => 'Transactions';
+
+  @override
+  String statsTransactionsOfDay(String date) {
+    return 'Transactions on $date';
+  }
+
+  @override
+  String statsTotalIncome(String amount) {
+    return 'Total in $amount';
+  }
+
+  @override
+  String statsTotalExpense(String amount) {
+    return 'Total out $amount';
+  }
+
+  @override
+  String get statsNoMatch => 'No transaction matches the filter';
 }

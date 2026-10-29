@@ -1249,7 +1249,7 @@
   "@transactionNotSentTitle": {
     "description": "Title when a new transaction was kept on the device but has not reached the server."
   },
-  "transactionNotSentMessage": "The transaction is saved on this device but hasn't reached the server yet. When you're back online, open the Ledger, select the transaction and tap \"Resend\". Resending won't create a duplicate.",
+  "transactionNotSentMessage": "The transaction is saved on this device but hasn't reached the server yet. When you're back online, open Statistics, select the transaction and tap \"Resend\". Resending won't create a duplicate.",
   "@transactionNotSentMessage": {
     "description": "Explains how to resend a transaction kept on the device."
   },
@@ -1361,17 +1361,13 @@
   "@editTransactionCategoriesUnavailable": {
     "description": "The category list could not be loaded."
   },
-  "ledgerTitle": "Ledger",
+  "ledgerTitle": "Statistics",
   "@ledgerTitle": {
     "description": "Title of the Ledger page."
   },
   "ledgerSearchHint": "Search name, category...",
   "@ledgerSearchHint": {
     "description": "Hint of the Ledger search box."
-  },
-  "ledgerCalendar": "Calendar",
-  "@ledgerCalendar": {
-    "description": "Label of the date picker button."
   },
   "ledgerLegendIncome": "Income",
   "@ledgerLegendIncome": {
@@ -1390,113 +1386,21 @@
       }
     }
   },
-  "ledgerIncome": "Income",
-  "@ledgerIncome": {
-    "description": "Stat card: income of the period."
-  },
-  "ledgerExpense": "Spending",
-  "@ledgerExpense": {
-    "description": "Stat card: spending of the period."
-  },
-  "ledgerRecent": "Recent transactions",
-  "@ledgerRecent": {
-    "description": "Heading of the transaction list."
-  },
   "ledgerEmptyPeriod": "No transactions in this period.",
   "@ledgerEmptyPeriod": {
     "description": "The period has no transactions."
-  },
-  "ledgerTotalIncome": "Total income",
-  "@ledgerTotalIncome": {
-    "description": "Summary row: total income."
-  },
-  "ledgerTotalExpense": "Total spending",
-  "@ledgerTotalExpense": {
-    "description": "Summary row: total spending."
   },
   "ledgerBalance": "Balance",
   "@ledgerBalance": {
     "description": "Summary row and Excel row: income minus spending."
   },
-  "ledgerFilterTitle": "Smart filter & sort",
-  "@ledgerFilterTitle": {
-    "description": "Title of the filter sheet."
-  },
-  "ledgerFilterType": "1. Transaction type",
-  "@ledgerFilterType": {
-    "description": "Filter section: transaction type."
-  },
-  "ledgerFilterAll": "All",
-  "@ledgerFilterAll": {
-    "description": "Filter chip: expenses and income."
-  },
-  "ledgerFilterExpenseOnly": "Expenses only",
-  "@ledgerFilterExpenseOnly": {
-    "description": "Filter chip: expenses only."
-  },
-  "ledgerFilterIncomeOnly": "Income only",
-  "@ledgerFilterIncomeOnly": {
-    "description": "Filter chip: income only."
-  },
-  "ledgerFilterAmount": "2. Amount range",
-  "@ledgerFilterAmount": {
-    "description": "Filter section: amount range."
-  },
-  "ledgerFilterAnyAmount": "Any amount",
-  "@ledgerFilterAnyAmount": {
-    "description": "Filter chip: no amount limit."
-  },
-  "ledgerFilterSort": "3. Sort by",
-  "@ledgerFilterSort": {
-    "description": "Filter section: sort order."
-  },
-  "ledgerSortNewest": "Newest",
-  "@ledgerSortNewest": {
-    "description": "Sort chip: newest first."
-  },
-  "ledgerSortOldest": "Oldest",
-  "@ledgerSortOldest": {
-    "description": "Sort chip: oldest first."
-  },
-  "ledgerSortHighest": "Highest amount",
-  "@ledgerSortHighest": {
-    "description": "Sort chip: highest amount first."
-  },
-  "ledgerFilterApply": "Apply filters",
-  "@ledgerFilterApply": {
-    "description": "Button that applies the filters."
-  },
-  "ledgerDetailAmount": "Amount:",
-  "@ledgerDetailAmount": {
-    "description": "Detail sheet label."
-  },
-  "ledgerDetailTime": "Time:",
-  "@ledgerDetailTime": {
-    "description": "Detail sheet label."
-  },
-  "ledgerDetailReceiptStatus": "Receipt status:",
-  "@ledgerDetailReceiptStatus": {
-    "description": "Detail sheet label."
-  },
-  "ledgerDetailSync": "Sync:",
-  "@ledgerDetailSync": {
-    "description": "Detail sheet label of the sync state."
-  },
   "ledgerDetailUnsyncedHint": "The server hasn't confirmed this transaction yet. When you're back online, tap \"Resend\". Resending won't create a duplicate.",
   "@ledgerDetailUnsyncedHint": {
     "description": "Explains the Resend button."
   },
-  "ledgerDetailReceiptImage": "Original receipt photo:",
-  "@ledgerDetailReceiptImage": {
-    "description": "Detail sheet label above the receipt photo."
-  },
   "ledgerResend": "Resend",
   "@ledgerResend": {
     "description": "Button that sends an unsynced transaction again."
-  },
-  "ledgerDelete": "Delete this transaction",
-  "@ledgerDelete": {
-    "description": "Delete button of the detail sheet."
   },
   "ledgerDeleteTitle": "Delete transaction?",
   "@ledgerDeleteTitle": {
@@ -1889,54 +1793,6 @@
   "budgetTitle": "Budgets",
   "@budgetTitle": {
     "description": "Title of the budget screen and of the budget block."
-  },
-  "budgetManage": "Manage",
-  "@budgetManage": {
-    "description": "Link from the budget block to the budget screen."
-  },
-  "budgetEmptyPeriod": "No budgets in this period.",
-  "@budgetEmptyPeriod": {
-    "description": "The budget block has nothing to show."
-  },
-  "budgetLoadFailedPullToRetry": "Couldn't load your budgets. Pull down to try again.",
-  "@budgetLoadFailedPullToRetry": {
-    "description": "The budget block could not load."
-  },
-  "budgetMoreCount": "{count, plural, =1{+1 more budget} other{+{count} more budgets}}",
-  "@budgetMoreCount": {
-    "description": "How many budgets the block does not show.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "budgetOverBy": "Over the limit by {amount}",
-  "@budgetOverBy": {
-    "description": "A budget past its limit; amount is formatted money.",
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "budgetNearLimitLeft": "Almost at the limit · Left: {amount}",
-  "@budgetNearLimitLeft": {
-    "description": "A budget at 80% or more; amount is formatted money.",
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "budgetLeft": "Left: {amount}",
-  "@budgetLeft": {
-    "description": "What is left of a budget; amount is formatted money.",
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
   },
   "budgetAlertWarningTitle": "Budget almost used up",
   "@budgetAlertWarningTitle": {
@@ -3064,5 +2920,220 @@
         "type": "String"
       }
     }
+  },
+  "filterTitle": "Filter",
+  "@filterTitle": {
+    "description": "Title of the filter sheet of the statistics tab."
+  },
+  "filterAll": "All",
+  "@filterAll": {
+    "description": "Filter: every direction of money."
+  },
+  "filterExpense": "Out",
+  "@filterExpense": {
+    "description": "Filter: spending only."
+  },
+  "filterIncome": "In",
+  "@filterIncome": {
+    "description": "Filter: income only."
+  },
+  "filterAnyAmount": "Any",
+  "@filterAnyAmount": {
+    "description": "Filter: any amount."
+  },
+  "filterUnder100k": "<100K",
+  "@filterUnder100k": {
+    "description": "Filter: amounts below 100,000."
+  },
+  "filter100kTo500k": "100–500K",
+  "@filter100kTo500k": {
+    "description": "Filter: amounts from 100,000 to 500,000."
+  },
+  "filterOver500k": ">500K",
+  "@filterOver500k": {
+    "description": "Filter: amounts above 500,000."
+  },
+  "filterNewest": "Newest",
+  "@filterNewest": {
+    "description": "Order: newest first."
+  },
+  "filterOldest": "Oldest",
+  "@filterOldest": {
+    "description": "Order: oldest first."
+  },
+  "filterLargest": "Largest",
+  "@filterLargest": {
+    "description": "Order: largest amount first."
+  },
+  "filterReset": "Reset",
+  "@filterReset": {
+    "description": "Puts the filter back to all / any / newest."
+  },
+  "filterShowCount": "Show {count, plural, =1{1 transaction} other{{count} transactions}}",
+  "@filterShowCount": {
+    "description": "Applies the filter; count is how many transactions it keeps.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transactionDetailTitle": "Transaction details",
+  "@transactionDetailTitle": {
+    "description": "Title of the transaction detail page."
+  },
+  "transactionDetailCategory": "Category",
+  "@transactionDetailCategory": {
+    "description": "Row label on the transaction detail page."
+  },
+  "transactionDetailTime": "Time",
+  "@transactionDetailTime": {
+    "description": "Row label on the transaction detail page."
+  },
+  "transactionDetailReceipt": "Receipt",
+  "@transactionDetailReceipt": {
+    "description": "Row label on the transaction detail page: state of the scanned receipt."
+  },
+  "transactionDetailSync": "Sync",
+  "@transactionDetailSync": {
+    "description": "Row label on the transaction detail page: the send state of a transaction not confirmed by the server."
+  },
+  "transactionDetailReceiptImage": "Receipt photo",
+  "@transactionDetailReceiptImage": {
+    "description": "Title above the receipt photo on the transaction detail page."
+  },
+  "transactionDetailDelete": "Delete",
+  "@transactionDetailDelete": {
+    "description": "Delete button at the bottom of the transaction detail page."
+  },
+  "statsIncome": "In {amount}",
+  "@statsIncome": {
+    "description": "Income pill on the statistics band.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statsExpense": "Out {amount}",
+  "@statsExpense": {
+    "description": "Spending pill on the statistics band.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statsLeft": "Left {amount}",
+  "@statsLeft": {
+    "description": "Income minus spending of the period, on the statistics band.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statsViewChart": "Chart",
+  "@statsViewChart": {
+    "description": "Statistics view toggle."
+  },
+  "statsViewCalendar": "Calendar",
+  "@statsViewCalendar": {
+    "description": "Statistics view toggle."
+  },
+  "statsViewCategories": "Categories",
+  "@statsViewCategories": {
+    "description": "Statistics view toggle."
+  },
+  "statsMonthLabel": "{month}/{year}",
+  "@statsMonthLabel": {
+    "description": "The month on the statistics band.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "statsSearch": "Search transactions",
+  "@statsSearch": {
+    "description": "Tooltip of the search button on the statistics band."
+  },
+  "statsExport": "Export to Excel",
+  "@statsExport": {
+    "description": "Tooltip of the Excel button on the statistics band."
+  },
+  "statsPickDate": "Pick a date",
+  "@statsPickDate": {
+    "description": "Title of the date sheet opened from the period label of the statistics band."
+  },
+  "statsAdd": "+ Add",
+  "@statsAdd": {
+    "description": "Adds a transaction, from the day list of the statistics calendar."
+  },
+  "statsTapBarHint": "Tap a bar to see the amounts",
+  "@statsTapBarHint": {
+    "description": "Hint above the statistics chart."
+  },
+  "statsSpent": "spent",
+  "@statsSpent": {
+    "description": "Under the total in the middle of the category ring."
+  },
+  "statsCategoryLine": "{percent}%, {count, plural, =1{1 time} other{{count} times}}",
+  "@statsCategoryLine": {
+    "description": "Share of spending and number of transactions of one category.",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statsByCategory": "By category",
+  "@statsByCategory": {
+    "description": "Title of the category list of the statistics tab."
+  },
+  "statsNoSpending": "No spending in this period",
+  "@statsNoSpending": {
+    "description": "Category view of a period without spending."
+  },
+  "statsTransactions": "Transactions",
+  "@statsTransactions": {
+    "description": "Title of the transaction list of the statistics tab."
+  },
+  "statsTransactionsOfDay": "Transactions on {date}",
+  "@statsTransactionsOfDay": {
+    "description": "Title of the day list of the statistics calendar.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "statsTotalIncome": "Total in {amount}",
+  "@statsTotalIncome": {
+    "description": "Income of the chosen day, statistics calendar.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statsTotalExpense": "Total out {amount}",
+  "@statsTotalExpense": {
+    "description": "Spending of the chosen day, statistics calendar.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "statsNoMatch": "No transaction matches the filter",
+  "@statsNoMatch": {
+    "description": "Statistics list when the filter or the search hides every transaction of the period."
   }
 }

@@ -937,7 +937,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get transactionNotSentMessage =>
-      'Giao dịch đã được lưu trên thiết bị nhưng chưa gửi được lên máy chủ. Khi có mạng, mở Sổ sách, chọn giao dịch và bấm \"Gửi lại\". Gửi lại sẽ không tạo giao dịch trùng.';
+      'Giao dịch đã được lưu trên thiết bị nhưng chưa gửi được lên máy chủ. Khi có mạng, mở Thống kê, chọn giao dịch và bấm \"Gửi lại\". Gửi lại sẽ không tạo giao dịch trùng.';
 
   @override
   String get transactionCategoryLabel => 'Danh mục';
@@ -1026,13 +1026,10 @@ class AppLocalizationsVi extends AppLocalizations {
       'Không tải được danh sách danh mục. Bạn vẫn có thể sửa số tiền và ghi chú.';
 
   @override
-  String get ledgerTitle => 'Sổ sách';
+  String get ledgerTitle => 'Thống kê';
 
   @override
   String get ledgerSearchHint => 'Tìm tên, danh mục...';
-
-  @override
-  String get ledgerCalendar => 'Lịch';
 
   @override
   String get ledgerLegendIncome => 'Thu';
@@ -1046,86 +1043,17 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get ledgerIncome => 'Thu nhập';
-
-  @override
-  String get ledgerExpense => 'Chi tiêu';
-
-  @override
-  String get ledgerRecent => 'Giao dịch gần đây';
-
-  @override
   String get ledgerEmptyPeriod => 'Không có giao dịch trong kỳ này.';
 
   @override
-  String get ledgerTotalIncome => 'Tổng thu';
-
-  @override
-  String get ledgerTotalExpense => 'Tổng chi';
-
-  @override
   String get ledgerBalance => 'Số dư';
-
-  @override
-  String get ledgerFilterTitle => 'Bộ lọc & Sắp xếp thông minh';
-
-  @override
-  String get ledgerFilterType => '1. Loại giao dịch';
-
-  @override
-  String get ledgerFilterAll => 'Tất cả';
-
-  @override
-  String get ledgerFilterExpenseOnly => 'Chỉ Khoản Chi';
-
-  @override
-  String get ledgerFilterIncomeOnly => 'Chỉ Khoản Thu';
-
-  @override
-  String get ledgerFilterAmount => '2. Khoảng tiền';
-
-  @override
-  String get ledgerFilterAnyAmount => 'Mọi mức giá';
-
-  @override
-  String get ledgerFilterSort => '3. Sắp xếp theo';
-
-  @override
-  String get ledgerSortNewest => 'Mới nhất';
-
-  @override
-  String get ledgerSortOldest => 'Cũ nhất';
-
-  @override
-  String get ledgerSortHighest => 'Giá trị cao nhất';
-
-  @override
-  String get ledgerFilterApply => 'Áp dụng bộ lọc';
-
-  @override
-  String get ledgerDetailAmount => 'Số tiền:';
-
-  @override
-  String get ledgerDetailTime => 'Thời gian:';
-
-  @override
-  String get ledgerDetailReceiptStatus => 'Trạng thái hóa đơn:';
-
-  @override
-  String get ledgerDetailSync => 'Đồng bộ:';
 
   @override
   String get ledgerDetailUnsyncedHint =>
       'Giao dịch chưa được máy chủ xác nhận. Khi đã có mạng, bấm \"Gửi lại\". Gửi lại sẽ không tạo giao dịch trùng.';
 
   @override
-  String get ledgerDetailReceiptImage => 'Ảnh hóa đơn gốc:';
-
-  @override
   String get ledgerResend => 'Gửi lại';
-
-  @override
-  String get ledgerDelete => 'Xóa giao dịch này';
 
   @override
   String get ledgerDeleteTitle => 'Xóa giao dịch?';
@@ -1409,41 +1337,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get budgetTitle => 'Ngân sách';
-
-  @override
-  String get budgetManage => 'Quản lý';
-
-  @override
-  String get budgetEmptyPeriod => 'Chưa có ngân sách trong kỳ này.';
-
-  @override
-  String get budgetLoadFailedPullToRetry =>
-      'Không tải được ngân sách. Kéo xuống để thử lại.';
-
-  @override
-  String budgetMoreCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '+$count ngân sách khác',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String budgetOverBy(String amount) {
-    return 'Đã vượt hạn mức: $amount';
-  }
-
-  @override
-  String budgetNearLimitLeft(String amount) {
-    return 'Sắp chạm hạn mức · Còn lại: $amount';
-  }
-
-  @override
-  String budgetLeft(String amount) {
-    return 'Còn lại: $amount';
-  }
 
   @override
   String get budgetAlertWarningTitle => 'Sắp chạm hạn mức ngân sách';
@@ -2168,4 +2061,145 @@ class AppLocalizationsVi extends AppLocalizations {
   String dateFieldYesterdayValue(String date) {
     return 'Hôm qua, $date';
   }
+
+  @override
+  String get filterTitle => 'Lọc';
+
+  @override
+  String get filterAll => 'Tất cả';
+
+  @override
+  String get filterExpense => 'Chi';
+
+  @override
+  String get filterIncome => 'Thu';
+
+  @override
+  String get filterAnyAmount => 'Mọi mức';
+
+  @override
+  String get filterUnder100k => '<100k';
+
+  @override
+  String get filter100kTo500k => '100–500k';
+
+  @override
+  String get filterOver500k => '>500k';
+
+  @override
+  String get filterNewest => 'Mới nhất';
+
+  @override
+  String get filterOldest => 'Cũ nhất';
+
+  @override
+  String get filterLargest => 'Lớn nhất';
+
+  @override
+  String get filterReset => 'Đặt lại';
+
+  @override
+  String filterShowCount(int count) {
+    return 'Xem $count giao dịch';
+  }
+
+  @override
+  String get transactionDetailTitle => 'Chi tiết giao dịch';
+
+  @override
+  String get transactionDetailCategory => 'Danh mục';
+
+  @override
+  String get transactionDetailTime => 'Thời gian';
+
+  @override
+  String get transactionDetailReceipt => 'Hóa đơn';
+
+  @override
+  String get transactionDetailSync => 'Đồng bộ';
+
+  @override
+  String get transactionDetailReceiptImage => 'Ảnh hóa đơn';
+
+  @override
+  String get transactionDetailDelete => 'Xóa';
+
+  @override
+  String statsIncome(String amount) {
+    return 'Thu $amount';
+  }
+
+  @override
+  String statsExpense(String amount) {
+    return 'Chi $amount';
+  }
+
+  @override
+  String statsLeft(String amount) {
+    return 'Còn $amount';
+  }
+
+  @override
+  String get statsViewChart => 'Biểu đồ';
+
+  @override
+  String get statsViewCalendar => 'Lịch';
+
+  @override
+  String get statsViewCategories => 'Danh mục';
+
+  @override
+  String statsMonthLabel(String month, String year) {
+    return 'Tháng $month/$year';
+  }
+
+  @override
+  String get statsSearch => 'Tìm giao dịch';
+
+  @override
+  String get statsExport => 'Xuất Excel';
+
+  @override
+  String get statsPickDate => 'Chọn ngày';
+
+  @override
+  String get statsAdd => '+ Thêm';
+
+  @override
+  String get statsTapBarHint => 'Chạm cột để xem số';
+
+  @override
+  String get statsSpent => 'đã chi';
+
+  @override
+  String statsCategoryLine(int percent, int count) {
+    return '$percent%, $count lần';
+  }
+
+  @override
+  String get statsByCategory => 'Theo danh mục';
+
+  @override
+  String get statsNoSpending => 'Chưa có khoản chi trong kỳ này';
+
+  @override
+  String get statsTransactions => 'Giao dịch';
+
+  @override
+  String statsTransactionsOfDay(String date) {
+    return 'Giao dịch ngày $date';
+  }
+
+  @override
+  String statsTotalIncome(String amount) {
+    return 'Tổng thu $amount';
+  }
+
+  @override
+  String statsTotalExpense(String amount) {
+    return 'Tổng chi $amount';
+  }
+
+  @override
+  String get statsNoMatch => 'Không có giao dịch khớp bộ lọc';
 }

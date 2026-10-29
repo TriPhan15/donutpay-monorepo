@@ -8,17 +8,18 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/stats_header_band.dart';
 import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 
+import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
 
 const String _mine = '/api/transactions/mine';
 const String _checkout = '/api/transactions/checkout';
-const ValueKey<String> _todayKey = ValueKey('ledger-today');
 
 /// Dio hands a request from one step to the next with zero-length timers, which only fire when the fake clock moves.
 const Duration _requestStep = Duration(milliseconds: 100);
@@ -81,25 +82,22 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      const MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: Locale('vi'),
-        home: LedgerPage(),
+      withAmountVisibility(
+        const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('vi'),
+          home: LedgerPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
   }
 
   Future<void> choosePeriod(WidgetTester tester, String label) async {
-    await tester.tap(find.byType(DropdownButton<LedgerPeriod>));
+    await tester.tap(find.byKey(StatsHeaderBand.periodMenuKey));
     await tester.pumpAndSettle();
     await tester.tap(find.text(label).last);
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> tapIcon(WidgetTester tester, IconData icon) async {
-    await tester.tap(find.byIcon(icon));
     await tester.pumpAndSettle();
   }
 
@@ -117,10 +115,16 @@ void main() {
 
       final chart = tester.widget<BarChart>(find.byType(BarChart));
       expect(chart.data.barGroups, hasLength(12));
-      expect(find.text('Th1'), findsOneWidget);
-      expect(find.text('Th12'), findsOneWidget);
+      final axis = find.descendant(
+        of: find.byType(BarChart),
+        matching: find.byType(Text),
+      );
+      expect(tester.widgetList<Text>(axis).map((t) => t.data), [
+        for (var m = 1; m <= 12; m++) '$m',
+      ]);
 
-      await tapIcon(tester, Icons.chevron_left_rounded);
+      await tester.tap(find.byKey(StatsHeaderBand.previousKey));
+      await tester.pumpAndSettle();
 
       expect(find.text('Năm ${year - 1}'), findsOneWidget);
       expect(find.text('Năm ngoái'), findsOneWidget);
@@ -129,44 +133,51 @@ void main() {
   );
 
   testWidgets(
-    'the Today button shows only away from the period of today and brings it back in one tap',
+    'tapping the period label opens the date sheet and jumps to the picked month',
     (tester) async {
       await pumpLedger(tester);
-      expect(find.byKey(_todayKey), findsNothing);
+      expect(find.text('Tháng ${now.month}/$year'), findsOneWidget);
 
-      await tapIcon(tester, Icons.chevron_left_rounded);
-      await tapIcon(tester, Icons.chevron_left_rounded);
-      expect(find.byKey(_todayKey), findsOneWidget);
-      expect(find.text('Hôm nay ăn trưa'), findsNothing);
-
-      await tester.tap(find.byKey(_todayKey));
+      await tester.tap(find.text('Tháng ${now.month}/$year'));
+      await tester.pumpAndSettle();
+      expect(find.text('Chọn ngày'), findsOneWidget);
+      await tester.tap(find.byTooltip('Tháng trước'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('day-15')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(_todayKey), findsNothing);
-      expect(find.text('Hôm nay ăn trưa'), findsOneWidget);
+      final previous = DateTime(year, now.month - 1);
+      expect(find.text('Chọn ngày'), findsNothing);
+      expect(
+        find.text('Tháng ${previous.month}/${previous.year}'),
+        findsOneWidget,
+      );
+      expect(find.text('Hôm nay ăn trưa'), findsNothing);
     },
   );
 
-  testWidgets('the Today button works in the year and the week mode too', (
+  testWidgets('choosing Tuần shows the week and steps by 7 days', (
     tester,
   ) async {
     await pumpLedger(tester);
-
-    await choosePeriod(tester, 'Năm');
-    await tapIcon(tester, Icons.chevron_right_rounded);
-    expect(find.text('Năm ${year + 1}'), findsOneWidget);
-    await tester.tap(find.byKey(_todayKey));
-    await tester.pumpAndSettle();
-    expect(find.text('Năm $year'), findsOneWidget);
-    expect(find.byKey(_todayKey), findsNothing);
-
     await choosePeriod(tester, 'Tuần');
-    expect(find.byKey(_todayKey), findsNothing);
-    await tapIcon(tester, Icons.chevron_left_rounded);
-    expect(find.byKey(_todayKey), findsOneWidget);
-    await tester.tap(find.byKey(_todayKey));
+    final monday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
+    String dm(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+    expect(
+      find.text('${dm(monday)} - ${dm(sunday)}/${sunday.year}'),
+      findsOneWidget,
+    );
+    expect(find.text('Hôm nay ăn trưa'), findsOneWidget);
+
+    await tester.tap(find.byKey(StatsHeaderBand.previousKey));
     await tester.pumpAndSettle();
-    expect(find.byKey(_todayKey), findsNothing);
+    expect(find.text('Hôm nay ăn trưa'), findsNothing);
   });
 
   testWidgets(
@@ -175,11 +186,17 @@ void main() {
       backend.on('POST', _checkout, (_) => okResponse({'transactionId': 9}));
       await pumpLedger(tester);
       await choosePeriod(tester, 'Năm');
-      await tapIcon(tester, Icons.chevron_left_rounded);
-      await tapIcon(tester, Icons.chevron_left_rounded);
+      await tester.tap(find.byKey(StatsHeaderBand.previousKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(StatsHeaderBand.previousKey));
+      await tester.pumpAndSettle();
       expect(find.text('Năm ${year - 2}'), findsOneWidget);
 
-      await tapIcon(tester, Icons.add_box_rounded);
+      await tester.tap(find.text('Lịch'));
+      await tester.pumpAndSettle();
+      expect(find.text('Tháng ${now.month}/${year - 2}'), findsOneWidget);
+      await tester.tap(find.text('+ Thêm'));
+      await tester.pumpAndSettle();
       // The form opens on today, whatever period the Ledger shows.
       await tester.enterText(find.byType(TextField).at(0), '45000');
       await tester.tap(find.text('Lưu giao dịch'));
@@ -194,8 +211,7 @@ void main() {
         ),
         hasLength(1),
       );
-      expect(find.text('Năm $year'), findsOneWidget);
-      expect(find.byKey(_todayKey), findsNothing);
+      expect(find.text('Tháng ${now.month}/$year'), findsOneWidget);
     },
   );
 }

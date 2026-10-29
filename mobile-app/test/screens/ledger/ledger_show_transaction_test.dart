@@ -12,6 +12,7 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 
+import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
 
@@ -68,11 +69,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('vi'),
-        home: LedgerPage(key: ledgerKey),
+      withAmountVisibility(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('vi'),
+          home: LedgerPage(key: ledgerKey),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -148,7 +151,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(_editLabel), findsNothing);
-      expect(find.text('Xóa giao dịch này'), findsNothing);
+      expect(find.text('Xóa'), findsNothing);
       expect(find.text(_savingsManaged), findsOneWidget);
     },
   );
@@ -167,32 +170,27 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(_editLabel), findsNothing);
-      expect(find.text('Xóa giao dịch này'), findsOneWidget);
+      expect(find.text('Xóa'), findsOneWidget);
       expect(find.text(_savingsManaged), findsOneWidget);
     },
   );
 
-  testWidgets(
-    'when the goals cannot be read, a savings row stays locked',
-    (tester) async {
-      backend.on(
-        'GET',
-        '/api/savings',
-        (_) => jsonResponse(500, {'code': 500}),
-      );
-      transactions = [
-        {..._tx(9, DateTime.now()), 'category': 'Tiết kiệm'},
-      ];
-      await pump(tester);
+  testWidgets('when the goals cannot be read, a savings row stays locked', (
+    tester,
+  ) async {
+    backend.on('GET', '/api/savings', (_) => jsonResponse(500, {'code': 500}));
+    transactions = [
+      {..._tx(9, DateTime.now()), 'category': 'Tiết kiệm'},
+    ];
+    await pump(tester);
 
-      ledgerKey.currentState!.showTransaction(9);
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pumpAndSettle();
+    ledgerKey.currentState!.showTransaction(9);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Xóa giao dịch này'), findsNothing);
-      expect(find.text(_savingsManaged), findsOneWidget);
-    },
-  );
+    expect(find.text('Xóa'), findsNothing);
+    expect(find.text(_savingsManaged), findsOneWidget);
+  });
 
   testWidgets('an ordinary expense keeps its edit and delete buttons', (
     tester,
@@ -204,6 +202,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(_editLabel), findsOneWidget);
-    expect(find.text('Xóa giao dịch này'), findsOneWidget);
+    expect(find.text('Xóa'), findsOneWidget);
   });
 }

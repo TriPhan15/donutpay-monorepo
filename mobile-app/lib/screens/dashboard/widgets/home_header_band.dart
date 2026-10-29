@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/band_colors.dart';
+import 'package:finance_ai_app/widgets/common/amount_eye_button.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/cubits/amount_visibility_cubit.dart';
@@ -72,7 +74,7 @@ class HomeHeaderBand extends StatelessWidget {
           Text(
             loc.dashboardBalance,
             style: const TextStyle(
-              color: _BandColors.secondary,
+              color: BandColors.secondary,
               fontSize: AppTextSize.secondary,
             ),
           ),
@@ -124,12 +126,6 @@ class HomeHeaderBand extends StatelessWidget {
 }
 
 /// The text colours on the blue band, the same in light and dark mode: the band stays a dark enough blue in both.
-abstract final class _BandColors {
-  static const Color primary = Colors.white;
-  static const Color secondary = Color.fromRGBO(255, 255, 255, 0.8);
-  static const Color tint = Color.fromRGBO(255, 255, 255, 0.18);
-}
-
 class _Greeting extends StatelessWidget {
   final String userName;
   final ValueListenable<int> unreadNotifications;
@@ -152,7 +148,7 @@ class _Greeting extends StatelessWidget {
               Text(
                 context.loc.dashboardGreeting,
                 style: const TextStyle(
-                  color: _BandColors.secondary,
+                  color: BandColors.secondary,
                   fontSize: AppTextSize.secondary,
                 ),
               ),
@@ -161,7 +157,7 @@ class _Greeting extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _BandColors.primary,
+                  color: BandColors.primary,
                   fontSize: AppTextSize.pageTitle,
                   fontWeight: FontWeight.w700,
                 ),
@@ -171,13 +167,13 @@ class _Greeting extends StatelessWidget {
         ),
         DecoratedBox(
           decoration: const BoxDecoration(
-            color: _BandColors.tint,
+            color: BandColors.tint,
             shape: BoxShape.circle,
           ),
           child: NotificationBell(
             unreadCount: unreadNotifications,
             onPressed: onOpenNotifications,
-            color: _BandColors.primary,
+            color: BandColors.primary,
           ),
         ),
       ],
@@ -188,7 +184,6 @@ class _Greeting extends StatelessWidget {
 /// The balance with the eye on its right, the note on the rows not sent yet, and the two month pills. While [hidden]
 /// every one of them shows dots.
 class _Amounts extends StatelessWidget {
-  static const String _hiddenText = '••••••';
   static const Duration _fade = Duration(milliseconds: 200);
 
   final bool hidden;
@@ -208,7 +203,8 @@ class _Amounts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    String shown(String Function() text) => hidden ? _hiddenText : text();
+    String shown(String Function() text) =>
+        hidden ? AmountEyeButton.hiddenText : text();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -231,7 +227,7 @@ class _Amounts extends StatelessWidget {
                     key: ValueKey(hidden),
                     maxLines: 1,
                     style: const TextStyle(
-                      color: _BandColors.primary,
+                      color: BandColors.primary,
                       fontSize: AppTextSize.amountLarge,
                       fontWeight: FontWeight.w700,
                     ),
@@ -240,7 +236,7 @@ class _Amounts extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 2),
-            _EyeButton(hidden: hidden),
+            AmountEyeButton(hidden: hidden),
           ],
         ),
         if (pendingChange != 0)
@@ -257,7 +253,7 @@ class _Amounts extends StatelessWidget {
                 ),
               ),
               style: const TextStyle(
-                color: _BandColors.secondary,
+                color: BandColors.secondary,
                 fontSize: AppTextSize.caption,
               ),
             ),
@@ -288,47 +284,6 @@ class _Amounts extends StatelessWidget {
   }
 }
 
-/// A 30 px square to see, inside a 48 px area to tap.
-class _EyeButton extends StatelessWidget {
-  static const double _size = 30;
-  static const double _tapSize = 48;
-
-  final bool hidden;
-
-  const _EyeButton({required this.hidden});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    return Tooltip(
-      message: hidden ? loc.dashboardShowAmounts : loc.dashboardHideAmounts,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: () => context.read<AmountVisibilityCubit>().toggle(),
-        child: SizedBox.square(
-          dimension: _tapSize,
-          child: Center(
-            child: Material(
-              color: _BandColors.tint,
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox.square(
-                dimension: _size,
-                child: Icon(
-                  hidden
-                      ? Icons.visibility_off_rounded
-                      : Icons.visibility_rounded,
-                  color: _BandColors.primary,
-                  size: 18,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _Pill extends StatelessWidget {
   final String text;
 
@@ -339,13 +294,13 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _BandColors.tint,
+        color: BandColors.tint,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,
         style: const TextStyle(
-          color: _BandColors.primary,
+          color: BandColors.primary,
           fontSize: AppTextSize.secondary,
           fontWeight: FontWeight.w600,
         ),
@@ -378,10 +333,10 @@ class _Shortcut extends StatelessWidget {
                 width: _tileSize,
                 height: _tileSize,
                 decoration: const BoxDecoration(
-                  color: _BandColors.tint,
+                  color: BandColors.tint,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: _BandColors.primary, size: 24),
+                child: Icon(icon, color: BandColors.primary, size: 24),
               ),
               const SizedBox(height: 8),
               Text(
@@ -390,7 +345,7 @@ class _Shortcut extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _BandColors.primary,
+                  color: BandColors.primary,
                   fontSize: AppTextSize.caption,
                   height: 1.2,
                 ),

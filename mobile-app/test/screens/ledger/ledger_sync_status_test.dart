@@ -28,7 +28,7 @@ const String _errorLabel = 'Gửi lỗi';
 const String _pendingLabel = 'Chờ gửi';
 const String _resendLabel = 'Gửi lại';
 const String _editLabel = 'Sửa giao dịch';
-const String _deleteLabel = 'Xóa giao dịch này';
+const String _deleteLabel = 'Xóa';
 const String _loadFailedNotice =
     'Không tải được danh sách từ máy chủ. Chỉ hiển thị các giao dịch chưa gửi trên thiết bị. '
     'Kéo xuống để thử lại.';
@@ -110,7 +110,7 @@ void main() {
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(app);
+    await tester.pumpWidget(withAmountVisibility(app));
     await tester.pumpAndSettle();
   }
 
@@ -231,7 +231,7 @@ void main() {
 
         await tapText(tester, 'Chưa gửi');
 
-        expect(find.text('Đồng bộ:'), findsOneWidget);
+        expect(find.text('Đồng bộ'), findsOneWidget);
         expect(find.text(_resendLabel), findsOneWidget);
         expect(
           find.text(_editLabel),
@@ -250,7 +250,7 @@ void main() {
 
         await tapText(tester, 'Giao dịch 1');
 
-        expect(find.text('Đồng bộ:'), findsNothing);
+        expect(find.text('Đồng bộ'), findsNothing);
         expect(find.text(_resendLabel), findsNothing);
         expect(find.text(_editLabel), findsOneWidget);
       },
@@ -395,7 +395,7 @@ void main() {
 
       await tapText(tester, 'Đang chờ');
 
-      expect(find.text('Đồng bộ:'), findsOneWidget);
+      expect(find.text('Đồng bộ'), findsOneWidget);
       expect(
         find.text(_deleteLabel),
         findsNothing,

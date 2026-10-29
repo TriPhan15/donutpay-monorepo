@@ -11,6 +11,7 @@ import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/main.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/repositories/settings_repository_impl.dart';
+import 'package:finance_ai_app/screens/ledger/transaction_detail_page.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/screens/startup/startup_splash_screen.dart';
@@ -279,7 +280,7 @@ void main() {
     setUp(() => signInWithSavedTheme(ThemeMode.light));
 
     testWidgets(
-      'a recent transaction opens the Ledger tab and its detail sheet, as a transaction notification does',
+      'a recent transaction opens the Ledger tab and its detail page, as a transaction notification does',
       (tester) async {
         backend.on(
           'GET',
@@ -301,9 +302,11 @@ void main() {
         await tester.tap(find.text('Cà phê'));
         await tester.pumpAndSettle();
 
-        expectSelectedTab(tester, colors, 1);
-        expect(find.byType(BottomSheet), findsOneWidget);
+        expect(find.byType(TransactionDetailPage), findsOneWidget);
         expect(find.text('Sửa giao dịch'), findsOneWidget);
+        await tester.tap(find.byKey(TransactionDetailPage.backKey));
+        await tester.pumpAndSettle();
+        expectSelectedTab(tester, colors, 1);
       },
     );
 

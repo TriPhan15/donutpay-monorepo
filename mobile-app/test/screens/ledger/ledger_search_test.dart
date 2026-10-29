@@ -17,6 +17,7 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
 
+import '../../helpers/app_settings_scope.dart';
 import '../../helpers/captured_logs.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
@@ -90,11 +91,13 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      const MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: Locale('vi'),
-        home: LedgerPage(),
+      withAmountVisibility(
+        const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: Locale('vi'),
+          home: LedgerPage(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

@@ -1787,7 +1787,7 @@ abstract class AppLocalizations {
   /// Explains how to resend a transaction kept on the device.
   ///
   /// In en, this message translates to:
-  /// **'The transaction is saved on this device but hasn\'t reached the server yet. When you\'re back online, open the Ledger, select the transaction and tap \"Resend\". Resending won\'t create a duplicate.'**
+  /// **'The transaction is saved on this device but hasn\'t reached the server yet. When you\'re back online, open Statistics, select the transaction and tap \"Resend\". Resending won\'t create a duplicate.'**
   String get transactionNotSentMessage;
 
   /// Label of the category field or column.
@@ -1955,7 +1955,7 @@ abstract class AppLocalizations {
   /// Title of the Ledger page.
   ///
   /// In en, this message translates to:
-  /// **'Ledger'**
+  /// **'Statistics'**
   String get ledgerTitle;
 
   /// Hint of the Ledger search box.
@@ -1963,12 +1963,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search name, category...'**
   String get ledgerSearchHint;
-
-  /// Label of the date picker button.
-  ///
-  /// In en, this message translates to:
-  /// **'Calendar'**
-  String get ledgerCalendar;
 
   /// Chart legend for income bars.
   ///
@@ -1988,41 +1982,11 @@ abstract class AppLocalizations {
   /// **'{month, select, 1{Jan} 2{Feb} 3{Mar} 4{Apr} 5{May} 6{Jun} 7{Jul} 8{Aug} 9{Sep} 10{Oct} 11{Nov} 12{Dec} other{{month}}}'**
   String ledgerChartMonth(String month);
 
-  /// Stat card: income of the period.
-  ///
-  /// In en, this message translates to:
-  /// **'Income'**
-  String get ledgerIncome;
-
-  /// Stat card: spending of the period.
-  ///
-  /// In en, this message translates to:
-  /// **'Spending'**
-  String get ledgerExpense;
-
-  /// Heading of the transaction list.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent transactions'**
-  String get ledgerRecent;
-
   /// The period has no transactions.
   ///
   /// In en, this message translates to:
   /// **'No transactions in this period.'**
   String get ledgerEmptyPeriod;
-
-  /// Summary row: total income.
-  ///
-  /// In en, this message translates to:
-  /// **'Total income'**
-  String get ledgerTotalIncome;
-
-  /// Summary row: total spending.
-  ///
-  /// In en, this message translates to:
-  /// **'Total spending'**
-  String get ledgerTotalExpense;
 
   /// Summary row and Excel row: income minus spending.
   ///
@@ -2030,125 +1994,17 @@ abstract class AppLocalizations {
   /// **'Balance'**
   String get ledgerBalance;
 
-  /// Title of the filter sheet.
-  ///
-  /// In en, this message translates to:
-  /// **'Smart filter & sort'**
-  String get ledgerFilterTitle;
-
-  /// Filter section: transaction type.
-  ///
-  /// In en, this message translates to:
-  /// **'1. Transaction type'**
-  String get ledgerFilterType;
-
-  /// Filter chip: expenses and income.
-  ///
-  /// In en, this message translates to:
-  /// **'All'**
-  String get ledgerFilterAll;
-
-  /// Filter chip: expenses only.
-  ///
-  /// In en, this message translates to:
-  /// **'Expenses only'**
-  String get ledgerFilterExpenseOnly;
-
-  /// Filter chip: income only.
-  ///
-  /// In en, this message translates to:
-  /// **'Income only'**
-  String get ledgerFilterIncomeOnly;
-
-  /// Filter section: amount range.
-  ///
-  /// In en, this message translates to:
-  /// **'2. Amount range'**
-  String get ledgerFilterAmount;
-
-  /// Filter chip: no amount limit.
-  ///
-  /// In en, this message translates to:
-  /// **'Any amount'**
-  String get ledgerFilterAnyAmount;
-
-  /// Filter section: sort order.
-  ///
-  /// In en, this message translates to:
-  /// **'3. Sort by'**
-  String get ledgerFilterSort;
-
-  /// Sort chip: newest first.
-  ///
-  /// In en, this message translates to:
-  /// **'Newest'**
-  String get ledgerSortNewest;
-
-  /// Sort chip: oldest first.
-  ///
-  /// In en, this message translates to:
-  /// **'Oldest'**
-  String get ledgerSortOldest;
-
-  /// Sort chip: highest amount first.
-  ///
-  /// In en, this message translates to:
-  /// **'Highest amount'**
-  String get ledgerSortHighest;
-
-  /// Button that applies the filters.
-  ///
-  /// In en, this message translates to:
-  /// **'Apply filters'**
-  String get ledgerFilterApply;
-
-  /// Detail sheet label.
-  ///
-  /// In en, this message translates to:
-  /// **'Amount:'**
-  String get ledgerDetailAmount;
-
-  /// Detail sheet label.
-  ///
-  /// In en, this message translates to:
-  /// **'Time:'**
-  String get ledgerDetailTime;
-
-  /// Detail sheet label.
-  ///
-  /// In en, this message translates to:
-  /// **'Receipt status:'**
-  String get ledgerDetailReceiptStatus;
-
-  /// Detail sheet label of the sync state.
-  ///
-  /// In en, this message translates to:
-  /// **'Sync:'**
-  String get ledgerDetailSync;
-
   /// Explains the Resend button.
   ///
   /// In en, this message translates to:
   /// **'The server hasn\'t confirmed this transaction yet. When you\'re back online, tap \"Resend\". Resending won\'t create a duplicate.'**
   String get ledgerDetailUnsyncedHint;
 
-  /// Detail sheet label above the receipt photo.
-  ///
-  /// In en, this message translates to:
-  /// **'Original receipt photo:'**
-  String get ledgerDetailReceiptImage;
-
   /// Button that sends an unsynced transaction again.
   ///
   /// In en, this message translates to:
   /// **'Resend'**
   String get ledgerResend;
-
-  /// Delete button of the detail sheet.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete this transaction'**
-  String get ledgerDelete;
 
   /// Title of the delete confirmation.
   ///
@@ -2635,48 +2491,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Budgets'**
   String get budgetTitle;
-
-  /// Link from the budget block to the budget screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Manage'**
-  String get budgetManage;
-
-  /// The budget block has nothing to show.
-  ///
-  /// In en, this message translates to:
-  /// **'No budgets in this period.'**
-  String get budgetEmptyPeriod;
-
-  /// The budget block could not load.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t load your budgets. Pull down to try again.'**
-  String get budgetLoadFailedPullToRetry;
-
-  /// How many budgets the block does not show.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{+1 more budget} other{+{count} more budgets}}'**
-  String budgetMoreCount(int count);
-
-  /// A budget past its limit; amount is formatted money.
-  ///
-  /// In en, this message translates to:
-  /// **'Over the limit by {amount}'**
-  String budgetOverBy(String amount);
-
-  /// A budget at 80% or more; amount is formatted money.
-  ///
-  /// In en, this message translates to:
-  /// **'Almost at the limit · Left: {amount}'**
-  String budgetNearLimitLeft(String amount);
-
-  /// What is left of a budget; amount is formatted money.
-  ///
-  /// In en, this message translates to:
-  /// **'Left: {amount}'**
-  String budgetLeft(String amount);
 
   /// Title of the 80% budget alert.
   ///
@@ -3845,6 +3659,252 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Yesterday, {date}'**
   String dateFieldYesterdayValue(String date);
+
+  /// Title of the filter sheet of the statistics tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get filterTitle;
+
+  /// Filter: every direction of money.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get filterAll;
+
+  /// Filter: spending only.
+  ///
+  /// In en, this message translates to:
+  /// **'Out'**
+  String get filterExpense;
+
+  /// Filter: income only.
+  ///
+  /// In en, this message translates to:
+  /// **'In'**
+  String get filterIncome;
+
+  /// Filter: any amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get filterAnyAmount;
+
+  /// Filter: amounts below 100,000.
+  ///
+  /// In en, this message translates to:
+  /// **'<100K'**
+  String get filterUnder100k;
+
+  /// Filter: amounts from 100,000 to 500,000.
+  ///
+  /// In en, this message translates to:
+  /// **'100–500K'**
+  String get filter100kTo500k;
+
+  /// Filter: amounts above 500,000.
+  ///
+  /// In en, this message translates to:
+  /// **'>500K'**
+  String get filterOver500k;
+
+  /// Order: newest first.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get filterNewest;
+
+  /// Order: oldest first.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest'**
+  String get filterOldest;
+
+  /// Order: largest amount first.
+  ///
+  /// In en, this message translates to:
+  /// **'Largest'**
+  String get filterLargest;
+
+  /// Puts the filter back to all / any / newest.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get filterReset;
+
+  /// Applies the filter; count is how many transactions it keeps.
+  ///
+  /// In en, this message translates to:
+  /// **'Show {count, plural, =1{1 transaction} other{{count} transactions}}'**
+  String filterShowCount(int count);
+
+  /// Title of the transaction detail page.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction details'**
+  String get transactionDetailTitle;
+
+  /// Row label on the transaction detail page.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get transactionDetailCategory;
+
+  /// Row label on the transaction detail page.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get transactionDetailTime;
+
+  /// Row label on the transaction detail page: state of the scanned receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt'**
+  String get transactionDetailReceipt;
+
+  /// Row label on the transaction detail page: the send state of a transaction not confirmed by the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get transactionDetailSync;
+
+  /// Title above the receipt photo on the transaction detail page.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photo'**
+  String get transactionDetailReceiptImage;
+
+  /// Delete button at the bottom of the transaction detail page.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get transactionDetailDelete;
+
+  /// Income pill on the statistics band.
+  ///
+  /// In en, this message translates to:
+  /// **'In {amount}'**
+  String statsIncome(String amount);
+
+  /// Spending pill on the statistics band.
+  ///
+  /// In en, this message translates to:
+  /// **'Out {amount}'**
+  String statsExpense(String amount);
+
+  /// Income minus spending of the period, on the statistics band.
+  ///
+  /// In en, this message translates to:
+  /// **'Left {amount}'**
+  String statsLeft(String amount);
+
+  /// Statistics view toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart'**
+  String get statsViewChart;
+
+  /// Statistics view toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get statsViewCalendar;
+
+  /// Statistics view toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get statsViewCategories;
+
+  /// The month on the statistics band.
+  ///
+  /// In en, this message translates to:
+  /// **'{month}/{year}'**
+  String statsMonthLabel(String month, String year);
+
+  /// Tooltip of the search button on the statistics band.
+  ///
+  /// In en, this message translates to:
+  /// **'Search transactions'**
+  String get statsSearch;
+
+  /// Tooltip of the Excel button on the statistics band.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to Excel'**
+  String get statsExport;
+
+  /// Title of the date sheet opened from the period label of the statistics band.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get statsPickDate;
+
+  /// Adds a transaction, from the day list of the statistics calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'+ Add'**
+  String get statsAdd;
+
+  /// Hint above the statistics chart.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a bar to see the amounts'**
+  String get statsTapBarHint;
+
+  /// Under the total in the middle of the category ring.
+  ///
+  /// In en, this message translates to:
+  /// **'spent'**
+  String get statsSpent;
+
+  /// Share of spending and number of transactions of one category.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%, {count, plural, =1{1 time} other{{count} times}}'**
+  String statsCategoryLine(int percent, int count);
+
+  /// Title of the category list of the statistics tab.
+  ///
+  /// In en, this message translates to:
+  /// **'By category'**
+  String get statsByCategory;
+
+  /// Category view of a period without spending.
+  ///
+  /// In en, this message translates to:
+  /// **'No spending in this period'**
+  String get statsNoSpending;
+
+  /// Title of the transaction list of the statistics tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Transactions'**
+  String get statsTransactions;
+
+  /// Title of the day list of the statistics calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Transactions on {date}'**
+  String statsTransactionsOfDay(String date);
+
+  /// Income of the chosen day, statistics calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Total in {amount}'**
+  String statsTotalIncome(String amount);
+
+  /// Spending of the chosen day, statistics calendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Total out {amount}'**
+  String statsTotalExpense(String amount);
+
+  /// Statistics list when the filter or the search hides every transaction of the period.
+  ///
+  /// In en, this message translates to:
+  /// **'No transaction matches the filter'**
+  String get statsNoMatch;
 }
 
 class _AppLocalizationsDelegate

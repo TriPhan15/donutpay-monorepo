@@ -16,7 +16,7 @@ import 'package:finance_ai_app/services/budget_alert_tracker.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
-import 'package:finance_ai_app/widgets/budget/budget_progress_card.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/stats_header_band.dart';
 import 'package:finance_ai_app/widgets/budget/home_budget_band.dart';
 
 import '../../helpers/app_settings_scope.dart';
@@ -27,10 +27,7 @@ import '../../helpers/fake_local_store.dart';
 const String _budgetsCall = 'GET /api/budgets';
 const String _warningTitle = 'Sắp chạm hạn mức ngân sách';
 const String _exceededTitle = 'Đã vượt ngân sách';
-const String _loadFailedNote =
-    'Không tải được ngân sách. Kéo xuống để thử lại.';
 const String _homeBudgetFailed = 'Chưa tải được ngân sách';
-const String _emptyPeriodNote = 'Chưa có ngân sách trong kỳ này.';
 
 String _ymd(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
@@ -165,7 +162,7 @@ void main() {
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(app);
+    await tester.pumpWidget(withAmountVisibility(app));
     await tester.pumpAndSettle();
   }
 
@@ -377,13 +374,15 @@ void main() {
         transactions = [_tx(850000)];
 
         await withCapturedLogs((logs) async {
-          await tester.pumpWidget(app);
+          await tester.pumpWidget(withAmountVisibility(app));
           await tester.pump();
           await tester.pumpWidget(
-            const MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: SizedBox(),
+            withAmountVisibility(
+              const MaterialApp(
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: SizedBox(),
+              ),
             ),
           );
           pending.complete(okResponse([_budget()]));
@@ -430,7 +429,7 @@ void main() {
         final pending = Completer<ResponseBody>();
         backend.on('GET', '/api/transactions/mine', (_) => pending.future);
 
-        await tester.pumpWidget(app);
+        await tester.pumpWidget(withAmountVisibility(app));
         await tester.pump(
           const Duration(milliseconds: 100),
         ); // long enough for Dio to send both requests
@@ -515,189 +514,21 @@ void main() {
     });
 
     testWidgets(
-      'shows the budgets that overlap the month on screen, each measured over its own dates',
-      (tester) async {
-        final start = _weekStart();
-        budgets = [
-          _budget(),
-          _budget(
-            id: 2,
-            category: null,
-            amount: 2000000,
-            periodType: 'WEEK',
-            start: start,
-            end: DateTime(start.year, start.month, start.day + 6),
-          ),
-        ];
-        final nextMonthStart = DateTime(_today().year, _today().month + 1, 1);
-        final lastMonthEnd = DateTime(_today().year, _today().month, 0);
-        budgets.addAll([
-          // Starts on the first day after the month, and ends on the last day before it: neither is in the month.
-          _budget(
-            id: 3,
-            periodType: 'WEEK',
-            start: nextMonthStart,
-            end: DateTime(nextMonthStart.year, nextMonthStart.month, 7),
-          ),
-          _budget(
-            id: 4,
-            category: null,
-            periodType: 'WEEK',
-            start: lastMonthEnd,
-            end: lastMonthEnd,
-          ),
-        ]);
-        transactions = [_tx(400000), _tx(100000, id: 2, category: 'Di chuyển')];
-
-        await pump(tester, app);
-
-        expect(backend.calls, contains(_budgetsCall));
-        expect(find.byType(BudgetProgressCard), findsNWidgets(2));
-        expect(find.text('40%'), findsOneWidget);
-        expect(find.text('25%'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'moving to another month filters the budgets in memory, without asking the server again',
-      (tester) async {
-        budgets = [_budget()];
-        transactions = [_tx(400000)];
-        await pump(tester, app);
-        expect(find.byType(BudgetProgressCard), findsOneWidget);
-        final requests = budgetRequests();
-
-        await tester.tap(find.byIcon(Icons.chevron_right_rounded));
-        await tester.pumpAndSettle();
-        expect(find.byType(BudgetProgressCard), findsNothing);
-        expect(find.text(_emptyPeriodNote), findsOneWidget);
-
-        await tester.tap(find.byIcon(Icons.chevron_left_rounded));
-        await tester.pumpAndSettle();
-        expect(find.byType(BudgetProgressCard), findsOneWidget);
-        expect(budgetRequests(), requests);
-      },
-    );
-
-    testWidgets(
-      'the week view keeps the budgets that touch the week and drops the others',
-      (tester) async {
-        final thisWeek = _weekStart();
-        final lastWeekStart = DateTime(
-          thisWeek.year,
-          thisWeek.month,
-          thisWeek.day - 7,
-        );
-        final nextWeekStart = DateTime(
-          thisWeek.year,
-          thisWeek.month,
-          thisWeek.day + 7,
-        );
-        budgets = [
-          _budget(),
-          _budget(
-            id: 2,
-            periodType: 'WEEK',
-            start: lastWeekStart,
-            end: DateTime(
-              lastWeekStart.year,
-              lastWeekStart.month,
-              lastWeekStart.day + 6,
-            ),
-          ),
-          _budget(
-            id: 3,
-            periodType: 'WEEK',
-            start: nextWeekStart,
-            end: DateTime(
-              nextWeekStart.year,
-              nextWeekStart.month,
-              nextWeekStart.day + 6,
-            ),
-          ),
-        ];
-        transactions = [_tx(400000)];
-        await pump(tester, app);
-
-        await tester.tap(find.text('Tháng'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Tuần').last);
-        await tester.pumpAndSettle();
-
-        expect(find.byType(BudgetProgressCard), findsOneWidget);
-        expect(find.textContaining('Tháng · '), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'picking a day in another week of the month measures the budgets again for the week on screen',
-      (tester) async {
-        final start = _weekStart();
-        budgets = [
-          _budget(),
-          _budget(
-            id: 2,
-            periodType: 'WEEK',
-            start: start,
-            end: DateTime(start.year, start.month, start.day + 6),
-          ),
-        ];
-        transactions = [_tx(400000)];
-        await pump(tester, app);
-        await tester.tap(find.text('Tháng'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Tuần').last);
-        await tester.pumpAndSettle();
-        expect(find.byType(BudgetProgressCard), findsNWidgets(2));
-        final requests = budgetRequests();
-
-        final farDay = _today().day <= 15
-            ? 28
-            : 1; // at least a week from today, so in another week of this month
-        await tester.tap(find.text('Lịch'));
-        await tester.pumpAndSettle();
-        await tester.tap(
-          find.descendant(
-            of: find.byType(CalendarDatePicker),
-            matching: find.text('$farDay'),
-          ),
-        );
-        await tester.tap(
-          find.descendant(
-            of: find.byType(DatePickerDialog),
-            matching: find.text('OK'),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        expect(
-          find.byType(BudgetProgressCard),
-          findsOneWidget,
-          reason: 'only the monthly budget touches that week',
-        );
-        expect(find.textContaining('Tháng · '), findsOneWidget);
-        expect(
-          budgetRequests(),
-          requests,
-          reason: 'the month did not change, so nothing is fetched again',
-        );
-      },
-    );
-
-    testWidgets(
       'leaving the screen while it is still loading does not touch the disposed screen and shows no alert',
       (tester) async {
         final pending = Completer<ResponseBody>();
         backend.on('GET', '/api/budgets', (_) => pending.future);
         transactions = [_tx(850000)];
 
-        await tester.pumpWidget(app);
+        await tester.pumpWidget(withAmountVisibility(app));
         await tester.pump();
         await tester.pumpWidget(
-          const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: SizedBox(),
+          withAmountVisibility(
+            const MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: SizedBox(),
+            ),
           ),
         );
         pending.complete(okResponse([_budget()]));
@@ -714,7 +545,7 @@ void main() {
         final pending = Completer<ResponseBody>();
         backend.on('GET', '/api/transactions/mine', (_) => pending.future);
 
-        await tester.pumpWidget(app);
+        await tester.pumpWidget(withAmountVisibility(app));
         await tester.pump(
           const Duration(milliseconds: 100),
         ); // long enough for Dio to send both requests
@@ -738,10 +569,6 @@ void main() {
 
       await pump(tester, app);
       expect(find.text(_warningTitle), findsOneWidget);
-      expect(
-        find.textContaining('Sắp chạm hạn mức · Còn lại: '),
-        findsOneWidget,
-      );
       await dismissDialog(tester);
 
       ledger.currentState!.reload();
@@ -751,7 +578,7 @@ void main() {
     });
 
     testWidgets(
-      'a budget that could not be loaded is reported inline and never alerts',
+      'a budget that could not be loaded never alerts, and the statistics stay on screen',
       (tester) async {
         backend.on('GET', '/api/budgets', (_) => jsonResponse(500, {}));
         transactions = [_tx(850000)];
@@ -764,9 +591,8 @@ void main() {
             hasLength(1),
           );
         });
-        expect(find.text(_loadFailedNote), findsOneWidget);
         expect(find.byType(Dialog), findsNothing);
-        expect(find.text('Tổng chi'), findsOneWidget);
+        expect(find.byType(StatsHeaderBand), findsOneWidget);
       },
     );
   });
@@ -809,7 +635,7 @@ void main() {
       tabs.index.value = 1;
       await tester.pumpAndSettle();
       expect(
-        find.byType(BudgetProgressCard),
+        find.byType(StatsHeaderBand),
         findsOneWidget,
         reason: 'the ledger is on screen now',
       );
