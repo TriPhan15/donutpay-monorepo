@@ -1063,6 +1063,23 @@ class ReceiptProcessingServiceTest {
     }
 
     @Test
+    void aReceiptThatWasReadTheMaximumNumberOfTimesIsNotRetriedAgain() {
+        // A7 (secondary): every retry adds a row of receipt_processing_attempts, so their number is bounded.
+        signedInAsAlice();
+        Receipt receipt = failedReceipt("FAILED", transactionOf(alice));
+        repositoryHolds(receipt);
+        when(attemptRepo.findLastAttemptNumber(RECEIPT_ID)).thenReturn(ReceiptProcessingService.MAX_ATTEMPTS_PER_RECEIPT);
+
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class,
+                () -> service.retryMyReceipt(RECEIPT_ID, retry(NEW_SCAN, CLIENT_ID)));
+
+        assertTrue(refused.getMessage().contains(String.valueOf(ReceiptProcessingService.MAX_ATTEMPTS_PER_RECEIPT)));
+        verify(receiptRepo, never()).claimFailedForRetry(any(), any());
+        verify(attemptRepo, never()).save(any());
+        verifyNoInteractions(ocrService, eventPublisher, auditLogService);
+    }
+
+    @Test
     void aRetryThatLostTheClaimToAnotherRequestIsRefusedAndRecordsNothing() {
         signedInAsAlice();
         Transaction transaction = transactionOf(alice);

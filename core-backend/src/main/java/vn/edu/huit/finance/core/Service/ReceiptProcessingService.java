@@ -108,6 +108,10 @@ public class ReceiptProcessingService {
     private static final String AUDIT_OWNER = "chủ sở hữu #%d";
     private static final String AUDIT_NO_OWNER = "không thuộc giao dịch nào";
     private static final int MONEY_SCALE = 2;
+    /** Số lần đọc tối đa của một hóa đơn (lần đầu lúc lưu giao dịch + các lần thử lại). */
+    static final int MAX_ATTEMPTS_PER_RECEIPT = 10;
+    private static final String MSG_RETRY_LIMIT =
+            "Hóa đơn đã được đọc %d lần, không thể thử lại nữa. Bạn có thể gửi số tiền để quản trị viên duyệt";
 
     @Autowired
     private ReceiptRepository receiptRepo;
@@ -327,6 +331,11 @@ public class ReceiptProcessingService {
         if (!ReceiptStatus.FAILED.matches(receipt.getStatus())) {
             log.warn("Receipt retry refused, userId={}, receiptId={}, status={}", caller.getId(), receiptId, receipt.getStatus());
             throw new ReceiptConflictException(MSG_RETRY_NOT_FAILED);
+        }
+        // Mỗi lần thử thêm một dòng receipt_processing_attempts: giới hạn để bảng không phình vô hạn.
+        if (attemptRepo.findLastAttemptNumber(receiptId) >= MAX_ATTEMPTS_PER_RECEIPT) {
+            log.warn("Receipt retry refused, attempt limit reached, userId={}, receiptId={}", caller.getId(), receiptId);
+            throw new ReceiptConflictException(String.format(MSG_RETRY_LIMIT, MAX_ATTEMPTS_PER_RECEIPT));
         }
 
         int claimed = receiptRepo.claimFailedForRetry(receiptId, receipt.getVersion());
