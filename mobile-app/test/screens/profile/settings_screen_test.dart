@@ -11,6 +11,7 @@ import 'package:finance_ai_app/repositories/settings_repository.dart';
 import 'package:finance_ai_app/repositories/settings_repository_impl.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/profile/settings_screen.dart';
+import 'package:finance_ai_app/screens/profile/widgets/theme_preview_card.dart';
 
 import '../../helpers/fake_settings_repository.dart';
 
@@ -38,6 +39,17 @@ void main() {
     find.ancestor(of: find.text(label), matching: find.byType(ListTile)),
   );
 
+  Finder card(ThemeMode mode) =>
+      find.byKey(ValueKey('theme-card-${mode.name}'));
+
+  bool cardSelected(WidgetTester tester, ThemeMode mode) =>
+      tester.widget<ThemePreviewCard>(card(mode)).selected;
+
+  final emoji = RegExp(
+    r'[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}]',
+    unicode: true,
+  );
+
   Brightness screenBrightness(WidgetTester tester) =>
       Theme.of(tester.element(find.byType(SettingsScreen))).brightness;
 
@@ -60,24 +72,29 @@ void main() {
       await openSettings(tester);
 
       for (final label in [
-        'Cài đặt',
+        'Giao diện và ngôn ngữ',
         'Giao diện',
+        'Hệ thống',
         'Sáng',
         'Tối',
-        'Theo hệ thống',
         'Tự đổi theo cài đặt của thiết bị',
         'Ngôn ngữ',
         'Tiếng Việt',
         'English',
+        'VI',
+        'EN',
       ]) {
         expect(find.text(label), findsOneWidget, reason: label);
       }
-      expect(tileOf(tester, 'Theo hệ thống').selected, isTrue);
-      expect(tileOf(tester, 'Sáng').selected, isFalse);
-      expect(tileOf(tester, 'Tối').selected, isFalse);
+      expect(cardSelected(tester, ThemeMode.system), isTrue);
+      expect(cardSelected(tester, ThemeMode.light), isFalse);
+      expect(cardSelected(tester, ThemeMode.dark), isFalse);
       expect(tileOf(tester, 'Tiếng Việt').selected, isTrue);
       expect(tileOf(tester, 'English').selected, isFalse);
-      expect(find.byIcon(Icons.check_rounded), findsNWidgets(2));
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      for (final text in tester.widgetList<Text>(find.byType(Text))) {
+        expect(emoji.hasMatch(text.data ?? ''), isFalse, reason: text.data);
+      }
     });
 
     testWidgets(
@@ -86,13 +103,13 @@ void main() {
         await openSettings(tester);
         expect(screenBrightness(tester), Brightness.light);
 
-        await tester.tap(find.text('Tối'));
+        await tester.tap(card(ThemeMode.dark));
         await tester.pumpAndSettle();
 
         expect(materialApp(tester).themeMode, ThemeMode.dark);
         expect(screenBrightness(tester), Brightness.dark);
-        expect(tileOf(tester, 'Tối').selected, isTrue);
-        expect(tileOf(tester, 'Theo hệ thống').selected, isFalse);
+        expect(cardSelected(tester, ThemeMode.dark), isTrue);
+        expect(cardSelected(tester, ThemeMode.system), isFalse);
         expect(sl<SettingsRepository>().themeMode, ThemeMode.dark);
         // The login screen read the preferences before the choice was saved: read the store again.
         final prefs = await SharedPreferences.getInstance();
@@ -113,14 +130,13 @@ void main() {
           Brightness.dark,
           reason: 'with nothing saved the app follows the device',
         );
-        expect(tileOf(tester, 'Theo hệ thống').selected, isTrue);
+        expect(cardSelected(tester, ThemeMode.system), isTrue);
 
-        await tester.tap(find.text('Sáng'));
+        await tester.tap(card(ThemeMode.light));
         await tester.pumpAndSettle();
 
         expect(screenBrightness(tester), Brightness.light);
-        expect(tileOf(tester, 'Sáng').selected, isTrue);
-        // The login screen read the preferences before the choice was saved: read the store again.
+        expect(cardSelected(tester, ThemeMode.light), isTrue);
         final prefs = await SharedPreferences.getInstance();
         await prefs.reload();
         expect(prefs.getString(SettingsRepositoryImpl.themeModeKey), 'light');
@@ -143,7 +159,7 @@ void main() {
           AppTheme.lightOverlayStyle,
         );
 
-        await tester.tap(find.text('Tối'));
+        await tester.tap(card(ThemeMode.dark));
         await tester.pumpAndSettle();
 
         expect(
@@ -164,15 +180,65 @@ void main() {
     );
 
     testWidgets(
-      'choosing English translates the screen at once and sets the language of the next requests',
+      'tapping the current language asks nothing and changes nothing',
+      (tester) async {
+        await openSettings(tester);
+
+        await tester.tap(find.text('Tiếng Việt'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(materialApp(tester).locale, const Locale('vi'));
+      },
+    );
+
+    testWidgets(
+      'cancelling or dismissing the language question keeps Vietnamese',
       (tester) async {
         await openSettings(tester);
 
         await tester.tap(find.text('English'));
         await tester.pumpAndSettle();
+        expect(find.text('Đổi sang English?'), findsOneWidget);
+        expect(
+          find.text('Toàn bộ chữ trong ứng dụng sẽ đổi sang ngôn ngữ này.'),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.text('Hủy'));
+        await tester.pumpAndSettle();
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(materialApp(tester).locale, const Locale('vi'));
+        expect(tileOf(tester, 'Tiếng Việt').selected, isTrue);
+
+        await tester.tap(find.text('English'));
+        await tester.pumpAndSettle();
+        // A tap above the sheet closes it without an answer.
+        await tester.tapAt(const Offset(400, 40));
+        await tester.pumpAndSettle();
+        expect(find.byType(BottomSheet), findsNothing);
+        expect(materialApp(tester).locale, const Locale('vi'));
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.reload();
+        expect(
+          prefs.getString(SettingsRepositoryImpl.languageKey),
+          isNot('en'),
+        );
+      },
+    );
+
+    testWidgets(
+      'confirming English translates the screen at once and sets the language of the next requests',
+      (tester) async {
+        await openSettings(tester);
+
+        await tester.tap(find.text('English'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Đổi'));
+        await tester.pumpAndSettle();
 
         for (final label in [
-          'Settings',
+          'Appearance and language',
           'Theme',
           'Light',
           'Dark',
@@ -184,13 +250,12 @@ void main() {
         ]) {
           expect(find.text(label), findsOneWidget, reason: label);
         }
-        expect(find.text('Cài đặt'), findsNothing);
+        expect(find.text('Giao diện và ngôn ngữ'), findsNothing);
         expect(tileOf(tester, 'English').selected, isTrue);
         expect(tileOf(tester, 'Tiếng Việt').selected, isFalse);
         expect(materialApp(tester).locale, const Locale('en'));
         expect(Intl.defaultLocale, 'en_US');
         expect(sl<SettingsRepository>().localeTag, 'en-US');
-        // The login screen read the preferences before the choice was saved: read the store again.
         final prefs = await SharedPreferences.getInstance();
         await prefs.reload();
         expect(prefs.getString(SettingsRepositoryImpl.languageKey), 'en');
@@ -202,12 +267,14 @@ void main() {
       'going back after a change returns to the same screen as before',
       (tester) async {
         await openSettings(tester);
-        await tester.tap(find.text('Tối'));
+        await tester.tap(card(ThemeMode.dark));
         await tester.pumpAndSettle();
         await tester.tap(find.text('English'));
         await tester.pumpAndSettle();
+        await tester.tap(find.text('Đổi'));
+        await tester.pumpAndSettle();
 
-        await tester.pageBack();
+        await tester.tap(find.byIcon(Icons.arrow_back_rounded));
         await tester.pumpAndSettle();
 
         expect(find.byType(SettingsScreen), findsNothing);
@@ -223,22 +290,42 @@ void main() {
       );
     });
 
+    testWidgets('the new theme stays applied and a toast says it was not saved', (
+      tester,
+    ) async {
+      await openSettings(tester);
+
+      await tester.tap(card(ThemeMode.dark));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Không lưu được cài đặt. Thay đổi chỉ có hiệu lực đến khi đóng ứng dụng.',
+        ),
+        findsOneWidget,
+      );
+      expect(cardSelected(tester, ThemeMode.dark), isTrue);
+      expect(screenBrightness(tester), Brightness.dark);
+    });
+
     testWidgets(
-      'the new theme stays applied and a snackbar says it was not saved',
+      'a confirmed language that cannot be saved still applies and says so',
       (tester) async {
         await openSettings(tester);
 
-        await tester.tap(find.text('Tối'));
+        await tester.tap(find.text('English'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Đổi'));
         await tester.pumpAndSettle();
 
+        expect(materialApp(tester).locale, const Locale('en'));
+        // The toast speaks the language just chosen.
         expect(
           find.text(
-            'Không lưu được cài đặt. Thay đổi chỉ có hiệu lực đến khi đóng ứng dụng.',
+            "Couldn't save this setting. The change applies until you close the app.",
           ),
           findsOneWidget,
         );
-        expect(tileOf(tester, 'Tối').selected, isTrue);
-        expect(screenBrightness(tester), Brightness.dark);
       },
     );
   });

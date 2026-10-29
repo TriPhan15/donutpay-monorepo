@@ -1568,89 +1568,17 @@ abstract class AppLocalizations {
   /// **'Activity history ({count})'**
   String activityLogTitleCount(int count);
 
-  /// User guide topic.
-  ///
-  /// In en, this message translates to:
-  /// **'Dashboard'**
-  String get helpDashboardTitle;
-
-  /// User guide text.
-  ///
-  /// In en, this message translates to:
-  /// **'See your assets, the month\'s income and spending and the cash flow chart.'**
-  String get helpDashboardBody;
-
-  /// User guide topic.
-  ///
-  /// In en, this message translates to:
-  /// **'Ledger'**
-  String get helpLedgerTitle;
-
-  /// User guide text.
-  ///
-  /// In en, this message translates to:
-  /// **'Add, filter and view transactions by day, calendar or month.'**
-  String get helpLedgerBody;
-
-  /// User guide topic.
-  ///
-  /// In en, this message translates to:
-  /// **'Receipt scan'**
-  String get helpScanTitle;
-
-  /// User guide text.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap the round button in the middle of the navigation bar to scan a receipt with AI.'**
-  String get helpScanBody;
-
-  /// User guide topic.
-  ///
-  /// In en, this message translates to:
-  /// **'AI analysis'**
-  String get helpAiTitle;
-
-  /// User guide text.
-  ///
-  /// In en, this message translates to:
-  /// **'See spending trends and financial habits analysed automatically.'**
-  String get helpAiBody;
-
-  /// User guide topic.
-  ///
-  /// In en, this message translates to:
-  /// **'Transfers'**
-  String get helpTransferTitle;
-
-  /// User guide text.
-  ///
-  /// In en, this message translates to:
-  /// **'Send or receive money by phone number or QR code.'**
-  String get helpTransferBody;
-
   /// Title of the feedback dialog (a star follows it).
   ///
   /// In en, this message translates to:
   /// **'Rate the app'**
   String get feedbackTitle;
 
-  /// Text of the feedback dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Your feedback helps us keep improving the app!'**
-  String get feedbackDescription;
-
   /// Hint of the feedback comment field.
   ///
   /// In en, this message translates to:
   /// **'Share your thoughts or suggestions...'**
   String get feedbackHint;
-
-  /// Button that closes the feedback dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'Later'**
-  String get feedbackLater;
 
   /// Button that sends the feedback.
   ///
@@ -1675,6 +1603,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A smart personal finance app with AI spending analysis.'**
   String get aboutDescription;
+
+  /// Title of the appearance and language screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance and language'**
+  String get appearanceLanguageTitle;
+
+  /// Label of the system theme preview card.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get themeCardSystem;
+
+  /// Title of the sheet confirming a language change.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {language}?'**
+  String languageConfirmTitle(String language);
+
+  /// Message of the language change sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'All text in the app will switch to this language.'**
+  String get languageConfirmMessage;
+
+  /// Confirm button of the language change sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get languageConfirmAction;
+
+  /// Description of the push notification switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notifications on this phone'**
+  String get notificationSettingsPushDescription;
+
+  /// Description of the budget alert switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts at 80% of a budget and when it is exceeded'**
+  String get notificationSettingsBudgetAlertDescription;
+
+  /// Last row of the money sources sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get moneySourcesTotal;
+
+  /// Description of the change password row in the security sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Other devices will have to sign in again'**
+  String get securityChangePasswordDescription;
+
+  /// Guide step title.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get guideHomeTitle;
+
+  /// Guide step text.
+  ///
+  /// In en, this message translates to:
+  /// **'See your balance, this month\'s income and spending, your budget and recent transactions.'**
+  String get guideHomeBody;
+
+  /// Guide step title.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get guideStatsTitle;
+
+  /// Guide step text.
+  ///
+  /// In en, this message translates to:
+  /// **'See spending as a chart, a month calendar or by category; filter and export to Excel.'**
+  String get guideStatsBody;
+
+  /// Guide step title.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan receipts'**
+  String get guideScanTitle;
+
+  /// Guide step text.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the round button in the middle of the bottom bar and take or pick a photo. The AI reads the store, the date and the total for you to check and save.'**
+  String get guideScanBody;
+
+  /// Guide step title.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending analysis'**
+  String get guideAnalysisTitle;
+
+  /// Guide step text.
+  ///
+  /// In en, this message translates to:
+  /// **'See what you can spend each day, highlights, spending habits and balance tips.'**
+  String get guideAnalysisBody;
+
+  /// Guide step title.
+  ///
+  /// In en, this message translates to:
+  /// **'Budgets and savings'**
+  String get guideBudgetSavingsTitle;
+
+  /// Guide step text.
+  ///
+  /// In en, this message translates to:
+  /// **'Set spending limits per category and follow your savings goals.'**
+  String get guideBudgetSavingsBody;
+
+  /// Feedback suggestion chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy to use'**
+  String get feedbackChipEasy;
+
+  /// Feedback suggestion chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Accurate receipt scanning'**
+  String get feedbackChipScan;
+
+  /// Feedback suggestion chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Nice design'**
+  String get feedbackChipLooks;
+
+  /// Feedback suggestion chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs more features'**
+  String get feedbackChipMore;
+
+  /// Tooltip of a rating star.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of 5 stars'**
+  String feedbackStarLabel(int count);
+
+  /// About sheet row.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get aboutVersion;
+
+  /// About sheet row.
+  ///
+  /// In en, this message translates to:
+  /// **'Developed by'**
+  String get aboutDeveloper;
+
+  /// About sheet value.
+  ///
+  /// In en, this message translates to:
+  /// **'Team 7'**
+  String get aboutDeveloperValue;
+
+  /// About sheet row.
+  ///
+  /// In en, this message translates to:
+  /// **'School'**
+  String get aboutSchool;
+
+  /// About sheet value.
+  ///
+  /// In en, this message translates to:
+  /// **'HUIT'**
+  String get aboutSchoolValue;
+
+  /// About sheet row opening the licence page.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source licenses'**
+  String get aboutLicenses;
 
   /// Title of the savings screen and its profile row.
   ///

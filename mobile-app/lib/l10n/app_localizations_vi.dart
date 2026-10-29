@@ -804,52 +804,10 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get helpDashboardTitle => 'Dashboard';
-
-  @override
-  String get helpDashboardBody =>
-      'Xem tổng quan tài sản, thu chi tháng và biểu đồ dòng tiền.';
-
-  @override
-  String get helpLedgerTitle => 'Sổ sách';
-
-  @override
-  String get helpLedgerBody =>
-      'Thêm, lọc và xem chi tiết giao dịch theo ngày, lịch hoặc tháng.';
-
-  @override
-  String get helpScanTitle => 'Quét hóa đơn';
-
-  @override
-  String get helpScanBody =>
-      'Nhấn nút tròn giữa thanh điều hướng để quét hóa đơn bằng AI.';
-
-  @override
-  String get helpAiTitle => 'Phân tích AI';
-
-  @override
-  String get helpAiBody =>
-      'Xem xu hướng chi tiêu và mẫu hành vi tài chính được phân tích tự động.';
-
-  @override
-  String get helpTransferTitle => 'Chuyển tiền';
-
-  @override
-  String get helpTransferBody =>
-      'Chuyển/nhận tiền qua số điện thoại hoặc mã QR.';
-
-  @override
   String get feedbackTitle => 'Đánh giá ứng dụng';
 
   @override
-  String get feedbackDescription =>
-      'Ý kiến của bạn sẽ giúp hệ thống ngày càng hoàn thiện hơn!';
-
-  @override
   String get feedbackHint => 'Nhập cảm nhận hoặc góp ý...';
-
-  @override
-  String get feedbackLater => 'Để sau';
 
   @override
   String get feedbackSubmit => 'Gửi ngay';
@@ -863,6 +821,109 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get aboutDescription =>
       'Ứng dụng quản lý tài chính cá nhân thông minh với AI phân tích chi tiêu.';
+
+  @override
+  String get appearanceLanguageTitle => 'Giao diện và ngôn ngữ';
+
+  @override
+  String get themeCardSystem => 'Hệ thống';
+
+  @override
+  String languageConfirmTitle(String language) {
+    return 'Đổi sang $language?';
+  }
+
+  @override
+  String get languageConfirmMessage =>
+      'Toàn bộ chữ trong ứng dụng sẽ đổi sang ngôn ngữ này.';
+
+  @override
+  String get languageConfirmAction => 'Đổi';
+
+  @override
+  String get notificationSettingsPushDescription =>
+      'Nhận thông báo trên điện thoại';
+
+  @override
+  String get notificationSettingsBudgetAlertDescription =>
+      'Báo khi chi tới 80% và khi vượt hạn mức';
+
+  @override
+  String get moneySourcesTotal => 'Tổng';
+
+  @override
+  String get securityChangePasswordDescription =>
+      'Đổi xong, thiết bị khác phải đăng nhập lại';
+
+  @override
+  String get guideHomeTitle => 'Trang chủ';
+
+  @override
+  String get guideHomeBody =>
+      'Xem số dư, thu chi tháng, ngân sách và các giao dịch gần đây.';
+
+  @override
+  String get guideStatsTitle => 'Thống kê';
+
+  @override
+  String get guideStatsBody =>
+      'Xem chi tiêu theo biểu đồ, lịch tháng và danh mục; lọc và xuất Excel.';
+
+  @override
+  String get guideScanTitle => 'Quét hóa đơn';
+
+  @override
+  String get guideScanBody =>
+      'Nhấn nút tròn giữa thanh dưới, chụp hoặc chọn ảnh hóa đơn. AI đọc tên cửa hàng, ngày và tổng tiền để bạn kiểm tra rồi lưu.';
+
+  @override
+  String get guideAnalysisTitle => 'Phân tích chi tiêu';
+
+  @override
+  String get guideAnalysisBody =>
+      'Xem số tiền tiêu được mỗi ngày, điểm nổi bật, thói quen chi tiêu và gợi ý cân đối.';
+
+  @override
+  String get guideBudgetSavingsTitle => 'Ngân sách và tiết kiệm';
+
+  @override
+  String get guideBudgetSavingsBody =>
+      'Đặt hạn mức chi theo danh mục và theo dõi các mục tiêu tiết kiệm.';
+
+  @override
+  String get feedbackChipEasy => 'Dễ dùng';
+
+  @override
+  String get feedbackChipScan => 'Quét hóa đơn chính xác';
+
+  @override
+  String get feedbackChipLooks => 'Giao diện đẹp';
+
+  @override
+  String get feedbackChipMore => 'Cần thêm tính năng';
+
+  @override
+  String feedbackStarLabel(int count) {
+    return '$count trên 5 sao';
+  }
+
+  @override
+  String get aboutVersion => 'Phiên bản';
+
+  @override
+  String get aboutDeveloper => 'Phát triển';
+
+  @override
+  String get aboutDeveloperValue => 'Nhóm 7';
+
+  @override
+  String get aboutSchool => 'Trường';
+
+  @override
+  String get aboutSchoolValue => 'HUIT';
+
+  @override
+  String get aboutLicenses => 'Giấy phép mã nguồn mở';
 
   @override
   String get savingsTitle => 'Sổ tiết kiệm';

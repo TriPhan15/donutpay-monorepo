@@ -9,18 +9,27 @@ import 'package:finance_ai_app/models/user_model.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/screens/budget/budget_screen.dart';
+import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
 import 'package:finance_ai_app/screens/profile/account_info_screen.dart';
+import 'package:finance_ai_app/screens/profile/guide_page.dart';
 import 'package:finance_ai_app/screens/profile/savings_page.dart';
 import 'package:finance_ai_app/screens/profile/settings_screen.dart';
+import 'package:finance_ai_app/screens/profile/widgets/about_app_sheet.dart';
+import 'package:finance_ai_app/screens/profile/widgets/feedback_sheet.dart';
+import 'package:finance_ai_app/screens/profile/widgets/money_sources_sheet.dart';
+import 'package:finance_ai_app/screens/profile/widgets/notification_settings_sheet.dart';
+import 'package:finance_ai_app/screens/profile/widgets/profile_group.dart';
+import 'package:finance_ai_app/screens/profile/widgets/profile_header_band.dart';
+import 'package:finance_ai_app/screens/profile/widgets/security_sheet.dart';
 import 'package:finance_ai_app/screens/linked/linked_services_page.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/services/social_auth_service.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/widgets/common/app_state_view.dart';
 import 'package:finance_ai_app/widgets/common/demo_badge.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
-import 'package:finance_ai_app/widgets/dialogs/profile_bottom_sheets.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -71,8 +80,8 @@ class _ProfilePageState extends State<ProfilePage> {
       final summary = await AppRepository.instance.getHomeSummary(userId);
       user = summary[AppRepository.summaryUser] as UserModel?;
       wallets = summary[AppRepository.summaryWallets] as List<WalletModel>;
-      txs = summary[AppRepository.summaryTransactions]
-          as List<TransactionModel>;
+      txs =
+          summary[AppRepository.summaryTransactions] as List<TransactionModel>;
     } catch (e) {
       UserFacingError.log('Profile load', e);
       if (!mounted || request != _loadRequest) return;
@@ -95,18 +104,6 @@ class _ProfilePageState extends State<ProfilePage> {
       _wallets = wallets;
       _recentTransactions = sorted.take(20).toList();
     });
-  }
-
-  String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return '?';
-    final first = parts.first.isNotEmpty ? parts.first[0] : '';
-    final last = parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
-    return (first + last).toUpperCase();
   }
 
   /// Signs out. In full mode the server is asked to revoke the tokens first (they are needed for that request), then the
@@ -146,13 +143,29 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _push(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  void _openAccount() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AccountInfoScreen()),
+    ).then((_) => _load());
+  }
+
+  /// The password form of the account screen (T9 spec 3.10: "Đổi mật khẩu" opens the screen of 3.8).
+  void _openChangePassword() {
+    final userId = SessionService.currentUserId;
+    if (userId == null) {
+      AppToast.error(context, context.loc.accountInfoSignInAgain);
+      return;
+    }
+    _push(AccountCredentialsScreen(userId: userId));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    if (_isLoading) {
-      return _buildSkeletonLoading(colors);
-    }
-
     final loc = context.loc;
     final name = _user?.fullName ?? loc.defaultUserName;
     final email = _user?.email ?? '';
@@ -162,377 +175,136 @@ class _ProfilePageState extends State<ProfilePage> {
     final language = context.select(
       (LanguageCubit cubit) => cubit.state.language,
     );
+    const gap = SizedBox(height: 20);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildProfileHeader(colors, name, email),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    _buildSection(
-                      colors,
-                      title: loc.credentialsTitle,
-                      icon: Icons.manage_accounts_rounded,
-                      items: [
-                        _SectionItem(
-                          icon: Icons.person_rounded,
-                          label: loc.accountInfoTitle,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AccountInfoScreen(),
-                            ),
-                          ).then((_) => _load()),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSection(
-                      colors,
-                      title: loc.profileUtilities,
-                      icon: Icons.widgets_rounded,
-                      items: [
-                        _SectionItem(
-                          icon: Icons.account_balance_rounded,
-                          label: loc.profileMoneySources,
-                          onTap: () => ProfileBottomSheets.showBankSources(
-                            context,
-                            _wallets,
-                          ),
-                        ),
-                        _SectionItem(
-                          icon: Icons.link_rounded,
-                          label: loc.profileLinkedServices,
-                          // The wallets are simulated: the row says so before it is opened.
-                          badge: const DemoBadge(),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LinkedServicesPage(),
-                            ),
-                          ),
-                        ),
-                        _SectionItem(
-                          icon: Icons.savings_rounded,
-                          label: loc.savingsTitle,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SavingsPage(),
-                            ),
-                          ),
-                        ),
-                        _SectionItem(
-                          icon: Icons.pie_chart_rounded,
-                          label: loc.profileBudget,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const BudgetScreen(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSection(
-                      colors,
-                      title: loc.settings,
-                      icon: Icons.settings_rounded,
-                      items: [
-                        _SectionItem(
-                          icon: Icons.language_rounded,
-                          label: loc.language,
-                          subtitle: loc.languageLabel(language),
-                          onTap: _openSettings,
-                        ),
-                        _SectionItem(
-                          icon: Icons.notifications_rounded,
-                          label: loc.notificationsTitle,
-                          onTap: () =>
-                              ProfileBottomSheets.showNotificationSettings(
-                                context,
-                              ),
-                        ),
-                        _SectionItem(
-                          icon: Icons.lock_rounded,
-                          label: loc.profileSecurityPrivacy,
-                          onTap: () => ProfileBottomSheets.showSecurityMenu(
-                            context,
-                            _recentTransactions,
-                          ),
-                        ),
-                        _SectionItem(
-                          icon: Icons.palette_rounded,
-                          label: loc.theme,
-                          subtitle: loc.themeModeLabel(themeMode),
-                          onTap: _openSettings,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSection(
-                      colors,
-                      title: loc.profileSupport,
-                      icon: Icons.help_rounded,
-                      items: [
-                        _SectionItem(
-                          icon: Icons.help_outline_rounded,
-                          label: loc.profileHelp,
-                          onTap: () => ProfileBottomSheets.showHelp(context),
-                        ),
-                        _SectionItem(
-                          icon: Icons.feedback_rounded,
-                          label: loc.profileFeedback,
-                          onTap: () =>
-                              ProfileBottomSheets.showFeedback(context),
-                        ),
-                        _SectionItem(
-                          icon: Icons.info_outline_rounded,
-                          label: loc.profileAbout,
-                          subtitle: 'v1.0.0',
-                          onTap: () => ProfileBottomSheets.showAbout(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSection(
-                      colors,
-                      title: '',
-                      icon: Icons.more_horiz_rounded,
-                      hideHeader: true,
-                      items: [
-                        _SectionItem(
-                          icon: Icons.logout_rounded,
-                          label: loc.profileLogout,
-                          color: colors.error,
-                          onTap: _logout,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 100),
+        children: [
+          ProfileHeaderBand(
+            name: name,
+            email: email,
+            onOpenAccount: _openAccount,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileHeader(ColorScheme colors, String name, String email) {
-    final initials = _initials(name);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.loc.navProfile,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        CircleAvatar(
-          radius: 44,
-          backgroundColor: colors.primary,
-          child: Text(
-            initials,
-            style: TextStyle(
-              color: colors.onPrimary,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          name,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          email,
-          style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSection(
-    ColorScheme colors, {
-    required String title,
-    required IconData icon,
-    required List<_SectionItem> items,
-    bool hideHeader = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!hideHeader)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8, left: 4),
-            child: Row(
-              children: [
-                Icon(icon, color: colors.primary, size: 17),
-                const SizedBox(width: 6),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        // A Material, not a coloured Container: ListTile paints its background and ink splashes on the nearest Material,
-        // so a coloured DecoratedBox in between would hide them (Flutter asserts on it).
-        Material(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(16),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: items.asMap().entries.map((e) {
-              final item = e.value;
-              return Column(
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.only(top: 48),
+              child: Center(child: AppStateView.loading()),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ListTile(
-                    leading: Icon(
-                      item.icon,
-                      color: item.color ?? colors.primary,
-                      size: 22,
-                    ),
-                    // Without a colour of its own, the title and the subtitle take the ListTile defaults of the
-                    // theme: onSurface and onSurfaceVariant.
-                    title: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            item.label,
-                            style: TextStyle(color: item.color, fontSize: 14),
-                          ),
-                        ),
-                        if (item.badge case final Widget badge) ...[
-                          const SizedBox(width: 8),
-                          badge,
-                        ],
-                      ],
-                    ),
-                    subtitle: item.subtitle != null
-                        ? Text(
-                            item.subtitle!,
-                            style: const TextStyle(fontSize: 12),
-                          )
-                        : null,
-                    trailing: Icon(
-                      Icons.chevron_right_rounded,
-                      color: colors.onSurfaceVariant.withValues(alpha: 0.5),
-                      size: 18,
-                    ),
-                    onTap: item.onTap,
+                  ProfileGroup(
+                    title: loc.credentialsTitle,
+                    rows: [
+                      ProfileRow(
+                        icon: Icons.person_outline_rounded,
+                        label: loc.accountInfoTitle,
+                        onTap: _openAccount,
+                      ),
+                    ],
                   ),
-                  if (e.key < items.length - 1)
-                    Divider(
-                      height: 1,
-                      indent: 60,
-                      endIndent: 16,
-                      color: colors.onSurfaceVariant.withValues(alpha: 0.1),
-                    ),
+                  gap,
+                  ProfileGroup(
+                    title: loc.profileUtilities,
+                    rows: [
+                      ProfileRow(
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: loc.profileMoneySources,
+                        onTap: () => showMoneySourcesSheet(context, _wallets),
+                      ),
+                      ProfileRow(
+                        icon: Icons.link_rounded,
+                        label: loc.profileLinkedServices,
+                        // The wallets are simulated: the row says so before it is opened.
+                        badge: const DemoBadge(),
+                        onTap: () => _push(const LinkedServicesPage()),
+                      ),
+                      ProfileRow(
+                        icon: Icons.savings_outlined,
+                        label: loc.savingsTitle,
+                        onTap: () => _push(const SavingsPage()),
+                      ),
+                      ProfileRow(
+                        icon: Icons.track_changes_rounded,
+                        label: loc.profileBudget,
+                        onTap: () => _push(const BudgetScreen()),
+                      ),
+                    ],
+                  ),
+                  gap,
+                  ProfileGroup(
+                    title: loc.settings,
+                    rows: [
+                      ProfileRow(
+                        icon: Icons.light_mode_outlined,
+                        label: loc.theme,
+                        value: loc.themeModeLabel(themeMode),
+                        onTap: _openSettings,
+                      ),
+                      ProfileRow(
+                        icon: Icons.language_rounded,
+                        label: loc.language,
+                        value: loc.languageLabel(language),
+                        onTap: _openSettings,
+                      ),
+                      ProfileRow(
+                        icon: Icons.notifications_none_rounded,
+                        label: loc.notificationsTitle,
+                        onTap: () => showNotificationSettingsSheet(context),
+                      ),
+                      ProfileRow(
+                        icon: Icons.lock_outline_rounded,
+                        label: loc.profileSecurityPrivacy,
+                        onTap: () => showSecuritySheet(
+                          context,
+                          recentTransactions: _recentTransactions,
+                          onChangePassword: _openChangePassword,
+                        ),
+                      ),
+                    ],
+                  ),
+                  gap,
+                  ProfileGroup(
+                    title: loc.profileSupport,
+                    rows: [
+                      ProfileRow(
+                        icon: Icons.help_outline_rounded,
+                        label: loc.profileHelp,
+                        onTap: () => _push(const GuidePage()),
+                      ),
+                      ProfileRow(
+                        icon: Icons.chat_bubble_outline_rounded,
+                        label: loc.profileFeedback,
+                        onTap: () => showFeedbackSheet(context),
+                      ),
+                      ProfileRow(
+                        icon: Icons.info_outline_rounded,
+                        label: loc.profileAbout,
+                        onTap: () => showAboutAppSheet(context),
+                      ),
+                    ],
+                  ),
+                  gap,
+                  ProfileGroup(
+                    rows: [
+                      ProfileRow(
+                        icon: Icons.logout_rounded,
+                        label: loc.profileLogout,
+                        danger: true,
+                        onTap: _logout,
+                      ),
+                    ],
+                  ),
                 ],
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSkeletonLoading(ColorScheme colors) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            Align(
-              alignment: Alignment.center,
-              child: _buildBox(
-                colors,
-                width: 88,
-                height: 88,
-                shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.center,
-              child: _buildBox(colors, width: 150, height: 20),
-            ),
-            const SizedBox(height: 32),
-            _buildBox(colors, height: 150, borderRadius: 16),
-            const SizedBox(height: 24),
-            _buildBox(colors, height: 200, borderRadius: 16),
-          ],
-        ),
+        ],
       ),
     );
   }
-
-  Widget _buildBox(
-    ColorScheme colors, {
-    double? width,
-    double? height,
-    BoxShape shape = BoxShape.rectangle,
-    double borderRadius = 0,
-  }) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: colors.surface.withValues(alpha: 0.6),
-        shape: shape,
-        borderRadius: shape == BoxShape.rectangle
-            ? BorderRadius.circular(borderRadius)
-            : null,
-      ),
-    );
-  }
-}
-
-class _SectionItem {
-  final IconData icon;
-  final String label;
-  final String? subtitle;
-  final Color? color;
-
-  /// Shown right after the label, e.g. [DemoBadge].
-  final Widget? badge;
-  final VoidCallback onTap;
-  const _SectionItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.subtitle,
-    this.color,
-    this.badge,
-  });
 }

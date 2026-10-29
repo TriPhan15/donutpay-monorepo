@@ -5,10 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
+import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
+import 'package:finance_ai_app/screens/profile/account_info_screen.dart';
+import 'package:finance_ai_app/screens/profile/guide_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
 import 'package:finance_ai_app/screens/profile/settings_screen.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
@@ -40,7 +44,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  tearDown(() => Intl.defaultLocale = null);
+  tearDown(() {
+    Intl.defaultLocale = null;
+    AppToast.resetForTest();
+  });
 
   Future<void> pumpProfile(
     WidgetTester tester,
@@ -94,10 +101,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SettingsScreen), findsOneWidget);
 
-      await tester.tap(find.text('Tối'));
+      await tester.tap(find.byKey(const ValueKey('theme-card-dark')));
       await tester.pumpAndSettle();
-      // pageBack() looks for the English "Back" tooltip; in Vietnamese the button says "Quay lại".
-      await tester.tap(find.byType(BackButton));
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
       await tester.pumpAndSettle();
 
       expect(find.byType(SettingsScreen), findsNothing);
@@ -110,6 +116,66 @@ void main() {
     },
   );
 
+  testWidgets('the band shows the profile and opens the account information', (
+    tester,
+  ) async {
+    await pumpProfile(tester, FakeSettingsRepository());
+
+    for (final caption in ['Tài khoản', 'Tiện ích', 'Cài đặt', 'Hỗ trợ']) {
+      expect(find.text(caption), findsOneWidget, reason: caption);
+    }
+    expect(find.text('an@example.com'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('profile-open-account')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AccountInfoScreen), findsOneWidget);
+  });
+
+  testWidgets('Thông báo opens its sheet and Hướng dẫn opens the guide page', (
+    tester,
+  ) async {
+    await pumpProfile(tester, FakeSettingsRepository());
+
+    await tester.tap(find.text('Thông báo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cài đặt thông báo'), findsOneWidget);
+    await tester.tap(find.byTooltip('Đóng'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hướng dẫn sử dụng'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GuidePage), findsOneWidget);
+  });
+
+  testWidgets(
+    'Đổi mật khẩu in the security sheet opens the credentials screen',
+    (tester) async {
+      await pumpProfile(tester, FakeSettingsRepository());
+
+      await tester.tap(find.text('Bảo mật & Quyền riêng tư'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Đổi mật khẩu'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AccountCredentialsScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets('without a session Đổi mật khẩu asks to sign in again', (
+    tester,
+  ) async {
+    await pumpProfile(tester, FakeSettingsRepository());
+    await SessionService.clearSession();
+
+    await tester.tap(find.text('Bảo mật & Quyền riêng tư'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đổi mật khẩu'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AccountCredentialsScreen), findsNothing);
+    expect(find.text('Vui lòng đăng nhập lại.'), findsOneWidget);
+  });
+
   testWidgets('the profile loads /mine once per reload', (tester) async {
     await pumpProfile(tester, FakeSettingsRepository());
 
@@ -117,9 +183,6 @@ void main() {
       backend.calls.where((c) => c == 'GET /api/transactions/mine'),
       hasLength(1),
     );
-    expect(
-      backend.calls.where((c) => c == 'GET /api/users/me'),
-      hasLength(1),
-    );
+    expect(backend.calls.where((c) => c == 'GET /api/users/me'), hasLength(1));
   });
 }

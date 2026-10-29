@@ -1062,61 +1062,13 @@
       }
     }
   },
-  "helpDashboardTitle": "Dashboard",
-  "@helpDashboardTitle": {
-    "description": "User guide topic."
-  },
-  "helpDashboardBody": "See your assets, the month's income and spending and the cash flow chart.",
-  "@helpDashboardBody": {
-    "description": "User guide text."
-  },
-  "helpLedgerTitle": "Ledger",
-  "@helpLedgerTitle": {
-    "description": "User guide topic."
-  },
-  "helpLedgerBody": "Add, filter and view transactions by day, calendar or month.",
-  "@helpLedgerBody": {
-    "description": "User guide text."
-  },
-  "helpScanTitle": "Receipt scan",
-  "@helpScanTitle": {
-    "description": "User guide topic."
-  },
-  "helpScanBody": "Tap the round button in the middle of the navigation bar to scan a receipt with AI.",
-  "@helpScanBody": {
-    "description": "User guide text."
-  },
-  "helpAiTitle": "AI analysis",
-  "@helpAiTitle": {
-    "description": "User guide topic."
-  },
-  "helpAiBody": "See spending trends and financial habits analysed automatically.",
-  "@helpAiBody": {
-    "description": "User guide text."
-  },
-  "helpTransferTitle": "Transfers",
-  "@helpTransferTitle": {
-    "description": "User guide topic."
-  },
-  "helpTransferBody": "Send or receive money by phone number or QR code.",
-  "@helpTransferBody": {
-    "description": "User guide text."
-  },
   "feedbackTitle": "Rate the app",
   "@feedbackTitle": {
     "description": "Title of the feedback dialog (a star follows it)."
   },
-  "feedbackDescription": "Your feedback helps us keep improving the app!",
-  "@feedbackDescription": {
-    "description": "Text of the feedback dialog."
-  },
   "feedbackHint": "Share your thoughts or suggestions...",
   "@feedbackHint": {
     "description": "Hint of the feedback comment field."
-  },
-  "feedbackLater": "Later",
-  "@feedbackLater": {
-    "description": "Button that closes the feedback dialog."
   },
   "feedbackSubmit": "Send now",
   "@feedbackSubmit": {
@@ -1133,6 +1085,136 @@
   "aboutDescription": "A smart personal finance app with AI spending analysis.",
   "@aboutDescription": {
     "description": "Text of the about dialog."
+  },
+  "appearanceLanguageTitle": "Appearance and language",
+  "@appearanceLanguageTitle": {
+    "description": "Title of the appearance and language screen."
+  },
+  "themeCardSystem": "System",
+  "@themeCardSystem": {
+    "description": "Label of the system theme preview card."
+  },
+  "languageConfirmTitle": "Switch to {language}?",
+  "@languageConfirmTitle": {
+    "description": "Title of the sheet confirming a language change.",
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "languageConfirmMessage": "All text in the app will switch to this language.",
+  "@languageConfirmMessage": {
+    "description": "Message of the language change sheet."
+  },
+  "languageConfirmAction": "Switch",
+  "@languageConfirmAction": {
+    "description": "Confirm button of the language change sheet."
+  },
+  "notificationSettingsPushDescription": "Get notifications on this phone",
+  "@notificationSettingsPushDescription": {
+    "description": "Description of the push notification switch."
+  },
+  "notificationSettingsBudgetAlertDescription": "Alerts at 80% of a budget and when it is exceeded",
+  "@notificationSettingsBudgetAlertDescription": {
+    "description": "Description of the budget alert switch."
+  },
+  "moneySourcesTotal": "Total",
+  "@moneySourcesTotal": {
+    "description": "Last row of the money sources sheet."
+  },
+  "securityChangePasswordDescription": "Other devices will have to sign in again",
+  "@securityChangePasswordDescription": {
+    "description": "Description of the change password row in the security sheet."
+  },
+  "guideHomeTitle": "Home",
+  "@guideHomeTitle": {
+    "description": "Guide step title."
+  },
+  "guideHomeBody": "See your balance, this month's income and spending, your budget and recent transactions.",
+  "@guideHomeBody": {
+    "description": "Guide step text."
+  },
+  "guideStatsTitle": "Statistics",
+  "@guideStatsTitle": {
+    "description": "Guide step title."
+  },
+  "guideStatsBody": "See spending as a chart, a month calendar or by category; filter and export to Excel.",
+  "@guideStatsBody": {
+    "description": "Guide step text."
+  },
+  "guideScanTitle": "Scan receipts",
+  "@guideScanTitle": {
+    "description": "Guide step title."
+  },
+  "guideScanBody": "Tap the round button in the middle of the bottom bar and take or pick a photo. The AI reads the store, the date and the total for you to check and save.",
+  "@guideScanBody": {
+    "description": "Guide step text."
+  },
+  "guideAnalysisTitle": "Spending analysis",
+  "@guideAnalysisTitle": {
+    "description": "Guide step title."
+  },
+  "guideAnalysisBody": "See what you can spend each day, highlights, spending habits and balance tips.",
+  "@guideAnalysisBody": {
+    "description": "Guide step text."
+  },
+  "guideBudgetSavingsTitle": "Budgets and savings",
+  "@guideBudgetSavingsTitle": {
+    "description": "Guide step title."
+  },
+  "guideBudgetSavingsBody": "Set spending limits per category and follow your savings goals.",
+  "@guideBudgetSavingsBody": {
+    "description": "Guide step text."
+  },
+  "feedbackChipEasy": "Easy to use",
+  "@feedbackChipEasy": {
+    "description": "Feedback suggestion chip."
+  },
+  "feedbackChipScan": "Accurate receipt scanning",
+  "@feedbackChipScan": {
+    "description": "Feedback suggestion chip."
+  },
+  "feedbackChipLooks": "Nice design",
+  "@feedbackChipLooks": {
+    "description": "Feedback suggestion chip."
+  },
+  "feedbackChipMore": "Needs more features",
+  "@feedbackChipMore": {
+    "description": "Feedback suggestion chip."
+  },
+  "feedbackStarLabel": "{count} of 5 stars",
+  "@feedbackStarLabel": {
+    "description": "Tooltip of a rating star.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aboutVersion": "Version",
+  "@aboutVersion": {
+    "description": "About sheet row."
+  },
+  "aboutDeveloper": "Developed by",
+  "@aboutDeveloper": {
+    "description": "About sheet row."
+  },
+  "aboutDeveloperValue": "Team 7",
+  "@aboutDeveloperValue": {
+    "description": "About sheet value."
+  },
+  "aboutSchool": "School",
+  "@aboutSchool": {
+    "description": "About sheet row."
+  },
+  "aboutSchoolValue": "HUIT",
+  "@aboutSchoolValue": {
+    "description": "About sheet value."
+  },
+  "aboutLicenses": "Open source licenses",
+  "@aboutLicenses": {
+    "description": "About sheet row opening the licence page."
   },
   "savingsTitle": "Savings",
   "@savingsTitle": {

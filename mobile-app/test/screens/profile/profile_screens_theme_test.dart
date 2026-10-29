@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
-import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/theme/band_colors.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/linked/linked_services_page.dart';
@@ -53,16 +52,6 @@ Color? _materialAround(WidgetTester tester, Finder finder) => tester
       find.ancestor(of: finder, matching: find.byType(Material)).first,
     )
     .color;
-
-/// The colours of every decorated [Container] inside what [finder] finds.
-Set<Color?> _fills(WidgetTester tester, Finder finder) => tester
-    .widgetList<Container>(
-      find.descendant(of: finder, matching: find.byType(Container)),
-    )
-    .map((container) => container.decoration)
-    .whereType<BoxDecoration>()
-    .map((decoration) => decoration.color)
-    .toSet();
 
 void main() {
   final backend = FakeBackend();
@@ -130,43 +119,37 @@ void main() {
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {
     group('${mode.name} theme', () {
       testWidgets(
-        'ProfilePage: skeleton, header, sections, subtitles and the sign-out row follow the theme',
+        'ProfilePage: spinner, band, groups, icon boxes, values and the sign-out row follow the theme',
         (tester) async {
           // The tab as MainScaffold shows it: its transparent Scaffold lets the page colour through.
           await start(tester, const Scaffold(body: ProfilePage()), mode);
           await tester.pump();
           final colors = themeOf(tester, ProfilePage).colorScheme;
           expect(
-            _fills(tester, find.byType(ProfilePage)),
-            contains(colors.surface.withValues(alpha: 0.6)),
-            reason: 'the loading skeleton',
+            find.byType(AppStateView),
+            findsOneWidget,
+            reason: 'the small spinner while loading',
           );
 
           await tester.pumpAndSettle();
 
-          expect(paintedColor(tester, find.text('Cá nhân')), colors.onSurface);
-          expect(paintedColor(tester, find.text('an')), colors.onSurface);
+          expect(find.byType(AppStateView), findsNothing);
+          expect(
+            paintedColor(tester, find.text('Cá nhân')),
+            BandColors.primary,
+          );
+          expect(paintedColor(tester, find.text('an')), BandColors.primary);
           expect(
             paintedColor(tester, find.text('an@example.com')),
-            colors.onSurfaceVariant,
+            BandColors.secondary,
           );
-          expect(
-            tester
-                .widget<CircleAvatar>(find.byType(CircleAvatar))
-                .backgroundColor,
-            colors.primary,
-          );
-          expect(paintedColor(tester, find.text('A')), colors.onPrimary);
+          expect(paintedColor(tester, find.text('A')), BandColors.primary);
 
           expect(
             paintedColor(tester, find.text('Tài khoản')),
-            colors.onSurface,
+            colors.onSurfaceVariant,
           );
-          expect(
-            paintedColor(tester, find.byIcon(Icons.manage_accounts_rounded)),
-            colors.primary,
-          );
-          final section = tester.widget<Material>(
+          final group = tester.widget<Material>(
             find
                 .ancestor(
                   of: find.text('Thông tin tài khoản'),
@@ -174,29 +157,25 @@ void main() {
                 )
                 .first,
           );
-          expect(section.color, colors.surface);
+          expect(group.color, colors.surface);
           expect(
             paintedColor(tester, find.text('Thông tin tài khoản')),
             colors.onSurface,
           );
           expect(
-            paintedColor(tester, find.byIcon(Icons.person_rounded)),
+            paintedColor(tester, find.byIcon(Icons.person_outline_rounded)),
             colors.primary,
           );
           expect(
-            paintedColor(tester, find.text('Tiếng Việt')),
-            colors.onSurfaceVariant,
+            boxColor(tester, find.byIcon(Icons.person_outline_rounded)),
+            colors.primaryContainer,
           );
           expect(
             paintedColor(
               tester,
-              find.byIcon(Icons.chevron_right_rounded).first,
+              find.text(mode == ThemeMode.light ? 'Sáng' : 'Tối'),
             ),
-            colors.onSurfaceVariant.withValues(alpha: 0.5),
-          );
-          expect(
-            tester.widget<Divider>(find.byType(Divider).first).color,
-            colors.onSurfaceVariant.withValues(alpha: 0.1),
+            colors.onSurfaceVariant,
           );
           expect(paintedColor(tester, find.text('Đăng xuất')), colors.error);
           expect(
@@ -488,48 +467,4 @@ void main() {
       );
     });
   }
-
-  testWidgets(
-    'light mode keeps the colours of the profile screens from before the migration',
-    (tester) async {
-      await start(tester, const Scaffold(body: ProfilePage()), ThemeMode.light);
-      await tester.pumpAndSettle();
-
-      expect(paintedColor(tester, find.text('Cá nhân')), AppTheme.textPrimary);
-      expect(
-        paintedColor(tester, find.text('an@example.com')),
-        AppTheme.textGray,
-      );
-      expect(
-        tester.widget<CircleAvatar>(find.byType(CircleAvatar)).backgroundColor,
-        AppTheme.primary,
-      );
-      expect(paintedColor(tester, find.text('A')), Colors.white);
-      expect(
-        tester
-            .widget<Material>(
-              find
-                  .ancestor(
-                    of: find.text('Thông tin tài khoản'),
-                    matching: find.byType(Material),
-                  )
-                  .first,
-            )
-            .color,
-        AppTheme.navyLight,
-      );
-      expect(
-        paintedColor(tester, find.text('Thông tin tài khoản')),
-        AppTheme.textWhite,
-      );
-      expect(
-        paintedColor(tester, find.byIcon(Icons.person_rounded)),
-        AppTheme.mintAccent,
-      );
-      expect(
-        paintedColor(tester, find.text('Đăng xuất')),
-        AppTheme.dangerColor,
-      );
-    },
-  );
 }
