@@ -25,6 +25,9 @@ ADVICE_MAX_MONTHS = 6
 NO_EXPENSE_MESSAGE = "Không có giao dịch chi để phân tích."
 NOT_ENOUGH_HISTORY_MESSAGE = "Cần ít nhất một tháng chi tiêu trọn vẹn để AI đưa ra lời khuyên."
 NO_DEADLINE_PREFIX = "Mục tiêu chưa có hạn nên AI không tính số cần góp mỗi tháng."
+ADVICE_FAILED_MESSAGE = "AI chưa thể đưa ra lời khuyên cho dữ liệu này."
+# Các câu AdviceError được phép trả nguyên văn cho app; câu khác bị thay bằng ADVICE_FAILED_MESSAGE.
+ADVICE_ERROR_MESSAGES: FrozenSet[str] = frozenset({NO_EXPENSE_MESSAGE, NOT_ENOUGH_HISTORY_MESSAGE})
 
 
 class AdviceError(ValueError):
@@ -75,7 +78,10 @@ def advise(
         raise AdviceError(NO_EXPENSE_MESSAGE)
 
     first_day = min([e.day for e in expenses] + [i.day for i in incomes])
-    months = full_months(first_day, today)
+    # Chỉ các tháng trọn vẹn có ít nhất một khoản chi: tháng trống ở giữa không được tính là chi 0đ,
+    # nếu không một giao dịch lẻ từ lâu sẽ chia nhỏ chi tiêu thật và thổi phồng phần dư.
+    expense_months = {(e.day.year, e.day.month) for e in expenses}
+    months = [m for m in full_months(first_day, today) if m in expense_months]
     month_set = set(months)
     exp = [e for e in expenses if (e.day.year, e.day.month) in month_set]
     if not months or not exp:
@@ -99,8 +105,12 @@ def advise(
         for t, m in sorted(tag_monthly.items(), key=lambda kv: kv[1], reverse=True)
     ]
 
-    has_deadline = months_left is not None or needed_monthly is not None
-    if needed_monthly is None:
+    # Không có mục tiêu (target = 0) thì không có hạn và không cần góp gì, dù request có months_left/needed_monthly.
+    has_target = target > 0
+    has_deadline = has_target and (months_left is not None or needed_monthly is not None)
+    if not has_target:
+        needed_monthly = 0.0
+    elif needed_monthly is None:
         if months_left is not None and months_left > 0:
             needed_monthly = max(target - current, 0.0) / months_left
         else:
