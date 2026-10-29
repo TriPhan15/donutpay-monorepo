@@ -1670,15 +1670,6 @@
   "@paymentWithdrawal": {
     "description": "Order type: withdrawal."
   },
-  "paymentOrderCode": "Code: {code}",
-  "@paymentOrderCode": {
-    "description": "The order code.",
-    "placeholders": {
-      "code": {
-        "type": "String"
-      }
-    }
-  },
   "paymentCancelOrder": "Cancel order",
   "@paymentCancelOrder": {
     "description": "Button that cancels a pending order."
@@ -1716,35 +1707,9 @@
   "@linkedDemoWallet": {
     "description": "Name of the demo e-wallet."
   },
-  "linkedSyncFrom": "Sync from {wallet}",
-  "@linkedSyncFrom": {
-    "description": "Title of the sync dialog.",
-    "placeholders": {
-      "wallet": {
-        "type": "String"
-      }
-    }
-  },
-  "linkedAmountPrompt": "Amount to add to your spending budget:",
-  "@linkedAmountPrompt": {
-    "description": "Sync dialog prompt."
-  },
-  "linkedAmountHint": "e.g. 100000",
-  "@linkedAmountHint": {
-    "description": "Example amount in the sync dialog."
-  },
   "linkedSync": "Sync",
   "@linkedSync": {
     "description": "Button that syncs money from a wallet."
-  },
-  "linkedMinAmount": "The minimum amount is {amount}.",
-  "@linkedMinAmount": {
-    "description": "The amount is below the minimum.",
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
   },
   "linkedSynced": "Synced {amount} to your spending budget.",
   "@linkedSynced": {
@@ -1768,21 +1733,78 @@
   "@linkedHistoryTooltip": {
     "description": "Tooltip of the history button."
   },
-  "linkedWalletsHeading": "Linked e-wallets",
-  "@linkedWalletsHeading": {
-    "description": "Heading of the wallet list."
-  },
   "linkedWalletsDescription": "Sync money from a wallet into your budget to manage spending.",
   "@linkedWalletsDescription": {
     "description": "Explains the wallet list."
   },
-  "linkedSyncing": "Syncing... finish the payment on the gateway.",
-  "@linkedSyncing": {
-    "description": "Shown while a payment is pending."
-  },
   "linkedLinked": "Linked",
   "@linkedLinked": {
     "description": "Status of a linked wallet."
+  },
+  "linkedSyncingFrom": "Syncing {amount} from {wallet}… finish the payment on the gateway.",
+  "@linkedSyncingFrom": {
+    "description": "Banner while a sync waits for the payment gateway.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "wallet": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedSheetTitle": "Sync money",
+  "@linkedSheetTitle": {
+    "description": "Title of the amount sheet of a wallet sync."
+  },
+  "linkedSheetFrom": "From {wallet}",
+  "@linkedSheetFrom": {
+    "description": "Wallet card of the amount sheet.",
+    "placeholders": {
+      "wallet": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedSheetTarget": "Into your spending budget",
+  "@linkedSheetTarget": {
+    "description": "Second line of the wallet card of the amount sheet."
+  },
+  "linkedAmountLabel": "Amount to add",
+  "@linkedAmountLabel": {
+    "description": "Label of the amount field of a wallet sync."
+  },
+  "linkedMinAmountHint": "Minimum {amount}. You will be taken to the {wallet} gateway to pay.",
+  "@linkedMinAmountHint": {
+    "description": "Line under the quick amounts of a wallet sync.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "wallet": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedContinuePayment": "Continue to payment",
+  "@linkedContinuePayment": {
+    "description": "Button of the amount sheet."
+  },
+  "paymentOrderDetails": "Order details",
+  "@paymentOrderDetails": {
+    "description": "Title of the order details sheet."
+  },
+  "paymentDetailWallet": "Wallet",
+  "@paymentDetailWallet": {
+    "description": "Wallet row of the order details sheet."
+  },
+  "paymentDetailCode": "Order code",
+  "@paymentDetailCode": {
+    "description": "Order code row of the order details sheet."
+  },
+  "paymentDetailTime": "Time",
+  "@paymentDetailTime": {
+    "description": "Time row of the order details sheet."
   },
   "commonDelete": "Delete",
   "@commonDelete": {

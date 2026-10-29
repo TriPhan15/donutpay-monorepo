@@ -1255,11 +1255,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get paymentWithdrawal => 'Rút tiền';
 
   @override
-  String paymentOrderCode(String code) {
-    return 'Mã: $code';
-  }
-
-  @override
   String get paymentCancelOrder => 'Hủy đơn';
 
   @override
@@ -1287,23 +1282,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get linkedDemoWallet => 'Ví Demo';
 
   @override
-  String linkedSyncFrom(String wallet) {
-    return 'Đồng bộ từ $wallet';
-  }
-
-  @override
-  String get linkedAmountPrompt => 'Số tiền nạp vào ngân sách chi tiêu:';
-
-  @override
-  String get linkedAmountHint => 'VD: 100000';
-
-  @override
   String get linkedSync => 'Đồng bộ';
-
-  @override
-  String linkedMinAmount(String amount) {
-    return 'Số tiền tối thiểu $amount.';
-  }
 
   @override
   String linkedSynced(String amount) {
@@ -1319,17 +1298,50 @@ class AppLocalizationsVi extends AppLocalizations {
   String get linkedHistoryTooltip => 'Lịch sử đồng bộ';
 
   @override
-  String get linkedWalletsHeading => 'Ví điện tử đã liên kết';
-
-  @override
   String get linkedWalletsDescription =>
       'Đồng bộ tiền từ ví vào ngân sách để quản lý chi tiêu.';
 
   @override
-  String get linkedSyncing => 'Đang đồng bộ... hoàn tất thanh toán trên cổng.';
+  String get linkedLinked => 'Đã liên kết';
 
   @override
-  String get linkedLinked => 'Đã liên kết';
+  String linkedSyncingFrom(String amount, String wallet) {
+    return 'Đang đồng bộ $amount từ $wallet… hoàn tất thanh toán trên cổng.';
+  }
+
+  @override
+  String get linkedSheetTitle => 'Đồng bộ tiền';
+
+  @override
+  String linkedSheetFrom(String wallet) {
+    return 'Từ $wallet';
+  }
+
+  @override
+  String get linkedSheetTarget => 'Vào ngân sách chi tiêu';
+
+  @override
+  String get linkedAmountLabel => 'Số tiền nạp';
+
+  @override
+  String linkedMinAmountHint(String amount, String wallet) {
+    return 'Tối thiểu $amount. Bạn sẽ được chuyển sang cổng $wallet để thanh toán.';
+  }
+
+  @override
+  String get linkedContinuePayment => 'Tiếp tục thanh toán';
+
+  @override
+  String get paymentOrderDetails => 'Chi tiết đơn';
+
+  @override
+  String get paymentDetailWallet => 'Ví';
+
+  @override
+  String get paymentDetailCode => 'Mã đơn';
+
+  @override
+  String get paymentDetailTime => 'Thời gian';
 
   @override
   String get commonDelete => 'Xóa';

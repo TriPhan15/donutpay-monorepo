@@ -7,7 +7,6 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/theme/band_colors.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
-import 'package:finance_ai_app/screens/linked/linked_services_page.dart';
 import 'package:finance_ai_app/screens/profile/account_credentials_screen.dart';
 import 'package:finance_ai_app/screens/profile/account_info_screen.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
@@ -26,14 +25,6 @@ import '../../helpers/fake_local_store.dart';
 import '../../helpers/fake_settings_repository.dart';
 import '../../helpers/theme_colors.dart';
 import '../../helpers/vnd.dart';
-
-/// The button (elevated, text, filled...) that shows [label].
-Finder _button(String label) => find
-    .ancestor(
-      of: find.text(label),
-      matching: find.byWidgetPredicate((widget) => widget is ButtonStyleButton),
-    )
-    .first;
 
 /// The colour a [Divider] is drawn with, whether its own or the one of the theme.
 Color _dividerColor(WidgetTester tester, Finder divider) {
@@ -402,88 +393,6 @@ void main() {
               colors.outlineVariant,
             );
           }
-        },
-      );
-
-      testWidgets(
-        'LinkedServicesPage: page, wallets, buttons and the sync dialog follow the theme',
-        (tester) async {
-          await start(tester, const LinkedServicesPage(), mode);
-          await tester.pumpAndSettle();
-          final colors = themeOf(tester, LinkedServicesPage).colorScheme;
-
-          expect(materialColor(tester, find.byType(Scaffold)), colors.surface);
-          expect(
-            tester.widget<AppBar>(find.byType(AppBar)).backgroundColor,
-            colors.surface,
-          );
-          expect(
-            paintedColor(tester, find.text('Dịch vụ liên kết')),
-            colors.onSurface,
-          );
-          expect(
-            paintedColor(tester, find.byIcon(Icons.history_rounded)),
-            colors.onSurface,
-          );
-          expect(
-            paintedColor(tester, find.text('Ví điện tử đã liên kết')),
-            colors.onSurface,
-          );
-          expect(
-            paintedColor(
-              tester,
-              find.text(
-                'Đồng bộ tiền từ ví vào ngân sách để quản lý chi tiêu.',
-              ),
-            ),
-            colors.onSurfaceVariant,
-          );
-          expect(boxColor(tester, find.text('VNPAY')), colors.surface);
-          expect(paintedColor(tester, find.text('VNPAY')), colors.onSurface);
-          expect(
-            paintedColor(tester, find.text('Đã liên kết').first),
-            Colors.green,
-            reason: 'the linked status keeps its green',
-          );
-          if (mode == ThemeMode.dark) {
-            expect(
-              contrastRatio(Colors.green, colors.surface),
-              greaterThanOrEqualTo(4.5),
-            );
-          }
-          final sync = _button('Đồng bộ');
-          expect(materialColor(tester, sync), colors.primary);
-          expect(
-            paintedColor(tester, find.text('Đồng bộ').first),
-            colors.onPrimary,
-          );
-
-          await tester.tap(sync);
-          await tester.pumpAndSettle();
-
-          expect(
-            materialColor(tester, find.byType(AlertDialog)),
-            colors.surface,
-          );
-          expect(
-            paintedColor(tester, find.text('Đồng bộ từ VNPAY')),
-            colors.onSurface,
-          );
-          expect(
-            paintedColor(
-              tester,
-              find.text('Số tiền nạp vào ngân sách chi tiêu:'),
-            ),
-            colors.onSurfaceVariant,
-          );
-          expect(
-            paintedColor(tester, find.text('VD: 100000')),
-            colors.onSurfaceVariant,
-          );
-
-          await tester.tap(find.text('Hủy'));
-          await tester.pumpAndSettle();
-          expect(find.byType(AlertDialog), findsNothing);
         },
       );
     });

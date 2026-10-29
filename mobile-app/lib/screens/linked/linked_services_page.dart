@@ -3,16 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/theme/band_colors.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/payment_order.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
+import 'package:finance_ai_app/screens/linked/top_up_sheet.dart';
+import 'package:finance_ai_app/screens/linked/widgets/syncing_banner.dart';
+import 'package:finance_ai_app/screens/linked/widgets/wallet_list_card.dart';
 import 'package:finance_ai_app/screens/payment/payment_history_screen.dart';
+import 'package:finance_ai_app/screens/payment/widgets/payment_status_pill.dart';
 import 'package:finance_ai_app/widgets/common/demo_badge.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
+/// "Dịch vụ liên kết" (T9 spec 3.9, mockup M4): the blue band with the Demo badge and the history clock, a short
+/// description, the "Đang đồng bộ …" banner while a payment waits on the gateway, the wallets in one card and the demo
+/// note as a soft line at the end.
 class LinkedServicesPage extends StatefulWidget {
   const LinkedServicesPage({super.key});
+
+  static const Key historyKey = ValueKey('linked-history');
 
   @override
   State<LinkedServicesPage> createState() => _LinkedServicesPageState();
@@ -21,20 +34,14 @@ class LinkedServicesPage extends StatefulWidget {
 class _LinkedServicesPageState extends State<LinkedServicesPage> {
   /// 60 checks, 2 s apart: about two minutes for the user to pay in the wallet app.
   static const int _maxPollTries = 60;
-  static const String _demoProvider = 'MOCK';
-
-  /// The smallest amount a wallet accepts, in VND.
-  static const double _minAmount = 1000;
-
-  /// Provider code and brand name; the demo wallet has no brand, its name follows the language.
-  static const List<(String, String?)> _wallets = [
-    ('VNPAY', 'VNPAY'),
-    ('ZALOPAY', 'ZaloPay'),
-    (_demoProvider, null),
-  ];
+  static const double _buttonSize = 36;
 
   bool _syncing = false;
   Timer? _poll;
+
+  /// What the banner names while [_syncing]: the amount and the wallet it comes from.
+  double _syncAmount = 0;
+  PaymentWallet? _syncWallet;
 
   @override
   void dispose() {
@@ -45,82 +52,23 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
   String _fmt(double v) =>
       CurrencyHelper.formatVND(v, context.loc, showSign: false);
 
-  /// The provider logo is an image and keeps its own colours; only the fallback icon takes the theme.
-  Widget _logo(ColorScheme colors, String provider, {double size = 32}) {
-    final fallback =
-        {
-          'VNPAY': Icons.account_balance_rounded,
-          'ZALOPAY': Icons.account_balance_wallet_rounded,
-          _demoProvider: Icons.wallet_rounded,
-        }[provider] ??
-        Icons.payment_rounded;
-    return Image.asset(
-      'assets/payment/${provider.toLowerCase()}.png',
-      width: size,
-      height: size,
-      errorBuilder: (_, _, _) =>
-          Icon(fallback, color: colors.primary, size: size),
-    );
-  }
-
-  Future<void> _openSync(String provider, String label) async {
-    final ctrl = TextEditingController();
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.loc.linkedSyncFrom(label)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              ctx.loc.linkedAmountPrompt,
-              style: TextStyle(
-                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Text and hint take the theme: onSurface and onSurfaceVariant.
-            TextField(
-              controller: ctrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: InputDecoration(hintText: ctx.loc.linkedAmountHint),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(ctx.loc.dialogCancel),
-          ),
-          FilledButton(
-            onPressed: () {
-              final a = double.tryParse(
-                ctrl.text.trim().replaceAll(RegExp(r'[^\d]'), ''),
-              );
-              Navigator.pop(ctx, a);
-            },
-            child: Text(ctx.loc.linkedSync),
-          ),
-        ],
-      ),
-    );
+  Future<void> _openSync(PaymentWallet wallet) async {
+    final amount = await showTopUpSheet(context, wallet);
     if (amount == null || !mounted) return;
-    if (amount < _minAmount) {
-      AppToast.error(context, context.loc.linkedMinAmount(_fmt(_minAmount)));
-      return;
-    }
-    await _runSync(provider, amount);
+    await _runSync(wallet, amount);
   }
 
-  Future<void> _runSync(String provider, double amount) async {
-    setState(() => _syncing = true);
+  Future<void> _runSync(PaymentWallet wallet, double amount) async {
+    setState(() {
+      _syncing = true;
+      _syncAmount = amount;
+      _syncWallet = wallet;
+    });
     try {
       final order = await RemoteApiHelper.instance.createPayment(
-        type: 'DEPOSIT',
+        type: paymentTypeDeposit,
         amount: amount,
-        provider: provider,
+        provider: wallet.provider,
       );
       final orderCode = order['orderCode'] as String;
       final payUrl = order['payUrl'] as String;
@@ -128,6 +76,8 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
+      // Left while the order was created: nobody is there to tell, and dispose has nothing to cancel.
+      if (!mounted) return;
       _pollSync(orderCode, amount);
     } catch (e) {
       UserFacingError.log('Create sync order', e);
@@ -183,156 +133,113 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
+    final syncWallet = _syncWallet;
     return Scaffold(
-      backgroundColor: colors.surface,
-      // The icons take the app bar theme (onSurface).
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                loc.profileLinkedServices,
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+      body: Column(
+        children: [
+          PageBand(
+            title: loc.profileLinkedServices,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const DemoBadge(),
+                const SizedBox(width: 8),
+                _historyButton(loc),
+              ],
             ),
-            const SizedBox(width: 8),
-            const DemoBadge(),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: loc.linkedHistoryTooltip,
-            icon: const Icon(Icons.history_rounded),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PaymentHistoryScreen()),
+          ),
+          Expanded(
+            child: AbsorbPointer(
+              absorbing: _syncing,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      loc.linkedWalletsDescription,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: AppTextSize.secondary,
+                      ),
+                    ),
+                  ),
+                  if (_syncing && syncWallet != null) ...[
+                    const SizedBox(height: 12),
+                    SyncingBanner(
+                      message: loc.linkedSyncingFrom(
+                        _fmt(_syncAmount),
+                        syncWallet.label(loc),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  WalletListCard(
+                    wallets: PaymentWallet.linked,
+                    onSync: _openSync,
+                  ),
+                  const SizedBox(height: 12),
+                  _demoNote(colors, loc),
+                ],
+              ),
             ),
           ),
         ],
       ),
-      body: AbsorbPointer(
-        absorbing: _syncing,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(
-              loc.linkedWalletsHeading,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _historyButton(AppLocalizations loc) {
+    return Tooltip(
+      message: loc.linkedHistoryTooltip,
+      child: Material(
+        color: BandColors.tint,
+        shape: const CircleBorder(),
+        child: InkWell(
+          key: LinkedServicesPage.historyKey,
+          customBorder: const CircleBorder(),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PaymentHistoryScreen()),
+          ),
+          child: const SizedBox.square(
+            dimension: _buttonSize,
+            child: Icon(
+              Icons.history_rounded,
+              color: BandColors.primary,
+              size: 20,
             ),
-            const SizedBox(height: 4),
-            Text(
-              loc.linkedWalletsDescription,
-              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            _demoNotice(colors, loc),
-            const SizedBox(height: 16),
-            ..._wallets.map(
-              (w) =>
-                  _walletTile(colors, loc, w.$1, w.$2 ?? loc.linkedDemoWallet),
-            ),
-            if (_syncing) ...[
-              const SizedBox(height: 20),
-              Center(
-                child: Column(
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 8),
-                    Text(
-                      loc.linkedSyncing,
-                      style: TextStyle(
-                        color: colors.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
   }
 
   /// The wallets here are simulated (provider MOCK): said in full, so nobody takes them for a real bank connection.
-  Widget _demoNotice(ColorScheme colors, AppLocalizations loc) {
+  Widget _demoNote(ColorScheme colors, AppLocalizations loc) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: colors.tertiaryContainer,
+        color: colors.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            Icons.science_outlined,
-            size: 18,
-            color: colors.onTertiaryContainer,
+            Icons.info_outline_rounded,
+            size: 16,
+            color: colors.onSurfaceVariant,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               loc.linkedDemoNotice,
-              style: TextStyle(color: colors.onTertiaryContainer, fontSize: 12),
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: AppTextSize.caption,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _walletTile(
-    ColorScheme colors,
-    AppLocalizations loc,
-    String provider,
-    String label,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          _logo(colors, provider, size: 36),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 2),
-                // Green "linked" status: readable on both themes (6.1:1 on the dark surface).
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      color: Colors.green,
-                      size: 13,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      loc.linkedLinked,
-                      style: const TextStyle(color: Colors.green, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          FilledButton.icon(
-            onPressed: () => _openSync(provider, label),
-            icon: const Icon(Icons.sync_rounded, size: 18),
-            label: Text(loc.linkedSync),
           ),
         ],
       ),

@@ -1,36 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
-import 'package:finance_ai_app/core/theme/app_theme.dart';
-import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
-import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/payment_order.dart';
+import 'package:finance_ai_app/screens/payment/widgets/payment_order_row.dart';
+import 'package:finance_ai_app/screens/payment/widgets/payment_order_sheet.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
+import 'package:finance_ai_app/widgets/common/app_state_view.dart';
+import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
-/// Order states core-backend sends for a deposit or withdrawal.
-const String paymentStatusSuccess = 'SUCCESS';
-const String paymentStatusFailed = 'FAILED';
-const String paymentStatusCancelled = 'CANCELLED';
-const String paymentStatusPending = 'PENDING';
-
-/// [status] of an order as the user should read it in the language of [loc]; an unknown state is shown as it came.
-String paymentStatusLabel(AppLocalizations loc, String status) {
-  switch (status) {
-    case paymentStatusSuccess:
-      return loc.paymentStatusSuccess;
-    case paymentStatusFailed:
-      return loc.paymentStatusFailed;
-    case paymentStatusCancelled:
-      return loc.paymentStatusCancelled;
-    case paymentStatusPending:
-      return loc.paymentStatusPending;
-    default:
-      return status;
-  }
-}
-
+/// "Lịch sử nạp/rút" (T9 spec 3.9, mockup R3): the blue band and the orders in one card; tapping an order opens
+/// "Chi tiết đơn", where a pending one can be cancelled.
 class PaymentHistoryScreen extends StatefulWidget {
   const PaymentHistoryScreen({super.key});
 
@@ -39,7 +20,9 @@ class PaymentHistoryScreen extends StatefulWidget {
 }
 
 class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
-  List<Map<String, dynamic>> _orders = [];
+  static const double _cardRadius = 16;
+
+  List<PaymentOrder> _orders = [];
   bool _loading = true;
 
   /// Why the last load failed, turned into a text in build so it follows the language.
@@ -60,7 +43,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       final list = await RemoteApiHelper.instance.paymentHistory();
       if (!mounted) return;
       setState(() {
-        _orders = list;
+        _orders = list.map(PaymentOrder.fromJson).toList();
         _loading = false;
       });
     } catch (e) {
@@ -71,6 +54,11 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _open(PaymentOrder order) async {
+    final cancel = await showPaymentOrderSheet(context, order);
+    if (cancel == true && mounted) await _cancel(order.orderCode);
   }
 
   Future<void> _cancel(String orderCode) async {
@@ -91,169 +79,88 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     await _load();
   }
 
-  String _fmt(dynamic v, AppLocalizations loc) {
-    final n = (v is num) ? v.toDouble() : double.tryParse('$v') ?? 0;
-    return CurrencyHelper.formatVND(n, loc, showSign: false);
-  }
-
-  String _date(dynamic iso) {
-    final d = DateTime.tryParse('$iso');
-    if (d == null) return '';
-    return DateFormat('dd/MM/yyyy HH:mm').format(d);
-  }
-
-  /// Success, failure and pending take the status colours of the theme; a cancelled order is neutral.
-  Color _statusColor(ColorScheme colors, SemanticColors semantic, String s) {
-    switch (s) {
-      case paymentStatusSuccess:
-        return semantic.successColor;
-      case paymentStatusFailed:
-        return colors.error;
-      case paymentStatusCancelled:
-        return colors.onSurfaceVariant;
-      default:
-        return semantic.warningColor;
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final loc = context.loc;
+    final error = _error;
+    final Widget body;
+    if (_loading) {
+      body = const _StateList(child: AppStateView.loading());
+    } else if (error != null) {
+      body = _StateList(
+        child: AppStateView.error(
+          title: loc.paymentHistoryLoadFailed(
+            UserFacingError.messageOf(error, loc),
+          ),
+          onRetry: _load,
+        ),
+      );
+    } else if (_orders.isEmpty) {
+      body = _StateList(
+        child: AppStateView.empty(
+          icon: Icons.receipt_long_outlined,
+          title: loc.paymentHistoryEmpty,
+        ),
+      );
+    } else {
+      body = ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(_cardRadius),
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Column(
+                children: [
+                  for (var i = 0; i < _orders.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: colors.outlineVariant,
+                      ),
+                    PaymentOrderRow(
+                      order: _orders[i],
+                      onTap: () => _open(_orders[i]),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
     }
+    return Scaffold(
+      body: Column(
+        children: [
+          PageBand(title: loc.paymentHistoryTitle),
+          Expanded(
+            child: RefreshIndicator(onRefresh: _load, child: body),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+/// A state view in a scrollable list, so that pulling down still reloads.
+class _StateList extends StatelessWidget {
+  const _StateList({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final semantic = theme.semanticColors;
-    final loc = context.loc;
-    final error = _error;
-    return Scaffold(
-      backgroundColor: colors.surface,
-      // The back arrow takes the app bar theme.
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        title: Text(
-          loc.paymentHistoryTitle,
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  loc.paymentHistoryLoadFailed(
-                    UserFacingError.messageOf(error, loc),
-                  ),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: colors.onSurfaceVariant),
-                ),
-              ),
-            )
-          : _orders.isEmpty
-          ? Center(
-              child: Text(
-                loc.paymentHistoryEmpty,
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _orders.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                // The tokens come from this build: nothing looks up the theme per row.
-                itemBuilder: (_, i) => _tile(colors, semantic, loc, _orders[i]),
-              ),
-            ),
-    );
-  }
-
-  /// A deposit is money coming in (the income colour), a withdrawal money going out (the warning colour).
-  Widget _tile(
-    ColorScheme colors,
-    SemanticColors semantic,
-    AppLocalizations loc,
-    Map<String, dynamic> o,
-  ) {
-    final type = '${o['type']}';
-    final status = '${o['status']}';
-    final isDeposit = type == 'DEPOSIT';
-    final canCancel = status == paymentStatusPending;
-    final flow = isDeposit ? semantic.incomeColor : semantic.warningColor;
-    final statusColor = _statusColor(colors, semantic, status);
-    final detailStyle = TextStyle(color: colors.onSurfaceVariant, fontSize: 11);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isDeposit
-                    ? Icons.arrow_downward_rounded
-                    : Icons.arrow_upward_rounded,
-                color: flow,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                isDeposit ? loc.paymentDeposit : loc.paymentWithdrawal,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              Text(
-                '${isDeposit ? '+' : '-'}${_fmt(o['amount'], loc)}',
-                style: TextStyle(color: flow, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Text(
-                '${o['provider'] ?? ''}',
-                style: TextStyle(color: colors.primary, fontSize: 12),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  paymentStatusLabel(loc, status),
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              Text(_date(o['createdAt']), style: detailStyle),
-            ],
-          ),
-          Text(loc.paymentOrderCode('${o['orderCode']}'), style: detailStyle),
-          if (canCancel) ...[
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _cancel('${o['orderCode']}'),
-                style: TextButton.styleFrom(foregroundColor: colors.error),
-                icon: const Icon(Icons.close_rounded, size: 16),
-                label: Text(loc.paymentCancelOrder),
-              ),
-            ),
-          ],
-        ],
-      ),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 48),
+      children: [child],
     );
   }
 }
