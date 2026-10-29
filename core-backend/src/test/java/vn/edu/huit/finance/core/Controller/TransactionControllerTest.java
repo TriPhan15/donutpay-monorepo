@@ -47,6 +47,7 @@ import vn.edu.huit.finance.core.Security.JwtUtil;
 import vn.edu.huit.finance.core.Security.TokenClaims;
 import vn.edu.huit.finance.core.Security.TokenType;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
+import vn.edu.huit.finance.core.Service.Search.TransactionSearchService;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 import vn.edu.huit.finance.core.Service.TransactionService;
 
@@ -92,6 +93,7 @@ class TransactionControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockBean private TransactionService transactionService;
+    @MockBean private TransactionSearchService transactionSearchService;
     @MockBean private JwtUtil jwtUtil;
     @MockBean private CustomUserDetailsService userDetailsService;
     @MockBean private UserRepository userRepository;

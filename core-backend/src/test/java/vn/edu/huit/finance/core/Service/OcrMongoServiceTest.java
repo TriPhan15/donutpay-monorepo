@@ -1,6 +1,8 @@
 package vn.edu.huit.finance.core.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.result.UpdateResult;
+import org.bson.BsonObjectId;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -10,7 +12,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.mongodb.client.result.DeleteResult;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.query.Update;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -18,12 +25,24 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.UpdateDefinition;
 import vn.edu.huit.finance.core.Document.OcrFeedback;
+import vn.edu.huit.finance.core.Document.OcrField;
 import vn.edu.huit.finance.core.Document.OcrRawLog;
+import vn.edu.huit.finance.core.Dto.OcrCorrectionEvent;
+import vn.edu.huit.finance.core.Dto.OcrFieldCorrection;
 import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
+import vn.edu.huit.finance.core.Dto.OcrFeedbackResponseDto;
 import vn.edu.huit.finance.core.Dto.OcrRawLogResponseDto;
+import vn.edu.huit.finance.core.Exception.OcrFeedbackNotFoundException;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrFeedbackRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEvent;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventPublisher;
+import vn.edu.huit.finance.core.Service.Realtime.AdminEventType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +52,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -45,7 +65,7 @@ import static org.mockito.Mockito.times;
  * <ol>
  *   <li>Graceful Degradation: Khi MongoDB lỗi, KHÔNG ném exception ra ngoài (đảm bảo Postgres không bị ảnh hưởng).</li>
  *   <li>Data Parsing: BSON Document được parse đúng từ JSON hợp lệ và invalid JSON.</li>
- *   <li>Confidence Score: extractConfidenceScore tìm đúng field từ nhiều cấu trúc JSON của AI.</li>
+ *   <li>Confidence Score: extractConfidenceScore tìm đúng field từ nhiều cấu trúc JSON của AI, null khi không có.</li>
  *   <li>Resolve Feedback: Update isResolved=true và trả về đúng kết quả.</li>
  *   <li>Skip Empty Event: Không ghi DB khi payload rỗng/null.</li>
  * </ol>
@@ -62,8 +82,17 @@ class OcrMongoServiceTest {
     @Mock
     private OcrFeedbackRepository ocrFeedbackRepository;
 
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Spy
+    private OcrService ocrService = new OcrService();
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+
+    @Mock
+    private AdminEventPublisher adminEventPublisher;
 
     @InjectMocks
     private OcrMongoService ocrMongoService;
@@ -127,8 +156,8 @@ class OcrMongoServiceTest {
         }
 
         @Test
-        @DisplayName("Dùng confidence mặc định 1.0 khi JSON không có field confidence nào")
-        void defaultsConfidenceToOneWhenNoFieldFound() {
+        @DisplayName("Không có field confidence nào (Donut V5 không trả về): độ tin cậy để null, không bịa 1.0")
+        void leavesConfidenceNullWhenNoFieldFound() {
             String jsonNoConfidence = "{\"vendor_name\":\"Starbucks\",\"total\":120000}";
             OcrProcessedEvent event = new OcrProcessedEvent(TRANSACTION_ID, jsonNoConfidence);
             given(ocrRawLogRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -137,7 +166,7 @@ class OcrMongoServiceTest {
 
             ArgumentCaptor<OcrRawLog> captor = ArgumentCaptor.forClass(OcrRawLog.class);
             then(ocrRawLogRepository).should().save(captor.capture());
-            assertThat(captor.getValue().getAverageConfidenceScore()).isEqualTo(1.0);
+            assertThat(captor.getValue().getAverageConfidenceScore()).isNull();
         }
     }
 
@@ -220,31 +249,61 @@ class OcrMongoServiceTest {
     class ResolveFeedbackTests {
 
         @Test
-        @DisplayName("Cập nhật isResolved=true và trả về true khi feedback tồn tại")
-        void returnsTrueAndUpdatesWhenFeedbackExists() {
-            String feedbackId = "fb-001";
-            OcrFeedback existingFeedback = new OcrFeedback();
-            existingFeedback.setResolved(false);
-            given(ocrFeedbackRepository.findById(feedbackId)).willReturn(Optional.of(existingFeedback));
-            given(ocrFeedbackRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        @DisplayName("findAndModify nguyên tử chỉ đặt isResolved=true và trả về DTO khi feedback tồn tại")
+        void returnsDtoAndUpdatesWhenFeedbackExists() {
+            OcrFeedback after = new OcrFeedback();
+            after.setResolved(true);
+            given(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class),
+                    eq(OcrFeedback.class))).willReturn(after);
 
-            boolean result = ocrMongoService.resolveFeedback(feedbackId);
+            OcrFeedbackResponseDto result = ocrMongoService.resolveFeedback("fb-001");
 
-            assertThat(result).isTrue();
-            ArgumentCaptor<OcrFeedback> captor = ArgumentCaptor.forClass(OcrFeedback.class);
-            then(ocrFeedbackRepository).should().save(captor.capture());
-            assertThat(captor.getValue().isResolved()).isTrue();
+            assertThat(result.isResolved()).isTrue();
+            ArgumentCaptor<Update> update = ArgumentCaptor.forClass(Update.class);
+            ArgumentCaptor<FindAndModifyOptions> options = ArgumentCaptor.forClass(FindAndModifyOptions.class);
+            then(mongoTemplate).should().findAndModify(any(Query.class), update.capture(), options.capture(), eq(OcrFeedback.class));
+            assertThat(update.getValue().getUpdateObject()).isEqualTo(new org.bson.Document("$set", new org.bson.Document("isResolved", true)));
+            assertThat(options.getValue().isReturnNew()).isTrue();
+            then(ocrFeedbackRepository).should(never()).save(any());
         }
 
         @Test
-        @DisplayName("Trả về false và không gọi save khi feedback không tồn tại")
-        void returnsFalseAndSkipsSaveWhenFeedbackNotFound() {
-            given(ocrFeedbackRepository.findById("not-exist")).willReturn(Optional.empty());
+        @DisplayName("Ném OcrFeedbackNotFoundException khi findAndModify không tìm thấy document")
+        void throwsWhenFeedbackNotFound() {
+            given(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class),
+                    eq(OcrFeedback.class))).willReturn(null);
 
-            boolean result = ocrMongoService.resolveFeedback("not-exist");
-
-            assertThat(result).isFalse();
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> ocrMongoService.resolveFeedback("not-exist"))
+                    .isInstanceOf(OcrFeedbackNotFoundException.class);
             then(ocrFeedbackRepository).should(never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("onStatisticsChanged — xóa tài khoản")
+    class AccountDeleted {
+
+        @Test
+        @DisplayName("ACCOUNT_DELETED xóa phản hồi OCR theo userId")
+        void removesTheFeedbackOfTheDeletedUser() {
+            given(mongoTemplate.remove(any(Query.class), eq(OcrFeedback.class))).willReturn(DeleteResult.acknowledged(3));
+
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED, 7L));
+
+            ArgumentCaptor<Query> query = ArgumentCaptor.forClass(Query.class);
+            then(mongoTemplate).should().remove(query.capture(), eq(OcrFeedback.class));
+            assertThat(query.getValue().getQueryObject()).isEqualTo(new org.bson.Document("userId", 7L));
+        }
+
+        @Test
+        @DisplayName("Sự kiện khác, hoặc không có userId, không đụng tới MongoDB; lỗi MongoDB không ném ra ngoài")
+        void ignoresOtherEventsAndSwallowsMongoFailures() {
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.DATABASE_RESTORED));
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED));
+            then(mongoTemplate).should(never()).remove(any(Query.class), eq(OcrFeedback.class));
+
+            given(mongoTemplate.remove(any(Query.class), eq(OcrFeedback.class))).willThrow(new RuntimeException("mongo down"));
+            ocrMongoService.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_DELETED, 7L));
         }
     }
 
@@ -289,6 +348,80 @@ class OcrMongoServiceTest {
             given(ocrRawLogRepository.findAll(pageable)).willReturn(new PageImpl<>(List.of(log), pageable, 1));
 
             assertThat(ocrMongoService.getOcrLogs(pageable).getContent().get(0).getRawJsonData()).isNull();
+        }
+    }
+
+    // =========================================================================
+    // NHÓM: onOcrCorrectionEvent — báo cho trang quản trị (Redis Pub/Sub)
+    // =========================================================================
+    @Nested
+    @DisplayName("onOcrCorrectionEvent — sự kiện realtime cho quản trị viên")
+    class CorrectionAdminEvent {
+
+        private static final Long RECEIPT_ID = 9L;
+
+        private OcrCorrectionEvent twoCorrections() {
+            return new OcrCorrectionEvent(RECEIPT_ID, 100L, 3L, List.of(
+                    new OcrFieldCorrection(OcrField.TOTAL_COST, "125000", "152000"),
+                    new OcrFieldCorrection(OcrField.SELLER_NAME, "Hghlands", "Highlands")));
+        }
+
+        private void updateMatches(long matched) {
+            given(mongoTemplate.updateFirst(any(Query.class), any(UpdateDefinition.class), eq(OcrFeedback.class)))
+                    .willReturn(UpdateResult.acknowledged(matched, matched, null));
+        }
+
+        private void upsertInserts(boolean inserted) {
+            given(mongoTemplate.upsert(any(Query.class), any(UpdateDefinition.class), eq(OcrFeedback.class)))
+                    .willReturn(inserted ? UpdateResult.acknowledged(0, 0L, new BsonObjectId())
+                            : UpdateResult.acknowledged(1, 0L, null));
+        }
+
+        @Test
+        @DisplayName("Chỗ sửa mới được ghi: phát OCR_FEEDBACK_REPORTED với mã hóa đơn và số chỗ sửa")
+        void newCorrectionsArePublishedWithTheReceiptIdAndTheirCount() {
+            updateMatches(0);
+            upsertInserts(true);
+
+            ocrMongoService.onOcrCorrectionEvent(twoCorrections());
+
+            ArgumentCaptor<AdminEvent> published = ArgumentCaptor.forClass(AdminEvent.class);
+            then(adminEventPublisher).should().publish(published.capture());
+            assertThat(published.getValue().type()).isEqualTo(AdminEventType.OCR_FEEDBACK_REPORTED);
+            assertThat(published.getValue().id()).isEqualTo(RECEIPT_ID);
+            assertThat(published.getValue().message()).isEqualTo("Hóa đơn #9 có 2 chỗ sửa OCR mới");
+        }
+
+        @Test
+        @DisplayName("Chỗ sửa đổi giá trị (mở lại phản hồi cũ) cũng được báo")
+        void reopenedCorrectionsArePublished() {
+            updateMatches(1);
+
+            ocrMongoService.onOcrCorrectionEvent(twoCorrections());
+
+            then(adminEventPublisher).should().publish(any(AdminEvent.class));
+        }
+
+        @Test
+        @DisplayName("Gửi lại đúng chỗ sửa đã lưu (không đổi gì): không báo lại cho quản trị viên")
+        void unchangedCorrectionsAreNotPublishedAgain() {
+            updateMatches(0);
+            upsertInserts(false);
+
+            ocrMongoService.onOcrCorrectionEvent(twoCorrections());
+
+            then(adminEventPublisher).should(never()).publish(any());
+        }
+
+        @Test
+        @DisplayName("MongoDB lỗi: không ném lỗi và không báo gì")
+        void mongoFailurePublishesNothing() {
+            given(mongoTemplate.updateFirst(any(Query.class), any(UpdateDefinition.class), eq(OcrFeedback.class)))
+                    .willThrow(new DataAccessResourceFailureException("mongo down"));
+
+            assertThatCode(() -> ocrMongoService.onOcrCorrectionEvent(twoCorrections())).doesNotThrowAnyException();
+
+            then(adminEventPublisher).should(never()).publish(any());
         }
     }
 }

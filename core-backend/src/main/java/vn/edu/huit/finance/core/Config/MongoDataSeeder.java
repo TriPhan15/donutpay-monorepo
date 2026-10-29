@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import vn.edu.huit.finance.core.Document.OcrFeedback;
+import vn.edu.huit.finance.core.Document.OcrField;
 import vn.edu.huit.finance.core.Document.OcrRawLog;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrFeedbackRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.OcrRawLogRepository;
@@ -29,8 +30,6 @@ public class MongoDataSeeder {
 
     private static final double CONFIDENCE_TOTAL_READ = 0.94;
     private static final double CONFIDENCE_TOTAL_MISSING = 0.41;
-    private static final String FIELD_SELLER_NAME = "seller_name";
-    private static final String FIELD_TOTAL_COST = "total_cost";
     private static final String NOT_READ = "";
     private static final long FEEDBACK_DELAY_MINUTES = 5;
 
@@ -90,7 +89,7 @@ public class MongoDataSeeder {
         OcrFeedback feedback = new OcrFeedback();
         feedback.setReceiptId(receipt.receiptId());
         feedback.setUserId(receipt.userId());
-        feedback.setFieldError(corrected ? FIELD_SELLER_NAME : FIELD_TOTAL_COST);
+        feedback.setFieldError((corrected ? OcrField.SELLER_NAME : OcrField.TOTAL_COST).key());
         feedback.setAiValue(corrected ? receipt.readSeller() : NOT_READ);
         feedback.setExpectedValue(corrected ? receipt.seller() : receipt.amount().toPlainString());
         feedback.setResolved(corrected);

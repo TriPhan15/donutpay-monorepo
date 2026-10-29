@@ -1,0 +1,31 @@
+@startuml dfd_muc1
+' DFD mức 1, phần người dùng: tiến trình 1-4 (facts.md 1.5)
+!pragma layout smetana
+!include _style.iuml
+skinparam wrapWidth 160
+left to right direction
+title DFD mức 1 (phần người dùng): tiến trình 1-4 và kho dữ liệu\n\n
+rectangle "Người dùng" as U
+usecase "1 Xác thực, OTP" as P1
+usecase "2 Giao dịch, hóa đơn" as P2
+usecase "3 Thống kê (cache)" as P3
+usecase "4 Tìm kiếm" as P4
+database "D1 PostgreSQL" as D1
+database "D2 Redis" as D2
+database "D3 MongoDB" as D3
+database "D4 Elasticsearch" as D4
+U <--> P1 : tài khoản, OTP
+U <--> P2 : giao dịch, hóa đơn
+U <--> P3 : thống kê
+U <--> P4 : từ khóa, kết quả
+P1 --> D1 : users, revoked_tokens
+P1 --> D2 : OTP (Hash)
+P2 --> D1 : transactions, receipts
+P2 --> D3 : ocr_logs, ocr_feedbacks
+P2 --> D4 : document giao dịch
+P2 --> D2 : xóa cache, ZSET
+P3 --> D2 : cache JSON
+P3 --> D1 : tính khi miss
+P4 --> D4 : multi_match
+P4 --> D1 : LIKE dự phòng, nạp id
+@enduml

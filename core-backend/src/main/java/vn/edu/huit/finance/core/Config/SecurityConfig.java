@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,12 +18,14 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.filter.OncePerRequestFilter;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.AdminActivityFilter;
 import vn.edu.huit.finance.core.Security.AuditingAccessDeniedHandler;
 import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.ClientIp;
@@ -72,6 +75,10 @@ public class SecurityConfig {
                 .securityMatcher("/admin/**", "/login", "/error", "/css/**", "/js/**", "/images/**", "/uploads/**")
                 // CSRF stays on (default): the admin pages sign in with a session. Forms carry _csrf, fetch/jQuery send X-CSRF-TOKEN (admin-csrf.js).
                 .authorizeHttpRequests(auth -> auth
+                        // The ASYNC dispatch that closes a streaming response (the /admin/events SSE stream at timeout,
+                        // shutdown or after its session ended) only ever follows a REQUEST dispatch these rules already let
+                        // through; checking it again would try to redirect a response that is already committed.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/login", "/error", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                         .anyRequest().authenticated()
@@ -121,7 +128,9 @@ public class SecurityConfig {
                 // A signed-in user who is no administrator: AUTH_ACCESS_DENIED, then the usual 403 page.
                 .exceptionHandling(exceptions -> exceptions
                         .accessDeniedHandler(AuditingAccessDeniedHandler.page(eventPublisher)))
-                .addFilterBefore(adminLoginLockoutFilter(), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(adminLoginLockoutFilter(), UsernamePasswordAuthenticationFilter.class)
+                // Real admin requests (not the SSE stream) count as activity: an open tab must not keep a session alive.
+                .addFilterAfter(new AdminActivityFilter(), AuthorizationFilter.class);
         return http.build();
     }
 

@@ -11,7 +11,10 @@ import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionFilterRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
+import vn.edu.huit.finance.core.Dto.TransactionSearchRequestDto;
+import vn.edu.huit.finance.core.Dto.TransactionSearchResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
+import vn.edu.huit.finance.core.Service.Search.TransactionSearchService;
 import vn.edu.huit.finance.core.Service.TransactionService;
 
 import java.math.BigDecimal;
@@ -35,8 +38,13 @@ public class TransactionController {
     private static final String MSG_VENDORS_OK = "Lấy danh sách độ phổ biến thành công";
     private static final String MSG_DASHBOARD_OK = "Load trang chủ App thành công";
 
+    private static final String MSG_SEARCH_OK = "Tìm kiếm giao dịch thành công";
+
     @Autowired
     private TransactionService transactionService;
+
+    @Autowired
+    private TransactionSearchService transactionSearchService;
 
     @GetMapping("/mine")
     public ResponseEntity<ApiResponse<List<TransactionResponseDto>>> myTransactions() {
@@ -78,6 +86,13 @@ public class TransactionController {
                 .sortDirection(sortDir)
                 .build();
         return ApiResponses.respond(HttpStatus.OK, MSG_FILTER_OK, transactionService.filterMyTransactions(filter));
+    }
+
+    /** ?q=&page=&size=: the caller's own transactions matching the text; an invalid parameter is a 400 through the validation handler. */
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<TransactionSearchResponseDto>> searchTransactions(
+            @Valid @ModelAttribute TransactionSearchRequestDto searchRequest) {
+        return ApiResponses.respond(HttpStatus.OK, MSG_SEARCH_OK, transactionSearchService.search(searchRequest));
     }
 
     @PutMapping("/cancel/{receiptId}")

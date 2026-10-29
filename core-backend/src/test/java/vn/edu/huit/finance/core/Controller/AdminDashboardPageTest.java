@@ -28,6 +28,7 @@ import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
 import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
+import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
@@ -66,6 +67,7 @@ class AdminDashboardPageTest {
     @Autowired private MockMvc mockMvc;
 
     @MockBean private AdminStatisticsService adminStatisticsService;
+    @MockBean private SpendingLeaderboardService leaderboardService;
     @MockBean private ReceiptProcessingService receiptProcessingService;
     @MockBean private UserRepository userRepo;
     @MockBean private CategoryRepository categoryRepo;
@@ -92,8 +94,8 @@ class AdminDashboardPageTest {
                         List.of(new LowBalanceUserDto(7L, "an_low", "0900000007", new BigDecimal("12000.00"))),
                         List.of(new ReceiptStatusCountDto("SUCCESS", 5), new ReceiptStatusCountDto("FAILED", 2),
                                 new ReceiptStatusCountDto("WAITING_FOR_REVIEW", 1))));
-        when(adminStatisticsService.getTopSpenders(0, 5))
-                .thenReturn(List.of(new TopSpenderDto("binh_top", new BigDecimal("900000.00"))));
+        when(leaderboardService.topSpenders(now, 5))
+                .thenReturn(List.of(new TopSpenderDto(9L, "binh_top", new BigDecimal("900000.00"))));
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6))
                 .thenReturn(List.of(new MonthlyTransactionCountDto(now.minusMonths(1), 3),
                         new MonthlyTransactionCountDto(now, 17)));
@@ -106,6 +108,8 @@ class AdminDashboardPageTest {
                 .andExpect(content().string(allOf(
                         containsString("1.250.000 VNĐ"),
                         containsString("binh_top"),
+                        containsString("Top chi tiêu tháng"),
+                        containsString("value=\"" + now + "\""),
                         containsString("900.000 VNĐ"),
                         containsString("an_low"),
                         containsString("0900000007"),
@@ -117,7 +121,7 @@ class AdminDashboardPageTest {
                         containsString("const aiDataReal = [5,2,1];"))));
 
         verify(adminStatisticsService).getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD);
-        verify(adminStatisticsService).getTopSpenders(0, 5);
+        verify(leaderboardService).topSpenders(now, 5);
         verify(adminStatisticsService).getMonthlyTransactionCounts(now, 6);
     }
 
@@ -125,7 +129,7 @@ class AdminDashboardPageTest {
         YearMonth now = YearMonth.now();
         when(adminStatisticsService.getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD))
                 .thenReturn(new AdminDashboardSummaryDto(BigDecimal.ZERO, 0, 0, List.of(), List.of()));
-        when(adminStatisticsService.getTopSpenders(0, 5)).thenReturn(List.of());
+        when(leaderboardService.topSpenders(now, 5)).thenReturn(List.of());
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
         when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
@@ -194,5 +198,19 @@ class AdminDashboardPageTest {
                 .andExpect(redirectedUrl("/admin/receipts"));
 
         verify(receiptProcessingService).rejectReceipt(7L);
+    }
+
+    @Test
+    void theBackupPageHasAMongoDbCardNextToThePostgresOneWithItsConfirmDialogs() throws Exception {
+        mockMvc.perform(get("/admin/backup"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(
+                        containsString("MongoDB (ocr_logs, ocr_feedbacks)"),
+                        containsString("ConfirmMongoBackup()"),
+                        containsString("ConfirmMongoRestore()"),
+                        containsString("/admin/backup/mongo/execute"),
+                        containsString("/admin/backup/mongo/restore"),
+                        containsString("/admin/backup/execute?type="),
+                        containsString("/admin/backup/restore?type=FULL"))));
     }
 }

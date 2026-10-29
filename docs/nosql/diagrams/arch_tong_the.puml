@@ -1,0 +1,31 @@
+@startuml arch_tong_the
+' Kiến trúc tổng thể (facts.md 1.0, 1.2-1.5; docker-compose.yml)
+!pragma layout smetana
+!include _style.iuml
+skinparam componentStyle rectangle
+title Kiến trúc tổng thể hệ thống LedgerMind
+
+rectangle "Máy khách" as C {
+  component "Ứng dụng di động\n(Flutter)" as APP
+  component "Web quản trị\n(Thymeleaf + EventSource)" as WEB
+}
+component "Caddy 2.8\n(finance-proxy)" as PX
+rectangle "Tầng ứng dụng" as A {
+  component "core-api\n(Spring Boot 3.2.5, Java 21)\nREST /api/~*~*, web /admin/~*~*,\nSSE /admin/events" as CORE
+  component "ai-service\n(FastAPI, DONUT V5)\n/donut/scan" as AI
+}
+rectangle "Tầng dữ liệu" as D {
+  database "PostgreSQL 15\nnguồn sự thật (RDBMS)" as PG
+  database "Redis 8.10\nKey-Value: cache, ZSET,\nOTP, Pub/Sub" as RD
+  database "MongoDB 6.0\nDocument: ocr_logs,\nocr_feedbacks" as MG
+  database "Elasticsearch 8.11.4\nSearch/Document:\nindex transactions" as ES
+}
+APP --> PX : HTTPS /api/~*~*, /ai/*
+WEB --> PX : /admin/~*~*
+PX --> CORE
+PX --> AI
+CORE --> PG : JPA (đọc/ghi chính)
+CORE --> RD : cache, bảng xếp hạng,\nOTP, PUBLISH
+CORE --> MG : sau commit (async)
+CORE --> ES : sau commit (async),\ntìm kiếm
+@enduml

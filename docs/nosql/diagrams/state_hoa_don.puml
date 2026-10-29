@@ -1,0 +1,44 @@
+@startuml state_hoa_don
+' ReceiptStatus.MOVES (J/Entity/ReceiptStatus.java:59-66; facts.md 1.1)
+!pragma layout smetana
+!include _style.iuml
+skinparam wrapWidth 160
+title Máy trạng thái hóa đơn (enum ReceiptStatus, lưu ở PostgreSQL receipts.status)
+state PENDING
+state PROCESSING
+state COMPLETED_RAW
+state EDITED
+state FAILED
+state WAITING_FOR_REVIEW
+state APPROVED
+state CANCELED
+note bottom of PROCESSING
+  Dành sẵn, không dùng được:
+  không bước chuyển nào đi tới hay đi ra
+end note
+note bottom of PENDING
+  Checkout không bao giờ lưu PENDING
+  (chỉ có ở dòng cũ hoặc ghi tay)
+end note
+[*] --> COMPLETED_RAW : checkout, AI đọc được tổng
+[*] --> FAILED : checkout, AI không đọc được tổng
+PENDING --> COMPLETED_RAW : AI đọc được tổng
+PENDING --> FAILED : AI không đọc được tổng
+PENDING --> CANCELED : chủ rút lại
+PENDING --> APPROVED : quản trị duyệt
+COMPLETED_RAW --> EDITED : chủ sửa
+COMPLETED_RAW --> APPROVED : quản trị duyệt
+COMPLETED_RAW --> FAILED : quản trị từ chối
+EDITED --> EDITED : sửa tiếp
+EDITED --> APPROVED : quản trị duyệt
+EDITED --> FAILED : quản trị từ chối
+FAILED --> COMPLETED_RAW : đọc lại (retry)
+FAILED --> FAILED : đọc lại vẫn lỗi
+FAILED --> WAITING_FOR_REVIEW : chủ gửi số tiền
+FAILED --> APPROVED : quản trị duyệt
+WAITING_FOR_REVIEW --> APPROVED : quản trị duyệt
+WAITING_FOR_REVIEW --> FAILED : quản trị từ chối
+APPROVED --> APPROVED : duyệt lại
+APPROVED --> FAILED : quản trị từ chối
+CANCELED --> [*]
+@enduml

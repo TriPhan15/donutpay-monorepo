@@ -24,6 +24,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findDetailedById(@Param("id") Long id);
 
     /**
+     * One transaction with its receipt, which is all the search document of it needs besides the row itself (the owner's
+     * id comes from the foreign key, without loading the user).
+     */
+    @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt WHERE t.id = :id")
+    Optional<Transaction> findForSearchIndex(@Param("id") Long id);
+
+    /**
+     * The next page of every user's transactions with their receipts, ordered by id, for a rebuild of the search index:
+     * the rows after {@code lastId} (keyset paging, so a row deleted meanwhile cannot make a later page skip one).
+     */
+    @Query("SELECT t FROM Transaction t LEFT JOIN FETCH t.receipt WHERE t.id > :lastId ORDER BY t.id")
+    java.util.List<Transaction> findNextForSearchIndex(@Param("lastId") Long lastId, org.springframework.data.domain.Pageable pageable);
+
+    /**
      * The transaction this user already created with this client id (the idempotency key of a checkout), if any. Only what
      * the transaction row itself holds is needed to answer a repeated checkout, so nothing is fetched along with it.
      */
@@ -113,14 +127,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT t FROM Transaction t JOIN FETCH t.category LEFT JOIN FETCH t.receipt WHERE t.user.id = :userId ORDER BY t.transactionDate DESC")
     List<Transaction> findByUserIdOrderByTransactionDateDesc(@Param("userId") Long userId);
 
-    /** Top spenders: expenses only, savings contributions left out (D1). */
-    @Query("SELECT t.user.username, SUM(t.amount) as totalSpent FROM Transaction t WHERE t.isExpense = true " +
-           "AND t.category.name <> :excludedCategoryName GROUP BY t.user.id, t.user.username ORDER BY totalSpent DESC")
-    List<Object[]> findTopSpenders(@Param("excludedCategoryName") String excludedCategoryName,
-                                   org.springframework.data.domain.Pageable pageable);
+    /**
+     * Every user's spending from rangeStart, inclusive, to rangeEnd, exclusive: rows [userId, username, total], highest
+     * first. Savings contributions are left out (D1), like {@link #sumSpendingBetween}.
+     */
+    @Query("SELECT t.user.id, t.user.username, SUM(t.amount) as totalSpent FROM Transaction t WHERE t.isExpense = true " +
+           "AND t.category.name <> :excludedCategoryName " +
+           "AND t.transactionDate >= :rangeStart AND t.transactionDate < :rangeEnd " +
+           "GROUP BY t.user.id, t.user.username ORDER BY totalSpent DESC")
+    List<Object[]> sumExpensesByUserBetween(@Param("rangeStart") java.time.LocalDateTime rangeStart,
+                                            @Param("rangeEnd") java.time.LocalDateTime rangeEnd,
+                                            @Param("excludedCategoryName") String excludedCategoryName);
 
-    default List<Object[]> findTopSpenders(org.springframework.data.domain.Pageable pageable) {
-        return findTopSpenders(SavingsContributions.CATEGORY_NAME, pageable);
+    default List<Object[]> sumExpensesByUserBetween(java.time.LocalDateTime rangeStart, java.time.LocalDateTime rangeEnd) {
+        return sumExpensesByUserBetween(rangeStart, rangeEnd, SavingsContributions.CATEGORY_NAME);
     }
 
     /**
@@ -146,4 +166,46 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                                             @Param("categoryId") Long categoryId,
                                             @Param("rangeStart") java.time.LocalDateTime rangeStart,
                                             @Param("rangeEnd") java.time.LocalDateTime rangeEnd);
+
+    /**
+     * The LIKE pattern that finds {@code q} anywhere in a text, case ignored: lowercased, with the characters LIKE treats
+     * as wildcards ({@code \ % _}) escaped by a backslash (the ESCAPE of {@link #searchIdsByText}) so the user's text is
+     * always literal, and wrapped in %.
+     */
+    static String likePattern(String q) {
+        String escaped = q.toLowerCase(java.util.Locale.ROOT)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        return "%" + escaped + "%";
+    }
+
+    /**
+     * The ids of the user's transactions whose note, category, location, payment method or receipt seller contain the text
+     * of {@code pattern} (built by {@link #likePattern}), newest first. Only ids: the rows are loaded by
+     * {@link #findAllByIdInAndUserIdWithReceipt}, the same way as for hits of the search index.
+     */
+    @Query(value = "SELECT t.id FROM Transaction t LEFT JOIN t.receipt r " +
+                   "WHERE t.user.id = :userId AND (" +
+                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(t.location) LIKE :pattern ESCAPE '\\' OR LOWER(t.paymentMethod) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(r.vendorName) LIKE :pattern ESCAPE '\\') " +
+                   "ORDER BY t.transactionDate DESC, t.id DESC",
+           countQuery = "SELECT count(t) FROM Transaction t LEFT JOIN t.receipt r " +
+                   "WHERE t.user.id = :userId AND (" +
+                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(t.location) LIKE :pattern ESCAPE '\\' OR LOWER(t.paymentMethod) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(r.vendorName) LIKE :pattern ESCAPE '\\')")
+    org.springframework.data.domain.Page<Long> searchIdsByText(@Param("userId") Long userId,
+                                                               @Param("pattern") String pattern,
+                                                               org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * The user's own transactions among {@code ids}, each with its category and receipt, in one statement. An id of another
+     * user (a stale or foreign entry of the search index) matches nothing. The order is not that of {@code ids}.
+     */
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.category LEFT JOIN FETCH t.receipt " +
+           "WHERE t.id IN :ids AND t.user.id = :userId")
+    List<Transaction> findAllByIdInAndUserIdWithReceipt(@Param("ids") java.util.Collection<Long> ids,
+                                                        @Param("userId") Long userId);
 }

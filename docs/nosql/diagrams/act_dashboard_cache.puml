@@ -1,0 +1,28 @@
+@startuml act_dashboard_cache
+' Cache-aside thống kê (facts.md 1.2a; UserStatisticsService.dashboardOf, FallbackCacheErrorHandler, StatisticsCacheEvictor)
+!include _style.iuml
+skinparam wrapWidth 330
+title Đọc thống kê trang chủ: nhánh Redis (cache) và nhánh PostgreSQL
+start
+:core-api nhận GET /api/transactions/app-dashboard;
+:[Redis] GET <prefix>:v1:user-dashboard:<userId>;
+if (Redis trả lỗi?) then (có)
+  :FallbackCacheErrorHandler coi như miss, bỏ qua việc ghi cache;
+  :[PostgreSQL] tính thống kê (UserStatisticsService);
+else (không)
+  if (có giá trị?) then (hit)
+    :Lấy JSON từ cache Redis;
+  else (miss)
+    :[PostgreSQL] tính thống kê (UserStatisticsService);
+    :[Redis] SET, TTL tối đa 45 s trừ ngẫu nhiên tới 10 %;
+  endif
+endif
+:Trả kết quả cho ứng dụng;
+stop
+note right
+  Sau mỗi lần ghi (sau COMMIT):
+  StatisticsChangedEvent ->
+  StatisticsCacheEvictor (AFTER_COMMIT)
+  -> [Redis] DEL; lỗi xóa: để TTL hết hạn
+end note
+@enduml

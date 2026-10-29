@@ -1,0 +1,149 @@
+ECHO '========================================================'
+ECHO ' REDIS DEMO - LedgerMind (đồ án NoSQL) - các truy vấn Q-17 ... Q-29'
+ECHO '========================================================'
+ECHO 'Redis giữ 3 việc trong LedgerMind: OTP quên mật khẩu (hash + TTL), cache thống kê (String JSON + TTL jitter),'
+ECHO 'bảng xếp hạng chi tiêu theo tháng (Sorted Set). Mọi dữ liệu đều dựng lại được từ PostgreSQL (không cần persistence).'
+ECHO 'File này KHÔNG có dòng chú thích bắt đầu bằng dấu thăng: redis-cli đọc stdin sẽ coi đó là lệnh và báo lỗi.'
+ECHO 'Vì vậy mọi giải thích nằm trong lệnh ECHO (in ra màn hình lúc chạy). Mỗi nhóm lệnh có nhãn [CƠ BẢN] / [NÂNG CAO].'
+ECHO 'Cách chạy: container dùng một lần (không mật khẩu, không mở cổng ra ngoài):'
+ECHO '  docker run --rm -v "$PWD/scripts/nosql:/s:ro" redis:8.10-alpine sh -c "redis-server --daemonize yes >/dev/null; sleep 1; redis-cli < /s/redis_demo.txt"'
+ECHO 'Trên stack thật Redis có mật khẩu: docker compose exec redis sh -c "REDISCLI_AUTH=$REDIS_PASSWORD redis-cli"  (KEYS/FLUSHALL/FLUSHDB đã bị đổi tên, chỉ dùng SCAN).'
+ECHO 'Key demo dùng đúng tiền tố của app (ledgermind:...) cho sát thực tế: KHÔNG chạy file này trên Redis đang phục vụ app thật.'
+PING
+DBSIZE
+
+ECHO ''
+ECHO '=== NHÓM 1. OTP QUÊN MẬT KHẨU: hash + PEXPIRE (RedisPasswordResetOtpStore) ==='
+
+ECHO '-- Q-17 [CƠ BẢN] Lưu OTP: HSET (code, expiresAt tính bằng mili-giây) + PEXPIRE 300000 (5 phút) + PTTL --'
+ECHO 'Access pattern: người dùng bấm Quên mật khẩu, hệ thống lưu mã 6 số; Redis tự xóa key sau 5 phút nên không cần job dọn dẹp.'
+DEL "ledgermind:password-reset-otp:sv01@huit.edu.vn"
+HSET "ledgermind:password-reset-otp:sv01@huit.edu.vn" code 482931 expiresAt 4102444800000
+PEXPIRE "ledgermind:password-reset-otp:sv01@huit.edu.vn" 300000
+PTTL "ledgermind:password-reset-otp:sv01@huit.edu.vn"
+HGETALL "ledgermind:password-reset-otp:sv01@huit.edu.vn"
+
+ECHO '-- Q-18 [CƠ BẢN] Nhập sai mã: HINCRBY failedAttempts, đọc 1 trường bằng HGET; hết hạn thì key biến mất --'
+ECHO 'Access pattern: đếm số lần đoán sai trên cùng key (app xóa OTP khi sai quá số lần cho phép). PEXPIREAT về quá khứ = hết hạn ngay.'
+HINCRBY "ledgermind:password-reset-otp:sv01@huit.edu.vn" failedAttempts 1
+HGET "ledgermind:password-reset-otp:sv01@huit.edu.vn" failedAttempts
+EXISTS "ledgermind:password-reset-otp:sv01@huit.edu.vn"
+PEXPIREAT "ledgermind:password-reset-otp:sv01@huit.edu.vn" 1
+EXISTS "ledgermind:password-reset-otp:sv01@huit.edu.vn"
+HGETALL "ledgermind:password-reset-otp:sv01@huit.edu.vn"
+
+ECHO ''
+ECHO '=== NHÓM 2. CACHE THỐNG KÊ: String JSON + EX (CacheConfig, khóa <prefix>:v1:<cache>:<key>) ==='
+
+ECHO '-- Q-19 [CƠ BẢN] Cache dashboard của user 1: SET ... EX, GET, TTL --'
+ECHO 'Access pattern: lần đầu đọc PostgreSQL rồi ghi cache; lần sau trả thẳng từ Redis. Giá trị là JSON rút gọn (ví dụ minh họa).'
+SET "ledgermind:default:v1:user-dashboard:1" '{"totalBalance":12500000,"monthlyExpense":3150000,"monthlyIncome":15000000}' EX 285
+GET "ledgermind:default:v1:user-dashboard:1"
+TTL "ledgermind:default:v1:user-dashboard:1"
+TYPE "ledgermind:default:v1:user-dashboard:1"
+
+ECHO '-- Q-20 [CƠ BẢN] TTL jitter: các entry có TTL khác nhau để không hết hạn cùng lúc (chống cache stampede); xóa key = evict --'
+ECHO 'Access pattern: CacheConfig.JitteredTtl rút ngắn TTL thêm tối đa vài phần trăm một cách ngẫu nhiên. Ở đây giả lập bằng các giá trị EX khác nhau.'
+SET "ledgermind:default:v1:user-dashboard:2" '{"totalBalance":4200000}' EX 270
+SET "ledgermind:default:v1:user-dashboard:3" '{"totalBalance":9800000}' EX 298
+SET "ledgermind:default:v1:user-popular-vendors:1" '[{"vendorName":"Highlands Coffee","visits":12}]' EX 600
+TTL "ledgermind:default:v1:user-dashboard:2"
+TTL "ledgermind:default:v1:user-dashboard:3"
+DEL "ledgermind:default:v1:user-dashboard:3"
+EXISTS "ledgermind:default:v1:user-dashboard:3"
+
+ECHO '-- Q-21 [CƠ BẢN] SCAN MATCH thay cho KEYS: liệt kê key của một cache, không chặn Redis --'
+ECHO 'Access pattern: xóa cả một cache admin (CacheConfig, BatchStrategies.scan). KEYS bị đổi tên thành rỗng trên stack thật. Trả về: con trỏ mới + danh sách; con trỏ 0 = hết.'
+SCAN 0 MATCH "ledgermind:default:v1:user-dashboard:*" COUNT 100
+SCAN 0 MATCH "ledgermind:*" COUNT 100 TYPE string
+
+ECHO ''
+ECHO '=== NHÓM 3. BẢNG XẾP HẠNG CHI TIÊU THÁNG: Sorted Set (SpendingLeaderboardService) ==='
+ECHO 'Khóa: ledgermind:leaderboard:spend:yyyy-MM, member = userId, score = tổng chi của tháng. TTL 62 ngày = 5356800 giây.'
+
+ECHO '-- Q-22 [NÂNG CAO] Dựng bảng xếp hạng: ZADD nhiều member một lệnh + EXPIRE 5356800 (TTL đặt SAU CÙNG, như writeRows) --'
+ECHO 'Access pattern: lần đọc đầu tiên của một tháng, đọc tổng chi từ PostgreSQL (sumExpensesByUserBetween) rồi ghi vào Redis.'
+DEL "ledgermind:leaderboard:spend:2026-10"
+ZADD "ledgermind:leaderboard:spend:2026-10" 4200000 1 6850000 2 1250000 3 9100000 4 3300000 5 780000 6
+EXPIRE "ledgermind:leaderboard:spend:2026-10" 5356800
+TTL "ledgermind:leaderboard:spend:2026-10"
+ZCARD "ledgermind:leaderboard:spend:2026-10"
+TYPE "ledgermind:leaderboard:spend:2026-10"
+
+ECHO '-- Q-23 [NÂNG CAO] Top 3 người chi nhiều nhất: ZREVRANGE 0 2 WITHSCORES (topSpenders, limit = 3) --'
+ECHO 'Access pattern: GET /api/admin/leaderboard?month=2026-10&limit=3. Độ phức tạp O(log N + 3) bất kể số user.'
+ZREVRANGE "ledgermind:leaderboard:spend:2026-10" 0 2 WITHSCORES
+
+ECHO '-- Q-24 [NÂNG CAO] Thứ hạng của một user: ZREVRANK (0 = đầu bảng), ZSCORE, ZCOUNT trong khoảng số tiền --'
+ECHO 'Access pattern: user 1 đứng thứ mấy trong tháng; có bao nhiêu user chi từ 3 triệu đến 7 triệu.'
+ZREVRANK "ledgermind:leaderboard:spend:2026-10" 1
+ZSCORE "ledgermind:leaderboard:spend:2026-10" 1
+ZCOUNT "ledgermind:leaderboard:spend:2026-10" 3000000 7000000
+
+ECHO '-- Q-25 [NÂNG CAO] ZINCRBY (cộng dồn) khác ZADD (ghi tuyệt đối): app dùng ZADD để tự lành khi mất/lặp sự kiện --'
+ECHO 'Access pattern: user 5 thêm giao dịch 500000. ZINCRBY cho 3800000 nhưng nếu sự kiện bị lặp thì cộng hai lần; app đọc lại tổng từ PostgreSQL rồi ZADD giá trị tuyệt đối.'
+ZINCRBY "ledgermind:leaderboard:spend:2026-10" 500000 5
+ZADD "ledgermind:leaderboard:spend:2026-10" 3800000 5
+ZSCORE "ledgermind:leaderboard:spend:2026-10" 5
+ECHO 'Khi tổng chi về 0 (xóa hết giao dịch) app gỡ member khỏi bảng xếp hạng bằng ZREM:'
+ZREM "ledgermind:leaderboard:spend:2026-10" 6
+ZREVRANGE "ledgermind:leaderboard:spend:2026-10" 0 -1 WITHSCORES
+
+ECHO '-- Q-26 [NÂNG CAO] MULTI/EXEC: nhiều lệnh thành một giao dịch, chạy liền nhau không bị lệnh khác xen vào --'
+ECHO 'Access pattern: dựng bảng xếp hạng tháng 9 và gắn TTL cùng lúc; EXEC trả về danh sách kết quả từng lệnh (QUEUED là lệnh đang xếp hàng). DISCARD để hủy.'
+MULTI
+ZADD "ledgermind:leaderboard:spend:2026-09" 5100000 1 2900000 2 7400000 4
+EXPIRE "ledgermind:leaderboard:spend:2026-09" 5356800
+ZREVRANGE "ledgermind:leaderboard:spend:2026-09" 0 0 WITHSCORES
+EXEC
+TTL "ledgermind:leaderboard:spend:2026-09"
+
+ECHO ''
+ECHO '=== NHÓM 4. KIỂM TRA MÃ OTP NGUYÊN TỬ BẰNG LUA (RedisPasswordResetOtpStore.CHECK_SCRIPT) ==='
+
+ECHO '-- Q-27 [NÂNG CAO] EVAL Lua: đọc mã, kiểm tra hạn, đếm lần sai, xóa key - tất cả là MỘT bước không bị xen --'
+ECHO 'Access pattern: hai request kiểm tra cùng một OTP cùng lúc vẫn chỉ có một cái thành công. Trả về: -1 không có/hết hạn, 0 đúng, số dương = số lần sai.'
+ECHO 'Lưu OTP bằng script SAVE (DEL + HSET + PEXPIRE), expiresAt = năm 2100, TTL 300000 ms:'
+EVAL "redis.call('DEL', KEYS[1]) redis.call('HSET', KEYS[1], 'code', ARGV[1], 'expiresAt', ARGV[2]) redis.call('PEXPIRE', KEYS[1], ARGV[3]) return 1" 1 "ledgermind:password-reset-otp:sv02@huit.edu.vn" 123456 4102444800000 300000
+ECHO 'Nhập sai lần 1 và 2 (tối đa 3 lần) -> 1, 2:'
+EVAL "local code = redis.call('HGET', KEYS[1], 'code') if not code then return -1 end if tonumber(ARGV[2]) > tonumber(redis.call('HGET', KEYS[1], 'expiresAt')) then redis.call('DEL', KEYS[1]) return -1 end if code == ARGV[1] then redis.call('DEL', KEYS[1]) return 0 end local failed = redis.call('HINCRBY', KEYS[1], 'failedAttempts', 1) if failed >= tonumber(ARGV[3]) then redis.call('DEL', KEYS[1]) end return failed" 1 "ledgermind:password-reset-otp:sv02@huit.edu.vn" 000000 1798000000000 3
+EVAL "local code = redis.call('HGET', KEYS[1], 'code') if not code then return -1 end if tonumber(ARGV[2]) > tonumber(redis.call('HGET', KEYS[1], 'expiresAt')) then redis.call('DEL', KEYS[1]) return -1 end if code == ARGV[1] then redis.call('DEL', KEYS[1]) return 0 end local failed = redis.call('HINCRBY', KEYS[1], 'failedAttempts', 1) if failed >= tonumber(ARGV[3]) then redis.call('DEL', KEYS[1]) end return failed" 1 "ledgermind:password-reset-otp:sv02@huit.edu.vn" 111111 1798000000000 3
+ECHO 'Nhập đúng mã 123456 -> 0 (chấp nhận, key bị xóa để chỉ dùng một lần), rồi dùng lại -> -1:'
+EVAL "local code = redis.call('HGET', KEYS[1], 'code') if not code then return -1 end if tonumber(ARGV[2]) > tonumber(redis.call('HGET', KEYS[1], 'expiresAt')) then redis.call('DEL', KEYS[1]) return -1 end if code == ARGV[1] then redis.call('DEL', KEYS[1]) return 0 end local failed = redis.call('HINCRBY', KEYS[1], 'failedAttempts', 1) if failed >= tonumber(ARGV[3]) then redis.call('DEL', KEYS[1]) end return failed" 1 "ledgermind:password-reset-otp:sv02@huit.edu.vn" 123456 1798000000000 3
+EVAL "local code = redis.call('HGET', KEYS[1], 'code') if not code then return -1 end if tonumber(ARGV[2]) > tonumber(redis.call('HGET', KEYS[1], 'expiresAt')) then redis.call('DEL', KEYS[1]) return -1 end if code == ARGV[1] then redis.call('DEL', KEYS[1]) return 0 end local failed = redis.call('HINCRBY', KEYS[1], 'failedAttempts', 1) if failed >= tonumber(ARGV[3]) then redis.call('DEL', KEYS[1]) end return failed" 1 "ledgermind:password-reset-otp:sv02@huit.edu.vn" 123456 1798000000000 3
+EXISTS "ledgermind:password-reset-otp:sv02@huit.edu.vn"
+
+ECHO ''
+ECHO '=== NHÓM 5. VẬN HÀNH ==='
+
+ECHO '-- Q-28 [NÂNG CAO] Dọn dẹp theo mẫu với SCAN rồi DEL (không dùng KEYS/FLUSHDB): các tháng bảng xếp hạng của app --'
+ECHO 'Access pattern: dropAllMonths() sau khi khôi phục database. Với redis-cli có thể viết: redis-cli --scan --pattern "ledgermind:leaderboard:spend:*" | xargs redis-cli DEL'
+SCAN 0 MATCH "ledgermind:leaderboard:spend:*" COUNT 100
+DEL "ledgermind:leaderboard:spend:2026-09" "ledgermind:leaderboard:spend:2026-10"
+SCAN 0 MATCH "ledgermind:leaderboard:spend:*" COUNT 100
+ECHO 'Bảng xếp hạng bị mất không sao: lần đọc tiếp theo dựng lại từ PostgreSQL (hasKey = false -> rebuild).'
+
+ECHO '-- Q-29 [CƠ BẢN] Persistence: stack thật chạy KHÔNG lưu đĩa (--save "" --appendonly no); demo này dùng BGSAVE --'
+ECHO 'Lý do: mọi key đều là cache / dữ liệu tạm dựng lại được từ PostgreSQL, nên không trả chi phí ghi đĩa và không phải bảo vệ file dump.'
+ECHO 'Mất Redis thì: cache tự nạp lại, bảng xếp hạng dựng lại, chỉ OTP đang chờ là mất (người dùng bấm gửi lại).'
+CONFIG GET save
+CONFIG GET appendonly
+BGSAVE
+LASTSAVE
+INFO persistence
+DBSIZE
+ECHO '-- Q-41 [NÂNG CAO] Pub/Sub: kênh ledgermind:admin-events đưa sự kiện realtime tới trang quản trị (PUBLISH, PUBSUB) --'
+ECHO 'Access pattern: AdminEventPublisher.publish() gửi JSON {type,id,message,at} vào kênh; AdminEventRelay của MỌI instance API đang SUBSCRIBE và chuyển tiếp qua SSE (GET /admin/events) thành toast. Pub/Sub không lưu tin: không ai nghe thì tin mất (chấp nhận được, vì chỉ là thông báo).'
+ECHO 'Kiểm tra kênh nào đang có người nghe (mẫu glob, không phải KEYS) và số người nghe của kênh admin:'
+PUBSUB CHANNELS "ledgermind:*"
+PUBSUB NUMSUB "ledgermind:admin-events"
+ECHO 'PUBLISH trả về SỐ NGƯỜI NGHE đã nhận tin. Trong file này chưa có ai SUBSCRIBE nên là 0:'
+PUBLISH "ledgermind:admin-events" '{"type":"RECEIPT_WAITING_REVIEW","id":1025,"message":"Hóa đơn #1025 đang chờ duyệt","at":"2026-10-27T10:00:00Z"}'
+ECHO 'type là một trong RECEIPT_WAITING_REVIEW, OCR_FEEDBACK_REPORTED, SEARCH_REINDEXED, LEADERBOARD_REBUILT; id = mã hóa đơn (null nếu là thao tác toàn kho).'
+ECHO 'SUBSCRIBE là lệnh CHẶN (client chuyển sang chế độ nhận tin, không gõ lệnh khác được) nên không chạy được trong file này. Demo bằng HAI cửa sổ:'
+ECHO '  Cửa sổ 1 (người nghe): redis-cli SUBSCRIBE ledgermind:admin-events        (RedisInsight: mục Pub/Sub -> Subscribe)'
+ECHO '  Cửa sổ 2 (người gửi) : chạy lại đúng lệnh PUBLISH ở trên -> trả về (integer) 1, cửa sổ 1 hiện ngay tin vừa gửi, và toast hiện trên trang quản trị đang mở.'
+ECHO 'Nếu app đang chạy, PUBSUB NUMSUB ở trên trả 1 cho mỗi instance API (mỗi instance một subscriber).'
+
+ECHO ''
+ECHO 'HẾT DEMO REDIS'

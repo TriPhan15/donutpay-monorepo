@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Testcontainers(disabledWithoutDocker = true)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @Import({PaymentService.class, TransactionService.class, CategoryService.class, ReceiptProcessingService.class,
-        OcrService.class, UserStatisticsService.class})
+        OcrService.class, OcrCorrectionDetector.class, UserStatisticsService.class})
 class PaymentWebhookConcurrencyPostgresTest {
 
     static final String SECRET = "concurrency_it_secret";

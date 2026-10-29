@@ -36,7 +36,6 @@ public record StatisticsCacheProperties(String keyPrefix, Ttl ttl, int ttlJitter
             @DurationUnit(ChronoUnit.SECONDS) Duration userDashboard,
             @DurationUnit(ChronoUnit.SECONDS) Duration userPopularVendors,
             @DurationUnit(ChronoUnit.SECONDS) Duration adminDashboardSummary,
-            @DurationUnit(ChronoUnit.SECONDS) Duration adminTopSpenders,
             @DurationUnit(ChronoUnit.SECONDS) Duration adminStatistics) {
 
         private static final Duration MIN_TTL = Duration.ofSeconds(1);
@@ -45,7 +44,6 @@ public record StatisticsCacheProperties(String keyPrefix, Ttl ttl, int ttlJitter
             requireFinite("user-dashboard", userDashboard);
             requireFinite("user-popular-vendors", userPopularVendors);
             requireFinite("admin-dashboard-summary", adminDashboardSummary);
-            requireFinite("admin-top-spenders", adminTopSpenders);
             requireFinite("admin-statistics", adminStatistics);
         }
 

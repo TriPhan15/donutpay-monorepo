@@ -1,0 +1,1450 @@
+{
+  "versions": {
+    "postgres": "PostgreSQL 15.19 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+    "elasticsearch": "8.11.4",
+    "psycopg": "3.2.3",
+    "requests": "2.32.3"
+  },
+  "pg_collation": {
+    "datcollate": "en_US.utf8",
+    "datctype": "en_US.utf8",
+    "encoding": "UTF8"
+  },
+  "pg_indexes_on_transactions": [
+    "CREATE UNIQUE INDEX transactions_pkey ON public.transactions USING btree (id)",
+    "CREATE UNIQUE INDEX transactions_receipt_id_key ON public.transactions USING btree (receipt_id)",
+    "CREATE UNIQUE INDEX uk_transactions_user_client_id ON public.transactions USING btree (user_id, client_id)"
+  ],
+  "rows": {
+    "users": 1000,
+    "categories": 12,
+    "receipts": 34943,
+    "transactions": 100000
+  },
+  "es_docs": 100000,
+  "es_segments": 5,
+  "es_store_bytes": 10883704,
+  "typical_users": [
+    50,
+    63,
+    75,
+    91,
+    96,
+    112,
+    118,
+    124,
+    200,
+    287,
+    326,
+    445,
+    497,
+    538,
+    571,
+    598,
+    702,
+    738,
+    805,
+    890
+  ],
+  "typical_user_rows": {
+    "50": 73,
+    "63": 81,
+    "75": 70,
+    "91": 83,
+    "96": 75,
+    "112": 81,
+    "118": 84,
+    "124": 73,
+    "200": 84,
+    "287": 87,
+    "326": 77,
+    "445": 81,
+    "497": 72,
+    "538": 83,
+    "571": 89,
+    "598": 70,
+    "702": 78,
+    "738": 75,
+    "805": 81,
+    "890": 81
+  },
+  "heavy_user_rows": 19788,
+  "queries": [
+    "phở",
+    "pho",
+    "cà phê",
+    "ca phe",
+    "bún",
+    "bun",
+    "cơm tấm",
+    "com tam",
+    "bánh mì",
+    "banh mi",
+    "phúc long",
+    "phuc long",
+    "trà sữa",
+    "tra sua",
+    "tiền điện",
+    "tien dien",
+    "đổ xăng",
+    "do xang",
+    "siêu thị",
+    "sieu thi"
+  ],
+  "page_size": 20,
+  "scenarios": {
+    "typical/postgres": {
+      "n": 1200,
+      "p50_ms": 0.661815,
+      "p95_ms": 0.980384,
+      "p99_ms": 1.145551,
+      "max_ms": 1.303929,
+      "min_ms": 0.584566,
+      "mean_ms": 0.6983962483333334,
+      "ops_s": 1431.8519069746148,
+      "warmup": 200,
+      "per_query_p50_ms": {
+        "phở": 0.697978,
+        "pho": 0.674392,
+        "cà phê": 0.668331,
+        "ca phe": 0.655166,
+        "bún": 0.660988,
+        "bun": 0.653362,
+        "cơm tấm": 0.659278,
+        "com tam": 0.656252,
+        "bánh mì": 0.660801,
+        "banh mi": 0.647594,
+        "phúc long": 0.663286,
+        "phuc long": 0.661457,
+        "trà sữa": 0.664569,
+        "tra sua": 0.659936,
+        "tiền điện": 0.670962,
+        "tien dien": 0.65577,
+        "đổ xăng": 0.669007,
+        "do xang": 0.664169,
+        "siêu thị": 0.663114,
+        "sieu thi": 0.656484
+      },
+      "mean_hits": 1.7575
+    },
+    "typical/elasticsearch": {
+      "n": 1200,
+      "p50_ms": 3.704868,
+      "p95_ms": 5.652839,
+      "p99_ms": 12.589953,
+      "max_ms": 473.07209,
+      "min_ms": 2.684751,
+      "mean_ms": 4.9489980325000005,
+      "ops_s": 202.06110275918766,
+      "warmup": 200,
+      "per_query_p50_ms": {
+        "phở": 3.539323,
+        "pho": 3.406941,
+        "cà phê": 3.982907,
+        "ca phe": 3.855774,
+        "bún": 3.21576,
+        "bun": 3.253334,
+        "cơm tấm": 3.517208,
+        "com tam": 3.547859,
+        "bánh mì": 4.03322,
+        "banh mi": 4.034514,
+        "phúc long": 3.755149,
+        "phuc long": 3.704868,
+        "trà sữa": 3.566094,
+        "tra sua": 3.478661,
+        "tiền điện": 3.988954,
+        "tien dien": 4.043282,
+        "đổ xăng": 3.723501,
+        "do xang": 3.803737,
+        "siêu thị": 3.742999,
+        "sieu thi": 3.753449
+      },
+      "mean_hits": 3.74,
+      "took_ms": {
+        "p50": 1,
+        "p95": 3,
+        "p99": 4,
+        "max": 471,
+        "mean": 2.1508333333333334
+      }
+    },
+    "heavy/postgres": {
+      "n": 1200,
+      "p50_ms": 78.217958,
+      "p95_ms": 85.062274,
+      "p99_ms": 96.794661,
+      "max_ms": 156.147875,
+      "min_ms": 37.762741,
+      "mean_ms": 77.5728563075,
+      "ops_s": 12.891107116592234,
+      "warmup": 200,
+      "per_query_p50_ms": {
+        "phở": 77.345456,
+        "pho": 79.855544,
+        "cà phê": 76.212751,
+        "ca phe": 78.430241,
+        "bún": 78.595979,
+        "bun": 79.029619,
+        "cơm tấm": 77.77985,
+        "com tam": 78.269378,
+        "bánh mì": 77.557008,
+        "banh mi": 78.072722,
+        "phúc long": 78.869965,
+        "phuc long": 39.034722,
+        "trà sữa": 78.692808,
+        "tra sua": 78.705593,
+        "tiền điện": 79.653867,
+        "tien dien": 79.995768,
+        "đổ xăng": 78.674477,
+        "do xang": 77.823767,
+        "siêu thị": 76.604741,
+        "sieu thi": 77.528296
+      },
+      "mean_hits": 442.95
+    },
+    "heavy/elasticsearch": {
+      "n": 1200,
+      "p50_ms": 3.700968,
+      "p95_ms": 4.952883,
+      "p99_ms": 6.204832,
+      "max_ms": 18.134123,
+      "min_ms": 2.740622,
+      "mean_ms": 3.8882821358333333,
+      "ops_s": 257.18298340140404,
+      "warmup": 200,
+      "per_query_p50_ms": {
+        "phở": 3.664104,
+        "pho": 3.596093,
+        "cà phê": 4.685886,
+        "ca phe": 4.654661,
+        "bún": 3.069909,
+        "bun": 3.043208,
+        "cơm tấm": 3.425003,
+        "com tam": 3.439248,
+        "bánh mì": 4.066725,
+        "banh mi": 4.02931,
+        "phúc long": 3.494533,
+        "phuc long": 3.454968,
+        "trà sữa": 3.645163,
+        "tra sua": 3.682034,
+        "tiền điện": 4.050058,
+        "tien dien": 3.995337,
+        "đổ xăng": 3.537248,
+        "do xang": 3.457554,
+        "siêu thị": 3.496729,
+        "sieu thi": 3.466898
+      },
+      "mean_hits": 928.6,
+      "took_ms": {
+        "p50": 2,
+        "p95": 3,
+        "p99": 3,
+        "max": 16,
+        "mean": 1.8658333333333332
+      }
+    }
+  },
+  "floor": {
+    "postgres_select_1": {
+      "n": 1200,
+      "p50_ms": 0.045432,
+      "p95_ms": 0.051705,
+      "p99_ms": 0.101888,
+      "max_ms": 0.227363,
+      "min_ms": 0.044708,
+      "mean_ms": 0.04741656916666667,
+      "ops_s": 21089.67429686982,
+      "warmup": 200
+    },
+    "elasticsearch_GET_root": {
+      "n": 1200,
+      "p50_ms": 0.971336,
+      "p95_ms": 1.358092,
+      "p99_ms": 1.514316,
+      "max_ms": 1.683394,
+      "min_ms": 0.727927,
+      "mean_ms": 1.0102642041666667,
+      "ops_s": 989.8400793333727,
+      "warmup": 200
+    }
+  },
+  "explain": {
+    "pg/heavy/phở": "Limit  (cost=3719.89..3719.94 rows=20 width=16) (actual time=41.024..41.043 rows=20 loops=1)\n  Buffers: shared hit=2406\n  ->  Sort  (cost=3719.89..3720.29 rows=160 width=16) (actual time=41.023..41.040 rows=20 loops=1)\n        Sort Key: t1_0.transaction_date DESC, t1_0.id DESC\n        Sort Method: top-N heapsort  Memory: 26kB\n        Buffers: shared hit=2406\n        ->  Hash Right Join  (cost=2790.48..3715.64 rows=160 width=16) (actual time=10.863..40.833 rows=1233 loops=1)\n              Hash Cond: (r1_0.id = t1_0.receipt_id)\n              Filter: ((lower((t1_0.note)::text) ~~ '%phở%'::text) OR (lower((t1_0.category_name)::text) ~~ '%phở%'::text) OR (lower((t1_0.location)::text) ~~ '%phở%'::text) OR (lower((t1_0.payment_method)::text) ~~ '%phở%'::text) OR (lower((r1_0.vendor_name)::text) ~~ '%phở%'::text))\n              Rows Removed by Filter: 18555\n              Buffers: shared hit=2406\n              ->  Seq Scan on receipts r1_0  (cost=0.00..833.43 rows=34943 width=22) (actual time=0.006..1.619 rows=34943 loops=1)\n                    Buffers: shared hit=484\n              ->  Hash  (cost=2539.69..2539.69 rows=20063 width=88) (actual time=10.720..10.721 rows=19788 loops=1)\n                    Buckets: 32768  Batches: 1  Memory Usage: 2175kB\n                    Buffers: shared hit=1922\n                    ->  Bitmap Heap Scan on transactions t1_0  (cost=431.91..2539.69 rows=20063 width=88) (actual time=1.052..5.860 rows=19788 loops=1)\n                          Recheck Cond: (user_id = '1'::smallint)\n                          Heap Blocks: exact=1857\n                          Buffers: shared hit=1922\n                          ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..426.89 rows=20063 width=0) (actual time=0.857..0.857 rows=19788 loops=1)\n                                Index Cond: (user_id = '1'::smallint)\n                                Buffers: shared hit=65\nPlanning:\n  Buffers: shared hit=13\nPlanning Time: 0.255 ms\nExecution Time: 41.512 ms",
+    "pg/heavy/pho": "Limit  (cost=3814.20..3814.25 rows=20 width=16) (actual time=43.037..43.041 rows=20 loops=1)\n  Buffers: shared hit=2406\n  ->  Sort  (cost=3814.20..3823.46 rows=3704 width=16) (actual time=43.036..43.039 rows=20 loops=1)\n        Sort Key: t1_0.transaction_date DESC, t1_0.id DESC\n        Sort Method: top-N heapsort  Memory: 26kB\n        Buffers: shared hit=2406\n        ->  Hash Right Join  (cost=2790.48..3715.64 rows=3704 width=16) (actual time=12.364..42.999 rows=176 loops=1)\n              Hash Cond: (r1_0.id = t1_0.receipt_id)\n              Filter: ((lower((t1_0.note)::text) ~~ '%pho%'::text) OR (lower((t1_0.category_name)::text) ~~ '%pho%'::text) OR (lower((t1_0.location)::text) ~~ '%pho%'::text) OR (lower((t1_0.payment_method)::text) ~~ '%pho%'::text) OR (lower((r1_0.vendor_name)::text) ~~ '%pho%'::text))\n              Rows Removed by Filter: 19612\n              Buffers: shared hit=2406\n              ->  Seq Scan on receipts r1_0  (cost=0.00..833.43 rows=34943 width=22) (actual time=0.007..1.699 rows=34943 loops=1)\n                    Buffers: shared hit=484\n              ->  Hash  (cost=2539.69..2539.69 rows=20063 width=88) (actual time=11.827..11.827 rows=19788 loops=1)\n                    Buckets: 32768  Batches: 1  Memory Usage: 2175kB\n                    Buffers: shared hit=1922\n                    ->  Bitmap Heap Scan on transactions t1_0  (cost=431.91..2539.69 rows=20063 width=88) (actual time=1.090..6.351 rows=19788 loops=1)\n                          Recheck Cond: (user_id = '1'::smallint)\n                          Heap Blocks: exact=1857\n                          Buffers: shared hit=1922\n                          ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..426.89 rows=20063 width=0) (actual time=0.843..0.843 rows=19788 loops=1)\n                                Index Cond: (user_id = '1'::smallint)\n                                Buffers: shared hit=65\nPlanning:\n  Buffers: shared hit=13\nPlanning Time: 0.229 ms\nExecution Time: 43.469 ms",
+    "pg/typical/phở": "Limit  (cost=821.13..821.13 rows=1 width=16) (actual time=0.246..0.248 rows=4 loops=1)\n  Buffers: shared hit=142\n  ->  Sort  (cost=821.13..821.13 rows=1 width=16) (actual time=0.246..0.247 rows=4 loops=1)\n        Sort Key: t1_0.transaction_date DESC, t1_0.id DESC\n        Sort Method: quicksort  Memory: 25kB\n        Buffers: shared hit=142\n        ->  Nested Loop Left Join  (cost=5.32..821.12 rows=1 width=16) (actual time=0.071..0.242 rows=4 loops=1)\n              Filter: ((lower((t1_0.note)::text) ~~ '%phở%'::text) OR (lower((t1_0.category_name)::text) ~~ '%phở%'::text) OR (lower((t1_0.location)::text) ~~ '%phở%'::text) OR (lower((t1_0.payment_method)::text) ~~ '%phở%'::text) OR (lower((r1_0.vendor_name)::text) ~~ '%phở%'::text))\n              Rows Removed by Filter: 69\n              Buffers: shared hit=142\n              ->  Bitmap Heap Scan on transactions t1_0  (cost=5.03..270.06 rows=79 width=88) (actual time=0.016..0.067 rows=73 loops=1)\n                    Recheck Cond: (user_id = '50'::smallint)\n                    Heap Blocks: exact=70\n                    Buffers: shared hit=73\n                    ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..5.01 rows=79 width=0) (actual time=0.008..0.008 rows=73 loops=1)\n                          Index Cond: (user_id = '50'::smallint)\n                          Buffers: shared hit=3\n              ->  Index Scan using receipts_pkey on receipts r1_0  (cost=0.29..6.94 rows=1 width=22) (actual time=0.001..0.001 rows=0 loops=73)\n                    Index Cond: (id = t1_0.receipt_id)\n                    Buffers: shared hit=69\nPlanning:\n  Buffers: shared hit=13\nPlanning Time: 0.267 ms\nExecution Time: 0.286 ms",
+    "pg/typical/pho": "Limit  (cost=821.41..821.45 rows=15 width=16) (actual time=0.225..0.226 rows=0 loops=1)\n  Buffers: shared hit=142\n  ->  Sort  (cost=821.41..821.45 rows=15 width=16) (actual time=0.225..0.226 rows=0 loops=1)\n        Sort Key: t1_0.transaction_date DESC, t1_0.id DESC\n        Sort Method: quicksort  Memory: 25kB\n        Buffers: shared hit=142\n        ->  Nested Loop Left Join  (cost=5.32..821.12 rows=15 width=16) (actual time=0.223..0.224 rows=0 loops=1)\n              Filter: ((lower((t1_0.note)::text) ~~ '%pho%'::text) OR (lower((t1_0.category_name)::text) ~~ '%pho%'::text) OR (lower((t1_0.location)::text) ~~ '%pho%'::text) OR (lower((t1_0.payment_method)::text) ~~ '%pho%'::text) OR (lower((r1_0.vendor_name)::text) ~~ '%pho%'::text))\n              Rows Removed by Filter: 73\n              Buffers: shared hit=142\n              ->  Bitmap Heap Scan on transactions t1_0  (cost=5.03..270.06 rows=79 width=88) (actual time=0.013..0.057 rows=73 loops=1)\n                    Recheck Cond: (user_id = '50'::smallint)\n                    Heap Blocks: exact=70\n                    Buffers: shared hit=73\n                    ->  Bitmap Index Scan on uk_transactions_user_client_id  (cost=0.00..5.01 rows=79 width=0) (actual time=0.007..0.007 rows=73 loops=1)\n                          Index Cond: (user_id = '50'::smallint)\n                          Buffers: shared hit=3\n              ->  Index Scan using receipts_pkey on receipts r1_0  (cost=0.29..6.94 rows=1 width=22) (actual time=0.001..0.001 rows=0 loops=73)\n                    Index Cond: (id = t1_0.receipt_id)\n                    Buffers: shared hit=69\nPlanning:\n  Buffers: shared hit=13\nPlanning Time: 0.256 ms\nExecution Time: 0.265 ms",
+    "es/heavy/phở/took_ms": 104,
+    "es/heavy/phở/profile_time_in_nanos": 9801796
+  },
+  "quality": {
+    "heavy": {
+      "phở": {
+        "truth": 1517,
+        "pg_total": 1233,
+        "pg_tp": 1233,
+        "pg_fp": 0,
+        "pg_fn": 284,
+        "es_total": 1852,
+        "es_tp": 1517,
+        "es_fp": 335,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Bánh mì trứng",
+            "Giáo dục",
+            "Tiền mặt",
+            "Xúc Xích Phố Cổ"
+          ],
+          [
+            "Quà tặng sinh nhật",
+            "Nhà ở",
+            "Cau Giay, Ha Noi",
+            "Chuyển khoản",
+            "Xúc Xích Phố Cổ"
+          ],
+          [
+            "Mua pho mang ve",
+            "Khác",
+            "Ví MoMo"
+          ]
+        ],
+        "es_fp_examples": [
+          [
+            "Ăn trưa văn phòng",
+            "Nhà ở",
+            "Quận Bình Thạnh, TP.HCM",
+            "Chuyển khoản",
+            "KFC"
+          ],
+          [
+            "Ăn trưa văn phòng",
+            "Cà phê",
+            "Chuyển khoản"
+          ],
+          [
+            "Ăn trưa văn phòng",
+            "Nhà ở",
+            "Chuyển khoản"
+          ]
+        ],
+        "es_fn_examples": []
+      },
+      "pho": {
+        "truth": 1517,
+        "pg_total": 176,
+        "pg_tp": 141,
+        "pg_fp": 35,
+        "pg_fn": 1376,
+        "es_total": 1852,
+        "es_tp": 1517,
+        "es_fp": 335,
+        "es_fn": 0,
+        "pg_top20_hit": 16,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [
+          [
+            "An trua van phong",
+            "Mua sắm",
+            "Chuyen khoan"
+          ],
+          [
+            "An trua van phong",
+            "Nhà ở",
+            "Tiền mặt"
+          ],
+          [
+            "An trua van phong",
+            "Mua sắm",
+            "Tiền mặt",
+            "Điện Máy Xanh"
+          ]
+        ],
+        "pg_fn_examples": [
+          [
+            "Mua thuốc cảm",
+            "Khác",
+            "ZaloPay",
+            "Phở Gà Nguyễn Trãi"
+          ],
+          [
+            "Tien hoc them",
+            "Di chuyển",
+            "Tien mat",
+            "Phở Gà Nguyễn Trãi"
+          ],
+          [
+            "Phở bò tái",
+            "Nhà ở",
+            "Cầu Giấy, Hà Nội",
+            "Thẻ tín dụng"
+          ]
+        ],
+        "es_fp_examples": [
+          [
+            "Ăn trưa văn phòng",
+            "Nhà ở",
+            "Quận Bình Thạnh, TP.HCM",
+            "Chuyển khoản",
+            "KFC"
+          ],
+          [
+            "Ăn trưa văn phòng",
+            "Cà phê",
+            "Chuyển khoản"
+          ],
+          [
+            "Ăn trưa văn phòng",
+            "Nhà ở",
+            "Chuyển khoản"
+          ]
+        ],
+        "es_fn_examples": []
+      },
+      "cà phê": {
+        "truth": 2665,
+        "pg_total": 2561,
+        "pg_tp": 2561,
+        "pg_fp": 0,
+        "pg_fn": 104,
+        "es_total": 2665,
+        "es_tp": 2665,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Ca phe voi ban",
+            "Ăn uống",
+            "Ví MoMo",
+            "Highlands Coffee"
+          ],
+          [
+            "Ca phe cuoi tuan",
+            "Nhà ở",
+            "Tiền mặt",
+            "Nhà Hàng Hoa Sen"
+          ],
+          [
+            "Bun cha Ha Noi",
+            "Giải trí",
+            "Chuyen khoan",
+            "Cong Ca Phe"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "ca phe": {
+        "truth": 2665,
+        "pg_total": 112,
+        "pg_tp": 112,
+        "pg_fp": 0,
+        "pg_fn": 2553,
+        "es_total": 2665,
+        "es_tp": 2665,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Cà phê",
+            "Ninh Kiều, Cần Thơ",
+            "Chuyển khoản"
+          ],
+          [
+            "Cà phê",
+            "Ví MoMo",
+            "Circle K"
+          ],
+          [
+            "Cà phê cuối tuần",
+            "Giáo dục",
+            "Thủ Đức, TP.HCM",
+            "Chuyển khoản"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "bún": {
+        "truth": 823,
+        "pg_total": 732,
+        "pg_tp": 732,
+        "pg_fp": 0,
+        "pg_fn": 91,
+        "es_total": 823,
+        "es_tp": 823,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Tien hoc them",
+            "Hóa đơn",
+            "Đống Đa, Hà Nội",
+            "Thẻ tín dụng",
+            "Bun Rieu Cua"
+          ],
+          [
+            "Bun cha Ha Noi",
+            "Giải trí",
+            "Chuyen khoan",
+            "Cong Ca Phe"
+          ],
+          [
+            "Bun cha Ha Noi",
+            "Di chuyển",
+            "Ninh Kiều, Cần Thơ",
+            "Vi MoMo",
+            "Hiệu thuốc Long Châu"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "bun": {
+        "truth": 823,
+        "pg_total": 95,
+        "pg_tp": 95,
+        "pg_fp": 0,
+        "pg_fn": 728,
+        "es_total": 823,
+        "es_tp": 823,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Tien hoc them",
+            "Giải trí",
+            "Quận 1, TP.HCM",
+            "ZaloPay",
+            "Bún Bò Huế O Cương"
+          ],
+          [
+            "Bún chả Hà Nội",
+            "Lương",
+            "Quận 1, TP.HCM",
+            "Chuyển khoản"
+          ],
+          [
+            "Bún chả Hà Nội",
+            "Ăn uống",
+            "ZaloPay",
+            "Bánh Mì Huỳnh Hoa"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "cơm tấm": {
+        "truth": 690,
+        "pg_total": 624,
+        "pg_tp": 624,
+        "pg_fp": 0,
+        "pg_fn": 66,
+        "es_total": 690,
+        "es_tp": 690,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Com tam suon bi",
+            "Ăn uống",
+            "Cầu Giấy, Hà Nội",
+            "Thẻ tín dụng"
+          ],
+          [
+            "Com tam suon bi",
+            "Khác",
+            "Thẻ tín dụng",
+            "Nhà Sách Phương Nam"
+          ],
+          [
+            "Xem phim cuối tuần",
+            "Y tế",
+            "Thẻ tín dụng",
+            "Com Tam Sai Gon"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "com tam": {
+        "truth": 690,
+        "pg_total": 67,
+        "pg_tp": 67,
+        "pg_fp": 0,
+        "pg_fn": 623,
+        "es_total": 690,
+        "es_tp": 690,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Cơm tấm sườn bì",
+            "Nhà ở",
+            "Hải Châu, Đà Nẵng",
+            "Chuyển khoản"
+          ],
+          [
+            "Cơm tấm sườn bì",
+            "Cà phê",
+            "Chuyển khoản"
+          ],
+          [
+            "Tiệc sinh nhật bạn",
+            "Hóa đơn",
+            "Hoàn Kiếm, Hà Nội",
+            "Ví MoMo",
+            "Cơm Tấm Ba Ghiền"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "bánh mì": {
+        "truth": 757,
+        "pg_total": 690,
+        "pg_tp": 690,
+        "pg_fp": 0,
+        "pg_fn": 67,
+        "es_total": 757,
+        "es_tp": 757,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Cơm tấm sườn bì",
+            "Khác",
+            "Ninh Kiều, Cần Thơ",
+            "Thẻ tín dụng",
+            "Banh Mi Huynh Hoa"
+          ],
+          [
+            "Mua do sieu thi",
+            "Y tế",
+            "Hai Chau, Da Nang",
+            "Chuyển khoản",
+            "Banh Mi Phuong"
+          ],
+          [
+            "Banh mi trung",
+            "Nhà ở",
+            "ZaloPay",
+            "Hiệu thuốc Long Châu"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "banh mi": {
+        "truth": 757,
+        "pg_total": 69,
+        "pg_tp": 69,
+        "pg_fp": 0,
+        "pg_fn": 688,
+        "es_total": 757,
+        "es_tp": 757,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Bánh mì trứng",
+            "Giáo dục",
+            "Quận 3, TP.HCM",
+            "Chuyển khoản"
+          ],
+          [
+            "Bánh mì trứng",
+            "Di chuyển",
+            "Thẻ tín dụng"
+          ],
+          [
+            "Bánh mì trứng",
+            "Giáo dục",
+            "Tiền mặt",
+            "Xúc Xích Phố Cổ"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "phúc long": {
+        "truth": 182,
+        "pg_total": 164,
+        "pg_tp": 164,
+        "pg_fp": 0,
+        "pg_fn": 18,
+        "es_total": 182,
+        "es_tp": 182,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Tien hoc them",
+            "Ăn uống",
+            "Nha Trang, Khánh Hòa",
+            "Tiền mặt",
+            "Phuc Long"
+          ],
+          [
+            "Cước internet tháng 10",
+            "Di chuyển",
+            "Tien mat",
+            "Phuc Long"
+          ],
+          [
+            "Khác",
+            "Quận Bình Thạnh, TP.HCM",
+            "Thẻ tín dụng",
+            "Phuc Long"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "phuc long": {
+        "truth": 182,
+        "pg_total": 18,
+        "pg_tp": 18,
+        "pg_fp": 0,
+        "pg_fn": 164,
+        "es_total": 182,
+        "es_tp": 182,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 18,
+        "pg_top20_n": 18,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Y tế",
+            "Tiền mặt",
+            "Phúc Long"
+          ],
+          [
+            "Ăn uống",
+            "Dong Da, Ha Noi",
+            "Thẻ tín dụng",
+            "Phúc Long"
+          ],
+          [
+            "Hóa đơn",
+            "ZaloPay",
+            "Phúc Long"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "trà sữa": {
+        "truth": 716,
+        "pg_total": 631,
+        "pg_tp": 631,
+        "pg_fp": 0,
+        "pg_fn": 85,
+        "es_total": 716,
+        "es_tp": 716,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Siêu thị mini gần nhà",
+            "Ăn uống",
+            "Thẻ tín dụng",
+            "Tra Sua Phuc Tea"
+          ],
+          [
+            "Ca phe cuoi tuan",
+            "Mua sắm",
+            "Hải Châu, Đà Nẵng",
+            "Tiền mặt",
+            "Tra Sua Gong Cha"
+          ],
+          [
+            "Tra sua tran chau",
+            "Cà phê",
+            "Chuyển khoản",
+            "Petrolimex"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "tra sua": {
+        "truth": 716,
+        "pg_total": 86,
+        "pg_tp": 86,
+        "pg_fp": 0,
+        "pg_fn": 630,
+        "es_total": 716,
+        "es_tp": 716,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Trà sữa trân châu",
+            "Lương",
+            "Quận 3, TP.HCM",
+            "Thẻ tín dụng"
+          ],
+          [
+            "Y tế",
+            "Ví MoMo",
+            "Trà Sữa Phúc Tea"
+          ],
+          [
+            "Thanh toán hóa đơn điện thoại",
+            "Mua sắm",
+            "Chuyển khoản",
+            "Trà Sữa Phúc Tea"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "tiền điện": {
+        "truth": 391,
+        "pg_total": 352,
+        "pg_tp": 352,
+        "pg_fp": 0,
+        "pg_fn": 39,
+        "es_total": 391,
+        "es_tp": 391,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Tien dien thang 2",
+            "Cà phê",
+            "Ví MoMo"
+          ],
+          [
+            "Tien dien thang 2",
+            "Thưởng",
+            "Tiền mặt"
+          ],
+          [
+            "Tien dien thang 1",
+            "Cà phê",
+            "ZaloPay",
+            "Cơm Tấm Sài Gòn"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "tien dien": {
+        "truth": 391,
+        "pg_total": 39,
+        "pg_tp": 39,
+        "pg_fp": 0,
+        "pg_fn": 352,
+        "es_total": 391,
+        "es_tp": 391,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Tiền điện tháng 12",
+            "Nhà ở",
+            "Nha Trang, Khánh Hòa",
+            "Chuyển khoản",
+            "Điện Máy Xanh"
+          ],
+          [
+            "Tiền điện tháng 11",
+            "Khác",
+            "Chuyen khoan"
+          ],
+          [
+            "Tiền điện tháng 8",
+            "Mua sắm",
+            "Thủ Đức, TP.HCM",
+            "ZaloPay"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "đổ xăng": {
+        "truth": 404,
+        "pg_total": 355,
+        "pg_tp": 355,
+        "pg_fp": 0,
+        "pg_fn": 49,
+        "es_total": 404,
+        "es_tp": 404,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Do xang xe may",
+            "Y tế",
+            "Quận 3, TP.HCM",
+            "ZaloPay",
+            "Ca Phe Trung Nguyen"
+          ],
+          [
+            "Do xang xe may",
+            "Mua sắm",
+            "Ví MoMo",
+            "Cơm Tấm Ba Ghiền"
+          ],
+          [
+            "Do xang xe may",
+            "Lương",
+            "ZaloPay"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "do xang": {
+        "truth": 404,
+        "pg_total": 49,
+        "pg_tp": 49,
+        "pg_fp": 0,
+        "pg_fn": 355,
+        "es_total": 404,
+        "es_tp": 404,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Đổ xăng xe máy",
+            "Ăn uống",
+            "Quận Bình Thạnh, TP.HCM",
+            "Chuyển khoản",
+            "Quán Ngon Sài Gòn"
+          ],
+          [
+            "Đổ xăng xe máy",
+            "Khác",
+            "Ví MoMo",
+            "Trà Sữa Phúc Tea"
+          ],
+          [
+            "Đổ xăng xe máy",
+            "Y tế",
+            "ZaloPay"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "siêu thị": {
+        "truth": 806,
+        "pg_total": 718,
+        "pg_tp": 718,
+        "pg_fp": 0,
+        "pg_fn": 88,
+        "es_total": 806,
+        "es_tp": 806,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Mua do sieu thi",
+            "Y tế",
+            "Hai Chau, Da Nang",
+            "Chuyển khoản",
+            "Banh Mi Phuong"
+          ],
+          [
+            "Mua do sieu thi",
+            "Cà phê",
+            "Hoàn Kiếm, Hà Nội",
+            "Thẻ tín dụng"
+          ],
+          [
+            "Mua do sieu thi",
+            "Di chuyển",
+            "Hoàn Kiếm, Hà Nội",
+            "Chuyển khoản"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      },
+      "sieu thi": {
+        "truth": 806,
+        "pg_total": 88,
+        "pg_tp": 88,
+        "pg_fp": 0,
+        "pg_fn": 718,
+        "es_total": 806,
+        "es_tp": 806,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 20,
+        "pg_top20_n": 20,
+        "es_top20_hit": 20,
+        "es_top20_n": 20,
+        "pg_fp_examples": [],
+        "pg_fn_examples": [
+          [
+            "Siêu thị mini gần nhà",
+            "Lương",
+            "Ninh Kiều, Cần Thơ",
+            "Chuyen khoan"
+          ],
+          [
+            "Mua đồ siêu thị",
+            "Cà phê",
+            "Tien mat",
+            "Bánh Mì Phượng"
+          ],
+          [
+            "Siêu thị mini gần nhà",
+            "Lương",
+            "Thủ Đức, TP.HCM",
+            "Tiền mặt"
+          ]
+        ],
+        "es_fp_examples": [],
+        "es_fn_examples": []
+      }
+    },
+    "typical": {
+      "phở": {
+        "truth": 101,
+        "pg_total": 79,
+        "pg_tp": 79,
+        "pg_fp": 0,
+        "pg_fn": 22,
+        "es_total": 144,
+        "es_tp": 101,
+        "es_fp": 43,
+        "es_fn": 0,
+        "pg_top20_hit": 79,
+        "pg_top20_n": 79,
+        "es_top20_hit": 101,
+        "es_top20_n": 144
+      },
+      "pho": {
+        "truth": 101,
+        "pg_total": 17,
+        "pg_tp": 11,
+        "pg_fp": 6,
+        "pg_fn": 90,
+        "es_total": 144,
+        "es_tp": 101,
+        "es_fp": 43,
+        "es_fn": 0,
+        "pg_top20_hit": 11,
+        "pg_top20_n": 17,
+        "es_top20_hit": 101,
+        "es_top20_n": 144
+      },
+      "cà phê": {
+        "truth": 214,
+        "pg_total": 204,
+        "pg_tp": 204,
+        "pg_fp": 0,
+        "pg_fn": 10,
+        "es_total": 214,
+        "es_tp": 214,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 204,
+        "pg_top20_n": 204,
+        "es_top20_hit": 214,
+        "es_top20_n": 214
+      },
+      "ca phe": {
+        "truth": 214,
+        "pg_total": 12,
+        "pg_tp": 12,
+        "pg_fp": 0,
+        "pg_fn": 202,
+        "es_total": 214,
+        "es_tp": 214,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 12,
+        "pg_top20_n": 12,
+        "es_top20_hit": 214,
+        "es_top20_n": 214
+      },
+      "bún": {
+        "truth": 76,
+        "pg_total": 69,
+        "pg_tp": 69,
+        "pg_fp": 0,
+        "pg_fn": 7,
+        "es_total": 76,
+        "es_tp": 76,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 69,
+        "pg_top20_n": 69,
+        "es_top20_hit": 76,
+        "es_top20_n": 76
+      },
+      "bun": {
+        "truth": 76,
+        "pg_total": 8,
+        "pg_tp": 8,
+        "pg_fp": 0,
+        "pg_fn": 68,
+        "es_total": 76,
+        "es_tp": 76,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 8,
+        "pg_top20_n": 8,
+        "es_top20_hit": 76,
+        "es_top20_n": 76
+      },
+      "cơm tấm": {
+        "truth": 64,
+        "pg_total": 59,
+        "pg_tp": 59,
+        "pg_fp": 0,
+        "pg_fn": 5,
+        "es_total": 64,
+        "es_tp": 64,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 59,
+        "pg_top20_n": 59,
+        "es_top20_hit": 64,
+        "es_top20_n": 64
+      },
+      "com tam": {
+        "truth": 64,
+        "pg_total": 5,
+        "pg_tp": 5,
+        "pg_fp": 0,
+        "pg_fn": 59,
+        "es_total": 64,
+        "es_tp": 64,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 5,
+        "pg_top20_n": 5,
+        "es_top20_hit": 64,
+        "es_top20_n": 64
+      },
+      "bánh mì": {
+        "truth": 67,
+        "pg_total": 60,
+        "pg_tp": 60,
+        "pg_fp": 0,
+        "pg_fn": 7,
+        "es_total": 67,
+        "es_tp": 67,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 60,
+        "pg_top20_n": 60,
+        "es_top20_hit": 67,
+        "es_top20_n": 67
+      },
+      "banh mi": {
+        "truth": 67,
+        "pg_total": 7,
+        "pg_tp": 7,
+        "pg_fp": 0,
+        "pg_fn": 60,
+        "es_total": 67,
+        "es_tp": 67,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 7,
+        "pg_top20_n": 7,
+        "es_top20_hit": 67,
+        "es_top20_n": 67
+      },
+      "phúc long": {
+        "truth": 15,
+        "pg_total": 14,
+        "pg_tp": 14,
+        "pg_fp": 0,
+        "pg_fn": 1,
+        "es_total": 15,
+        "es_tp": 15,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 14,
+        "pg_top20_n": 14,
+        "es_top20_hit": 15,
+        "es_top20_n": 15
+      },
+      "phuc long": {
+        "truth": 15,
+        "pg_total": 1,
+        "pg_tp": 1,
+        "pg_fp": 0,
+        "pg_fn": 14,
+        "es_total": 15,
+        "es_tp": 15,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 1,
+        "pg_top20_n": 1,
+        "es_top20_hit": 15,
+        "es_top20_n": 15
+      },
+      "trà sữa": {
+        "truth": 34,
+        "pg_total": 29,
+        "pg_tp": 29,
+        "pg_fp": 0,
+        "pg_fn": 5,
+        "es_total": 34,
+        "es_tp": 34,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 29,
+        "pg_top20_n": 29,
+        "es_top20_hit": 34,
+        "es_top20_n": 34
+      },
+      "tra sua": {
+        "truth": 34,
+        "pg_total": 5,
+        "pg_tp": 5,
+        "pg_fp": 0,
+        "pg_fn": 29,
+        "es_total": 34,
+        "es_tp": 34,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 5,
+        "pg_top20_n": 5,
+        "es_top20_hit": 34,
+        "es_top20_n": 34
+      },
+      "tiền điện": {
+        "truth": 31,
+        "pg_total": 30,
+        "pg_tp": 30,
+        "pg_fp": 0,
+        "pg_fn": 1,
+        "es_total": 31,
+        "es_tp": 31,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 30,
+        "pg_top20_n": 30,
+        "es_top20_hit": 31,
+        "es_top20_n": 31
+      },
+      "tien dien": {
+        "truth": 31,
+        "pg_total": 1,
+        "pg_tp": 1,
+        "pg_fp": 0,
+        "pg_fn": 30,
+        "es_total": 31,
+        "es_tp": 31,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 1,
+        "pg_top20_n": 1,
+        "es_top20_hit": 31,
+        "es_top20_n": 31
+      },
+      "đổ xăng": {
+        "truth": 34,
+        "pg_total": 30,
+        "pg_tp": 30,
+        "pg_fp": 0,
+        "pg_fn": 4,
+        "es_total": 34,
+        "es_tp": 34,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 30,
+        "pg_top20_n": 30,
+        "es_top20_hit": 34,
+        "es_top20_n": 34
+      },
+      "do xang": {
+        "truth": 34,
+        "pg_total": 4,
+        "pg_tp": 4,
+        "pg_fp": 0,
+        "pg_fn": 30,
+        "es_total": 34,
+        "es_tp": 34,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 4,
+        "pg_top20_n": 4,
+        "es_top20_hit": 34,
+        "es_top20_n": 34
+      },
+      "siêu thị": {
+        "truth": 69,
+        "pg_total": 63,
+        "pg_tp": 63,
+        "pg_fp": 0,
+        "pg_fn": 6,
+        "es_total": 69,
+        "es_tp": 69,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 63,
+        "pg_top20_n": 63,
+        "es_top20_hit": 69,
+        "es_top20_n": 69
+      },
+      "sieu thi": {
+        "truth": 69,
+        "pg_total": 6,
+        "pg_tp": 6,
+        "pg_fp": 0,
+        "pg_fn": 63,
+        "es_total": 69,
+        "es_tp": 69,
+        "es_fp": 0,
+        "es_fn": 0,
+        "pg_top20_hit": 6,
+        "pg_top20_n": 6,
+        "es_top20_hit": 69,
+        "es_top20_n": 69
+      }
+    }
+  },
+  "pair_sets_equal_heavy": {
+    "phở": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "cà phê": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "bún": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "cơm tấm": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "bánh mì": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "phúc long": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "trà sữa": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "tiền điện": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "đổ xăng": {
+      "elasticsearch": true,
+      "postgres": false
+    },
+    "siêu thị": {
+      "elasticsearch": true,
+      "postgres": false
+    }
+  },
+  "experiment": "E2",
+  "client_host": {
+    "cpu": "Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz",
+    "mem_total": "15682476 kB",
+    "cpus": 12,
+    "kernel": "7.0.0-38-generic",
+    "python": "3.12.16"
+  },
+  "warmup": 200,
+  "iterations": 1200
+}

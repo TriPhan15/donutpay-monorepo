@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.AppDashboardResponseDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
+import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Dto.TransactionFilterRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
@@ -42,14 +43,17 @@ import vn.edu.huit.finance.core.Util.SavingsContributions;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -244,6 +248,8 @@ public class TransactionService {
         transactionRepo.save(transaction);
         budgetAlertService.notifyAfterCreate(transaction);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_TOTALS, userId));
+        eventPublisher.publishEvent(TransactionChangedEvent.upserted(transaction.getId(), userId,
+                expenseMonthOf(transaction.isExpense(), transaction.getTransactionDate())));
 
         Receipt receipt = transaction.getReceipt();
         auditLogService.record(AuditEntry.of(AuditAction.TRANSACTION_CREATED, actor, transaction.getId(),
@@ -269,6 +275,7 @@ public class TransactionService {
         refuseSavingsContribution(transaction, caller.getId());
         // Taken before anything changes: the budget alert needs to know what this transaction counted for until now.
         BudgetAlertService.SpendingSnapshot spendingBefore = BudgetAlertService.SpendingSnapshot.of(transaction);
+        Set<YearMonth> monthsBefore = expenseMonthOf(transaction.isExpense(), transaction.getTransactionDate());
 
         BigDecimal newAmount = request.getAmount() != null ? request.getAmount() : transaction.getAmount();
         boolean newExpense = request.getExpense() != null ? request.getExpense() : transaction.isExpense();
@@ -318,6 +325,13 @@ public class TransactionService {
                 ? StatisticsChange.TRANSACTION_TOTALS
                 : StatisticsChange.TRANSACTION_DETAILS;
         eventPublisher.publishEvent(StatisticsChangedEvent.of(change, caller.getId()));
+        // Amount, direction or date moved: the month it counted for before and the one it counts for now are both stale.
+        Set<YearMonth> changedMonths = new HashSet<>();
+        if (change == StatisticsChange.TRANSACTION_TOTALS) {
+            changedMonths.addAll(monthsBefore);
+            changedMonths.addAll(expenseMonthOf(saved.isExpense(), saved.getTransactionDate()));
+        }
+        eventPublisher.publishEvent(TransactionChangedEvent.upserted(saved.getId(), caller.getId(), changedMonths));
         auditLogService.record(AuditEntry.of(AuditAction.TRANSACTION_UPDATED, actor, transactionId,
                 String.format(AUDIT_UPDATED, changes) + walletChangeText(walletChange)));
 
@@ -344,6 +358,8 @@ public class TransactionService {
         moveWallet(owner, undo, MSG_DELETE_WOULD_OVERDRAW);
         transactionRepo.delete(transaction);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_TOTALS, caller.getId()));
+        eventPublisher.publishEvent(TransactionChangedEvent.deleted(transactionId, caller.getId(),
+                expenseMonthOf(transaction.isExpense(), transaction.getTransactionDate())));
         auditLogService.record(AuditEntry.of(AuditAction.TRANSACTION_DELETED, AuditActor.of(caller), transactionId,
                 String.format(AUDIT_DELETED, direction(transaction.isExpense()), transaction.getAmount().toPlainString(),
                         categoryIdOf(transaction), sign(undo), undo.toPlainString())));
@@ -382,6 +398,8 @@ public class TransactionService {
         receipt.moveTo(ReceiptStatus.CANCELED);
         receiptRepo.save(receipt);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, userId));
+        // The receipt status is part of the transaction's search document: the index reads it again after the commit.
+        eventPublisher.publishEvent(TransactionChangedEvent.upserted(owningTransaction.getId(), userId, Set.of()));
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_CANCELED, AuditActor.of(caller), receiptId,
                 String.format(AUDIT_RECEIPT_CANCELED, previousStatus, receipt.getStatus())));
         log.info("Receipt canceled, userId={}, receiptId={}", userId, receiptId);
@@ -435,6 +453,10 @@ public class TransactionService {
         eventPublisher.publishEvent(StatisticsChangedEvent.of(walletChange.signum() != 0
                 ? StatisticsChange.TRANSACTION_TOTALS
                 : StatisticsChange.RECEIPT_STATUS, owner.getId()));
+        // The amount is the only thing here that moves a monthly total; the status change alone only touches search.
+        eventPublisher.publishEvent(TransactionChangedEvent.upserted(saved.getId(), owner.getId(), walletChange.signum() != 0
+                ? expenseMonthOf(saved.isExpense(), saved.getTransactionDate())
+                : Set.of()));
         // The administrator is the caller of this request, looked up when the rows are written.
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_APPROVED, AuditActor.currentCaller(), receiptId,
                 String.format(AUDIT_RECEIPT_APPROVED, saved.getId(), owner.getId(), previousStatus, receipt.getStatus(),
@@ -677,6 +699,11 @@ public class TransactionService {
             throw new UserNotFoundException(MSG_USER_NOT_FOUND);
         }
         return locked.getWalletBalance().compareTo(amount) >= 0;
+    }
+
+    /** The month of an expense, for the monthly leaderboard; an income (or an undated row) counts for no month. */
+    private static Set<YearMonth> expenseMonthOf(boolean isExpense, LocalDateTime date) {
+        return isExpense && date != null ? Set.of(YearMonth.from(date)) : Set.of();
     }
 
     /** What a transaction does to the wallet: an income adds its amount, an expense takes it away. */

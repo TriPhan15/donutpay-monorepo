@@ -24,8 +24,8 @@ public enum StatisticsChange {
     RECEIPT_CONTENT(CacheNames.USER_CACHES, Set.of(CacheNames.ADMIN_DASHBOARD_SUMMARY)),
     /** An account was created: the user count and the low-balance list (a new wallet is empty) of the admin summary. */
     ACCOUNT_CREATED(Set.of(), Set.of(CacheNames.ADMIN_DASHBOARD_SUMMARY)),
-    /** The name or phone of an account changed: the low-balance list and the top spenders show them. */
-    ACCOUNT_PROFILE(Set.of(), Set.of(CacheNames.ADMIN_DASHBOARD_SUMMARY, CacheNames.ADMIN_TOP_SPENDERS)),
+    /** The name or phone of an account changed: the low-balance list shows them. */
+    ACCOUNT_PROFILE(Set.of(), Set.of(CacheNames.ADMIN_DASHBOARD_SUMMARY)),
     /** An account was deleted, and its transactions and receipts with it (User.transactions cascades). */
     ACCOUNT_DELETED(CacheNames.USER_CACHES, CacheNames.ADMIN_CACHES),
     /** The whole database was replaced by a backup: every entry of every cache, whoever it belongs to. */

@@ -24,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.AppDashboardResponseDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
+import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Dto.TransactionFilterRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
@@ -57,6 +58,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -1854,6 +1856,8 @@ class TransactionServiceTest {
 
     private void verifyReported(StatisticsChange change, Long userId) {
         verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(change, userId));
+        // The same write also tells the leaderboard and the search index: tests of its own below.
+        verify(eventPublisher, atMost(1)).publishEvent(any(TransactionChangedEvent.class));
         verifyNoMoreInteractions(eventPublisher);
     }
 
@@ -1869,6 +1873,7 @@ class TransactionServiceTest {
         InOrder order = inOrder(transactionRepo, eventPublisher);
         order.verify(transactionRepo).save(any(Transaction.class));
         order.verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_TOTALS, ALICE_ID));
+        verify(eventPublisher, atMost(1)).publishEvent(any(TransactionChangedEvent.class));
         verifyNoMoreInteractions(eventPublisher);
     }
 
@@ -1990,6 +1995,16 @@ class TransactionServiceTest {
         service.cancelMyReceipt(7L);
 
         verifyReported(StatisticsChange.RECEIPT_STATUS, ALICE_ID);
+    }
+
+    @Test
+    void aCanceledReceiptReindexesItsTransaction() {
+        signedInAsAlice();
+        when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt("PENDING", transaction(alice, HUNDRED_THOUSAND, true))));
+
+        service.cancelMyReceipt(7L);
+
+        assertEquals(TransactionChangedEvent.upserted(TX_ID, ALICE_ID, Set.of()), publishedTransactionChange());
     }
 
     @Test
@@ -2162,6 +2177,105 @@ class TransactionServiceTest {
         assertTrue(result.containsKey("transactionId"));
         assertMoney("900000", alice.getWalletBalance());
         verify(transactionRepo).save(any(Transaction.class));
+    }
+
+    // ------------------------------------------- the leaderboard and the search index: what every write says it changed
+
+    private static final YearMonth SEPTEMBER = YearMonth.of(2026, 9);
+    private static final YearMonth OCTOBER = YearMonth.of(2026, 10);
+
+    /** The one TransactionChangedEvent the write published. */
+    private TransactionChangedEvent publishedTransactionChange() {
+        ArgumentCaptor<Object> events = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, atLeastOnce()).publishEvent(events.capture());
+        List<TransactionChangedEvent> changes = events.getAllValues().stream()
+                .filter(TransactionChangedEvent.class::isInstance).map(TransactionChangedEvent.class::cast).toList();
+        assertEquals(1, changes.size(), "exactly one TransactionChangedEvent per write");
+        return changes.get(0);
+    }
+
+    @Test
+    void create_expense_publishesUpsertedWithItsMonth() {
+        checkoutAsAlice();
+        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        TransactionRequestDto request = checkout(true, "150000");
+        request.setCategoryId(FOOD_ID);
+
+        service.createMyTransaction(request);
+
+        assertEquals(TransactionChangedEvent.upserted(null, ALICE_ID, Set.of(SEPTEMBER)), publishedTransactionChange());
+    }
+
+    @Test
+    void create_income_publishesUpsertedWithNoMonth() {
+        checkoutAsAlice();
+        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        TransactionRequestDto request = checkout(false, "150000");
+        request.setCategoryId(FOOD_ID);
+
+        service.createMyTransaction(request);
+
+        assertEquals(TransactionChangedEvent.upserted(null, ALICE_ID, Set.of()), publishedTransactionChange());
+    }
+
+    @Test
+    void update_dateToNextMonth_publishesBothMonths() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        TransactionUpdateRequestDto request = update();
+        request.setTransactionDate(LocalDateTime.of(2026, 10, 2, 8, 30));
+
+        service.updateTransaction(TX_ID, request);
+
+        assertEquals(TransactionChangedEvent.upserted(TX_ID, ALICE_ID, Set.of(SEPTEMBER, OCTOBER)), publishedTransactionChange());
+    }
+
+    @Test
+    void update_expenseFlipsToIncome_publishesOldMonth() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        TransactionUpdateRequestDto request = update();
+        request.setExpense(false);
+
+        service.updateTransaction(TX_ID, request);
+
+        assertEquals(TransactionChangedEvent.upserted(TX_ID, ALICE_ID, Set.of(SEPTEMBER)), publishedTransactionChange());
+    }
+
+    @Test
+    void update_noteOnly_publishesEmptyMonths() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        TransactionUpdateRequestDto request = update();
+        request.setNote("Bún chả");
+
+        service.updateTransaction(TX_ID, request);
+
+        assertEquals(TransactionChangedEvent.upserted(TX_ID, ALICE_ID, Set.of()), publishedTransactionChange());
+    }
+
+    @Test
+    void delete_publishesDeletedWithItsMonth() {
+        aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+
+        service.deleteTransaction(TX_ID);
+
+        assertEquals(TransactionChangedEvent.deleted(TX_ID, ALICE_ID, Set.of(SEPTEMBER)), publishedTransactionChange());
+    }
+
+    @Test
+    void approveReceipt_amountChanged_publishesUpserted() {
+        expenseReceiptToApprove("120000");
+
+        service.approveReceipt(RECEIPT_ID);
+
+        assertEquals(TransactionChangedEvent.upserted(TX_ID, ALICE_ID, Set.of(SEPTEMBER)), publishedTransactionChange());
+    }
+
+    @Test
+    void approveReceipt_amountKept_publishesUpsertedWithNoMonth() {
+        expenseReceiptToApprove("100000.00");
+
+        service.approveReceipt(RECEIPT_ID);
+
+        assertEquals(TransactionChangedEvent.upserted(TX_ID, ALICE_ID, Set.of()), publishedTransactionChange());
     }
 
     // ------------------------------------------------------------------------------------------------ structural guards

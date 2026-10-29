@@ -1,0 +1,1003 @@
+{
+  "info": {
+    "_postman_id": "ledgermind-nosql-collection-v2",
+    "name": "LedgerMind - NoSQL API Collection",
+    "description": "Bộ API cho đồ án NoSQL: MongoDB (OCR), Redis (cache, OTP, bảng xếp hạng), Elasticsearch (tìm kiếm). Mỗi request ghi rõ truy vấn Q-xx tương ứng trong scripts/nosql.\n\nCách dùng:\n1. Điền các biến của collection: baseUrl, adminEmail, adminPassword, userEmail, userPassword.\n2. Chạy folder 1. Auth (token tự lưu vào jwtToken / userToken).\n3. Chạy các folder còn lại. Endpoint /api/admin/** dùng jwtToken (ROLE_ADMIN); tìm kiếm và cache của người dùng dùng userToken.\n4. Folder 5 (/admin/**: sao lưu MongoDB, SSE realtime, form NoSQL) dùng phiên form login chứ không dùng JWT: xem mô tả folder.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@example.com",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jwtToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "feedbackId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "description": "Đăng nhập admin (token vào {{jwtToken}}) và người dùng thường (token vào {{userToken}}). Điền adminPassword / userPassword ở tab Variables. Tài khoản demo: bật SEED_DEMO=true cho core-api, admin có email admin@example.com.",
+      "item": [
+        {
+          "name": "Login admin -> jwtToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('jwtToken', pm.response.json().data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login người dùng -> userToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('userToken', pm.response.json().data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. MongoDB - OCR (ocr_logs, ocr_feedbacks)",
+      "description": "Tất cả endpoint /api/admin/** cần ROLE_ADMIN (dùng {{jwtToken}}). Truy vấn MongoDB tương ứng: mongodb_demo.js, Q-01 ... Q-16.",
+      "item": [
+        {
+          "name": "[READ] Q-01 Danh sách nhật ký OCR thô (ocr_logs)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/ocr-logs?page=0&size=10&sort=createdAt,desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "ocr-logs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt,desc"
+                }
+              ]
+            },
+            "description": "Phân trang theo Pageable của Spring. Mỗi phần tử có transactionId, rawJsonData, averageConfidenceScore, createdAt."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[READ] Q-03/Q-04 Danh sách phản hồi OCR (lọc theo trường, trạng thái, khoảng ngày)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/ocr-feedbacks?field=total_cost&resolved=false&from=2026-08-01&to=2026-10-31&page=0&size=20&sort=reportedAt,desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "ocr-feedbacks"
+              ],
+              "query": [
+                {
+                  "key": "field",
+                  "value": "total_cost"
+                },
+                {
+                  "key": "resolved",
+                  "value": "false"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-08-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "reportedAt,desc"
+                }
+              ]
+            },
+            "description": "field = seller_name | total_cost | receipt_date; resolved = true|false; from/to dạng yyyy-MM-dd (gồm cả ngày to); sort = reportedAt|updatedAt kèm ,asc|,desc. Mọi tham số đều tùy chọn."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const page = pm.response.json().data;",
+                  "if (page && page.content && page.content.length) { pm.collectionVariables.set('feedbackId', page.content[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[UPDATE] Q-07 Đánh dấu phản hồi đã xử lý",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/ocr-feedbacks/{{feedbackId}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "ocr-feedbacks",
+                "{{feedbackId}}",
+                "resolve"
+              ]
+            },
+            "description": "feedbackId lấy tự động từ request danh sách phía trên. 404 nếu id không tồn tại."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[AGGREGATE] Q-10..Q-12, Q-15 Thống kê chất lượng OCR",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/ocr-feedbacks/analytics?from=2026-08-01&to=2026-10-31",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "ocr-feedbacks",
+                "analytics"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-08-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-31"
+                }
+              ]
+            },
+            "description": "Trả errorsByField, errorsByModel, confidenceByMonth, receiptsWithErrorRate trong [from, to]; bỏ from/to để lấy toàn bộ."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('Có đủ 4 nhóm thống kê', () => pm.expect(d).to.include.keys('errorsByField', 'errorsByModel', 'confidenceByMonth', 'receiptsWithErrorRate'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[DELETE] Q-08 Xóa một phản hồi OCR",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/ocr-feedbacks/{{feedbackId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "ocr-feedbacks",
+                "{{feedbackId}}"
+              ]
+            },
+            "description": "Chạy cuối cùng: xóa phản hồi có id trong {{feedbackId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Redis - cache, OTP, bảng xếp hạng",
+      "description": "Truy vấn Redis tương ứng: redis_demo.txt, Q-17 ... Q-29. Bảng xếp hạng là Sorted Set ledgermind:leaderboard:spend:yyyy-MM.",
+      "item": [
+        {
+          "name": "[ZSET] Q-23 Bảng xếp hạng chi tiêu tháng (Top spenders)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/leaderboard?month=2026-10&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "leaderboard"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2026-10"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "month dạng yyyy-MM (mặc định: tháng hiện tại), limit 1..50 (mặc định 10). Lần đầu của một tháng: dựng từ PostgreSQL rồi ghi vào Redis; các lần sau đọc ZREVRANGE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const rows = pm.response.json().data;",
+                  "pm.test('Xếp giảm dần theo totalSpent', () => { for (let i = 1; i < rows.length; i++) pm.expect(Number(rows[i-1].totalSpent)).to.be.at.least(Number(rows[i].totalSpent)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[ZSET] Q-22 Dựng lại bảng xếp hạng một tháng từ PostgreSQL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/leaderboard/rebuild?month=2026-10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "leaderboard",
+                "rebuild"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2026-10"
+                }
+              ]
+            },
+            "description": "Xóa key của tháng rồi ZADD lại từ PostgreSQL; trả số user trong bảng."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[CACHE] Q-19 Dashboard người dùng - lần 1 (MISS) rồi lần 2 (HIT)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/app-dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "app-dashboard"
+              ]
+            },
+            "description": "Gọi hai lần: lần đầu đọc PostgreSQL và ghi key ledgermind:<env>:v1:user-dashboard:<userId>; lần hai đọc từ Redis (nhìn thời gian phản hồi và `GET` / `TTL` ở redis-cli)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[CACHE] Q-19 Các cửa hàng phổ biến (cache user-popular-vendors)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/popular-vendors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "popular-vendors"
+              ]
+            },
+            "description": "Cache theo user, xóa khi người dùng đó thay đổi giao dịch."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[OTP] Q-17 Gửi OTP quên mật khẩu (lưu hash Redis, TTL 5 phút)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password?email={{userEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{userEmail}}"
+                }
+              ]
+            },
+            "description": "email là query parameter (không phải JSON). Tạo key ledgermind:password-reset-otp:<email> với PEXPIRE; mã được gửi qua email."
+          }
+        },
+        {
+          "name": "[OTP] Q-27 Đặt lại mật khẩu bằng OTP (kiểm tra nguyên tử bằng Lua)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Phản hồi 200 hoặc 400 (sai/hết hạn OTP)', () => pm.expect([200, 400]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"DoiMatKhau@2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "JSON body. Thay otp bằng mã nhận được qua email. Sai quá số lần cho phép thì key bị xóa."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Elasticsearch - tìm kiếm giao dịch",
+      "description": "Truy vấn Elasticsearch tương ứng: elasticsearch/kibana-devtools.txt, Q-30 ... Q-40. Cần core-api chạy với SEARCH_ENGINE=elasticsearch (nếu không, tìm kiếm tự dùng PostgreSQL và trường engine = postgres).",
+      "item": [
+        {
+          "name": "[ADMIN] Dựng lại index Elasticsearch từ PostgreSQL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/search/reindex",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "search",
+                "reindex"
+              ]
+            },
+            "description": "Xóa index transactions và nạp lại toàn bộ từ PostgreSQL; trả số giao dịch đã lập chỉ mục. 503 nếu Elasticsearch đang tắt."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK hoặc 503 (ES tắt)', () => pm.expect([200, 503]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[SEARCH] Q-35 Tìm giao dịch của tôi: q=pho",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/search?q=pho&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "pho"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "q 2..100 ký tự, size 1..50. Chỉ tìm trong giao dịch của người đang đăng nhập. Phản hồi có items, total và engine (elasticsearch hoặc postgres khi rơi về)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('Có trường engine', () => pm.expect(d.engine).to.be.oneOf(['elasticsearch', 'postgres']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[SEARCH] Q-36 Gõ sai vẫn tìm ra (fuzzy): q=highlans cofee",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/search?q=highlans%20cofee&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "highlans%20cofee"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Với engine elasticsearch, tìm mờ (fuzziness AUTO) vẫn ra Highlands Coffee; với engine postgres thì không (đó là khác biệt của hai engine)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[SEARCH] Q-37 Tiền tố / gợi ý: q=hig",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/search?q=hig&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transactions",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "hig"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Khớp tiền tố nhờ trường con .autocomplete (edge_ngram)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Trang quản trị web - phiên form login (không phải JWT)",
+      "description": "CÁC URL /admin/** KHÔNG nhận JWT: chúng dùng phiên đăng nhập của trang web quản trị (form login /admin/login, cookie JSESSIONID). Trong Postman: chạy 'Đăng nhập web quản trị' trước, cookie được giữ tự động. Các trang HTML (/admin/backup, /admin/nosql, /admin/ocr-feedbacks) nên mở bằng trình duyệt; ở đây chỉ có endpoint JSON/SSE/form. Khi demo, dùng trình duyệt là chính; folder này chỉ để kiểm tra nhanh.",
+      "item": [
+        {
+          "name": "Đăng nhập web quản trị -> cookie phiên",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
+            },
+            "description": "Gửi form (x-www-form-urlencoded) username/password như trang /admin/login. Thành công: 302 tới /admin/dashboard và Postman lưu cookie JSESSIONID (tắt 'Automatically follow redirects' để thấy 302). Sai mật khẩu: 302 tới /admin/login?error=true.",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "{{adminEmail}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{adminPassword}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('302 chuyển hướng', () => pm.response.to.have.status(302));",
+                  "pm.test('Vào dashboard', () => pm.expect(pm.response.headers.get('Location') || '').to.include('/admin/dashboard'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[MONGO] Sao lưu MongoDB (mongodump cả finance_nosql)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/backup/mongo/execute",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "backup",
+                "mongo",
+                "execute"
+              ]
+            },
+            "description": "Nút 'Sao lưu MongoDB' ở /admin/backup. Archive chứa TOÀN BỘ database finance_nosql, lưu thành mongo_<thời gian>.archive.gz trong volume core_backups. Trả {success, message}; success=false nếu mongodump lỗi hoặc đang có một lần sao lưu/khôi phục khác chạy. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 và success=true', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[MONGO] Khôi phục ocr_logs + ocr_feedbacks từ bản mới nhất",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/backup/mongo/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "backup",
+                "mongo",
+                "restore"
+              ]
+            },
+            "description": "Nút 'Khôi phục' của thẻ MongoDB. Lấy mongo_*.archive.gz MỚI NHẤT và chỉ thay (--drop) hai collection ocr_logs, ocr_feedbacks; collection khác của finance_nosql giữ nguyên. Dữ liệu ghi sau thời điểm sao lưu sẽ mất. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 và success=true', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().success).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[REALTIME] Luồng SSE sự kiện quản trị (kênh Redis ledgermind:admin-events)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "events"
+              ]
+            },
+            "description": "Luồng Server-Sent Events (text/event-stream) của toast realtime; chỉ ROLE_ADMIN, dùng cookie phiên. Mỗi tin là 'event: admin' + data JSON {type,id,message,at}. Để thấy tin: chạy PUBLISH ở Q-41 (scripts/nosql/redis_demo.txt) hoặc bấm dựng lại index / bảng xếp hạng ở /admin/nosql. Phiên đã hết hạn: 204 và luồng kết thúc. Luồng không tự kết thúc: hủy request khi đã xem đủ (Postman có thể chỉ hiện nội dung sau khi hủy). Điều kiện cookie như trên."
+          }
+        },
+        {
+          "name": "[ADMIN WEB] Dựng lại index Elasticsearch (trang /admin/nosql)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/nosql/search/reindex",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "nosql",
+                "search",
+                "reindex"
+              ]
+            },
+            "description": "Form POST của trang /admin/nosql (trả 302 về trang kèm thông báo flash), cùng việc với /api/admin/search/reindex nhưng bằng phiên web. Phát sự kiện SEARCH_REINDEXED. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          }
+        },
+        {
+          "name": "[ADMIN WEB] Dựng lại bảng xếp hạng Redis (trang /admin/nosql)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/nosql/leaderboard/rebuild",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "nosql",
+                "leaderboard",
+                "rebuild"
+              ]
+            },
+            "description": "Form POST của trang /admin/nosql (302 về trang); tham số form month=yyyy-MM (bỏ trống = tháng hiện tại). Phát sự kiện LEADERBOARD_REBUILT. Dùng PHIÊN WEB QUẢN TRỊ (form login, cookie JSESSIONID), KHÔNG dùng JWT. Điều kiện: chạy request 'Đăng nhập web quản trị' của folder này trước (Postman giữ cookie theo domain). CSRF của chuỗi /admin/** đang tắt nên không cần token. Phiên nhàn rỗi quá hạn thì đăng nhập lại."
+          }
+        }
+      ]
+    }
+  ]
+}

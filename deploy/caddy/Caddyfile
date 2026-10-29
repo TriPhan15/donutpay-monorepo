@@ -19,6 +19,12 @@
 # dùng Tailwind CDN và script inline.
 # Giới hạn body: /ai/* 16MB (ai-service nhận ảnh tối đa 15MB + phần đầu multipart), còn lại 50MB (bằng
 # spring.servlet.multipart.max-request-size của core-api). Vượt giới hạn -> 413 ngay tại Caddy.
+# /admin/events (Server-Sent Events của trang quản trị) đi qua "handle" cuối cùng như mọi trang admin, không cần khối riêng:
+#   - reverse_proxy (Caddy 2.8) bỏ qua flush_interval và đẩy ngay từng lần ghi khi phản hồi có Content-Type text/event-stream;
+#   - encode gzip không giữ lại luồng SSE (miễn ngưỡng độ dài tối thiểu, header gửi ngay, thân được stream khi ghi);
+#   - reverse_proxy mặc định không đặt timeout đọc phản hồi; core-api gửi comment ping mỗi 25 s và đóng luồng sau 30 phút,
+#     EventSource của trình duyệt tự kết nối lại.
+#   Chỉ thêm "flush_interval -1" cho /admin/events nếu sau này đổi sang một phiên bản Caddy không còn hành vi trên.
 
 {$SITE_ADDRESS} {
 	encode gzip

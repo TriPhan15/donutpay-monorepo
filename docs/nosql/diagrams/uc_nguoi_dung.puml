@@ -1,0 +1,26 @@
+@startuml uc_nguoi_dung
+!pragma layout smetana
+' Use case người dùng FR-01..FR-08 (facts.md 2.1, 1.5)
+!include _style.iuml
+left to right direction
+title Use case của Người dùng
+actor "Người dùng" as U
+rectangle "Ứng dụng di động" {
+  usecase "Đăng nhập (JWT)\n[PostgreSQL]" as L
+  usecase "Quên mật khẩu bằng OTP\n[Redis, PostgreSQL]" as O
+  usecase "Ghi giao dịch (checkout)\n[PostgreSQL; sau commit: Redis, ES]" as T
+  usecase "Sửa, xóa giao dịch\n[PostgreSQL; sau commit: Redis, ES]" as E
+  usecase "Quét hóa đơn bằng AI\n[PostgreSQL, MongoDB]" as R
+  usecase "Sửa kết quả AI\n[PostgreSQL, MongoDB]" as F
+  usecase "Xem thống kê trang chủ\n[Redis cache]" as D
+  usecase "Tìm kiếm giao dịch\n[Elasticsearch, PostgreSQL]" as S
+}
+U --> L
+U --> O
+U --> T
+U --> E
+U --> R
+U --> F
+U --> D
+U --> S
+@enduml

@@ -1,0 +1,32 @@
+@startuml seq_sua_ocr
+' facts.md 1.3: ReceiptProcessingService.editMyReceipt, OcrMongoService, StatisticsCacheEvictor, TransactionSearchIndexer
+!include _style.iuml
+skinparam wrapWidth 200
+title Tuần tự sửa kết quả OCR (PostgreSQL ghi trước, NoSQL sau commit)
+actor "Ứng dụng" as A
+participant "core-api" as C
+database "PostgreSQL" as P
+database "MongoDB" as M
+database "Elasticsearch" as E
+database "Redis" as R
+A -> C : PUT /api/receipts/{id} (version, vendorName, total, date)
+C -> P : tìm hóa đơn của chủ sở hữu
+alt version khác receipts.version hoặc không chuyển được sang EDITED
+  C --> A : 409 ReceiptConflictException
+else hợp lệ
+  C -> P : saveAndFlush (status EDITED, @Version tăng), action_logs
+  C -> C : phát StatisticsChangedEvent, OcrCorrectionEvent,\nTransactionChangedEvent (nếu đổi vendorName)
+  C -> P : COMMIT
+  C --> A : 200 ReceiptResponseDto
+  == Sau commit (@Async mongoAsyncExecutor, lỗi chỉ log) ==
+  C -> R : DEL cache thống kê (StatisticsCacheEvictor)
+  C -> M : ocr_feedbacks updateFirst / upsert $setOnInsert,\nhoặc remove chỗ sửa lỗi thời
+  M --> C : kết quả
+  opt đổi vendorName
+    C -> P : findForSearchIndex(transactionId)
+    P --> C : giao dịch kèm hóa đơn
+    C -> E : save document (index transactions)
+  end
+  C -> R : PUBLISH ledgermind:admin-events (khi có chỗ sửa mới)
+end
+@enduml

@@ -1,0 +1,41 @@
+@startuml mongo_document
+' Cấu trúc document MongoDB (J/Document/OcrRawLog.java, OcrFeedback.java; S/mongodb_init.js; facts.md 1.3)
+!pragma layout smetana
+!include _style.iuml
+hide circle
+skinparam wrapWidth 260
+skinparam ClassAttributeIconSize 0
+title Cấu trúc document trong MongoDB (database finance_nosql)
+class "ocr_logs" as L <<Document>> {
+  _id : ObjectId
+  transactionId : Long  [unique]
+  rawJsonData : Document (JSON thô của AI)
+  modelVersion : String
+  aiReading : Document (nhúng)
+  averageConfidenceScore : Double  [null với DONUT V5]
+  createdAt : LocalDateTime  [index]
+  --
+  index: score_date_idx {averageConfidenceScore:1, createdAt:-1}
+}
+class "aiReading (nhúng)" as AR <<Document>> {
+  sellerName : String
+  totalCost : String
+  receiptDate : String
+}
+class "ocr_feedbacks" as F <<Document>> {
+  _id : ObjectId
+  receiptId, transactionId, userId : Long  [index]
+  fieldError : String (seller_name | total_cost | receipt_date)
+  expectedValue, aiValue : String
+  modelVersion : String
+  isResolved : boolean  [index]
+  reportedAt : LocalDateTime  [index]
+  updatedAt : LocalDateTime
+  --
+  unique: receipt_field_uq {receiptId:1, fieldError:1}
+  index: status_date_idx {isResolved:1, reportedAt:-1}
+}
+L *-down- AR : embed
+L .right. F : transactionId ($lookup)
+note bottom of F : $jsonSchema: validationLevel moderate,\nvalidationAction error (mongodb_init.js)
+@enduml

@@ -122,6 +122,17 @@ class AppRepository {
     return [...waiting, ...onServer];
   }
 
+  /// Ids of the transactions that match [query] on the server, best match first, or null when the server cannot
+  /// answer. Typing in a search box is not a save, so the failure is only logged and the caller filters locally.
+  Future<List<int>?> searchTransactionIds(String query) async {
+    try {
+      return await RemoteApiHelper.instance.searchTransactionIds(query);
+    } catch (e) {
+      debugPrint('Lỗi tìm kiếm giao dịch: $e');
+      return null;
+    }
+  }
+
   /// The transactions created on this device that the server has not confirmed: waiting to be sent, or failed.
   Future<List<TransactionModel>> getUnsyncedTransactions(int userId) async {
     return _localStore.getUnsyncedTransactions(userId);

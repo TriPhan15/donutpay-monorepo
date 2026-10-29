@@ -1,0 +1,24 @@
+@startuml trien_khai
+' Sơ đồ triển khai theo docker-compose.yml (facts.md 1.0)
+!pragma layout smetana
+!include _style.iuml
+title Sơ đồ triển khai (Docker Compose, mạng finance-network)
+
+node "Máy chủ Docker (bridge finance-network)" as H {
+  node "finance-proxy\ncaddy:2.8-alpine\n80, 443" as N1
+  node "finance-core-api\nSpring Boot\ngiới hạn 512M" as N2
+  node "finance-data-mining\nai-service\ngiới hạn 3G" as N3
+  node "finance-postgres\npostgres:15-alpine\n127.0.0.1:5432\nvolume postgres_data" as N4
+  node "finance-redis\nredis:8.10-alpine\nkhông mở cổng ra host\nkhông volume, allkeys-lru" as N5
+  node "finance-mongodb\nmongo:6.0\n127.0.0.1:27017\nvolume mongodb_data" as N6
+  node "finance-elasticsearch\nelasticsearch:8.11.4\nprofile search\n127.0.0.1:9200\nvolume elasticsearch_data" as N7
+  node "finance-kibana\nkibana:8.11.4\nprofile tools\n127.0.0.1:5601" as N8
+}
+N1 --> N2
+N1 --> N3
+N2 --> N4
+N2 --> N5
+N2 --> N6
+N2 --> N7
+N8 --> N7
+@enduml

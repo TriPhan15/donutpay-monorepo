@@ -31,7 +31,6 @@ import vn.edu.huit.finance.core.Dto.AdminDashboardSummaryDto;
 import vn.edu.huit.finance.core.Dto.AppDashboardResponseDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
-import vn.edu.huit.finance.core.Dto.TopSpenderDto;
 import vn.edu.huit.finance.core.Service.Cache.CacheNames;
 
 import java.time.Duration;
@@ -87,8 +86,6 @@ public class CacheConfig implements CachingConfigurer {
                         types.constructCollectionType(List.class, PopularVendorResponseDto.class)),
                 CacheNames.ADMIN_DASHBOARD_SUMMARY, cacheOf(keyPrefix, new JitteredTtl(ttl.adminDashboardSummary(), jitter), mapper,
                         types.constructType(AdminDashboardSummaryDto.class)),
-                CacheNames.ADMIN_TOP_SPENDERS, cacheOf(keyPrefix, new JitteredTtl(ttl.adminTopSpenders(), jitter), mapper,
-                        types.constructCollectionType(List.class, TopSpenderDto.class)),
                 CacheNames.ADMIN_STATISTICS, cacheOf(keyPrefix, new JitteredTtl(ttl.adminStatistics(), jitter), mapper,
                         types.constructCollectionType(List.class, MonthlyTransactionCountDto.class)));
 

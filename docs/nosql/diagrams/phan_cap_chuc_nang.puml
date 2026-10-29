@@ -1,0 +1,24 @@
+@startwbs phan_cap_chuc_nang
+' Phân cấp chức năng FR-01..FR-16 (facts.md 2.1)
+!include _style.iuml
+title Sơ đồ phân cấp chức năng LedgerMind
+* LedgerMind
+** Người dùng
+*** FR-01 Đăng nhập, phân quyền
+*** FR-02 Quên mật khẩu (OTP)
+*** FR-03 Ghi giao dịch
+*** FR-04 Sửa, xóa giao dịch
+*** FR-05 Quét hóa đơn bằng AI
+*** FR-06 Sửa kết quả AI
+*** FR-07 Xem thống kê trang chủ
+*** FR-08 Tìm kiếm giao dịch
+** Quản trị viên
+*** FR-09 Dashboard quản trị
+*** FR-10 Bảng xếp hạng chi tiêu
+*** FR-11 Duyệt phản hồi OCR
+*** FR-12 Thống kê chất lượng OCR
+*** FR-13 API log OCR thô
+*** FR-14 Vận hành chỉ mục tìm kiếm
+*** FR-15 Sao lưu, khôi phục
+*** FR-16 Thông báo realtime
+@endwbs

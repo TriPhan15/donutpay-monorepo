@@ -1,0 +1,1080 @@
+[{
+	"_id": {
+		"$oid": "6ae13b4c1074d9f7af24bace"
+	},
+	"fieldError": "seller_name",
+	"receiptId": {
+		"$numberLong": "530"
+	},
+	"aiValue": "Ph0 Th1n",
+	"expectedValue": "Phở Thìn Bờ Hồ",
+	"isResolved": false,
+	"modelVersion": "donut-v5",
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1792483200000"
+		}
+	},
+	"transactionId": {
+		"$numberLong": "1030"
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1792573200000"
+		}
+	},
+	"userId": {
+		"$numberLong": "2"
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8c7"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "501"
+	},
+	"transactionId": {
+		"$numberLong": "1001"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "350000",
+	"aiValue": "35000",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1785546300000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1785546300000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8c9"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "503"
+	},
+	"transactionId": {
+		"$numberLong": "1003"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "2450000",
+	"aiValue": "245000",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1785900900000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1785900900000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8ca"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "504"
+	},
+	"transactionId": {
+		"$numberLong": "1004"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-08-07",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786078200000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786078200000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8cb"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "505"
+	},
+	"transactionId": {
+		"$numberLong": "1005"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "1550000",
+	"aiValue": "155000",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786251900000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786251900000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8cc"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "506"
+	},
+	"transactionId": {
+		"$numberLong": "1006"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Phở Thìn",
+	"aiValue": "Ph0 Th1n",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786429200000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786429200000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8cd"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "507"
+	},
+	"transactionId": {
+		"$numberLong": "1007"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "650000",
+	"aiValue": "65000",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786606500000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786606500000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8ce"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "508"
+	},
+	"transactionId": {
+		"$numberLong": "1008"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-08-15",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786783800000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786783800000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8cf"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "509"
+	},
+	"transactionId": {
+		"$numberLong": "1009"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "2750000",
+	"aiValue": "275000",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786957500000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786957500000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d0"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "510"
+	},
+	"transactionId": {
+		"$numberLong": "1010"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Phúc Long",
+	"aiValue": "Phuc L0ng",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1787102400000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1787102400000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d1"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "511"
+	},
+	"transactionId": {
+		"$numberLong": "1011"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "1850000",
+	"aiValue": "185000",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1787279700000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1787279700000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d2"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "512"
+	},
+	"transactionId": {
+		"$numberLong": "1012"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-08-23",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1787457000000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1787457000000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d3"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "513"
+	},
+	"transactionId": {
+		"$numberLong": "1013"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "950000",
+	"aiValue": "95000",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1788235500000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1788235500000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d4"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "514"
+	},
+	"transactionId": {
+		"$numberLong": "1014"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Phở Thìn",
+	"aiValue": "Ph0 Th1n",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1788412800000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1788412800000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d5"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "515"
+	},
+	"transactionId": {
+		"$numberLong": "1015"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "3050000",
+	"aiValue": "305000",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1788590100000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1788590100000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d6"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "516"
+	},
+	"transactionId": {
+		"$numberLong": "1016"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-09-07",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1788767400000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1788767400000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d7"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "517"
+	},
+	"transactionId": {
+		"$numberLong": "1017"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "2150000",
+	"aiValue": "215000",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1788941100000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1788941100000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d8"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "518"
+	},
+	"transactionId": {
+		"$numberLong": "1018"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Phúc Long",
+	"aiValue": "Phuc L0ng",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1789118400000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1789118400000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8d9"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "519"
+	},
+	"transactionId": {
+		"$numberLong": "1019"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "1250000",
+	"aiValue": "125000",
+	"modelVersion": "donut-v5",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1789263300000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1789263300000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8da"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "520"
+	},
+	"transactionId": {
+		"$numberLong": "1020"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-09-15",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v5",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1789440600000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1789440600000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8db"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "521"
+	},
+	"transactionId": {
+		"$numberLong": "1021"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "350000",
+	"aiValue": "35000",
+	"modelVersion": "donut-v5",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1789614300000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1789614300000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8dc"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "522"
+	},
+	"transactionId": {
+		"$numberLong": "1022"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Phở Thìn",
+	"aiValue": "Ph0 Th1n",
+	"modelVersion": "donut-v5",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1789791600000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1789791600000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8dd"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "523"
+	},
+	"transactionId": {
+		"$numberLong": "1023"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "total_cost",
+	"expectedValue": "2450000",
+	"aiValue": "245000",
+	"modelVersion": "donut-v5",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1789968900000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1789968900000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8de"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "524"
+	},
+	"transactionId": {
+		"$numberLong": "1024"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-09-23",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v5",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1790146200000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1790146200000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8df"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "501"
+	},
+	"transactionId": {
+		"$numberLong": "1001"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Highlands Coffee",
+	"aiValue": "Hlghlands C0ffee",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1785546300000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1785546300000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e0"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "502"
+	},
+	"transactionId": {
+		"$numberLong": "1002"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-08-03",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1785723600000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1785723600000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e1"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "503"
+	},
+	"transactionId": {
+		"$numberLong": "1003"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "KFC Hai Bà Trưng",
+	"aiValue": "KEC Ha1 Ba Trung",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1785900900000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1785900900000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e2"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "504"
+	},
+	"transactionId": {
+		"$numberLong": "1004"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Circle K",
+	"aiValue": "Circ1e K",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786078200000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786078200000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e3"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "505"
+	},
+	"transactionId": {
+		"$numberLong": "1005"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "WinMart",
+	"aiValue": "W1nMart",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786251900000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786251900000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e4"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "506"
+	},
+	"transactionId": {
+		"$numberLong": "1006"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-08-11",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786429200000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786429200000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e5"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "507"
+	},
+	"transactionId": {
+		"$numberLong": "1007"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "The Coffee House",
+	"aiValue": "The C0ffee House",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786606500000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786606500000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e6"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "508"
+	},
+	"transactionId": {
+		"$numberLong": "1008"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "GS25",
+	"aiValue": "G525",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786783800000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786783800000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e7"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "509"
+	},
+	"transactionId": {
+		"$numberLong": "1009"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Highlands Coffee",
+	"aiValue": "Hlghlands C0ffee",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1786957500000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1786957500000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e8"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "510"
+	},
+	"transactionId": {
+		"$numberLong": "1010"
+	},
+	"userId": {
+		"$numberLong": "1"
+	},
+	"fieldError": "receipt_date",
+	"expectedValue": "2026-08-19",
+	"aiValue": "2026-01-01",
+	"modelVersion": "donut-v4",
+	"isResolved": true,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1787102400000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1787102400000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8e9"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "511"
+	},
+	"transactionId": {
+		"$numberLong": "1011"
+	},
+	"userId": {
+		"$numberLong": "2"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "KFC Hai Bà Trưng",
+	"aiValue": "KEC Ha1 Ba Trung",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1787279700000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1787279700000"
+		}
+	}
+},
+{
+	"_id": {
+		"$oid": "6ae13b4cee35d5d4529df8ea"
+	},
+	"_class": "vn.edu.huit.finance.core.Document.OcrFeedback",
+	"receiptId": {
+		"$numberLong": "512"
+	},
+	"transactionId": {
+		"$numberLong": "1012"
+	},
+	"userId": {
+		"$numberLong": "3"
+	},
+	"fieldError": "seller_name",
+	"expectedValue": "Circle K",
+	"aiValue": "Circ1e K",
+	"modelVersion": "donut-v4",
+	"isResolved": false,
+	"reportedAt": {
+		"$date": {
+			"$numberLong": "1787457000000"
+		}
+	},
+	"updatedAt": {
+		"$date": {
+			"$numberLong": "1787457000000"
+		}
+	}
+}]
+

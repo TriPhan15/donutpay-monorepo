@@ -29,7 +29,6 @@ class StatisticsCacheEvictorTest {
     private static final Long ALICE_ID = 1L;
     private static final Long BOB_ID = 2L;
     private static final String SUMMARY_KEY = "2026-09:50000";
-    private static final String TOP_SPENDERS_KEY = "0:5";
     private static final String CHART_KEY = "monthly-transactions:2026-09:6";
 
     private final CacheErrorHandler errorHandler = mock(CacheErrorHandler.class);
@@ -45,7 +44,6 @@ class StatisticsCacheEvictorTest {
             cache(name).put(BOB_ID, "bob");
         }
         cache(ADMIN_DASHBOARD_SUMMARY).put(SUMMARY_KEY, "summary");
-        cache(ADMIN_TOP_SPENDERS).put(TOP_SPENDERS_KEY, "top");
         cache(ADMIN_STATISTICS).put(CHART_KEY, "chart");
     }
 
@@ -65,8 +63,7 @@ class StatisticsCacheEvictorTest {
     }
 
     private boolean adminFiguresAreAllThere() {
-        return holds(ADMIN_DASHBOARD_SUMMARY, SUMMARY_KEY) && holds(ADMIN_TOP_SPENDERS, TOP_SPENDERS_KEY)
-                && holds(ADMIN_STATISTICS, CHART_KEY);
+        return holds(ADMIN_DASHBOARD_SUMMARY, SUMMARY_KEY) && holds(ADMIN_STATISTICS, CHART_KEY);
     }
 
     @Test
@@ -78,7 +75,6 @@ class StatisticsCacheEvictorTest {
         assertTrue(holds(USER_DASHBOARD, BOB_ID));
         assertTrue(holds(USER_POPULAR_VENDORS, BOB_ID));
         assertFalse(holds(ADMIN_DASHBOARD_SUMMARY, SUMMARY_KEY));
-        assertFalse(holds(ADMIN_TOP_SPENDERS, TOP_SPENDERS_KEY));
         assertFalse(holds(ADMIN_STATISTICS, CHART_KEY));
     }
 
@@ -97,7 +93,6 @@ class StatisticsCacheEvictorTest {
         evictor.onStatisticsChanged(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_CREATED));
 
         assertFalse(holds(ADMIN_DASHBOARD_SUMMARY, SUMMARY_KEY));
-        assertTrue(holds(ADMIN_TOP_SPENDERS, TOP_SPENDERS_KEY));
         assertTrue(holds(ADMIN_STATISTICS, CHART_KEY));
         for (String name : USER_CACHES) {
             assertTrue(holds(name, ALICE_ID) && holds(name, BOB_ID), name);
@@ -132,7 +127,6 @@ class StatisticsCacheEvictorTest {
         caches.add(unreachable);
         cacheManager = cacheManagerOf(caches);
         cache(USER_POPULAR_VENDORS).put(ALICE_ID, "alice");
-        cache(ADMIN_TOP_SPENDERS).put(TOP_SPENDERS_KEY, "top");
         evictor = new StatisticsCacheEvictor(cacheManager, errorHandler);
 
         assertDoesNotThrow(() -> evictor.onStatisticsChanged(
@@ -140,7 +134,6 @@ class StatisticsCacheEvictorTest {
 
         verify(errorHandler).handleCacheEvictError(down, unreachable, ALICE_ID);
         assertFalse(holds(USER_POPULAR_VENDORS, ALICE_ID));
-        assertFalse(holds(ADMIN_TOP_SPENDERS, TOP_SPENDERS_KEY));
     }
 
     @Test

@@ -1,0 +1,361 @@
+{
+  "versions": {
+    "mongodb": "6.0.28",
+    "pymongo": "4.10.1"
+  },
+  "counts": {
+    "ocr_logs_noidx": 100000,
+    "ocr_feedbacks_noidx": 45471,
+    "ocr_feedbacks": 45471,
+    "ocr_logs": 100000,
+    "ocr_feedbacks_embedded": 45471
+  },
+  "scenarios": {
+    "A/reference": {
+      "n": 1200,
+      "p50_ms": 871.624826,
+      "p95_ms": 988.182081,
+      "p99_ms": 1069.937566,
+      "max_ms": 1199.834538,
+      "min_ms": 831.016871,
+      "mean_ms": 888.2294766616666,
+      "ops_s": 1.1258351881750346,
+      "warmup": 200
+    },
+    "A/reference_reordered": {
+      "n": 1200,
+      "p50_ms": 0.754773,
+      "p95_ms": 0.803495,
+      "p99_ms": 0.828544,
+      "max_ms": 0.98357,
+      "min_ms": 0.672716,
+      "mean_ms": 0.7517848791666666,
+      "ops_s": 1330.1677483969524,
+      "warmup": 200
+    },
+    "A/embedded_reordered": {
+      "n": 1200,
+      "p50_ms": 0.482121,
+      "p95_ms": 0.568784,
+      "p99_ms": 0.623453,
+      "max_ms": 0.753544,
+      "min_ms": 0.421173,
+      "mean_ms": 0.48867885083333334,
+      "ops_s": 2046.333698081515,
+      "warmup": 200
+    },
+    "A/embedded": {
+      "n": 1200,
+      "p50_ms": 49.467975,
+      "p95_ms": 55.069496,
+      "p99_ms": 63.024816,
+      "max_ms": 79.161502,
+      "min_ms": 45.49349,
+      "mean_ms": 49.98634493666666,
+      "ops_s": 20.005463517426865,
+      "warmup": 200
+    },
+    "B/reference": {
+      "n": 1200,
+      "p50_ms": 1.631815,
+      "p95_ms": 2.149218,
+      "p99_ms": 2.40231,
+      "max_ms": 3.119329,
+      "min_ms": 0.859095,
+      "mean_ms": 1.6549506008333332,
+      "ops_s": 604.2476430997157,
+      "warmup": 200
+    },
+    "B/reference_reordered": {
+      "n": 1200,
+      "p50_ms": 0.913985,
+      "p95_ms": 1.174896,
+      "p99_ms": 1.284792,
+      "max_ms": 1.48465,
+      "min_ms": 0.797969,
+      "mean_ms": 0.9467282225000001,
+      "ops_s": 1056.2693455565598,
+      "warmup": 200
+    },
+    "B/embedded_reordered": {
+      "n": 1200,
+      "p50_ms": 0.625597,
+      "p95_ms": 0.731262,
+      "p99_ms": 0.825743,
+      "max_ms": 1.019194,
+      "min_ms": 0.510968,
+      "mean_ms": 0.6353031699999999,
+      "ops_s": 1574.0516452955837,
+      "warmup": 200
+    },
+    "B/embedded": {
+      "n": 1200,
+      "p50_ms": 0.641757,
+      "p95_ms": 0.734845,
+      "p99_ms": 0.811471,
+      "max_ms": 0.922338,
+      "min_ms": 0.538221,
+      "mean_ms": 0.6485629199999999,
+      "ops_s": 1541.870447974423,
+      "warmup": 200
+    }
+  },
+  "explain": {
+    "A/reference": {
+      "totalDocsExamined": [
+        45471,
+        15210
+      ],
+      "totalKeysExamined": [
+        0,
+        15210
+      ],
+      "nReturned": [
+        15211,
+        15211,
+        15211,
+        15211,
+        15211,
+        15211
+      ],
+      "executionTimeMillis": [
+        904
+      ],
+      "indexesUsed": [
+        [
+          "transactionId"
+        ]
+      ],
+      "stages": [
+        "$cursor",
+        "$lookup",
+        "$project",
+        "$sort"
+      ]
+    },
+    "A/reference_reordered": {
+      "totalDocsExamined": [
+        6,
+        3
+      ],
+      "totalKeysExamined": [
+        6,
+        3
+      ],
+      "nReturned": [
+        4,
+        4,
+        4,
+        4,
+        6,
+        4
+      ],
+      "executionTimeMillis": [
+        0
+      ],
+      "indexesUsed": [
+        [
+          "transactionId"
+        ]
+      ],
+      "stages": [
+        "$cursor",
+        "$lookup",
+        "$project"
+      ]
+    },
+    "A/embedded_reordered": {
+      "totalDocsExamined": [
+        6
+      ],
+      "totalKeysExamined": [
+        6
+      ],
+      "nReturned": [
+        4,
+        4,
+        4,
+        4,
+        6,
+        4
+      ],
+      "executionTimeMillis": [
+        0
+      ],
+      "indexesUsed": [],
+      "stages": [
+        "$cursor",
+        "$project"
+      ]
+    },
+    "A/embedded": {
+      "totalDocsExamined": [
+        45471
+      ],
+      "totalKeysExamined": [
+        0
+      ],
+      "nReturned": [
+        15211,
+        15211,
+        15211,
+        15211,
+        4
+      ],
+      "executionTimeMillis": [
+        47
+      ],
+      "indexesUsed": [],
+      "stages": [
+        "$cursor",
+        "$sort"
+      ]
+    },
+    "B/reference": {
+      "totalDocsExamined": [
+        39,
+        16
+      ],
+      "totalKeysExamined": [
+        39,
+        16
+      ],
+      "nReturned": [
+        17,
+        17,
+        17,
+        39,
+        17,
+        17
+      ],
+      "executionTimeMillis": [
+        1
+      ],
+      "indexesUsed": [
+        [
+          "transactionId"
+        ]
+      ],
+      "stages": [
+        "$cursor",
+        "$lookup",
+        "$project",
+        "$sort"
+      ]
+    },
+    "B/reference_reordered": {
+      "totalDocsExamined": [
+        39,
+        3
+      ],
+      "totalKeysExamined": [
+        39,
+        3
+      ],
+      "nReturned": [
+        4,
+        4,
+        4,
+        17,
+        39,
+        4
+      ],
+      "executionTimeMillis": [
+        0
+      ],
+      "indexesUsed": [
+        [
+          "transactionId"
+        ]
+      ],
+      "stages": [
+        "$cursor",
+        "$lookup",
+        "$project"
+      ]
+    },
+    "B/embedded_reordered": {
+      "totalDocsExamined": [
+        39
+      ],
+      "totalKeysExamined": [
+        39
+      ],
+      "nReturned": [
+        4,
+        4,
+        4,
+        17,
+        39,
+        4
+      ],
+      "executionTimeMillis": [
+        0
+      ],
+      "indexesUsed": [],
+      "stages": [
+        "$cursor",
+        "$project"
+      ]
+    },
+    "B/embedded": {
+      "totalDocsExamined": [
+        39
+      ],
+      "totalKeysExamined": [
+        39
+      ],
+      "nReturned": [
+        17,
+        17,
+        17,
+        39,
+        17,
+        4
+      ],
+      "executionTimeMillis": [
+        0
+      ],
+      "indexesUsed": [],
+      "stages": [
+        "$cursor",
+        "$sort"
+      ]
+    }
+  },
+  "sizes": {
+    "ocr_feedbacks": {
+      "count": 45471,
+      "size": 10955620,
+      "avgObjSize": 240,
+      "storageSize": 2383872,
+      "totalIndexSize": 4136960
+    },
+    "ocr_feedbacks_embedded": {
+      "count": 45471,
+      "size": 23124923,
+      "avgObjSize": 508,
+      "storageSize": 4521984,
+      "totalIndexSize": 4141056
+    },
+    "ocr_logs": {
+      "count": 100000,
+      "size": 41917031,
+      "avgObjSize": 419,
+      "storageSize": 8888320,
+      "totalIndexSize": 5488640
+    }
+  },
+  "seller_name_feedbacks": 15211,
+  "users_with_seller_name_feedback": 1000,
+  "experiment": "E5",
+  "client_host": {
+    "cpu": "Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz",
+    "mem_total": "15682476 kB",
+    "cpus": 12,
+    "kernel": "7.0.0-38-generic",
+    "python": "3.12.16"
+  },
+  "warmup": 200,
+  "iterations": 1200
+}

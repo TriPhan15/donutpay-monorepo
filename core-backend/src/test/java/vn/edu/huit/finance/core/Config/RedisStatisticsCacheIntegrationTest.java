@@ -26,7 +26,6 @@ import vn.edu.huit.finance.core.Dto.AdminDashboardSummaryDto;
 import vn.edu.huit.finance.core.Dto.AppDashboardResponseDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
-import vn.edu.huit.finance.core.Dto.TopSpenderDto;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.ReceiptRepository;
@@ -217,10 +216,6 @@ class RedisStatisticsCacheIntegrationTest {
             admin.getDashboardSummary(SEPTEMBER, new BigDecimal("50000.00"));
             admin.getDashboardSummary(YearMonth.of(2026, 8), THRESHOLD);
             admin.getDashboardSummary(SEPTEMBER, new BigDecimal("100000"));
-            admin.getTopSpenders(0, 5);
-            admin.getTopSpenders(0, 5);
-            admin.getTopSpenders(1, 5);
-            admin.getTopSpenders(0, 10);
             admin.getMonthlyTransactionCounts(SEPTEMBER, 6);
             admin.getMonthlyTransactionCounts(SEPTEMBER, 6);
             admin.getMonthlyTransactionCounts(SEPTEMBER, 3);
@@ -229,13 +224,9 @@ class RedisStatisticsCacheIntegrationTest {
                     key(ADMIN_DASHBOARD_SUMMARY, "2026-09:50000"),
                     key(ADMIN_DASHBOARD_SUMMARY, "2026-08:50000"),
                     key(ADMIN_DASHBOARD_SUMMARY, "2026-09:100000"),
-                    key(ADMIN_TOP_SPENDERS, "0:5"),
-                    key(ADMIN_TOP_SPENDERS, "1:5"),
-                    key(ADMIN_TOP_SPENDERS, "0:10"),
                     key(ADMIN_STATISTICS, "monthly-transactions:2026-09:6"),
                     key(ADMIN_STATISTICS, "monthly-transactions:2026-09:3")), ownKeys(context));
             verify(context.getBean(UserRepository.class), times(3)).count();
-            verify(transactions(context), times(3)).findTopSpenders(any(Pageable.class));
         });
     }
 
@@ -253,22 +244,16 @@ class RedisStatisticsCacheIntegrationTest {
             when(transactions(context).countByTransactionDateBetween(any(), any())).thenReturn(17L);
             when(context.getBean(ReceiptRepository.class).getReceiptStatusStatistics())
                     .thenReturn(List.<Object[]>of(new Object[]{"SUCCESS", 5L}));
-            when(transactions(context).findTopSpenders(any(Pageable.class)))
-                    .thenReturn(List.<Object[]>of(new Object[]{"an", new BigDecimal("900000.00")}));
             AdminStatisticsService admin = adminStatistics(context);
 
             AdminDashboardSummaryDto summary = admin.getDashboardSummary(SEPTEMBER, THRESHOLD);
-            List<TopSpenderDto> top = admin.getTopSpenders(0, 5);
             List<MonthlyTransactionCountDto> chart = admin.getMonthlyTransactionCounts(SEPTEMBER, 6);
 
             assertEquals(summary, admin.getDashboardSummary(SEPTEMBER, THRESHOLD));
-            assertEquals(top, admin.getTopSpenders(0, 5));
-            assertSame(TopSpenderDto.class, admin.getTopSpenders(0, 5).get(0).getClass());
             List<MonthlyTransactionCountDto> chartBack = admin.getMonthlyTransactionCounts(SEPTEMBER, 6);
             assertEquals(chart, chartBack);
             assertEquals(YearMonth.of(2026, 4), chartBack.get(0).getMonth());
             verify(transactions(context), times(1)).sumTotalVolume();
-            verify(transactions(context), times(1)).findTopSpenders(any(Pageable.class));
         });
     }
 
@@ -335,7 +320,7 @@ class RedisStatisticsCacheIntegrationTest {
                             .functionCounter().count());
                     assertEquals(1.0, registry.get("cache.puts").tags("cache", USER_DASHBOARD).functionCounter().count());
                     assertEquals(1.0, registry.get("cache.removals").tags("cache", USER_DASHBOARD).functionCounter().count());
-                    assertEquals(0.0, registry.get("cache.gets").tags("cache", ADMIN_TOP_SPENDERS, "result", "hit")
+                    assertEquals(0.0, registry.get("cache.gets").tags("cache", ADMIN_STATISTICS, "result", "hit")
                             .functionCounter().count());
                 });
     }
@@ -379,12 +364,12 @@ class RedisStatisticsCacheIntegrationTest {
             databaseHolds(transactions(stagingApi), ALICE_ID, "Staging");
             databaseHolds(transactions(productionApi), ALICE_ID, "Production");
             userStatistics(stagingApi).dashboardOf(ALICE_ID);
-            adminStatistics(stagingApi).getTopSpenders(0, 5);
+            adminStatistics(stagingApi).getMonthlyTransactionCounts(SEPTEMBER, 6);
 
             assertEquals("Production", firstTitle(userStatistics(productionApi).dashboardOf(ALICE_ID)));
             productionApi.publishEvent(StatisticsChangedEvent.of(StatisticsChange.DATABASE_RESTORED));
 
-            assertEquals(Set.of(staging + ":v1:user-dashboard:1", staging + ":v1:admin-top-spenders:0:5"),
+            assertEquals(Set.of(staging + ":v1:user-dashboard:1", staging + ":v1:admin-statistics:monthly-transactions:2026-09:6"),
                     keysMatching(stagingApi, staging + ":*"));
             assertEquals(Set.of(), keysMatching(productionApi, production + ":*"));
         }));
@@ -404,12 +389,11 @@ class RedisStatisticsCacheIntegrationTest {
                 users.popularVendorsOf(userId);
             }
             admin.getDashboardSummary(SEPTEMBER, THRESHOLD);
-            admin.getTopSpenders(0, 5);
             admin.getMonthlyTransactionCounts(SEPTEMBER, 6);
-            String otherEnvironment = "ledgermind:other-environment:v1:admin-top-spenders:0:5";
+            String otherEnvironment = "ledgermind:other-environment:v1:admin-statistics:x";
             redis(context).opsForValue().set(otherEnvironment, "[]");
             Set<String> keys = new HashSet<>(ownKeys(context));
-            assertEquals(7, keys.size());
+            assertEquals(6, keys.size());
 
             context.publishEvent(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_CREATED));
             keys.remove(key(ADMIN_DASHBOARD_SUMMARY, "2026-09:50000"));
@@ -421,7 +405,7 @@ class RedisStatisticsCacheIntegrationTest {
 
             context.publishEvent(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_TOTALS, BOB_ID));
             keys.removeAll(Set.of(key(USER_DASHBOARD, "2"), key(USER_POPULAR_VENDORS, "2"),
-                    key(ADMIN_TOP_SPENDERS, "0:5"), key(ADMIN_STATISTICS, "monthly-transactions:2026-09:6")));
+                    key(ADMIN_STATISTICS, "monthly-transactions:2026-09:6")));
             assertEquals(Set.of(key(USER_POPULAR_VENDORS, "1")), ownKeys(context), "Alice's vendors are not Bob's business");
             assertEquals(keys, ownKeys(context));
 
