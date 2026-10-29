@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.PageRequest;
+import vn.edu.huit.finance.core.Document.Search.TransactionSearchDocument;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
@@ -186,7 +187,7 @@ class TransactionRepositoryTest {
     }
 
     @Test
-    void topSpenders_leaveOutSavingsContributions() {
+    void sumExpensesByUserBetween_leavesOutSavingsContributions() {
         User alice = withReceipt.getUser();
         Category savings = persistCategory(SavingsContributions.CATEGORY_NAME);
         persistTransaction(alice, savings, "4500000", true, SEPTEMBER_START.plusDays(2));
@@ -199,10 +200,10 @@ class TransactionRepositoryTest {
         persistTransaction(bob, withReceipt.getCategory(), "300000", true, SEPTEMBER_START.plusDays(1));
 
         // alice spends 200,000 (fixture) + a 4,500,000 contribution; bob spends 300,000
-        List<Object[]> top = transactionRepository.findTopSpenders(PageRequest.of(0, 2));
+        List<Object[]> top = transactionRepository.sumExpensesByUserBetween(SEPTEMBER_START, OCTOBER_START);
 
-        assertEquals("bob", top.get(0)[0]);
-        assertMoney("200000", (BigDecimal) top.get(1)[1]);
+        assertEquals("bob", top.get(0)[1]);
+        assertMoney("200000", (BigDecimal) top.get(1)[2]);
     }
 
     @Test
@@ -364,5 +365,36 @@ class TransactionRepositoryTest {
         assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()),
                 possibleDuplicatesOfAlice(true, "100000").stream().map(Transaction::getId).toList(),
                 "neither the other amount, nor the income, nor Bob's transaction of the same minute");
+    }
+
+    // ------------------------------------------------------------------------------------------- the search index
+
+    @Test
+    void theSearchDocumentOfATransactionIsBuiltFromOneStatement() {
+        forgetLoadedEntities();
+
+        Transaction found = transactionRepository.findForSearchIndex(withReceipt.getId()).orElseThrow();
+        TransactionSearchDocument document = TransactionSearchDocument.from(found);
+
+        assertEquals(String.valueOf(withReceipt.getId()), document.getId());
+        assertEquals(withReceipt.getUser().getId(), document.getUserId());
+        assertEquals("Highlands", document.getVendorName());
+        assertEquals("Ăn uống", document.getCategoryName());
+        assertEquals(1, statistics().getPrepareStatementCount(), "the owner's id must not load the user");
+        assertTrue(transactionRepository.findForSearchIndex(-1L).isEmpty());
+    }
+
+    @Test
+    void theSearchIndexIsRebuiltPageByPageOverEveryUser() {
+        Transaction bobs = newTransaction(persistBob(), withReceipt.getCategory());
+        entityManager.persistAndFlush(bobs);
+        forgetLoadedEntities();
+
+        List<Transaction> first = transactionRepository.findNextForSearchIndex(0L, PageRequest.of(0, 2));
+        List<Transaction> second = transactionRepository.findNextForSearchIndex(first.get(1).getId(), PageRequest.of(0, 2));
+
+        assertEquals(List.of(withReceipt.getId(), withoutReceipt.getId()), first.stream().map(Transaction::getId).toList());
+        assertEquals("Highlands", first.get(0).getReceipt().getVendorName());
+        assertEquals(List.of(bobs.getId()), second.stream().map(Transaction::getId).toList());
     }
 }

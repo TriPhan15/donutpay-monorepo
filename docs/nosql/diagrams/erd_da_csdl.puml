@@ -1,0 +1,34 @@
+@startuml erd_da_csdl
+' Quan hệ giữa 4 CSDL (facts.md 1.1-1.4); nét đứt = tham chiếu logic bằng id
+!pragma layout smetana
+!include _style.iuml
+skinparam wrapWidth 200
+title Mô hình dữ liệu đa CSDL (polyglot persistence)
+package "PostgreSQL (nguồn sự thật)" {
+  class users
+  class transactions
+  class receipts
+  class receipt_processing_attempts
+}
+package "MongoDB finance_nosql" {
+  class ocr_logs
+  class ocr_feedbacks
+}
+package "Elasticsearch" {
+  class "index transactions" as ES
+}
+package "Redis" {
+  class "ledgermind:leaderboard:spend:yyyy-MM\n(ZSET)" as Z
+  class "<prefix>:v1:user-dashboard:userId\n(String JSON)" as CK
+  class "ledgermind:password-reset-otp:email\n(Hash)" as OT
+}
+users "1" -- "0..*" transactions
+transactions "0..1" -- "0..1" receipts
+receipts "1" -- "0..*" receipt_processing_attempts
+transactions .. ocr_logs : transactionId (unique)
+receipts .. ocr_feedbacks : receiptId + fieldError (unique)
+transactions .. ES : id = transactions.id
+users .. Z : member = userId, score = tổng chi tháng
+users .. CK : tính từ PostgreSQL khi miss
+users .. OT : email
+@enduml

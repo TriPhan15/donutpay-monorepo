@@ -139,7 +139,7 @@ when Redis is down or slow, requests read PostgreSQL directly and nothing fails.
   restart starts empty) and memory is capped (`maxmemory` with `allkeys-lru`, plus a container limit). Tokens,
   passwords and OTPs are never cached.
 - **Keys:** `<CACHE_KEY_PREFIX>:v1:<cache>:<key>`, e.g. `ledgermind:prod:v1:user-dashboard:42` or
-  `ledgermind:prod:v1:admin-top-spenders:0:5`. The `v1` is raised in the code whenever a cached DTO changes shape.
+  `ledgermind:prod:v1:admin-statistics:monthly-transactions:2026-09:6`. The `v1` is raised in the code whenever a cached DTO changes shape.
 - **Invalidation:** every write that changes a cached figure (transactions, receipts, accounts, a restore from the admin
   page) evicts the affected entries once its database transaction has committed; the TTLs bound anything else.
 
@@ -152,7 +152,7 @@ when Redis is down or slow, requests read PostgreSQL directly and nothing fails.
 | `CACHE_TTL_USER_DASHBOARD` | `45s` | Home page of one user. |
 | `CACHE_TTL_USER_POPULAR_VENDORS` | `60s` | Popular vendors of one user. |
 | `CACHE_TTL_ADMIN_DASHBOARD_SUMMARY` | `45s` | Total volume, user count, low-balance list, receipt statuses. |
-| `CACHE_TTL_ADMIN_TOP_SPENDERS` | `60s` | Top spenders. |
+| `LEADERBOARD_TTL` | `62d` | Monthly spending leaderboard (one Redis sorted set per month, rebuilt from PostgreSQL when missing). |
 | `CACHE_TTL_ADMIN_STATISTICS` | `60s` | Six-month transaction chart. |
 | `CACHE_TTL_JITTER_PERCENT` | `10` | An entry lives between (100 - jitter) % and 100 % of its TTL, so entries do not all expire together. |
 

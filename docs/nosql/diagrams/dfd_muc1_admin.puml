@@ -1,0 +1,22 @@
+@startuml dfd_muc1_admin
+' DFD mức 1, phần quản trị: tiến trình 5-6 (facts.md 1.5)
+!pragma layout smetana
+!include _style.iuml
+skinparam wrapWidth 160
+left to right direction
+title DFD mức 1 (phần quản trị): tiến trình 5-6 và kho dữ liệu
+rectangle "Quản trị viên" as A
+usecase "5 Phản hồi, thống kê OCR" as P5
+usecase "6 Xếp hạng, vận hành, realtime" as P6
+database "D1 PostgreSQL" as D1
+database "D2 Redis" as D2
+database "D3 MongoDB" as D3
+database "D4 Elasticsearch" as D4
+A <--> P5 : bộ lọc, danh sách, biểu đồ
+A <--> P6 : tháng, bảng xếp hạng, sự kiện
+P5 --> D3 : find, aggregate, update, delete
+P6 --> D2 : ZSET, PUBLISH
+P6 --> D1 : tổng chi, pg_dump
+P6 --> D4 : reindex
+P6 --> D3 : mongodump
+@enduml

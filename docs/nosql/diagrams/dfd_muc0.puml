@@ -1,0 +1,19 @@
+@startuml dfd_muc0
+' DFD mức 0 (facts.md 1.5)
+!pragma layout smetana
+!include _style.iuml
+skinparam wrapWidth 200
+title DFD mức 0: hệ thống LedgerMind
+rectangle "Người dùng" as U
+rectangle "Quản trị viên" as A
+rectangle "ai-service" as AI
+rectangle "Dịch vụ email" as M
+usecase "0 Hệ thống LedgerMind" as P
+U --> P : giao dịch, JSON hóa đơn,\nsửa OCR, từ khóa, email/OTP
+P --> U : thống kê, kết quả\ntìm kiếm, JWT
+A --> P : lọc/duyệt phản hồi OCR,\ntháng xếp hạng, reindex, backup
+P --> A : bảng xếp hạng, thống kê OCR,\nsự kiện realtime
+U --> AI : ảnh hóa đơn
+AI --> U : JSON đọc được
+P --> M : mã OTP
+@enduml

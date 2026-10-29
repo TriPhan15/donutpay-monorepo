@@ -19,6 +19,13 @@ RUN apt-get update && apt-get install -y curl tini ca-certificates \
     && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt jammy-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update && apt-get install -y --no-install-recommends postgresql-client-15 \
     && rm -rf /var/lib/apt/lists/*
+# mongodump/mongorestore for the MongoDB backups of the admin page: only the database tools, from the MongoDB 7.0 apt
+# repository (jammy has no package of them); apt reads the armored key as it is. They also read the archives of a 6.0 server.
+RUN install -d /usr/share/keyrings \
+    && curl -fsSL -o /usr/share/keyrings/mongodb-server-7.0.asc https://pgp.mongodb.com/server-7.0.asc \
+    && echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.asc] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" > /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && apt-get update && apt-get install -y --no-install-recommends mongodb-database-tools \
+    && rm -rf /var/lib/apt/lists/*
 ENV TZ="Asia/Ho_Chi_Minh"
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 ENV SPRING_PROFILES_ACTIVE="prod"

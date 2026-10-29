@@ -1,0 +1,46 @@
+@startuml bpmn_quet_hoa_don
+' Quy trình quét hóa đơn (facts.md 1.3, 1.5; ReceiptProcessingService.recordAttachedReceipt; mobile /donut/scan)
+!include _style.iuml
+skinparam wrapWidth 230
+skinparam NoteBackgroundColor white
+title Quy trình quét hóa đơn và dữ liệu ghi ở mỗi bước
+|Người dùng|
+start
+:Chụp ảnh hóa đơn;
+|Ứng dụng|
+:Gửi ảnh tới ai-service\nPOST /donut/scan;
+|ai-service|
+:DONUT V5 đọc 4 trường,\ntrả JSON (không có\nđộ tin cậy);
+|Ứng dụng|
+:Điền sẵn biểu mẫu;
+|Người dùng|
+:Đối chiếu, sửa tên quán,\ntổng tiền, ngày; bấm lưu;
+|Ứng dụng|
+:POST /api/transactions/\ncheckout (rawReceiptData,\nclientId);
+|core-api|
+:Khóa ví, chống trùng\nclientId;
+:Ghi giao dịch, hóa đơn,\nlần đọc AI đầu tiên;
+note right
+  **PostgreSQL**:
+  transactions, receipts,
+  receipt_processing_attempts,
+  action_logs
+end note
+:Phát sự kiện\n(OcrProcessedEvent,\nOcrCorrectionEvent nếu\nkhác AI, TransactionChangedEvent,\nStatisticsChangedEvent);
+:COMMIT;
+partition "Sau COMMIT (@Async, bất đồng bộ)" {
+  :Ghi log AI thô;
+  note right: **MongoDB** ocr_logs
+  :Upsert chỗ sửa (nếu khác AI);
+  note right: **MongoDB** ocr_feedbacks,\n**Redis** PUBLISH\nledgermind:admin-events
+  :Cập nhật chỉ mục;
+  note right: **Elasticsearch**\ntransactions
+  :Cập nhật bảng xếp hạng,\nxóa cache;
+  note right: **Redis** ZSET, DEL
+}
+|Ứng dụng|
+:Nhận phản hồi 200\n(không chờ bước sau commit);
+|Người dùng|
+:Thấy giao dịch trong sổ cái;
+stop
+@enduml

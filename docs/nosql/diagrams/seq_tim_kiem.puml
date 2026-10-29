@@ -1,0 +1,28 @@
+@startuml seq_tim_kiem
+' facts.md 1.4: TransactionSearchService.search, ElasticsearchTransactionSearchEngine, PostgresTransactionSearchEngine
+!include _style.iuml
+skinparam wrapWidth 220
+title Tuần tự tìm kiếm giao dịch (Elasticsearch, PostgreSQL)
+actor "Ứng dụng" as A
+participant "core-api\nTransactionSearchService" as C
+database "Elasticsearch" as E
+database "PostgreSQL" as P
+A -> C : GET /api/transactions/search?q=...
+C -> C : userId từ JWT, kiểm tra q, page, size
+alt SEARCH_ENGINE = elasticsearch
+  C -> E : bool { filter userId; should multi_match\n(chính xác boost 2, mờ AUTO:4,7, prefix_length 1) }
+  alt ES trả lời
+    E --> C : id giao dịch theo _score
+  else ES lỗi hoặc quá hạn (socket 2 s)
+    C -> C : log cảnh báo 1 dòng
+    C -> P : searchIdsByText: LOWER(cột) LIKE ... ESCAPE
+    P --> C : id giao dịch
+  end
+else postgres (mặc định)
+  C -> P : searchIdsByText: LOWER(cột) LIKE ... ESCAPE
+  P --> C : id giao dịch
+end
+C -> P : findAllByIdInAndUserIdWithReceipt(ids, userId)
+P --> C : giao dịch của chủ sở hữu
+C --> A : items, total, engine
+@enduml

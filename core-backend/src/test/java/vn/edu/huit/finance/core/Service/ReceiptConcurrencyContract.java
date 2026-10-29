@@ -58,7 +58,7 @@ import static org.mockito.Mockito.when;
  * database of the deployment, so that H2 is not taken at its word for how a blocked write ends.
  */
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class, UserStatisticsService.class})
+@Import({TransactionService.class, CategoryService.class, ReceiptProcessingService.class, OcrService.class, OcrCorrectionDetector.class, UserStatisticsService.class})
 abstract class ReceiptConcurrencyContract {
 
     private static final BigDecimal WALLET = new BigDecimal("1000000.00");

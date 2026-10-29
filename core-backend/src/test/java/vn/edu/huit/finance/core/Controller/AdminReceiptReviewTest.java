@@ -39,6 +39,7 @@ import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
 import vn.edu.huit.finance.core.Service.BackupService;
 import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
+import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
@@ -89,6 +90,7 @@ class AdminReceiptReviewTest {
     @MockBean private TransactionService transactionService;
     @MockBean private ReceiptProcessingService receiptProcessingService;
     @MockBean private AdminStatisticsService adminStatisticsService;
+    @MockBean private SpendingLeaderboardService leaderboardService;
     @MockBean private UserRepository userRepo;
     @MockBean private CategoryRepository categoryRepo;
     @MockBean private CampaignRepository campaignRepo;

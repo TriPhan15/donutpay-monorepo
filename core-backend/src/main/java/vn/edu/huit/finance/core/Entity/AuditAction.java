@@ -112,6 +112,8 @@ public enum AuditAction {
     // -------------------------------------------------------------------------------------------- system operations
     SYSTEM_BACKUP_CREATED(SYSTEM, null, SUCCESS, "Sao lưu cơ sở dữ liệu", "CREATE_BACKUP"),
     SYSTEM_DATABASE_RESTORED(SYSTEM, null, SUCCESS, "Phục hồi cơ sở dữ liệu", "RESTORE_DB"),
+    MONGO_BACKUP_CREATED(SYSTEM, null, SUCCESS, "Sao lưu MongoDB"),
+    MONGO_RESTORED(SYSTEM, null, SUCCESS, "Phục hồi MongoDB"),
     SYSTEM_SEGMENTATION_RUN(SYSTEM, null, SUCCESS, "Phân lớp khách hàng (AI)", "AI_SEGMENT"),
     SYSTEM_LOW_BALANCE_WARNING(SYSTEM, AuditTargetType.USER, SUCCESS, "Cảnh báo số dư thấp", "AUTO_WARNING");
 

@@ -2,14 +2,12 @@ package vn.edu.huit.finance.core.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.AdminDashboardSummaryDto;
 import vn.edu.huit.finance.core.Dto.LowBalanceUserDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
-import vn.edu.huit.finance.core.Dto.TopSpenderDto;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Repository.ReceiptRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
@@ -72,18 +70,6 @@ public class AdminStatisticsService {
                 .map(entry -> ReceiptStatusCountDto.builder()
                         .status(entry.getKey())
                         .count(entry.getValue())
-                        .build())
-                .toList();
-    }
-
-    /** The users who spent the most (expenses only, savings excluded), highest first. Key {@code <page>:<limit>}, e.g. {@code 0:5}. */
-    @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheNames.ADMIN_TOP_SPENDERS, key = "#page + ':' + #limit", unless = "#result == null")
-    public List<TopSpenderDto> getTopSpenders(int page, int limit) {
-        return transactionRepo.findTopSpenders(PageRequest.of(page, limit)).stream()
-                .map(row -> TopSpenderDto.builder()
-                        .username((String) row[0])
-                        .totalSpent((BigDecimal) row[1])
                         .build())
                 .toList();
     }

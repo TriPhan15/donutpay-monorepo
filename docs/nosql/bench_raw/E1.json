@@ -1,0 +1,177 @@
+{
+  "versions": {
+    "mongodb": "6.0.28",
+    "pymongo": "4.10.1"
+  },
+  "counts": {
+    "ocr_logs": 100000,
+    "ocr_feedbacks_noidx": 45471,
+    "ocr_feedbacks": 45471,
+    "ocr_logs_noidx": 100000
+  },
+  "scenarios": {
+    "Q-01/indexed": {
+      "n": 1200,
+      "p50_ms": 0.344609,
+      "p95_ms": 0.404739,
+      "p99_ms": 0.453581,
+      "max_ms": 0.654538,
+      "min_ms": 0.24257,
+      "mean_ms": 0.3416376366666667,
+      "ops_s": 2927.0779699711265,
+      "warmup": 200,
+      "collection": "ocr_logs"
+    },
+    "Q-01/noindex": {
+      "n": 1200,
+      "p50_ms": 20.655926,
+      "p95_ms": 39.010746,
+      "p99_ms": 42.499304,
+      "max_ms": 62.193355,
+      "min_ms": 0.428744,
+      "mean_ms": 20.661446735833334,
+      "ops_s": 48.39932134402239,
+      "warmup": 200,
+      "collection": "ocr_logs_noidx"
+    },
+    "Q-02/indexed": {
+      "n": 1200,
+      "p50_ms": 0.430295,
+      "p95_ms": 0.506318,
+      "p99_ms": 0.560511,
+      "max_ms": 0.710664,
+      "min_ms": 0.313494,
+      "mean_ms": 0.43152057416666667,
+      "ops_s": 2317.3866088103805,
+      "warmup": 200,
+      "collection": "ocr_logs"
+    },
+    "Q-02/noindex": {
+      "n": 1200,
+      "p50_ms": 45.757451,
+      "p95_ms": 50.28505,
+      "p99_ms": 65.643996,
+      "max_ms": 88.149309,
+      "min_ms": 43.830781,
+      "mean_ms": 46.66896512916667,
+      "ops_s": 21.427516064096967,
+      "warmup": 200,
+      "collection": "ocr_logs_noidx"
+    },
+    "Q-03/indexed": {
+      "n": 1200,
+      "p50_ms": 0.334276,
+      "p95_ms": 0.403481,
+      "p99_ms": 0.463594,
+      "max_ms": 1.308414,
+      "min_ms": 0.243229,
+      "mean_ms": 0.33253414166666667,
+      "ops_s": 3007.2100115434264,
+      "warmup": 200,
+      "collection": "ocr_feedbacks"
+    },
+    "Q-03/noindex": {
+      "n": 1200,
+      "p50_ms": 21.787484,
+      "p95_ms": 24.06487,
+      "p99_ms": 28.331795,
+      "max_ms": 48.423119,
+      "min_ms": 20.791506,
+      "mean_ms": 22.200632500833333,
+      "ops_s": 45.043761701945364,
+      "warmup": 200,
+      "collection": "ocr_feedbacks_noidx"
+    }
+  },
+  "explain": {
+    "Q-01/indexed": {
+      "stages": "LIMIT -> PROJECTION_DEFAULT -> FETCH -> IXSCAN",
+      "index": "transactionId",
+      "totalKeysExamined": 1,
+      "totalDocsExamined": 1,
+      "nReturned": 1,
+      "executionTimeMillis": 0
+    },
+    "Q-01/noindex": {
+      "stages": "LIMIT -> PROJECTION_DEFAULT -> COLLSCAN",
+      "index": null,
+      "totalKeysExamined": 0,
+      "totalDocsExamined": 81645,
+      "nReturned": 1,
+      "executionTimeMillis": 35
+    },
+    "Q-02/indexed": {
+      "stages": "LIMIT -> PROJECTION_SIMPLE -> FETCH -> IXSCAN",
+      "index": "createdAt",
+      "totalKeysExamined": 61,
+      "totalDocsExamined": 61,
+      "nReturned": 5,
+      "executionTimeMillis": 5
+    },
+    "Q-02/noindex": {
+      "stages": "PROJECTION_SIMPLE -> SORT -> COLLSCAN",
+      "index": null,
+      "totalKeysExamined": 0,
+      "totalDocsExamined": 100000,
+      "nReturned": 5,
+      "executionTimeMillis": 53
+    },
+    "Q-03/indexed": {
+      "stages": "LIMIT -> PROJECTION_SIMPLE -> FETCH -> IXSCAN",
+      "index": "status_date_idx",
+      "totalKeysExamined": 5,
+      "totalDocsExamined": 5,
+      "nReturned": 5,
+      "executionTimeMillis": 0
+    },
+    "Q-03/noindex": {
+      "stages": "PROJECTION_SIMPLE -> SORT -> COLLSCAN",
+      "index": null,
+      "totalKeysExamined": 0,
+      "totalDocsExamined": 45471,
+      "nReturned": 5,
+      "executionTimeMillis": 23
+    }
+  },
+  "index_sizes": {
+    "ocr_logs": {
+      "count": 100000,
+      "storageSize": 8888320,
+      "size": 41917031,
+      "totalIndexSize": 5496832,
+      "indexSizes": {
+        "_id_": 1011712,
+        "transactionId": 1204224,
+        "averageConfidenceScore": 778240,
+        "createdAt": 1122304,
+        "score_date_idx": 1380352
+      }
+    },
+    "ocr_feedbacks": {
+      "count": 45471,
+      "storageSize": 2371584,
+      "size": 10955620,
+      "totalIndexSize": 4141056,
+      "indexSizes": {
+        "_id_": 466944,
+        "receipt_field_uq": 1155072,
+        "receiptId": 458752,
+        "userId": 368640,
+        "transactionId": 458752,
+        "isResolved": 180224,
+        "reportedAt": 524288,
+        "status_date_idx": 528384
+      }
+    }
+  },
+  "experiment": "E1",
+  "client_host": {
+    "cpu": "Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz",
+    "mem_total": "15682476 kB",
+    "cpus": 12,
+    "kernel": "7.0.0-38-generic",
+    "python": "3.12.16"
+  },
+  "warmup": 200,
+  "iterations": 1200
+}

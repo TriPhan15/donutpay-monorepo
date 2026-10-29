@@ -2,18 +2,15 @@ package vn.edu.huit.finance.core.Service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.annotation.AnnotatedElementUtils;
-import org.springframework.data.domain.Pageable;
 import vn.edu.huit.finance.core.Dto.AdminDashboardSummaryDto;
 import vn.edu.huit.finance.core.Dto.LowBalanceUserDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
-import vn.edu.huit.finance.core.Dto.TopSpenderDto;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.ReceiptRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
@@ -112,20 +109,6 @@ class AdminStatisticsServiceTest {
     }
 
     @Test
-    void theTopSpendersAreAskedForThePageAndLimitGiven() {
-        when(transactionRepo.findTopSpenders(any(Pageable.class))).thenReturn(List.<Object[]>of(
-                new Object[]{"an", new BigDecimal("900000")}, new Object[]{"binh", new BigDecimal("500000.50")}));
-
-        List<TopSpenderDto> top = service.getTopSpenders(1, 5);
-
-        assertEquals(List.of(new TopSpenderDto("an", new BigDecimal("900000")), new TopSpenderDto("binh", new BigDecimal("500000.50"))), top);
-        ArgumentCaptor<Pageable> page = ArgumentCaptor.forClass(Pageable.class);
-        verify(transactionRepo).findTopSpenders(page.capture());
-        assertEquals(1, page.getValue().getPageNumber());
-        assertEquals(5, page.getValue().getPageSize());
-    }
-
-    @Test
     void theChartCountsEachMonthFromItsFirstMomentToTheLastSecondOfItsLastDayOldestFirst() {
         when(transactionRepo.countByTransactionDateBetween(any(), any())).thenReturn(3L, 1L, 4L);
 
@@ -145,10 +128,9 @@ class AdminStatisticsServiceTest {
     void everyFigureIsCachedByAPublicMethodInItsOwnAdminCache() throws NoSuchMethodException {
         List<Method> figures = List.of(
                 AdminStatisticsService.class.getMethod("getDashboardSummary", YearMonth.class, BigDecimal.class),
-                AdminStatisticsService.class.getMethod("getTopSpenders", int.class, int.class),
                 AdminStatisticsService.class.getMethod("getMonthlyTransactionCounts", YearMonth.class, int.class));
         List<String> expectedCaches = List.of(
-                CacheNames.ADMIN_DASHBOARD_SUMMARY, CacheNames.ADMIN_TOP_SPENDERS, CacheNames.ADMIN_STATISTICS);
+                CacheNames.ADMIN_DASHBOARD_SUMMARY, CacheNames.ADMIN_STATISTICS);
 
         for (int i = 0; i < figures.size(); i++) {
             Method method = figures.get(i);

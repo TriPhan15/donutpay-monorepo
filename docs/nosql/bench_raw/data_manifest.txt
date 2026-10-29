@@ -1,0 +1,2 @@
+transactions=100000 receipts=34943 users=1000 ocr_logs=100000 ocr_feedbacks=45471
+ALL 48e4bbbeb5d3678b3029e1dfdfdbc81fc34471c015f7b36a9d44ad186e183189

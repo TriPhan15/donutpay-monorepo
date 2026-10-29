@@ -1,0 +1,162 @@
+# Demo stack of the NoSQL report (project "nosql-demo"): MongoDB, Redis, Elasticsearch, Kibana, Elasticvue and
+# RedisInsight with the demo data of scripts/nosql. Start and stop it ONLY through scripts/nosql/demo-stack.sh, which also
+# sets the kibana_system password and loads the data. It never touches the finance-* stack of docker-compose.yml:
+# own project name, own network, own volumes, every port bound to 127.0.0.1 on ports that differ from the real stack.
+# Images, commands and memory limits copy docker-compose.yml so that docker stats (NFR-14) can be compared with it.
+name: nosql-demo
+
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: nosql-demo-mongo
+    command: ["--wiredTigerCacheSizeGB", "0.25"]
+    ports:
+      - "127.0.0.1:${NOSQL_DEMO_MONGO_PORT:-27018}:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${NOSQL_DEMO_MONGO_USER:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${NOSQL_DEMO_MONGO_PASSWORD:-demo-mongo-pass}
+      - MONGO_INITDB_DATABASE=finance_nosql
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - mongo_data:/data/db
+      # Same as docker-compose.yml: schema + indexes of finance_nosql on the first start.
+      - ./mongodb_init.js:/docker-entrypoint-initdb.d/10-mongodb-init.js:ro
+      - ./:/s:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    networks: [nosql-demo]
+
+  redis:
+    image: redis:8.10-alpine
+    container_name: nosql-demo-redis
+    user: redis
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server
+        --requirepass "$$REDIS_PASSWORD"
+        --maxmemory 128mb
+        --maxmemory-policy allkeys-lru
+        --save ''
+        --appendonly no
+        --rename-command KEYS ''
+        --rename-command FLUSHALL ''
+        --rename-command FLUSHDB ''
+    ports:
+      - "127.0.0.1:${NOSQL_DEMO_REDIS_PORT:-6380}:6379"
+    environment:
+      - REDIS_PASSWORD=${NOSQL_DEMO_REDIS_PASSWORD:-demo-redis-pass}
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - ./:/s:ro
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+    restart: unless-stopped
+    networks: [nosql-demo]
+
+  elasticsearch:
+    image: elasticsearch:8.11.4
+    container_name: nosql-demo-es
+    ports:
+      - "127.0.0.1:${NOSQL_DEMO_ES_PORT:-9201}:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - ELASTIC_PASSWORD=${NOSQL_DEMO_ELASTIC_PASSWORD:-demo-elastic-pass}
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - path.repo=/usr/share/elasticsearch/snapshots
+      - action.auto_create_index=false
+      # Demo only (not in docker-compose.yml): a laptop disk above 90 % full would otherwise leave every shard unassigned
+      # (disk watermark) and the cluster red. Set NOSQL_DEMO_ES_DISK_THRESHOLD=true to keep the normal behaviour.
+      - cluster.routing.allocation.disk.threshold_enabled=${NOSQL_DEMO_ES_DISK_THRESHOLD:-false}
+      # Elasticvue runs in the browser and calls Elasticsearch directly: allow that origin only (localhost/127.0.0.1).
+      - http.cors.enabled=true
+      - http.cors.allow-origin=/https?:\/\/(localhost|127\.0\.0\.1)(:[0-9]+)?/
+      - http.cors.allow-headers=Authorization,Content-Type
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsu elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      - es_snapshots:/usr/share/elasticsearch/snapshots
+      - ../../core-backend/src/main/resources/elasticsearch:/app-es:ro
+      - ./elasticsearch:/s-es:ro
+    deploy:
+      resources:
+        limits:
+          # docker-compose.yml says 1G. Measured on 2026-10-28 (S-89): at 1G, with security on, Elasticsearch sits at
+          # ~990 MiB and the kernel OOM-kills it within half a minute of Kibana connecting. The demo therefore defaults
+          # to 1536M; NOSQL_DEMO_ES_MEMORY=1G reproduces docker-compose.yml (that is how NFR-14 was measured).
+          memory: ${NOSQL_DEMO_ES_MEMORY:-1536M}
+    restart: unless-stopped
+    networks: [nosql-demo]
+
+  kibana:
+    image: kibana:8.11.4
+    container_name: nosql-demo-kibana
+    profiles: ["kibana"]
+    ports:
+      - "127.0.0.1:${NOSQL_DEMO_KIBANA_PORT:-5602}:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${NOSQL_DEMO_KIBANA_PASSWORD:-demo-kibana-pass}
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    restart: unless-stopped
+    networks: [nosql-demo]
+
+  elasticvue:
+    image: cars10/elasticvue:latest
+    container_name: nosql-demo-elasticvue
+    ports:
+      - "127.0.0.1:${NOSQL_DEMO_ELASTICVUE_PORT:-8081}:8080"
+    environment:
+      # The browser connects to this URI, so it is the host port of Elasticsearch.
+      - >-
+        ELASTICVUE_CLUSTERS=[{"name":"nosql-demo","uri":"http://localhost:${NOSQL_DEMO_ES_PORT:-9201}",
+        "username":"elastic","password":"${NOSQL_DEMO_ELASTIC_PASSWORD:-demo-elastic-pass}"}]
+    restart: unless-stopped
+    networks: [nosql-demo]
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: nosql-demo-redisinsight
+    ports:
+      - "127.0.0.1:${NOSQL_DEMO_REDISINSIGHT_PORT:-5541}:5540"
+    environment:
+      - RI_ACCEPT_TERMS_AND_CONDITIONS=true
+      - RI_REDIS_HOST=redis
+      - RI_REDIS_PORT=6379
+      - RI_REDIS_ALIAS=nosql-demo-redis
+      - RI_REDIS_PASSWORD=${NOSQL_DEMO_REDIS_PASSWORD:-demo-redis-pass}
+    restart: unless-stopped
+    networks: [nosql-demo]
+
+networks:
+  nosql-demo:
+    name: nosql-demo
+
+volumes:
+  mongo_data:
+  es_data:
+  es_snapshots:

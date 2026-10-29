@@ -1,0 +1,11 @@
+{
+  "number_of_shards": 1,
+  "number_of_replicas": 0,
+  "analysis": {
+    "filter": { "vi_edge": { "type": "edge_ngram", "min_gram": 2, "max_gram": 15 } },
+    "analyzer": {
+      "vi_folded": { "type": "custom", "tokenizer": "standard", "filter": ["lowercase", "asciifolding"] },
+      "vi_autocomplete": { "type": "custom", "tokenizer": "standard", "filter": ["lowercase", "asciifolding", "vi_edge"] }
+    }
+  }
+}

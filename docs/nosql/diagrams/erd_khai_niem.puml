@@ -1,0 +1,31 @@
+@startuml erd_khai_niem
+' ERD khái niệm (facts.md 1.1, 1.3, 1.4); nét đứt = liên kết logic qua id (không có khóa ngoại)
+!pragma layout smetana
+!include _style.iuml
+hide circle
+hide members
+skinparam wrapWidth 160
+title ERD khái niệm (chưa gắn với CSDL cụ thể)
+entity "Người dùng" as U
+entity "Giao dịch" as T
+entity "Danh mục" as C
+entity "Hóa đơn" as R
+entity "Lần đọc AI" as A
+entity "Ngân sách" as B
+entity "Thông báo" as N
+entity "Log OCR thô" as L
+entity "Phản hồi OCR" as F
+entity "Tài liệu tìm kiếm" as S
+entity "Bảng xếp hạng tháng" as Z
+U ||--o{ T : ghi
+C ||--o{ T : phân loại
+T |o--o| R : kèm
+R ||--o{ A : có
+U ||--o{ B : đặt
+C |o--o{ B : áp dụng cho
+U ||--o{ N : nhận
+T |o..o| L : transactionId
+R ||..o{ F : receiptId
+T ||..|| S : id
+U ||..o| Z : member userId
+@enduml

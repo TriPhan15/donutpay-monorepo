@@ -32,7 +32,6 @@ import vn.edu.huit.finance.core.Dto.LowBalanceUserDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
-import vn.edu.huit.finance.core.Dto.TopSpenderDto;
 import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 
 import java.math.BigDecimal;
@@ -128,7 +127,6 @@ class CacheConfigTest {
                 USER_DASHBOARD, Duration.ofSeconds(45),
                 USER_POPULAR_VENDORS, Duration.ofSeconds(60),
                 ADMIN_DASHBOARD_SUMMARY, Duration.ofSeconds(45),
-                ADMIN_TOP_SPENDERS, Duration.ofSeconds(60),
                 ADMIN_STATISTICS, Duration.ofSeconds(60));
         runner.run(context -> defaults.forEach((name, ttl) -> {
             RedisCacheWriter.TtlFunction function = configurations(context).get(name).getTtlFunction();
@@ -156,12 +154,12 @@ class CacheConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"CACHE_TTL_ADMIN_TOP_SPENDERS=0", "CACHE_TTL_ADMIN_TOP_SPENDERS=-5s",
-            "CACHE_TTL_ADMIN_TOP_SPENDERS=500ms"})
+    @ValueSource(strings = {"CACHE_TTL_ADMIN_STATISTICS=0", "CACHE_TTL_ADMIN_STATISTICS=-5s",
+            "CACHE_TTL_ADMIN_STATISTICS=500ms"})
     void aTtlThatWouldNeverExpireOrIsBelowASecondStopsTheStartup(String setting) {
         runner.withPropertyValues(setting).run(context -> {
             assertNotNull(context.getStartupFailure());
-            assertTrue(rootMessage(context.getStartupFailure()).contains("admin-top-spenders"));
+            assertTrue(rootMessage(context.getStartupFailure()).contains("admin-statistics"));
         });
     }
 
@@ -200,8 +198,8 @@ class CacheConfigTest {
     @Test
     void thePrefixComesFromCacheKeyPrefixAndTheSchemaVersionIsAlwaysAppended() {
         runner.withPropertyValues("CACHE_KEY_PREFIX=ledgermind:prod").run(context -> assertEquals(
-                "ledgermind:prod:v1:admin-top-spenders:",
-                configurations(context).get(ADMIN_TOP_SPENDERS).getKeyPrefixFor(ADMIN_TOP_SPENDERS)));
+                "ledgermind:prod:v1:admin-statistics:",
+                configurations(context).get(ADMIN_STATISTICS).getKeyPrefixFor(ADMIN_STATISTICS)));
     }
 
     @Test
@@ -248,7 +246,6 @@ class CacheConfigTest {
                 Arguments.of(ADMIN_DASHBOARD_SUMMARY, new AdminDashboardSummaryDto(new BigDecimal("1250000.50"), 42, 17,
                         List.of(new LowBalanceUserDto(7L, "an", "0900000007", new BigDecimal("12000.00"))),
                         List.of(new ReceiptStatusCountDto("SUCCESS", 5), new ReceiptStatusCountDto("FAILED", 2)))),
-                Arguments.of(ADMIN_TOP_SPENDERS, List.of(new TopSpenderDto("an", new BigDecimal("900000.00")))),
                 Arguments.of(ADMIN_STATISTICS, List.of(
                         new MonthlyTransactionCountDto(YearMonth.of(2026, 8), 3),
                         new MonthlyTransactionCountDto(YearMonth.of(2026, 9), 17))));

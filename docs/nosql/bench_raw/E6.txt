@@ -1,0 +1,11 @@
+E6 realtime latency: AdminEventPublisher.publish -> Redis PUBLISH -> AdminEventRelay -> SseEmitter.send
+Redis: Redis server v=8.10.2 sha=00000000:1 malloc=jemalloc-5.3.0 bits=64 build=6583f6419e33bdeb
+Java: 21.0.12.1, 2026-10-27T20:44:01.575773855Z
+events: 300 measured (+20 warm-up, +probe), gap 10 ms, 1 publisher thread, 1 emitter
++----------------------------+--------+--------+--------+--------+--------+------+
+| path (ms)                  |    p50 |    p95 |    p99 |    max |   mean | lost |
++----------------------------+--------+--------+--------+--------+--------+------+
+| publish -> emitter.send    |  1.177 |  1.573 |  1.920 |  3.131 |  1.202 |    0 |
+| publish() call (sender)    |  0.701 |  0.978 |  1.104 |  3.027 |  0.716 |    - |
++----------------------------+--------+--------+--------+--------+--------+------+
+NFR-15 target < 1000 ms (server path only, browser hop not measured): MET

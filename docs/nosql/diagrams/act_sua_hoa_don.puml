@@ -1,0 +1,43 @@
+@startuml act_sua_hoa_don
+' Sửa kết quả AI (facts.md 1.3; ReceiptProcessingService.editMyReceipt)
+!include _style.iuml
+skinparam wrapWidth 240
+skinparam dpi 115
+title Sửa hóa đơn: PostgreSQL ghi trước, bản sao NoSQL cập nhật sau commit
+|core-api|
+start
+:PUT /api/receipts/{id};
+|PostgreSQL|
+:Tìm hóa đơn của chủ sở hữu;
+|core-api|
+if (version gửi lên = receipts.version\nvà chuyển được sang EDITED?) then (không)
+  :ReceiptConflictException -> HTTP 409;
+  stop
+else (có)
+endif
+|PostgreSQL|
+:Sửa vendorName, extractedTotal, extractedDate;\nmoveTo(EDITED); saveAndFlush (@Version tăng);\nghi action_logs;
+|core-api|
+:Phát StatisticsChangedEvent(RECEIPT_CONTENT);
+if (đổi vendorName?) then (có)
+  :Phát TransactionChangedEvent;
+else (không)
+endif
+:Phát OcrCorrectionEvent nếu khác lần đọc AI mới nhất\n(hoặc trường vừa trả về đúng giá trị AI);
+|PostgreSQL|
+:COMMIT;
+|core-api|
+fork
+  |Redis|
+  :DEL cache thống kê của chủ sở hữu;
+fork again
+  |Elasticsearch|
+  :Đọc lại giao dịch từ PG, save document\n(chỉ khi đổi vendorName);
+fork again
+  |MongoDB|
+  :ocr_feedbacks: updateFirst / upsert $setOnInsert\nhoặc remove chỗ sửa lỗi thời;
+end fork
+|core-api|
+:Trả 200 (không chờ nhánh sau commit);
+stop
+@enduml
