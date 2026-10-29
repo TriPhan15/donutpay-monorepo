@@ -112,10 +112,6 @@
   "@forgotPasswordTitle": {
     "description": "App bar title of the forgot-password screen, the first step of the password recovery."
   },
-  "forgotPasswordHeading": "Get a verification code",
-  "@forgotPasswordHeading": {
-    "description": "Heading of the forgot-password screen, above its description."
-  },
   "forgotPasswordDescription": "Enter the email of your account. We'll send you a one-time code (OTP) to set a new password.",
   "@forgotPasswordDescription": {
     "description": "Explains on the forgot-password screen that a one-time code will be emailed to the address typed below."
@@ -136,6 +132,10 @@
   "@forgotPasswordEmailInvalid": {
     "description": "Error under the email field when what was typed is not an email address."
   },
+  "forgotPasswordRemembered": "Remembered it? ",
+  "@forgotPasswordRemembered": {
+    "description": "Forgot-password footer, before the bold sign-in link"
+  },
   "forgotPasswordSendOtp": "Send code",
   "@forgotPasswordSendOtp": {
     "description": "Button of the forgot-password screen that asks the server to email a one-time code."
@@ -152,10 +152,6 @@
   "@resetPasswordTitle": {
     "description": "App bar title of the reset-password screen, where the user types the one-time code and a new password."
   },
-  "resetPasswordHeading": "Create a new password",
-  "@resetPasswordHeading": {
-    "description": "Heading of the reset-password screen, above its description."
-  },
   "resetPasswordDescription": "Enter the code we sent to {email}, then choose a new password.",
   "@resetPasswordDescription": {
     "description": "Description of the reset-password screen. The email is shown partly hidden.",
@@ -169,16 +165,6 @@
   "resetPasswordOtpLabel": "Verification code (OTP)",
   "@resetPasswordOtpLabel": {
     "description": "Label above the one-time code field of the reset-password screen."
-  },
-  "resetPasswordOtpHint": "{length}-digit code",
-  "@resetPasswordOtpHint": {
-    "description": "Hint inside the empty one-time code field.",
-    "placeholders": {
-      "length": {
-        "type": "int",
-        "example": "6"
-      }
-    }
   },
   "resetPasswordOtpRequired": "Please enter the code.",
   "@resetPasswordOtpRequired": {
@@ -724,10 +710,6 @@
   "@loginOrContinueWith": {
     "description": "Divider text above the social login buttons."
   },
-  "registerTitle": "Sign up",
-  "@registerTitle": {
-    "description": "App bar title of the register screen."
-  },
   "registerHeading": "Create an account",
   "@registerHeading": {
     "description": "Heading of the register screen."
@@ -755,6 +737,10 @@
   "registerSubmit": "Create account",
   "@registerSubmit": {
     "description": "Register button."
+  },
+  "registerHaveAccount": "Already have an account? ",
+  "@registerHaveAccount": {
+    "description": "Register footer, before the bold sign-in link"
   },
   "registerOrContinueWith": "Or sign up with",
   "@registerOrContinueWith": {

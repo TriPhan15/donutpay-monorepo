@@ -12,6 +12,8 @@ import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/auth/reset_password_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
+import 'package:finance_ai_app/widgets/auth/otp_input.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 
 import '../../helpers/app_settings_scope.dart';
@@ -108,22 +110,37 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// 0 is the OTP, 1 the new password, 2 its confirmation.
-  Finder field(int index) => find.byType(TextFormField).at(index);
+  /// 0 is the OTP (the hidden field under its boxes), 1 the new password, 2 its confirmation.
+  Finder field(int index) => index == 0
+      ? find.descendant(
+          of: find.byType(OtpInput),
+          matching: find.byType(EditableText),
+        )
+      : find.byType(TextFormField).at(index - 1);
 
-  String textOf(WidgetTester tester, int index) =>
-      tester.widget<TextFormField>(field(index)).controller!.text;
+  String textOf(WidgetTester tester, int index) => index == 0
+      ? tester.widget<EditableText>(field(0)).controller.text
+      : tester.widget<TextFormField>(field(index)).controller!.text;
 
-  /// The error shown under the field, as the decorator draws it.
-  String? errorOf(WidgetTester tester, int index) => tester
-      .widget<InputDecorator>(
-        find.descendant(
-          of: field(index),
-          matching: find.byType(InputDecorator),
-        ),
-      )
-      .decoration
-      .errorText;
+  /// The error shown under the field: under the boxes for the OTP, by the decorator for a password.
+  String? errorOf(WidgetTester tester, int index) => index == 0
+      ? tester
+            .state<FormFieldState<String>>(
+              find.descendant(
+                of: find.byType(OtpInput),
+                matching: find.byType(FormField<String>),
+              ),
+            )
+            .errorText
+      : tester
+            .widget<InputDecorator>(
+              find.descendant(
+                of: field(index),
+                matching: find.byType(InputDecorator),
+              ),
+            )
+            .decoration
+            .errorText;
 
   Finder resetButton() => find.descendant(
     of: find.byType(PrimaryButton),
@@ -170,11 +187,12 @@ void main() {
         findsNWidgets(2),
         reason: 'the title and the button',
       );
-      expect(find.text('Tạo mật khẩu mới'), findsOneWidget);
+      expect(find.text('Tạo mật khẩu mới'), findsNothing, reason: 'no heading');
       expect(find.text(_description), findsOneWidget);
       expect(find.textContaining(_email), findsNothing);
-      expect(find.text('Mã OTP'), findsOneWidget);
-      expect(find.text('Mã gồm 6 chữ số'), findsOneWidget);
+      for (var i = 0; i < ResetPasswordScreen.otpLength; i++) {
+        expect(find.byKey(OtpInput.boxKey(i)), findsOneWidget);
+      }
       expect(find.text('Mật khẩu mới'), findsOneWidget);
       expect(find.text(_passwordRules), findsOneWidget);
       expect(find.text('Xác nhận mật khẩu mới'), findsOneWidget);
@@ -421,7 +439,7 @@ void main() {
 
       await fill(tester);
       await tapAndSend(tester, resetButton());
-      await tester.tap(find.byType(BackButton));
+      await tester.tap(find.byKey(AuthFormLayout.backKey));
       await tester.pumpAndSettle();
 
       expect(find.byType(ResetPasswordScreen), findsOneWidget);

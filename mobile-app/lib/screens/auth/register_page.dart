@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
-import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/password_policy.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/social_auth_service.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
+import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
+import 'package:finance_ai_app/widgets/auth/auth_social_buttons.dart';
+import 'package:finance_ai_app/widgets/auth/auth_text_field.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 
@@ -23,20 +26,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordFocus = FocusNode();
 
-  bool _obscure = true;
+  // On while the account is being created, so a second tap sends nothing.
+  bool _isSubmitting = false;
+  // On while a Google or Facebook sign-up is out.
+  bool _isSocialLoading = false;
+
+  bool get _isBusy => _isSubmitting || _isSocialLoading;
   bool _hasMinLength = false;
   bool _hasUppercase = false;
   bool _hasLowercase = false;
   bool _hasNumber = false;
   bool _hasSpecialChar = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _passwordFocus.addListener(() => setState(() {}));
-  }
 
   void _checkPassword(String password) {
     setState(() {
@@ -56,6 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _hasSpecialChar;
 
   Future<void> _handleRegister() async {
+    if (_isBusy) return;
     final fullName = _fullNameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -83,6 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    setState(() => _isSubmitting = true);
     try {
       await RemoteApiHelper.instance.register(
         email: email,
@@ -106,12 +109,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: context.loc.registerFailedTitle,
         message: UserFacingError.messageOf(e, context.loc),
       );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   Future<void> _handleSocial(
     Future<Map<String, dynamic>> Function() signIn,
   ) async {
+    if (_isBusy) return;
+    setState(() => _isSocialLoading = true);
     try {
       final res = await signIn();
       final data = (res['data'] as Map?) ?? res;
@@ -147,6 +154,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           fallback: context.loc.registerSocialFailed,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _isSocialLoading = false);
     }
   }
 
@@ -156,298 +165,182 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _fullNameController.dispose();
     _phoneController.dispose();
-    _passwordFocus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final semantic = theme.semanticColors;
+    final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
-    // The Scaffold and its app bar take the page colour of the theme; labels and fields keep the text colours it gives.
-    return Scaffold(
-      appBar: AppBar(title: Text(loc.registerTitle)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 8),
-              Text(
-                loc.registerHeading,
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
+    return AuthFormLayout(
+      title: loc.registerHeading,
+      description: loc.registerDescription,
+      footer: AuthFooterLink(
+        question: loc.registerHaveAccount,
+        action: loc.loginSubmit,
+        onTap: () => Navigator.maybePop(context),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 4),
+          AuthTextField(
+            controller: _fullNameController,
+            label: loc.registerFullNameLabel,
+            hint: loc.registerFullNameHint,
+            icon: Icons.person_outline_rounded,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 16),
+          AuthTextField(
+            controller: _emailController,
+            label: loc.authEmailLabel,
+            hint: loc.authEmailHint,
+            icon: Icons.mail_outline_rounded,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 16),
+          AuthTextField(
+            controller: _phoneController,
+            label: loc.registerPhoneLabel,
+            hint: loc.registerPhoneHint,
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 16),
+          AuthTextField(
+            controller: _passwordController,
+            label: loc.authPasswordLabel,
+            hint: loc.authPasswordHint,
+            icon: Icons.lock_outline_rounded,
+            isPassword: true,
+            textInputAction: TextInputAction.done,
+            onChanged: _checkPassword,
+          ),
+          const SizedBox(height: 10),
+          _PasswordRules(
+            rules: [
+              (
+                loc.registerRuleMinLength(PasswordPolicy.minLength),
+                _hasMinLength,
               ),
-              const SizedBox(height: 6),
-              Text(
-                loc.registerDescription,
-                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
-              ),
-              const SizedBox(height: 28),
-              _label(loc.registerFullNameLabel),
-              _input(
-                controller: _fullNameController,
-                hint: loc.registerFullNameHint,
-              ),
-              const SizedBox(height: 18),
-              _label(loc.authEmailLabel),
-              _input(
-                controller: _emailController,
-                hint: loc.authEmailHint,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 18),
-              _label(loc.registerPhoneLabel),
-              _input(
-                controller: _phoneController,
-                hint: loc.registerPhoneHint,
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 18),
-              _label(loc.authPasswordLabel),
-              _input(
-                controller: _passwordController,
-                hint: loc.authPasswordHint,
-                obscure: _obscure,
-                focusNode: _passwordFocus,
-                onChanged: _checkPassword,
-                suffix: IconButton(
-                  icon: Icon(
-                    _obscure
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: colors.onSurfaceVariant,
-                    size: 20,
-                  ),
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                ),
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                child: _passwordFocus.hasFocus
-                    ? _buildChecklist(colors, semantic)
-                    : const SizedBox(width: double.infinity),
-              ),
-              const SizedBox(height: 28),
-              PrimaryButton(
-                text: loc.registerSubmit,
-                onPressed: _handleRegister,
-              ),
-              const SizedBox(height: 24),
-              _orDivider(colors, loc.registerOrContinueWith),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _socialBtn(
-                    colors,
-                    Icons.g_mobiledata_rounded,
-                    const Color(0xFFDB4437),
-                    () => _handleSocial(
-                      SocialAuthService.instance.signInWithGoogle,
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  _socialBtn(
-                    colors,
-                    Icons.facebook,
-                    const Color(0xFF1877F2),
-                    () => _handleSocial(
-                      SocialAuthService.instance.signInWithFacebook,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text.rich(
-                  TextSpan(
-                    text: loc.registerTermsPrefix,
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: loc.registerTerms,
-                        style: TextStyle(
-                          color: colors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextSpan(text: loc.registerTermsAnd),
-                      TextSpan(
-                        text: loc.registerConditions,
-                        style: TextStyle(
-                          color: colors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 16),
+              (loc.registerRuleUppercase, _hasUppercase),
+              (loc.registerRuleLowercase, _hasLowercase),
+              (loc.registerRuleDigit, _hasNumber),
+              (loc.registerRuleSpecial, _hasSpecialChar),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  /// The password rules on a theme card (surface colour, no shadow).
-  Widget _buildChecklist(ColorScheme colors, SemanticColors semantic) {
-    final loc = context.loc;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: AppTheme.cardDecoration(colors),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            loc.registerPasswordNeeds,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            text: _isSubmitting ? loc.authProcessing : loc.registerSubmit,
+            onPressed: _isBusy ? null : _handleRegister,
+          ),
+          AuthSocialButtons(
+            dividerText: loc.registerOrContinueWith,
+            onGoogle: _isBusy
+                ? null
+                : () => _handleSocial(
+                    SocialAuthService.instance.signInWithGoogle,
+                  ),
+            onFacebook: _isBusy
+                ? null
+                : () => _handleSocial(
+                    SocialAuthService.instance.signInWithFacebook,
+                  ),
           ),
           const SizedBox(height: 12),
-          _conditionRow(
-            colors,
-            semantic,
-            loc.registerRuleMinLength(PasswordPolicy.minLength),
-            _hasMinLength,
-          ),
-          _conditionRow(
-            colors,
-            semantic,
-            loc.registerRuleUppercase,
-            _hasUppercase,
-          ),
-          _conditionRow(
-            colors,
-            semantic,
-            loc.registerRuleLowercase,
-            _hasLowercase,
-          ),
-          _conditionRow(colors, semantic, loc.registerRuleDigit, _hasNumber),
-          _conditionRow(
-            colors,
-            semantic,
-            loc.registerRuleSpecial,
-            _hasSpecialChar,
+          Text.rich(
+            TextSpan(
+              text: loc.registerTermsPrefix,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: AppTextSize.caption,
+              ),
+              children: [
+                TextSpan(
+                  text: loc.registerTerms,
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextSpan(text: loc.registerTermsAnd),
+                TextSpan(
+                  text: loc.registerConditions,
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
+}
 
-  /// A met rule shows the success colour and the text colour; an open one stays in the secondary text colour.
-  Widget _conditionRow(
-    ColorScheme colors,
-    SemanticColors semantic,
-    String text,
-    bool isMet,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        children: [
-          Icon(
-            isMet ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: isMet ? semantic.successColor : colors.onSurfaceVariant,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              color: isMet ? colors.onSurface : colors.onSurfaceVariant,
-              fontSize: 13,
+/// The password rules in two columns, always shown (T9 auth mockup H). A met rule is ticked in the success colour; an
+/// open one stays a ring in the secondary text colour.
+class _PasswordRules extends StatelessWidget {
+  const _PasswordRules({required this.rules});
+
+  static const int _columns = 2;
+  static const double _iconSize = 16;
+
+  final List<(String, bool)> rules;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final success = context.colors.successColor;
+    return Column(
+      children: [
+        for (var row = 0; row < rules.length; row += _columns)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = row; i < row + _columns; i++)
+                  Expanded(
+                    child: i < rules.length
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                rules[i].$2
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                                color: rules[i].$2
+                                    ? success
+                                    : colors.onSurfaceVariant,
+                                size: _iconSize,
+                              ),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  rules[i].$1,
+                                  style: TextStyle(
+                                    color: rules[i].$2
+                                        ? success
+                                        : colors.onSurfaceVariant,
+                                    fontSize: AppTextSize.caption,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 2),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  /// Text, hint, fill and outline come from the theme: onSurface, onSurfaceVariant and the inputDecorationTheme.
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    bool obscure = false,
-    Widget? suffix,
-    TextInputType? keyboardType,
-    FocusNode? focusNode,
-    ValueChanged<String>? onChanged,
-  }) {
-    return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      onChanged: onChanged,
-      decoration: InputDecoration(hintText: hint, suffixIcon: suffix),
-    );
-  }
-
-  Widget _orDivider(ColorScheme colors, String text) {
-    final line = colors.onSurfaceVariant.withValues(alpha: 0.3);
-    return Row(
-      children: [
-        Expanded(child: Divider(color: line)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            text,
-            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-          ),
-        ),
-        Expanded(child: Divider(color: line)),
       ],
-    );
-  }
-
-  /// A round button on the surface colour; the brand colour of the icon stays at 3:1 or more on it in both themes.
-  Widget _socialBtn(
-    ColorScheme colors,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: colors.surface,
-          shape: BoxShape.circle,
-          boxShadow: AppTheme.softShadowFor(colors),
-        ),
-        child: Icon(icon, color: color, size: 30),
-      ),
     );
   }
 }

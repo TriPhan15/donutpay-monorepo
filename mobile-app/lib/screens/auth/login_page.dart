@@ -3,13 +3,16 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:finance_ai_app/core/theme/app_theme.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/services/social_auth_service.dart';
+import 'package:finance_ai_app/widgets/auth/auth_form_layout.dart';
+import 'package:finance_ai_app/widgets/auth/auth_social_buttons.dart';
+import 'package:finance_ai_app/widgets/auth/auth_text_field.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/screens/auth/forgot_password_page.dart';
 
@@ -32,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   // Checked by default, as the app always kept the session; unchecked, the session ends when the app is closed.
   bool _rememberMe = true;
-  bool _obscure = true;
   bool _isLoginLoading = false;
   bool _isSocialLoading = false;
 
@@ -205,269 +207,120 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
-    // The Scaffold takes the page colour of the theme; labels and fields keep the text colours it gives.
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    final busy = _isLoginLoading || _isSocialLoading;
+    return AuthFormLayout.brand(
+      tagline: loc.loginTagline,
+      footer: AuthFooterLink(
+        question: loc.loginNoAccount,
+        action: loc.loginSignUpNow,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RegisterScreen()),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 4),
+          // One autofill group, so the password manager of the system fills in and saves both fields together.
+          AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthTextField(
+                  controller: _emailController,
+                  label: loc.authEmailLabel,
+                  hint: loc.authEmailHint,
+                  icon: Icons.mail_outline_rounded,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 16),
+                AuthTextField(
+                  controller: _passwordController,
+                  label: loc.authPasswordLabel,
+                  hint: loc.authPasswordHint,
+                  icon: Icons.lock_outline_rounded,
+                  isPassword: true,
+                  autofillHints: const [AutofillHints.password],
+                  textInputAction: TextInputAction.done,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              const SizedBox(height: 16),
-              Center(child: _logoPlaceholder(colors)),
-              const SizedBox(height: 16),
-              Text(
-                'Ledgermind App',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colors.primary,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
+              SizedBox(
+                width: 24,
+                height: 24,
+                // Checked, the box takes the primary colour of the theme.
+                child: Checkbox(
+                  value: _rememberMe,
+                  onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                loc.loginTagline,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 14),
-              ),
-              const SizedBox(height: 36),
-              // One autofill group, so the password manager of the system fills in and saves both fields together.
-              AutofillGroup(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _label(loc.authEmailLabel),
-                    _input(
-                      controller: _emailController,
-                      hint: loc.authEmailHint,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                    ),
-                    const SizedBox(height: 18),
-                    _label(loc.authPasswordLabel),
-                    _input(
-                      controller: _passwordController,
-                      hint: loc.authPasswordHint,
-                      obscure: _obscure,
-                      autofillHints: const [AutofillHints.password],
-                      suffix: IconButton(
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          color: colors.onSurfaceVariant,
-                          size: 20,
-                        ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  loc.loginRememberMe,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: AppTextSize.secondary,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    // Checked, the box takes the primary colour of the theme.
-                    child: Checkbox(
-                      value: _rememberMe,
-                      onChanged: (v) =>
-                          setState(() => _rememberMe = v ?? false),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    loc.loginRememberMe,
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: _openForgotPassword,
-                    child: Text(
-                      loc.loginForgotPassword,
-                      style: TextStyle(
-                        color: colors.primary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              PrimaryButton(
-                text: _isLoginLoading ? loc.authProcessing : loc.loginSubmit,
-                onPressed: (_isLoginLoading || _isSocialLoading)
-                    ? null
-                    : () {
-                        _handleLogin(
-                          context,
-                          email: _emailController.text,
-                          password: _passwordController.text,
-                        );
-                      },
-              ),
-              const SizedBox(height: 16),
-              Center(
+              const SizedBox(width: 8),
+              Flexible(
                 child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                  ),
-                  child: RichText(
-                    text: TextSpan(
-                      text: loc.loginNoAccount,
-                      style: TextStyle(
-                        color: colors.onSurfaceVariant,
-                        fontSize: 14,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: loc.loginSignUpNow,
-                          style: TextStyle(
-                            color: colors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                  onTap: _openForgotPassword,
+                  child: Text(
+                    loc.loginForgotPassword,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontSize: AppTextSize.secondary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              _orDivider(colors, loc.loginOrContinueWith),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _socialBtn(
-                    colors,
-                    Icons.g_mobiledata_rounded,
-                    const Color(0xFFDB4437),
-                    () => _handleSocial(
-                      SocialAuthService.instance.signInWithGoogle,
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  _socialBtn(
-                    colors,
-                    Icons.facebook,
-                    const Color(0xFF1877F2),
-                    () => _handleSocial(
-                      SocialAuthService.instance.signInWithFacebook,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _logoPlaceholder(ColorScheme colors) {
-    return Container(
-      width: 88,
-      height: 88,
-      decoration: BoxDecoration(
-        color: colors.primaryContainer,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Image.asset(
-        'assets/images/logo.png',
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Icon(
-          Icons.add_photo_alternate_outlined,
-          color: colors.onPrimaryContainer,
-          size: 36,
-        ),
-      ),
-    );
-  }
-
-  Widget _label(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 2),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  /// Text, hint, fill and outline come from the theme: onSurface, onSurfaceVariant and the inputDecorationTheme.
-  Widget _input({
-    required TextEditingController controller,
-    required String hint,
-    bool obscure = false,
-    Widget? suffix,
-    TextInputType? keyboardType,
-    Iterable<String>? autofillHints,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      autofillHints: autofillHints,
-      decoration: InputDecoration(hintText: hint, suffixIcon: suffix),
-    );
-  }
-
-  Widget _orDivider(ColorScheme colors, String text) {
-    final line = colors.onSurfaceVariant.withValues(alpha: 0.3);
-    return Row(
-      children: [
-        Expanded(child: Divider(color: line)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            text,
-            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            text: _isLoginLoading ? loc.authProcessing : loc.loginSubmit,
+            onPressed: busy
+                ? null
+                : () {
+                    _handleLogin(
+                      context,
+                      email: _emailController.text,
+                      password: _passwordController.text,
+                    );
+                  },
           ),
-        ),
-        Expanded(child: Divider(color: line)),
-      ],
-    );
-  }
-
-  /// A round button on the surface colour; the brand colour of the icon stays at 3:1 or more on it in both themes.
-  Widget _socialBtn(
-    ColorScheme colors,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: _isSocialLoading ? null : onTap,
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: colors.surface,
-          shape: BoxShape.circle,
-          boxShadow: AppTheme.softShadowFor(colors),
-        ),
-        child: Icon(icon, color: color, size: 30),
+          AuthSocialButtons(
+            dividerText: loc.loginOrContinueWith,
+            onGoogle: busy
+                ? null
+                : () => _handleSocial(
+                    SocialAuthService.instance.signInWithGoogle,
+                  ),
+            onFacebook: busy
+                ? null
+                : () => _handleSocial(
+                    SocialAuthService.instance.signInWithFacebook,
+                  ),
+          ),
+        ],
       ),
     );
   }
