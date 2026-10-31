@@ -18,6 +18,7 @@ import vn.edu.huit.finance.core.Dto.RegisterRequestDto;
 import vn.edu.huit.finance.core.Dto.ResetPasswordRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.AccountAlreadyExistsException;
 import vn.edu.huit.finance.core.Exception.InvalidTokenException;
 import vn.edu.huit.finance.core.Exception.SocialLoginRejectedException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
@@ -31,7 +32,6 @@ import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.AuthService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 
-import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Set;
 
@@ -49,6 +49,7 @@ public class AuthController {
     private static final String LOGOUT_SUCCESS_MESSAGE = "Đăng xuất thành công!";
     private static final String REFRESH_SUCCESS_MESSAGE = "Refresh token thành công";
     private static final String MSG_TOKEN_MISSING = "Thiếu token xác thực";
+    private static final String MSG_LOGIN_SUCCESS = "Đăng nhập thành công";
     private static final String MSG_ACCOUNT_NOT_FOUND = "Không tìm thấy tài khoản với email này!";
 
     private static final String AUDIT_LOGIN_SUCCESS = "Đăng nhập App Mobile bằng mật khẩu";
@@ -71,19 +72,12 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDto request) {
-        if (request.getEmail() != null && userRepository.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity.status(400).body(java.util.Map.of(
-                    "code", 400, "message", "Email đã được đăng ký. Vui lòng dùng email khác."));
-        }
-        if (request.getUsername() != null && userRepository.findByUsername(request.getUsername()).isPresent()) {
-            return ResponseEntity.status(400).body(java.util.Map.of(
-                    "code", 400, "message", "Tên đăng nhập đã tồn tại."));
-        }
-
-        // The account is built from the DTO by AuthService (role, wallet and every other field are the server's) and stored
-        // with its audit row in one transaction.
+        // AuthService refuses a taken email or username, builds the account from the DTO (role, wallet and every other
+        // field are the server's) and stores it with its audit row in one transaction.
         try {
             authService.register(request);
+        } catch (AccountAlreadyExistsException e) {
+            return ResponseEntity.status(400).body(java.util.Map.of("code", 400, "message", e.getMessage()));
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             return ResponseEntity.status(400).body(java.util.Map.of(
                     "code", 400, "message", "Email hoặc số điện thoại đã tồn tại."));
@@ -120,29 +114,11 @@ public class AuthController {
             String token = jwtUtil.generateToken(email, credentialsVersion);
             String refreshToken = jwtUtil.generateRefreshToken(email, credentialsVersion);
 
-            LocalDateTime now = LocalDateTime.now();
-            user.setLastLoginTime(now);
-            user.setLastActionTime(now);
-            userRepository.save(user);
+            authService.markLoggedIn(user);
             eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.AUTH_LOGIN_SUCCESS, AuditActor.of(user),
                     user.getId(), AUDIT_LOGIN_SUCCESS));
 
-            java.util.Map<String, Object> userData = new java.util.HashMap<>();
-            userData.put("id", user.getId());
-            userData.put("email", user.getUsername());
-            userData.put("role", user.getRole());
-
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("token", token);
-            data.put("refreshToken", refreshToken);
-            data.put("user", userData);
-
-            java.util.Map<String, Object> response = new java.util.HashMap<>();
-            response.put("code", 200);
-            response.put("message", "Đăng nhập thành công");
-            response.put("data", data);
-
-            return ResponseEntity.ok(response);
+            return signedIn(token, refreshToken, user, user.getUsername());
 
         } catch (LockedException e) {
             publishLoginRefusal(AuditAction.AUTH_LOGIN_LOCKED, email, AUDIT_LOCKED_ATTEMPT);
@@ -158,6 +134,25 @@ public class AuthController {
             publishLoginRefusal(AuditAction.AUTH_LOGIN_FAILED, email, AUDIT_LOGIN_FAILED);
             return ResponseEntity.status(401).body(java.util.Map.of("message", "Sai email hoặc mật khẩu!"));
         }
+    }
+
+    /** The answer of a successful sign-in, the same for both ways: the token pair and who signed in. */
+    private static ResponseEntity<?> signedIn(String token, String refreshToken, User user, String email) {
+        java.util.Map<String, Object> userData = new java.util.HashMap<>();
+        userData.put("id", user.getId());
+        userData.put("email", email);
+        userData.put("role", user.getRole());
+
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("token", token);
+        data.put("refreshToken", refreshToken);
+        data.put("user", userData);
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("code", 200);
+        response.put("message", MSG_LOGIN_SUCCESS);
+        response.put("data", data);
+        return ResponseEntity.ok(response);
     }
 
     /** A refused sign-in: the email typed in is only the claimed identity, no account is looked up for it. */
@@ -183,30 +178,13 @@ public class AuthController {
             }
 
             User user = socialAuthService.authenticate(provider, token);
-            LocalDateTime now = LocalDateTime.now();
-            user.setLastLoginTime(now);
-            user.setLastActionTime(now);
-            userRepository.save(user);
+            authService.markLoggedIn(user);
             eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.AUTH_LOGIN_SUCCESS, AuditActor.of(user),
                     user.getId(), String.format(AUDIT_SOCIAL_LOGIN_SUCCESS, providerName(provider))));
             String jwt = jwtUtil.generateToken(user.getEmail(), user.getCredentialsVersion());
             String refreshToken = jwtUtil.generateRefreshToken(user.getEmail(), user.getCredentialsVersion());
 
-            java.util.Map<String, Object> userData = new java.util.HashMap<>();
-            userData.put("id", user.getId());
-            userData.put("email", user.getEmail());
-            userData.put("role", user.getRole());
-
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("token", jwt);
-            data.put("refreshToken", refreshToken);
-            data.put("user", userData);
-
-            java.util.Map<String, Object> response = new java.util.HashMap<>();
-            response.put("code", 200);
-            response.put("message", "Đăng nhập thành công");
-            response.put("data", data);
-            return ResponseEntity.ok(response);
+            return signedIn(jwt, refreshToken, user, user.getEmail());
 
         } catch (Exception e) {
             // The provider's token is opaque: nobody is named, only the provider (when it is one the server supports).

@@ -17,6 +17,7 @@ import vn.edu.huit.finance.core.Dto.ChangePasswordRequestDto;
 import vn.edu.huit.finance.core.Dto.RegisterRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.AccountAlreadyExistsException;
 import vn.edu.huit.finance.core.Exception.CredentialsChangeConflictException;
 import vn.edu.huit.finance.core.Exception.InvalidOtpException;
 import vn.edu.huit.finance.core.Exception.InvalidPasswordException;
@@ -39,6 +40,7 @@ import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,6 +72,8 @@ public class AuthService {
     // One answer for every refused refresh, so a caller cannot tell which check its token failed.
     private static final String MSG_REFRESH_TOKEN_INVALID = "Refresh token không hợp lệ hoặc đã hết hạn";
     private static final String MSG_USER_NOT_FOUND = "Không tìm thấy người dùng";
+    private static final String MSG_EMAIL_TAKEN = "Email đã được đăng ký. Vui lòng dùng email khác.";
+    private static final String MSG_USERNAME_TAKEN = "Tên đăng nhập đã tồn tại.";
     private static final String MSG_CREDENTIALS_CHANGED_MEANWHILE =
             "Mật khẩu vừa được thay đổi bởi một yêu cầu khác. Vui lòng thử lại.";
     // The one row of the user: anything else means the guarded UPDATE did not apply.
@@ -155,11 +159,13 @@ public class AuthService {
 
     /**
      * Stores an account the caller registered for themselves, with its USER_CREATED audit row, in one transaction: the
-     * client chose its username, email, phone and password and nothing else (role USER, an empty wallet). The caller
-     * checks first that the email and the username are free; the unique keys refuse a race between two registrations.
+     * client chose its username, email, phone and password and nothing else (role USER, an empty wallet). An email or a
+     * username another account has is refused with AccountAlreadyExistsException; the unique keys refuse a race between
+     * two registrations that both passed this check (DataIntegrityViolationException).
      */
     @Transactional
     public User register(RegisterRequestDto request) {
+        assertEmailAndUsernameFree(request);
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -173,6 +179,27 @@ public class AuthService {
                 AUDIT_DESC_REGISTERED));
         log.info("Account registered, userId={}", registered.getId());
         return registered;
+    }
+
+    private void assertEmailAndUsernameFree(RegisterRequestDto request) {
+        if (request.getEmail() != null && userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new AccountAlreadyExistsException(MSG_EMAIL_TAKEN);
+        }
+        if (request.getUsername() != null && userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new AccountAlreadyExistsException(MSG_USERNAME_TAKEN);
+        }
+    }
+
+    /**
+     * Records that the user has just signed in, whatever the way (password, social provider): the time of the sign-in and
+     * of the latest action.
+     */
+    @Transactional
+    public void markLoggedIn(User user) {
+        LocalDateTime now = LocalDateTime.now();
+        user.setLastLoginTime(now);
+        user.setLastActionTime(now);
+        userRepository.save(user);
     }
 
     /**
