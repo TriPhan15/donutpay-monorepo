@@ -28,6 +28,7 @@ import vn.edu.huit.finance.core.Service.AuthService;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.SocialAuthService;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -281,6 +282,16 @@ class AuthControllerBehaviourTest {
         verify(jwtUtil, never()).generateToken(anyString(), any());
     }
 
+    @Test
+    void login_writesTheTwoSignInTimesOnly_neverTheWholeRowOfTheUserItRead() throws Exception {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(alice));
+
+        mockMvc.perform(login(PASSWORD)).andExpect(status().isOk());
+
+        verify(userRepository).updateLoginTimes(eq(ALICE_ID), any(LocalDateTime.class));
+        verify(userRepository, never()).save(any());
+    }
+
     // ------------------------------------------------------------------------------------------------- social
 
     @Test
@@ -301,6 +312,16 @@ class AuthControllerBehaviourTest {
         assertEquals(AuditAction.AUTH_LOGIN_SUCCESS, row.entry().action());
         assertEquals(AuditActor.of(alice), row.entry().actor());
         assertEquals("Đăng nhập App Mobile qua google", row.entry().description());
+    }
+
+    @Test
+    void socialLogin_writesTheTwoSignInTimesOnly_neverTheWholeRowOfTheUser() throws Exception {
+        when(socialAuthService.authenticate("Google", PROVIDER_TOKEN)).thenReturn(alice);
+
+        mockMvc.perform(socialLogin()).andExpect(status().isOk());
+
+        verify(userRepository).updateLoginTimes(eq(ALICE_ID), any(LocalDateTime.class));
+        verify(userRepository, never()).save(any());
     }
 
     @Test

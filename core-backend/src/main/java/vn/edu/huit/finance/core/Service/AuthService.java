@@ -192,14 +192,14 @@ public class AuthService {
 
     /**
      * Records that the user has just signed in, whatever the way (password, social provider): the time of the sign-in and
-     * of the latest action.
+     * of the latest action, in one UPDATE of those two columns. The user was read before the password check, so saving it
+     * would write back the wallet, the lock and the customer label it had then, over what another request committed
+     * meanwhile.
      */
-    @Transactional
     public void markLoggedIn(User user) {
-        LocalDateTime now = LocalDateTime.now();
-        user.setLastLoginTime(now);
-        user.setLastActionTime(now);
-        userRepository.save(user);
+        if (userRepository.updateLoginTimes(user.getId(), LocalDateTime.now()) != ROWS_OF_ONE_USER) {
+            log.warn("Sign-in not recorded: the account is gone, userId={}", user.getId());
+        }
     }
 
     /**
