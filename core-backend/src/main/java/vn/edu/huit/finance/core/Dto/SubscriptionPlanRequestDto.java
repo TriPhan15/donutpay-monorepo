@@ -3,6 +3,7 @@ package vn.edu.huit.finance.core.Dto;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -30,6 +31,8 @@ public class SubscriptionPlanRequestDto {
     private static final int PLAN_NAME_MAX_LENGTH = 100;
     private static final String MAX_PRICE = "1000000000";
     private static final int MAX_DURATION_DAYS = 3650;
+    /** Stored in {@code maxAiScans} for a plan with no monthly limit on receipt scans. */
+    public static final int UNLIMITED_AI_SCANS = -1;
     private static final int MAX_AI_SCANS = 1_000_000;
 
     @NotBlank(message = "Tên gói không được để trống")
@@ -47,7 +50,7 @@ public class SubscriptionPlanRequestDto {
     private Integer durationDays;
 
     @NotNull(message = "Số lượt quét AI không được để trống")
-    @PositiveOrZero(message = "Số lượt quét AI không được âm")
+    @Min(value = UNLIMITED_AI_SCANS, message = "Số lượt quét AI không hợp lệ (nhập -1 nếu không giới hạn)")
     @Max(value = MAX_AI_SCANS, message = "Số lượt quét AI tối đa {value}")
     private Integer maxAiScans;
 
