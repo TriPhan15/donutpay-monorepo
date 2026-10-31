@@ -58,6 +58,8 @@ class SavingGoalContributionRollbackTest {
     @MockBean private CurrentUserProvider currentUserProvider;
     @MockBean private AuditLogService auditLogService;
     @MockBean private BudgetAlertService budgetAlertService;
+    // The notification of a review has its own Mockito tests; here it would only add statements.
+    @MockBean private NotificationService notificationService;
 
     private Long aliceId;
     private Long alicesGoalId;

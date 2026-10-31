@@ -25,6 +25,7 @@ import vn.edu.huit.finance.core.Dto.ReceiptRetryRequestDto;
 import vn.edu.huit.finance.core.Dto.ReceiptUpdateRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Entity.NotificationType;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
 import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
@@ -77,6 +78,7 @@ class ReceiptProcessingServiceTest {
     @Spy private OcrCorrectionDetector correctionDetector = new OcrCorrectionDetector();
     @Mock private AuditLogService auditLogService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private NotificationService notificationService;
     @InjectMocks private ReceiptProcessingService service;
 
     private final User alice = user(ALICE_ID);
@@ -424,6 +426,69 @@ class ReceiptProcessingServiceTest {
         assertEquals("FAILED", orphan.getStatus());
         verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS));
         assertTrue(publishedTransactionChanges().isEmpty(), "no transaction to reindex");
+    }
+
+    @Test
+    void aRejectionTellsTheOwnerOfTheReceiptAndTheNotificationPointsAtTheTransaction() {
+        Receipt receipt = receipt("WAITING_FOR_REVIEW", transactionOf(alice));
+        receipt.setOwner(alice);
+        receipt.setVendorName("Highlands");
+        repositoryHolds(receipt);
+
+        service.rejectReceipt(RECEIPT_ID);
+
+        verify(notificationService).create(alice, NotificationType.RECEIPT_PROCESSED,
+                "Hóa đơn Highlands đã bị quản trị viên từ chối. Bạn có thể quét lại hoặc nhập số tiền để gửi duyệt.",
+                TRANSACTION_ID, null, RECEIPT_ID);
+    }
+
+    @Test
+    void aRejectionNamesNoSellerWhenTheReceiptHasNone() {
+        Receipt receipt = receipt("WAITING_FOR_REVIEW", transactionOf(alice));
+        receipt.setOwner(alice);
+        repositoryHolds(receipt);
+
+        service.rejectReceipt(RECEIPT_ID);
+
+        verify(notificationService).create(alice, NotificationType.RECEIPT_PROCESSED,
+                "Hóa đơn của bạn đã bị quản trị viên từ chối. Bạn có thể quét lại hoặc nhập số tiền để gửi duyệt.",
+                TRANSACTION_ID, null, RECEIPT_ID);
+    }
+
+    @Test
+    void aRejectedReceiptNoTransactionCarriesStillTellsItsOwnerWithoutATransactionId() {
+        Receipt orphan = receipt("PENDING", null);
+        orphan.setOwner(bob);
+        repositoryHolds(orphan);
+
+        service.rejectReceipt(RECEIPT_ID);
+
+        verify(notificationService).create(eq(bob), eq(NotificationType.RECEIPT_PROCESSED), any(), isNull(), isNull(), eq(RECEIPT_ID));
+    }
+
+    @Test
+    void aReceiptWithoutAnOwnerIsRejectedAndNobodyIsTold() {
+        Receipt receipt = receipt("WAITING_FOR_REVIEW", transactionOf(alice));
+        receipt.setOwner(null);
+        repositoryHolds(receipt);
+
+        service.rejectReceipt(RECEIPT_ID);
+
+        assertEquals("FAILED", receipt.getStatus());
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void rejectingAReceiptThatIsFailedAlreadyOrCannotBeRejectedTellsNobody() {
+        Receipt failed = receipt("FAILED", transactionOf(alice));
+        failed.setOwner(alice);
+        repositoryHolds(failed);
+        service.rejectReceipt(RECEIPT_ID);
+
+        failed.setStatus("CANCELED");
+        assertThrows(ReceiptConflictException.class, () -> service.rejectReceipt(RECEIPT_ID));
+
+        verifyNoInteractions(notificationService);
     }
 
     @Test

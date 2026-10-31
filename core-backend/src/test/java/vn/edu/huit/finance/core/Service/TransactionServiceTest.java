@@ -32,6 +32,7 @@ import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
+import vn.edu.huit.finance.core.Entity.NotificationType;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
@@ -95,6 +96,7 @@ class TransactionServiceTest {
     @Mock private CurrentUserProvider currentUserProvider;
     @Mock private ReceiptProcessingService receiptProcessingService;
     @Mock private BudgetAlertService budgetAlertService;
+    @Mock private NotificationService notificationService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private EntityManager entityManager;
     @InjectMocks private TransactionService service;
@@ -921,6 +923,80 @@ class TransactionServiceTest {
         assertMoney("120000", receipt.getTransaction().getAmount());
         verify(userRepo, times(1)).saveAndFlush(alice);
         verify(budgetAlertService, times(1)).notifyAfterUpdate(any(), any());
+    }
+
+    @Test
+    void anApprovalTellsTheOwnerOfTheReceiptInTheSameTransactionAndTheNotificationPointsAtTheTransaction() {
+        Receipt receipt = expenseReceiptToApprove("120000");
+        receipt.setOwner(alice);
+        receipt.setVendorName("Highlands");
+
+        service.approveReceipt(RECEIPT_ID);
+
+        verify(notificationService).create(alice, NotificationType.RECEIPT_PROCESSED,
+                "Hóa đơn Highlands đã được quản trị viên duyệt.", TX_ID, null, RECEIPT_ID);
+        assertTrue(AnnotatedElementUtils.hasAnnotation(approveReceiptMethod(), Transactional.class));
+    }
+
+    @Test
+    void anApprovalNamesNoSellerWhenTheReceiptHasNone() {
+        Receipt receipt = expenseReceiptToApprove("120000");
+        receipt.setOwner(alice);
+
+        service.approveReceipt(RECEIPT_ID);
+
+        verify(notificationService).create(alice, NotificationType.RECEIPT_PROCESSED,
+                "Hóa đơn của bạn đã được quản trị viên duyệt.", TX_ID, null, RECEIPT_ID);
+    }
+
+    @Test
+    void theOwnerOfTheReceiptAndNotTheOwnerOfTheTransactionIsTold() {
+        Receipt receipt = expenseReceiptToApprove("120000");
+        receipt.setOwner(bob);
+
+        service.approveReceipt(RECEIPT_ID);
+
+        verify(notificationService).create(eq(bob), eq(NotificationType.RECEIPT_PROCESSED), any(), eq(TX_ID), isNull(), eq(RECEIPT_ID));
+    }
+
+    @Test
+    void aReceiptWithoutAnOwnerIsApprovedAndNobodyIsTold() {
+        Receipt receipt = expenseReceiptToApprove("120000");
+        receipt.setOwner(null);
+
+        service.approveReceipt(RECEIPT_ID);
+
+        assertEquals("APPROVED", receipt.getStatus());
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void approvingTheSameReceiptAgainDoesNotTellTheOwnerAgain() {
+        Receipt receipt = expenseReceiptToApprove("120000");
+        receipt.setOwner(alice);
+
+        service.approveReceipt(RECEIPT_ID);
+        service.approveReceipt(RECEIPT_ID);
+
+        verify(notificationService, times(1)).create(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void aRefusedApprovalTellsNobody() {
+        Receipt receipt = receiptToApprove(true, "PROCESSING", "120000");
+        receipt.setOwner(alice);
+
+        assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(RECEIPT_ID));
+
+        verifyNoInteractions(notificationService);
+    }
+
+    private static Method approveReceiptMethod() {
+        try {
+            return TransactionService.class.getMethod("approveReceipt", Long.class);
+        } catch (NoSuchMethodException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
