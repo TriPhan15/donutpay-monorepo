@@ -45,7 +45,7 @@ class TodayAllowance {
         .toList();
     // Income dated after today has not come in yet.
     final income = month
-        .where((t) => !t.isExpense && t.date.day <= day.day)
+        .where((t) => t.countsAsIncome && t.date.day <= day.day)
         .fold(0.0, (s, t) => s + t.amount);
     var spentBefore = 0.0;
     var spentToday = 0.0;

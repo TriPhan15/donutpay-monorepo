@@ -366,6 +366,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get receiptStatusFailed => 'Failed · confirm again';
 
   @override
+  String get transactionSourceGoalRefund => 'Savings goal refund';
+
+  @override
+  String get transactionSourceWalletTransfer => 'Linked wallet transfer';
+
+  @override
   String get budgetPeriodWeek => 'Week';
 
   @override

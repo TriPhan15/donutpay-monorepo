@@ -18,7 +18,7 @@ abstract final class CategoryShortcuts {
     ];
     final uses = <String, int>{};
     for (final tx in history) {
-      if (tx.isExpense != isExpense) continue;
+      if (tx.isExpense != isExpense || !tx.isNormal) continue;
       uses.update(tx.category, (n) => n + 1, ifAbsent: () => 1);
     }
     final order = {for (var i = 0; i < offered.length; i++) offered[i]: i};

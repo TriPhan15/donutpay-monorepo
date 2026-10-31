@@ -107,7 +107,7 @@ class _AITabPageState extends State<AITabPage> {
   }
 
   double get _monthIncome =>
-      _monthTxs.where((t) => !t.isExpense).fold(0, (s, t) => s + t.amount);
+      _monthTxs.where((t) => t.countsAsIncome).fold(0, (s, t) => s + t.amount);
   double get _monthExpense => _monthTxs
       .where((t) => t.countsAsSpending)
       .fold(0, (s, t) => s + t.amount);

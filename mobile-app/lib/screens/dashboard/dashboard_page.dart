@@ -133,7 +133,7 @@ class DashboardPageState extends State<DashboardPage>
       double mInc = 0, mExp = 0;
       for (final tx in txs) {
         if (tx.date.year != now.year || tx.date.month != now.month) continue;
-        if (!tx.isExpense) {
+        if (tx.countsAsIncome) {
           mInc += tx.amount;
         } else if (tx.countsAsSpending) {
           mExp += tx.amount;

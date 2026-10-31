@@ -288,7 +288,7 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   double get _periodIncome => _periodAll
-      .where((tx) => !tx.isExpense)
+      .where((tx) => tx.countsAsIncome)
       .fold(0.0, (s, tx) => s + tx.amount);
 
   double get _periodExpense => _periodAll
@@ -607,7 +607,7 @@ class LedgerPageState extends State<LedgerPage> {
           TextCellValue(''),
         ]);
       } else {
-        totalIncome += tx.amount;
+        if (tx.countsAsIncome) totalIncome += tx.amount;
         sheet.appendRow([
           TextCellValue(dateStr),
           TextCellValue(TransactionCategories.displayName(loc, tx.category)),

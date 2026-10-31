@@ -3,18 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/models/today_allowance.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
 TransactionModel _tx(
   DateTime date,
   double amount, {
   String category = TransactionCategories.food,
   bool isExpense = true,
+  TransactionSource source = TransactionSource.normal,
 }) => TransactionModel(
   title: category,
   amount: amount,
   date: date,
   category: category,
   isExpense: isExpense,
+  source: source,
 );
 
 TransactionModel _income(DateTime date, double amount) =>
@@ -81,6 +84,65 @@ void main() {
       );
 
       // No unfinished goal: what was contributed this month is held back.
+      expect(a.perDay, 100000);
+      expect(a.spentToday, 0);
+    });
+
+    test('the refund of a deleted savings goal is not income', () {
+      final refundOnly = TodayAllowance.of(
+        transactions: [
+          _tx(
+            DateTime(2026, 10, 3),
+            9000000,
+            category: TransactionCategories.savings,
+            isExpense: false,
+            source: TransactionSource.goalRefund,
+          ),
+        ],
+        savingsGoals: const [],
+        today: today,
+      );
+      expect(refundOnly.hasIncome, isFalse);
+
+      final withSalary = TodayAllowance.of(
+        transactions: [
+          _income(DateTime(2026, 10, 1), 1200000),
+          _tx(
+            DateTime(2026, 10, 3),
+            9000000,
+            category: TransactionCategories.savings,
+            isExpense: false,
+            source: TransactionSource.goalRefund,
+          ),
+        ],
+        savingsGoals: const [],
+        today: today,
+      );
+      expect(withSalary.perDay, 100000);
+    });
+
+    test('a wallet transfer is neither income nor spending', () {
+      final a = TodayAllowance.of(
+        transactions: [
+          _income(DateTime(2026, 10, 1), 1200000),
+          _tx(
+            DateTime(2026, 10, 3),
+            5000000,
+            category: 'Nạp ví điện tử',
+            isExpense: false,
+            source: TransactionSource.walletTransfer,
+          ),
+          _tx(
+            DateTime(2026, 10, 20, 8),
+            3000000,
+            category: 'Rút ví điện tử',
+            source: TransactionSource.walletTransfer,
+          ),
+        ],
+        savingsGoals: const [],
+        today: today,
+      );
+
       expect(a.perDay, 100000);
       expect(a.spentToday, 0);
     });

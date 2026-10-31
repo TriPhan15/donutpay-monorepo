@@ -3,15 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/models/category_shortcuts.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
-TransactionModel _tx(String category, {bool isExpense = true}) =>
-    TransactionModel(
-      title: category,
-      amount: 10000,
-      date: DateTime(2026, 10, 20),
-      category: category,
-      isExpense: isExpense,
-    );
+TransactionModel _tx(
+  String category, {
+  bool isExpense = true,
+  TransactionSource source = TransactionSource.normal,
+}) => TransactionModel(
+  title: category,
+  amount: 10000,
+  date: DateTime(2026, 10, 20),
+  category: category,
+  isExpense: isExpense,
+  source: source,
+);
 
 void main() {
   const available = ['Ăn uống', 'Mua sắm', 'Di chuyển', 'Hóa đơn', 'Khác'];
@@ -27,6 +32,25 @@ void main() {
         ['Ăn uống', 'Mua sắm', 'Di chuyển'],
       );
     });
+
+    test(
+      'a transfer to a linked wallet does not count as a use of its category',
+      () {
+        final history = [
+          for (var i = 0; i < 3; i++)
+            _tx('Hóa đơn', source: TransactionSource.walletTransfer),
+          _tx('Di chuyển'),
+        ];
+        expect(
+          CategoryShortcuts.pick(
+            available: available,
+            history: history,
+            isExpense: true,
+          ).first,
+          'Di chuyển',
+        );
+      },
+    );
 
     test('the most used categories come first', () {
       final history = [

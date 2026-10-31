@@ -360,6 +360,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get receiptStatusFailed => 'Lỗi · cần xác nhận lại';
 
   @override
+  String get transactionSourceGoalRefund => 'Hoàn tiền mục tiêu tiết kiệm';
+
+  @override
+  String get transactionSourceWalletTransfer => 'Chuyển ví liên kết';
+
+  @override
   String get budgetPeriodWeek => 'Tuần';
 
   @override

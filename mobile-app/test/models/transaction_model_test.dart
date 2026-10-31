@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 
 final RegExp _uuidV4 = RegExp(
@@ -74,7 +75,89 @@ void main() {
     });
   });
 
+  group('TransactionSource.fromServer', () {
+    test('NORMAL, GOAL_REFUND and WALLET_TRANSFER map to their own source', () {
+      expect(TransactionSource.fromServer('NORMAL'), TransactionSource.normal);
+      expect(
+        TransactionSource.fromServer('GOAL_REFUND'),
+        TransactionSource.goalRefund,
+      );
+      expect(
+        TransactionSource.fromServer(' wallet_transfer '),
+        TransactionSource.walletTransfer,
+      );
+    });
+
+    test('no source (an old server, an old JSON) is a normal transaction', () {
+      for (final Object? raw in [null, '', '   ']) {
+        expect(TransactionSource.fromServer(raw), TransactionSource.normal);
+      }
+    });
+
+    test('a value this version does not know is not a normal transaction', () {
+      for (final Object? raw in ['SOMETHING_NEW', 42, true]) {
+        expect(TransactionSource.fromServer(raw), TransactionSource.unknown);
+      }
+    });
+
+    test(
+      'the labels are the ones of the task; a normal transaction has none',
+      () {
+        expect(
+          TransactionSource.goalRefund.label(_vi),
+          'Hoàn tiền mục tiêu tiết kiệm',
+        );
+        expect(
+          TransactionSource.walletTransfer.label(_vi),
+          'Chuyển ví liên kết',
+        );
+        expect(TransactionSource.normal.label(_vi), isNull);
+        expect(TransactionSource.unknown.label(_vi), isNull);
+        final en = lookupAppLocalizations(const Locale('en'));
+        expect(TransactionSource.goalRefund.label(en), isNotEmpty);
+        expect(TransactionSource.walletTransfer.label(en), isNotEmpty);
+      },
+    );
+  });
+
   group('TransactionModel.fromJson', () {
+    test(
+      'reads the source of the server, and defaults to NORMAL without one',
+      () {
+        final refund = TransactionModel.fromJson({
+          'id': 1,
+          'amount': 500000,
+          'category': 'Tiết kiệm',
+          'isExpense': false,
+          'source': 'GOAL_REFUND',
+        });
+        final transfer = TransactionModel.fromJson({
+          'id': 2,
+          'amount': 5000000,
+          'category': 'Rút ví điện tử',
+          'isExpense': true,
+          'source': 'WALLET_TRANSFER',
+        });
+        final old = TransactionModel.fromJson({
+          'id': 3,
+          'amount': 1,
+          'category': 'Khác',
+          'isExpense': false,
+        });
+        final explicitNull = TransactionModel.fromJson({
+          'id': 4,
+          'amount': 1,
+          'category': 'Khác',
+          'source': null,
+        });
+
+        expect(refund.source, TransactionSource.goalRefund);
+        expect(transfer.source, TransactionSource.walletTransfer);
+        expect(old.source, TransactionSource.normal);
+        expect(explicitNull.source, TransactionSource.normal);
+      },
+    );
+
     test(
       'reads a transaction of the server together with the state of its receipt',
       () {
@@ -211,6 +294,50 @@ void main() {
 
       expect(tx.receiptStatus, isNull);
       expect(tx.isExpense, isTrue);
+    });
+
+    test(
+      'a row of the local table (an outbox of normal transactions, no source column) and an old map load as NORMAL',
+      () {
+        final row = TransactionModel.fromDbMap({
+          'id': 3,
+          'title': 'Cà phê',
+          'amount': 45000,
+          'date': '2026-09-20T08:30:00.000',
+          'category': 'Ăn uống',
+          'is_expense': 0,
+          'icon_name': 'Ăn uống',
+        });
+        final map = TransactionModel.fromMap({
+          'title': 'Lương',
+          'amount': 1,
+          'date': '2026-09-20T08:30:00.000',
+          'category': 'Lương',
+          'isExpense': false,
+        });
+
+        expect(row.source, TransactionSource.normal);
+        expect(row.countsAsIncome, isTrue);
+        expect(map.source, TransactionSource.normal);
+        expect(map.countsAsIncome, isTrue);
+      },
+    );
+
+    test('a copy of a transaction keeps its source', () {
+      final refund = TransactionModel(
+        title: 'x',
+        amount: 1,
+        date: DateTime(2026, 10, 1),
+        category: 'Tiết kiệm',
+        isExpense: false,
+        source: TransactionSource.goalRefund,
+      );
+
+      expect(
+        refund.withSyncStatus(SyncStatus.pending).source,
+        TransactionSource.goalRefund,
+      );
+      expect(refund.allowingDuplicate().source, TransactionSource.goalRefund);
     });
   });
 
@@ -473,20 +600,25 @@ void main() {
   });
 
   group('savings contributions', () {
-    TransactionModel model({required String category, required bool isExpense}) =>
-        TransactionModel(
-          title: 'góp',
-          amount: 100000,
-          date: DateTime(2026, 10, 1),
-          category: category,
-          isExpense: isExpense,
-        );
+    TransactionModel model({
+      required String category,
+      required bool isExpense,
+    }) => TransactionModel(
+      title: 'góp',
+      amount: 100000,
+      date: DateTime(2026, 10, 1),
+      category: category,
+      isExpense: isExpense,
+    );
 
-    test('a savings contribution is an expense of the wallet but not spending', () {
-      final tx = model(category: 'Tiết kiệm', isExpense: true);
-      expect(tx.isSavingsContribution, isTrue);
-      expect(tx.countsAsSpending, isFalse);
-    });
+    test(
+      'a savings contribution is an expense of the wallet but not spending',
+      () {
+        final tx = model(category: 'Tiết kiệm', isExpense: true);
+        expect(tx.isSavingsContribution, isTrue);
+        expect(tx.countsAsSpending, isFalse);
+      },
+    );
 
     test('an income named like the savings category is neither', () {
       final tx = model(category: 'Tiết kiệm', isExpense: false);
@@ -498,6 +630,60 @@ void main() {
       final tx = model(category: 'Ăn uống', isExpense: true);
       expect(tx.isSavingsContribution, isFalse);
       expect(tx.countsAsSpending, isTrue);
+    });
+  });
+
+  group('income and spending only count a NORMAL transaction', () {
+    TransactionModel model({
+      required bool isExpense,
+      TransactionSource source = TransactionSource.normal,
+    }) => TransactionModel(
+      title: 'x',
+      amount: 100000,
+      date: DateTime(2026, 10, 1),
+      category: 'Ăn uống',
+      isExpense: isExpense,
+      source: source,
+    );
+
+    test('a normal income is income, and not spending', () {
+      final tx = model(isExpense: false);
+      expect(tx.countsAsIncome, isTrue);
+      expect(tx.countsAsSpending, isFalse);
+    });
+
+    test('an expense is never income', () {
+      expect(model(isExpense: true).countsAsIncome, isFalse);
+    });
+
+    test('the refund of a deleted savings goal is not income', () {
+      final tx = model(isExpense: false, source: TransactionSource.goalRefund);
+      expect(tx.countsAsIncome, isFalse);
+      expect(tx.countsAsSpending, isFalse);
+    });
+
+    test(
+      'a transfer to or from a linked wallet is neither income nor spending',
+      () {
+        final deposit = model(
+          isExpense: false,
+          source: TransactionSource.walletTransfer,
+        );
+        final withdrawal = model(
+          isExpense: true,
+          source: TransactionSource.walletTransfer,
+        );
+        expect(deposit.countsAsIncome, isFalse);
+        expect(withdrawal.countsAsSpending, isFalse);
+        expect(withdrawal.countsAsIncome, isFalse);
+      },
+    );
+
+    test('a source this version does not know counts as neither', () {
+      final income = model(isExpense: false, source: TransactionSource.unknown);
+      final expense = model(isExpense: true, source: TransactionSource.unknown);
+      expect(income.countsAsIncome, isFalse);
+      expect(expense.countsAsSpending, isFalse);
     });
   });
 }

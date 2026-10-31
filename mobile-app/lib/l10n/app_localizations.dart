@@ -740,6 +740,18 @@ abstract class AppLocalizations {
   /// **'Failed · confirm again'**
   String get receiptStatusFailed;
 
+  /// Label on a transaction: the money of a deleted savings goal going back to the wallet. It is not income.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings goal refund'**
+  String get transactionSourceGoalRefund;
+
+  /// Label on a transaction: money moved between the wallet of the app and a linked e-wallet. It is neither income nor spending.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked wallet transfer'**
+  String get transactionSourceWalletTransfer;
+
   /// Weekly budget period.
   ///
   /// In en, this message translates to:
