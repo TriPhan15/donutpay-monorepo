@@ -176,8 +176,10 @@ class PaymentServiceTest {
         assertEquals(PaymentStatus.SUCCESS, order.getStatus());
         ArgumentCaptor<TransactionRequestDto> cap =
                 ArgumentCaptor.forClass(TransactionRequestDto.class);
-        verify(transactionService).createTransaction(cap.capture(), org.mockito.ArgumentMatchers.eq(USER_ID));
-        assertFalse(cap.getValue().isExpense()); // DEPOSIT -> thu nhap
+        // B9: chuyển tiền giữa hai ví của cùng một người, không phải thu nhập: ghi bằng recordWalletTransfer.
+        verify(transactionService).recordWalletTransfer(cap.capture(), org.mockito.ArgumentMatchers.eq(USER_ID));
+        verify(transactionService, never()).createTransaction(any(), any());
+        assertFalse(cap.getValue().isExpense()); // DEPOSIT: ví chính được cộng tiền
         assertEquals(0, cap.getValue().getAmount().compareTo(new BigDecimal("50000")));
 
         // Nobody is signed in on a webhook: the system records the gateway's confirmation.
@@ -199,8 +201,10 @@ class PaymentServiceTest {
         assertEquals(PaymentStatus.SUCCESS, order.getStatus());
         ArgumentCaptor<TransactionRequestDto> cap =
                 ArgumentCaptor.forClass(TransactionRequestDto.class);
-        verify(transactionService).createTransaction(cap.capture(), org.mockito.ArgumentMatchers.eq(USER_ID));
-        assertTrue(cap.getValue().isExpense()); // WITHDRAW -> chi
+        // B9: chuyển tiền giữa hai ví của cùng một người, không phải chi tiêu: ghi bằng recordWalletTransfer.
+        verify(transactionService).recordWalletTransfer(cap.capture(), org.mockito.ArgumentMatchers.eq(USER_ID));
+        verify(transactionService, never()).createTransaction(any(), any());
+        assertTrue(cap.getValue().isExpense()); // WITHDRAW: ví chính bị trừ tiền
     }
 
     @Test
@@ -213,7 +217,7 @@ class PaymentServiceTest {
 
         assertEquals(PaymentStatus.FAILED, order.getStatus());
         verify(orderRepo).save(order);
-        verify(transactionService, never()).createTransaction(any(), any());
+        verify(transactionService, never()).recordWalletTransfer(any(), any());
         AuditEntry entry = recorded();
         assertEquals(AuditAction.PAYMENT_FAILED, entry.action());
         assertEquals(AuditActor.system(), entry.actor());
@@ -238,7 +242,7 @@ class PaymentServiceTest {
         service.handleWebhook(webhook("PAY123", "TXN1", "99", "50000", true));
 
         assertEquals(PaymentStatus.FAILED, order.getStatus());
-        verify(transactionService, never()).createTransaction(any(), any());
+        verify(transactionService, never()).recordWalletTransfer(any(), any());
         AuditEntry entry = recorded();
         assertEquals(AuditAction.PAYMENT_FAILED, entry.action());
         assertEquals("Cổng MOCK báo thanh toán thất bại (mã kết quả 99), mã đơn PAY123", entry.description());
@@ -290,7 +294,7 @@ class PaymentServiceTest {
 
         service.handleWebhook(webhook("PAY123", "TXN1", "00", "50000", true));
 
-        verify(transactionService, never()).createTransaction(any(), any()); // khong tao giao dich lan 2
+        verify(transactionService, never()).recordWalletTransfer(any(), any()); // khong tao giao dich lan 2
         verify(orderRepo, never()).save(any());
         verifyNoInteractions(auditLogService); // a repeated webhook changes nothing, so it records nothing
     }
@@ -304,7 +308,7 @@ class PaymentServiceTest {
         service.handleWebhook(webhook("PAY123", "TXN1", "00", "999", true));
 
         assertEquals(PaymentStatus.FAILED, order.getStatus());
-        verify(transactionService, never()).createTransaction(any(), any()); // khong tao giao dich
+        verify(transactionService, never()).recordWalletTransfer(any(), any()); // khong tao giao dich
         verify(orderRepo).save(order);          // co luu FAILED
         AuditEntry entry = recorded();
         assertEquals(AuditAction.PAYMENT_FAILED, entry.action());

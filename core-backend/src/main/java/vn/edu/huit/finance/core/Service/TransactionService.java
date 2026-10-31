@@ -166,6 +166,16 @@ public class TransactionService {
         return create(request, userId, AuditActor.system(), false, TransactionSource.NORMAL);
     }
 
+    /**
+     * Records money moved between the main wallet and a linked e-wallet (the payment webhook): the wallet moves exactly as
+     * for {@link #createTransaction}, but the row is marked WALLET_TRANSFER, so it is neither income nor spending in any
+     * total, budget alert or ranking. The source is fixed here, never read from a request.
+     */
+    @Transactional
+    public Map<String, Object> recordWalletTransfer(TransactionRequestDto request, Long userId) {
+        return create(request, userId, AuditActor.system(), false, TransactionSource.WALLET_TRANSFER);
+    }
+
     /** Same as {@link #createTransaction} for the signed-in caller. Transactional itself, because it calls that method directly. */
     @Transactional
     public Map<String, Object> createMyTransaction(TransactionRequestDto request) {

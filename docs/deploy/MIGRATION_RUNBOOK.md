@@ -80,17 +80,47 @@ như mục 2, sau khi backup:
 ```sql
 BEGIN;
 
--- A6: nguồn của giao dịch. GOAL_REFUND là tiền của mục tiêu tiết kiệm đã xóa quay về ví, không tính là thu nhập.
-ALTER TABLE transactions ADD COLUMN IF NOT EXISTS source varchar(16) NOT NULL DEFAULT 'NORMAL'
-    CHECK (source IN ('NORMAL', 'GOAL_REFUND'));
-ALTER TABLE transactions_aud ADD COLUMN IF NOT EXISTS source varchar(16)
-    CHECK (source IN ('NORMAL', 'GOAL_REFUND'));
+-- A6, B9: nguồn của giao dịch. GOAL_REFUND là tiền của mục tiêu tiết kiệm đã xóa quay về ví; WALLET_TRANSFER là tiền nạp
+-- hoặc rút ví điện tử liên kết. Cả hai không tính là thu nhập hay chi tiêu.
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS source varchar(16) NOT NULL DEFAULT 'NORMAL';
+ALTER TABLE transactions_aud ADD COLUMN IF NOT EXISTS source varchar(16);
+
+-- Cột đã có từ bản trước B9 mang CHECK chỉ nhận NORMAL và GOAL_REFUND, mà ddl-auto=update không nới CHECK: không nới thì
+-- lần nạp/rút ví điện tử đầu tiên báo lỗi ràng buộc. Bỏ mọi CHECK chỉ phủ cột source (tên nào cũng được) rồi tạo lại,
+-- nên chạy lần hai không đổi gì.
+DO $$
+DECLARE
+    target    text;
+    old_check record;
+BEGIN
+    FOREACH target IN ARRAY ARRAY['transactions', 'transactions_aud'] LOOP
+        FOR old_check IN
+            SELECT c.conname FROM pg_constraint c
+            JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attname = 'source' AND NOT a.attisdropped
+            WHERE c.conrelid = to_regclass('public.' || target) AND c.contype = 'c' AND c.conkey = ARRAY[a.attnum]
+        LOOP
+            EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', target, old_check.conname);
+        END LOOP;
+        EXECUTE format('ALTER TABLE %I ADD CONSTRAINT %I CHECK (source IN (''NORMAL'', ''GOAL_REFUND'', ''WALLET_TRANSFER''))',
+                       target, target || '_source_check');
+    END LOOP;
+END
+$$;
+
 -- Các khoản hoàn tiền tạo trước cột này: nhận ra qua ghi chú mà SavingGoalService luôn ghi.
 UPDATE transactions SET source = 'GOAL_REFUND'
 WHERE is_expense = FALSE AND note LIKE 'Hoàn tiền từ mục tiêu tiết kiệm đã xóa:%' AND source = 'NORMAL';
+-- B9: các khoản nạp/rút ví điện tử tạo trước khi có WALLET_TRANSFER: danh mục và ghi chú do PaymentService luôn ghi.
+UPDATE transactions SET source = 'WALLET_TRANSFER'
+WHERE source = 'NORMAL'
+  AND ((is_expense = TRUE AND category_name = 'Rút ví điện tử' AND note LIKE 'Rút về ví %')
+    OR (is_expense = FALSE AND category_name = 'Nạp ví điện tử' AND note LIKE 'Nạp từ ví %'));
 
 COMMIT;
 ```
+
+Sau khi cập nhật các khoản cũ (hai lệnh `UPDATE` trên), bảng xếp hạng chi tiêu trong Redis vẫn giữ tổng cũ của từng tháng
+cho tới khi hết hạn: vào trang admin (Vận hành NoSQL) dựng lại bảng xếp hạng của các tháng cần dùng.
 
 A7 (chủ sở hữu hóa đơn) có file riêng, chạy sau `receipt-workflow-migration.sql`:
 

@@ -110,6 +110,13 @@ class UserRfmQueryPostgresTest {
                 userId, categoryId, expense, new BigDecimal(amount), date);
     }
 
+    private void insertTransaction(long userId, long categoryId, boolean expense, String amount, LocalDateTime date,
+                                   String source) {
+        jdbc.update("insert into transactions (user_id, category_id, is_expense, amount, transaction_date, source, "
+                        + "created_at, updated_at) values (?, ?, ?, ?, ?, ?, now(), now())",
+                userId, categoryId, expense, new BigDecimal(amount), date, source);
+    }
+
     private UserRfmRow row(long userId) {
         List<UserRfmRow> rows = userRepository.calculateAllUsersRfm(WINDOW_START, NOW, SAVINGS, NO_ACTIVITY_DAYS);
         return rows.stream().filter(r -> r.getUserId() == userId).findFirst().orElseThrow();
@@ -147,6 +154,30 @@ class UserRfmQueryPostgresTest {
         assertEquals(1L, r.getFrequency());
         assertEquals(5, r.getRecency());
         assertEquals(0, new BigDecimal("10000").compareTo(r.getMonetary()));
+    }
+
+    @Test
+    void aWithdrawalToALinkedWalletIsNotSpending_soItDoesNotCountForRecencyFrequencyOrMonetary() {
+        // B9: 5,000,000 moved to another wallet of the same person, five days ago.
+        insertTransaction(alice, foodCategory, true, "5000000", NOW.minusDays(5), "WALLET_TRANSFER");
+        insertTransaction(alice, foodCategory, true, "10000", NOW.minusDays(8));
+
+        UserRfmRow r = row(alice);
+
+        assertEquals(1L, r.getFrequency());
+        assertEquals(8, r.getRecency());
+        assertEquals(0, new BigDecimal("10000").compareTo(r.getMonetary()));
+    }
+
+    @Test
+    void aUserWhoOnlyMovedMoneyBetweenWalletsGetsTheNoActivityRow() {
+        insertTransaction(bob, foodCategory, true, "5000000", NOW.minusDays(1), "WALLET_TRANSFER");
+
+        UserRfmRow r = row(bob);
+
+        assertEquals(0L, r.getFrequency());
+        assertEquals(NO_ACTIVITY_DAYS, r.getRecency());
+        assertEquals(0, BigDecimal.ZERO.compareTo(r.getMonetary()));
     }
 
     @Test

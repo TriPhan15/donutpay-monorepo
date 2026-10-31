@@ -16,6 +16,7 @@ import vn.edu.huit.finance.core.Entity.BudgetPeriodType;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.NotificationType;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.BudgetRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
@@ -246,6 +247,27 @@ class BudgetAlertServiceTest {
         Category savings = category(30L, SavingsContributions.CATEGORY_NAME);
 
         service.notifyAfterCreate(expense(savings, "4500000"));
+
+        verifyNoInteractions(budgetRepository, notificationService, transactionRepository);
+    }
+
+    @Test
+    void aWithdrawalToALinkedWalletNeverRaisesABudgetAlert() {
+        // B9: the money only went to another wallet of the same person, even when it is as large as the budget.
+        Transaction withdrawal = expense(food, "5000000");
+        withdrawal.setSource(TransactionSource.WALLET_TRANSFER);
+
+        service.notifyAfterCreate(withdrawal);
+
+        verifyNoInteractions(budgetRepository, notificationService, transactionRepository);
+    }
+
+    @Test
+    void anEditOfAWithdrawalToALinkedWalletNeverRaisesABudgetAlert() {
+        Transaction withdrawal = expense(food, "5000000");
+        withdrawal.setSource(TransactionSource.WALLET_TRANSFER);
+
+        service.notifyAfterUpdate(withdrawal, BudgetAlertService.SpendingSnapshot.of(withdrawal));
 
         verifyNoInteractions(budgetRepository, notificationService, transactionRepository);
     }

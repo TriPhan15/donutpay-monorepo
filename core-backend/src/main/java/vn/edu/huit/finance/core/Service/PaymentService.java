@@ -211,7 +211,7 @@ public class PaymentService {
         dto.setTransactionDate(LocalDateTime.now());
         dto.setNote((isWithdraw ? "Rút về ví " : "Nạp từ ví ") + order.getProvider()
                 + " (" + order.getOrderCode() + ")");
-        transactionService.createTransaction(dto, order.getUserId());
+        transactionService.recordWalletTransfer(dto, order.getUserId());
     }
 
     public Map<String, Object> getStatus(String orderCode, Long userId) {

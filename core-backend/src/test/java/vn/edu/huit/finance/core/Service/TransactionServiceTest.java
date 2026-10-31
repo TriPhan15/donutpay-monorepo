@@ -35,6 +35,7 @@ import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
@@ -1796,6 +1797,34 @@ class TransactionServiceTest {
     }
 
     @Test
+    void recordWalletTransferMovesTheWalletLikeAnyCheckoutButMarksTheRowAsAWalletTransfer() {
+        // B9: money to or from a linked e-wallet moves the balance, but is no spending for the totals.
+        when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
+        lenient().when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(alice);
+        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        TransactionRequestDto request = checkout(true, "150000");
+        request.setCategoryId(FOOD_ID);
+
+        service.recordWalletTransfer(request, ALICE_ID);
+
+        assertEquals(TransactionSource.WALLET_TRANSFER, savedTransaction().getSource());
+        assertMoney("850000", alice.getWalletBalance());
+    }
+
+    @Test
+    void createTransactionKeepsTheSourceNormal() {
+        when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
+        lenient().when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(alice);
+        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        TransactionRequestDto request = checkout(true, "150000");
+        request.setCategoryId(FOOD_ID);
+
+        service.createTransaction(request, ALICE_ID);
+
+        assertEquals(TransactionSource.NORMAL, savedTransaction().getSource());
+    }
+
+    @Test
     void aCheckoutTheWalletCannotCarryStaysRefusedWhateverItsClientIdAndLeavesNoTransactionBehind() {
         alice.setWalletBalance(new BigDecimal("50000"));
         checkoutAsAlice();
@@ -2328,7 +2357,8 @@ class TransactionServiceTest {
                 TransactionService.class.getMethod("approveReceipt", Long.class),
                 TransactionService.class.getMethod("createMyTransaction", TransactionRequestDto.class),
                 TransactionService.class.getMethod("recordSavingsMovement", TransactionRequestDto.class),
-                TransactionService.class.getMethod("createTransaction", TransactionRequestDto.class, Long.class));
+                TransactionService.class.getMethod("createTransaction", TransactionRequestDto.class, Long.class),
+                TransactionService.class.getMethod("recordWalletTransfer", TransactionRequestDto.class, Long.class));
 
         for (Method method : writers) {
             Transactional transactional = AnnotatedElementUtils.findMergedAnnotation(method, Transactional.class);
@@ -2362,9 +2392,9 @@ class TransactionServiceTest {
                 .map(Method::getName)
                 .collect(Collectors.toSet());
 
-        // The payment webhook has no SecurityContext (createTransaction, and lockWalletAndCheckCovers for a
-        // withdrawal), and the two administrator lookups are guarded by their controller.
-        assertEquals(Set.of("createTransaction", "lockWalletAndCheckCovers", "getPopularVendorsOf", "getDashboardOf"),
-                takingAUserId);
+        // The payment webhook has no SecurityContext (createTransaction and recordWalletTransfer, and
+        // lockWalletAndCheckCovers for a withdrawal), and the two administrator lookups are guarded by their controller.
+        assertEquals(Set.of("createTransaction", "recordWalletTransfer", "lockWalletAndCheckCovers", "getPopularVendorsOf",
+                "getDashboardOf"), takingAUserId);
     }
 }

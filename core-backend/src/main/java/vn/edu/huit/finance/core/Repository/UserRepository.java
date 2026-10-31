@@ -3,6 +3,7 @@ package vn.edu.huit.finance.core.Repository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -31,7 +32,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
             + "OR EXISTS (SELECT 1 FROM receipts WHERE owner_id = :userId))", nativeQuery = true)
     boolean existsLinkedRecords(@org.springframework.data.repository.query.Param("userId") Long userId);
     /**
-     * Chuẩn RFM của mọi người dùng: chỉ khoản chi, từ {@code windowStart}, bỏ khoản góp tiết kiệm; ngày ở tương lai
+     * Chuẩn RFM của mọi người dùng: chỉ khoản chi, từ {@code windowStart}, bỏ khoản góp tiết kiệm và khoản chuyển sang
+     * ví điện tử liên kết (chỉ source = {@code countedSource} mới tính, B9); ngày ở tương lai
      * tính là hôm nay (LEAST của PostgreSQL bỏ qua NULL nên dòng không có khoản chi
      * phải được loại bằng CASE). Người không có khoản chi nào nhận recency = {@code noActivityDays}, frequency 0, monetary 0.
      */
@@ -41,13 +43,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "COUNT(t.id) AS \"frequency\", " +
             "COALESCE(SUM(t.amount), 0) AS \"monetary\" " +
             "FROM users u LEFT JOIN transactions t ON t.user_id = u.id AND t.is_expense = TRUE " +
-            "AND t.transaction_date >= :windowStart " +
+            "AND t.transaction_date >= :windowStart AND t.source = :countedSource " +
             "AND NOT EXISTS (SELECT 1 FROM categories c WHERE c.id = t.category_id AND c.name = :excludedCategoryName) " +
             "GROUP BY u.id", nativeQuery = true)
     List<UserRfmRow> calculateAllUsersRfm(@org.springframework.data.repository.query.Param("windowStart") LocalDateTime windowStart,
                                           @org.springframework.data.repository.query.Param("now") LocalDateTime now,
                                           @org.springframework.data.repository.query.Param("excludedCategoryName") String excludedCategoryName,
-                                          @org.springframework.data.repository.query.Param("noActivityDays") int noActivityDays);
+                                          @org.springframework.data.repository.query.Param("noActivityDays") int noActivityDays,
+                                          @org.springframework.data.repository.query.Param("countedSource") String countedSource);
+
+    /** {@link #calculateAllUsersRfm(LocalDateTime, LocalDateTime, String, int, String)} over the NORMAL transactions. */
+    default List<UserRfmRow> calculateAllUsersRfm(LocalDateTime windowStart, LocalDateTime now, String excludedCategoryName,
+                                                  int noActivityDays) {
+        return calculateAllUsersRfm(windowStart, now, excludedCategoryName, noActivityDays, TransactionSource.NORMAL.name());
+    }
 
     /** Gán một nhãn cho nhiều người dùng bằng một UPDATE; chạy trong giao dịch của người gọi (CustomerSegmentationService). */
     @Modifying(flushAutomatically = true, clearAutomatically = true)

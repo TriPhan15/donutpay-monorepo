@@ -13,6 +13,7 @@ import vn.edu.huit.finance.core.Document.Search.TransactionSearchDocument;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Util.SavingsContributions;
 
@@ -217,6 +218,103 @@ class TransactionRepositoryTest {
                 alice.getId(), food.getId(), SEPTEMBER_START, OCTOBER_START));
         assertMoney("50000", transactionRepository.sumExpensesInCategoryBetween(
                 alice.getId(), transport.getId(), SEPTEMBER_START, OCTOBER_START));
+    }
+
+    // ------------------------------------------------------- B9: money that only moves between two wallets of one person
+
+    private Transaction persistFrom(User owner, Category category, String amount, boolean expense, LocalDateTime date,
+                                    TransactionSource source) {
+        Transaction transaction = newTransaction(owner, category);
+        transaction.setAmount(new BigDecimal(amount));
+        transaction.setExpense(expense);
+        transaction.setTransactionDate(date);
+        transaction.setSource(source);
+        return entityManager.persistAndFlush(transaction);
+    }
+
+    @Test
+    void sumSpendingBetween_leavesOutAWithdrawalToALinkedWallet() {
+        User alice = withReceipt.getUser();
+        Category withdrawal = persistCategory("Rút ví điện tử");
+        persistFrom(alice, withdrawal, "5000000", true, SEPTEMBER_START.plusDays(2), TransactionSource.WALLET_TRANSFER);
+
+        // 2 x 100,000 of the fixture; the 5,000,000 only went to another wallet of Alice
+        assertMoney("200000", transactionRepository.sumSpendingBetween(alice.getId(), SEPTEMBER_START, OCTOBER_START));
+    }
+
+    @Test
+    void sumSpendingBetween_leavesOutARowByItsSource_whateverItsCategory() {
+        User alice = withReceipt.getUser();
+        persistFrom(alice, withReceipt.getCategory(), "5000000", true, SEPTEMBER_START.plusDays(2),
+                TransactionSource.WALLET_TRANSFER);
+
+        assertMoney("200000", transactionRepository.sumSpendingBetween(alice.getId(), SEPTEMBER_START, OCTOBER_START));
+    }
+
+    @Test
+    void sumSpendingBetween_stillCountsTheExpensesAMonthAfterAWithdrawal() {
+        User alice = withReceipt.getUser();
+        persistFrom(alice, persistCategory("Rút ví điện tử"), "5000000", true, SEPTEMBER_START.plusDays(2),
+                TransactionSource.WALLET_TRANSFER);
+        persistTransaction(alice, withReceipt.getCategory(), "50000", true, SEPTEMBER_START.plusDays(3));
+
+        assertMoney("250000", transactionRepository.sumSpendingBetween(alice.getId(), SEPTEMBER_START, OCTOBER_START));
+    }
+
+    @Test
+    void sumExpensesInCategoryBetween_leavesOutAWithdrawalToALinkedWallet() {
+        User alice = withReceipt.getUser();
+        Category withdrawal = persistCategory("Rút ví điện tử");
+        persistFrom(alice, withdrawal, "5000000", true, SEPTEMBER_START.plusDays(2), TransactionSource.WALLET_TRANSFER);
+        persistFrom(alice, withReceipt.getCategory(), "700000", true, SEPTEMBER_START.plusDays(2),
+                TransactionSource.WALLET_TRANSFER);
+
+        // A budget of the category "Rút ví điện tử" sees nothing, and the food budget keeps its two fixture expenses.
+        assertNull(transactionRepository.sumExpensesInCategoryBetween(
+                alice.getId(), withdrawal.getId(), SEPTEMBER_START, OCTOBER_START));
+        assertMoney("200000", transactionRepository.sumExpensesInCategoryBetween(
+                alice.getId(), withReceipt.getCategory().getId(), SEPTEMBER_START, OCTOBER_START));
+    }
+
+    @Test
+    void sumExpensesByUserBetween_leavesOutAWithdrawalToALinkedWallet_soItIsNotOnTheLeaderboard() {
+        User alice = withReceipt.getUser();
+        persistFrom(alice, persistCategory("Rút ví điện tử"), "5000000", true, SEPTEMBER_START.plusDays(2),
+                TransactionSource.WALLET_TRANSFER);
+        User bob = persistBob();
+        persistTransaction(bob, withReceipt.getCategory(), "300000", true, SEPTEMBER_START.plusDays(1));
+
+        List<Object[]> top = transactionRepository.sumExpensesByUserBetween(SEPTEMBER_START, OCTOBER_START);
+
+        assertEquals(2, top.size());
+        assertEquals("bob", top.get(0)[1]);
+        assertEquals("alice", top.get(1)[1]);
+        assertMoney("200000", (BigDecimal) top.get(1)[2]);
+    }
+
+    @Test
+    void sumExpensesByUserBetween_hasNoRowForAUserWhoseOnlyExpenseIsAWithdrawal() {
+        User bob = persistBob();
+        persistFrom(bob, persistCategory("Rút ví điện tử"), "5000000", true, SEPTEMBER_START.plusDays(2),
+                TransactionSource.WALLET_TRANSFER);
+
+        List<Object[]> top = transactionRepository.sumExpensesByUserBetween(SEPTEMBER_START, OCTOBER_START);
+
+        assertEquals(List.of("alice"), top.stream().map(row -> row[1]).toList());
+    }
+
+    @Test
+    void sumTotalVolume_leavesOutEveryRowThatIsNotNormal() {
+        User alice = withReceipt.getUser();
+        persistFrom(alice, persistCategory("Rút ví điện tử"), "5000000", true, SEPTEMBER_START.plusDays(2),
+                TransactionSource.WALLET_TRANSFER);
+        persistFrom(alice, persistCategory("Nạp ví điện tử"), "3000000", false, SEPTEMBER_START.plusDays(2),
+                TransactionSource.WALLET_TRANSFER);
+        persistFrom(alice, persistCategory("Thu khác"), "900000", false, SEPTEMBER_START.plusDays(2),
+                TransactionSource.GOAL_REFUND);
+        persistTransaction(alice, withReceipt.getCategory(), "70000", false, SEPTEMBER_START.plusDays(3));
+
+        assertMoney("270000", transactionRepository.sumTotalVolume()); // 2 x 100,000 of the fixture + 70,000
     }
 
     @Test
