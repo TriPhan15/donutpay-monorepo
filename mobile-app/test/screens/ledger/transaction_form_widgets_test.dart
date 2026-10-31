@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:finance_ai_app/core/constants/input_limits.dart';
 import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_fields.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_tabs.dart';
 import 'package:finance_ai_app/widgets/transactions/category_picker_sheet.dart';
 
@@ -186,6 +188,34 @@ void main() {
       await tester.tap(find.text('Sức khỏe'));
       await tester.pumpAndSettle();
       expect(result, 'Sức khỏe');
+    });
+  });
+
+  group('NoteField', () {
+    testWidgets(
+      'a note longer than core-backend takes is cut at 255 characters',
+      (tester) async {
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
+        await pump(tester, NoteField(controller: controller));
+
+        await tester.enterText(find.byType(TextField), 'a' * 300);
+        await tester.pump();
+
+        expect(InputLimits.noteMaxLength, 255);
+        expect(controller.text, 'a' * InputLimits.noteMaxLength);
+      },
+    );
+
+    testWidgets('a note within the limit is kept as typed', (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await pump(tester, NoteField(controller: controller));
+
+      await tester.enterText(find.byType(TextField), 'b' * 255);
+      await tester.pump();
+
+      expect(controller.text, 'b' * 255);
     });
   });
 

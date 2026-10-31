@@ -311,6 +311,22 @@ void main() {
         },
       );
 
+      testWidgets('feedback: a comment is cut at 1000 characters', (
+        tester,
+      ) async {
+        final host = await _host(tester, mode);
+        showFeedbackSheet(host);
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'x' * 1100);
+        await tester.pump();
+
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          'x' * 1000,
+        );
+      });
+
       testWidgets('feedback: a failed send says so', (tester) async {
         backend.on(
           'POST',

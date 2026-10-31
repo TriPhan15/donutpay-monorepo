@@ -1218,6 +1218,14 @@ class AppLocalizationsVi extends AppLocalizations {
       'Ảnh hóa đơn chưa được tải lên máy chủ. Bạn có muốn lưu giao dịch mà không kèm ảnh không?';
 
   @override
+  String reviewPhotoUploadFailedToast(String reason) {
+    return 'Không tải được ảnh: $reason';
+  }
+
+  @override
+  String get reviewPhotoRejected => 'Ảnh quá lớn hoặc không đúng định dạng.';
+
+  @override
   String get reviewSaveWithoutPhoto => 'Lưu không kèm ảnh';
 
   @override
@@ -1374,6 +1382,11 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String linkedMinAmountHint(String amount, String wallet) {
     return 'Tối thiểu $amount. Bạn sẽ được chuyển sang cổng $wallet để thanh toán.';
+  }
+
+  @override
+  String linkedMaxAmountHint(String amount) {
+    return 'Tối đa $amount mỗi lần đồng bộ.';
   }
 
   @override

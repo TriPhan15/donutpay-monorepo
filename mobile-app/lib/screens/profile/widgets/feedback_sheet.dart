@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import 'package:finance_ai_app/core/constants/input_limits.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/models/feedback_draft.dart';
@@ -131,6 +133,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             controller: _comment,
             enabled: !_sending,
             maxLines: 3,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(
+                InputLimits.reviewCommentMaxLength,
+              ),
+            ],
             style: const TextStyle(fontSize: AppTextSize.body),
             decoration: InputDecoration(
               hintText: loc.feedbackHint,

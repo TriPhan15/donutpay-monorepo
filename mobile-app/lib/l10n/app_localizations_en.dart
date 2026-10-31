@@ -1249,6 +1249,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'The receipt photo hasn\'t been uploaded to the server. Save the transaction without the photo?';
 
   @override
+  String reviewPhotoUploadFailedToast(String reason) {
+    return 'Couldn\'t upload the photo: $reason';
+  }
+
+  @override
+  String get reviewPhotoRejected =>
+      'The photo is too large or not an image the server accepts.';
+
+  @override
   String get reviewSaveWithoutPhoto => 'Save without photo';
 
   @override
@@ -1407,6 +1416,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String linkedMinAmountHint(String amount, String wallet) {
     return 'Minimum $amount. You will be taken to the $wallet gateway to pay.';
+  }
+
+  @override
+  String linkedMaxAmountHint(String amount) {
+    return 'At most $amount per sync.';
   }
 
   @override

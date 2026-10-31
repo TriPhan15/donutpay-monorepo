@@ -1617,6 +1617,19 @@
   "@reviewPhotoUploadFailedMessage": {
     "description": "Asks whether to save without the photo."
   },
+  "reviewPhotoUploadFailedToast": "Couldn't upload the photo: {reason}",
+  "@reviewPhotoUploadFailedToast": {
+    "description": "Toast when the receipt photo could not be uploaded; reason is the user-facing text of the error.",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewPhotoRejected": "The photo is too large or not an image the server accepts.",
+  "@reviewPhotoRejected": {
+    "description": "Reason in the upload toast when the server refused the photo without saying why (400, 413)."
+  },
   "reviewSaveWithoutPhoto": "Save without photo",
   "@reviewSaveWithoutPhoto": {
     "description": "Confirm button: save without the photo."
@@ -1848,6 +1861,15 @@
         "type": "String"
       },
       "wallet": {
+        "type": "String"
+      }
+    }
+  },
+  "linkedMaxAmountHint": "At most {amount} per sync.",
+  "@linkedMaxAmountHint": {
+    "description": "Error line under the amount of a wallet sync while the amount is above the limit of one payment order.",
+    "placeholders": {
+      "amount": {
         "type": "String"
       }
     }

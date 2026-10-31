@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' show DatabaseException;
 import 'package:uuid/uuid.dart';
 
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/models/receipt_scan_result.dart';
 import 'package:finance_ai_app/models/scan_queue_item.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -262,8 +263,11 @@ class ReceiptScanQueue {
   }
 
   Future<_ConfirmOutcome> _confirmOne(int userId, ScanQueueItem item) async {
-    final imageUrl = await RemoteApiHelper.instance.uploadImage(item.imagePath);
-    if (imageUrl == null) {
+    final String imageUrl;
+    try {
+      imageUrl = await RemoteApiHelper.instance.uploadImage(item.imagePath);
+    } catch (e) {
+      UserFacingError.log('Upload photo of receipt ${item.id}', e);
       debugPrint('Không tải được ảnh của hóa đơn ${item.id}, giữ lại.');
       return _ConfirmOutcome.notSaved;
     }
