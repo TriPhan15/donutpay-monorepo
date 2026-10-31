@@ -71,6 +71,7 @@
                     </tbody>
                 </table>
             </div>
+            <div th:replace="~{admin/layout/_pagination :: bar(${receiptsPage}, '/admin/receipts', 'receiptPage', ${pageSize})}"></div>
             </div>
         </div>
 
@@ -113,8 +114,10 @@
 
         function initDataTables() {
             $('#receiptsTable').DataTable({
-                "pageLength": 5,
-                "lengthMenu": [5, 10, 20, 50],
+                // Phân trang do server làm (thanh phân trang ở trên); DataTables chỉ sắp xếp trong trang đang xem.
+                "paging": false,
+                "info": false,
+                "searching": false,
                 "order": [ [0, "desc"] ],
                 "columnDefs": [ { "orderable": false, "targets": [3, 5] } ],
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/vi.json" }
