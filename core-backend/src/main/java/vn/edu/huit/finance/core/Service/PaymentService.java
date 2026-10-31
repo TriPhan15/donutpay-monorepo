@@ -10,6 +10,12 @@ import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.*;
+import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
+import vn.edu.huit.finance.core.Exception.InvalidRequestException;
+import vn.edu.huit.finance.core.Exception.PaymentOrderAccessDeniedException;
+import vn.edu.huit.finance.core.Exception.PaymentOrderNotFoundException;
+import vn.edu.huit.finance.core.Exception.PaymentWebhookRejectedException;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.PaymentOrderRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
@@ -17,9 +23,11 @@ import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.Payment.PaymentGateway;
 import vn.edu.huit.finance.core.Service.Payment.PaymentGatewayRegistry;
+import vn.edu.huit.finance.core.Service.Payment.RejectedWebhookAuditThrottle;
 import vn.edu.huit.finance.core.Util.HmacUtil;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,6 +62,14 @@ public class PaymentService {
     static final String AUDIT_INSUFFICIENT_BALANCE = "Cổng %s xác nhận rút %s VNĐ nhưng số dư ví không đủ, mã đơn %s";
     private static final String AUDIT_CANCELED = "Hủy đơn %s %s VNĐ, mã đơn %s";
     private static final String AUDIT_WEBHOOK_REJECTED = "Chữ ký webhook không khớp, đơn được nhắc tới: %s";
+    private static final String MSG_WEBHOOK_REJECTED = "Sai chữ ký webhook (HMAC không khớp)";
+    private static final String MSG_TYPE_INVALID = "Loại giao dịch không hợp lệ (DEPOSIT hoặc WITHDRAW)";
+    private static final String MSG_USER_NOT_FOUND = "Không tìm thấy người dùng";
+    private static final String MSG_BALANCE_TOO_LOW = "Số dư ví không đủ để rút";
+    private static final String MSG_ORDER_NOT_FOUND = "Không tìm thấy đơn thanh toán";
+    private static final String MSG_ORDER_FORBIDDEN = "Đơn thanh toán không thuộc về bạn";
+
+    private final RejectedWebhookAuditThrottle rejectedWebhooks = new RejectedWebhookAuditThrottle(Clock.systemUTC());
 
     @Transactional
     public Map<String, Object> createOrder(CreatePaymentRequestDto req, Long userId) {
@@ -61,7 +77,7 @@ public class PaymentService {
         try {
             type = PaymentType.valueOf(req.getType().trim().toUpperCase());
         } catch (Exception e) {
-            throw new RuntimeException("type khong hop le (DEPOSIT|WITHDRAW)");
+            throw new InvalidRequestException(MSG_TYPE_INVALID);
         }
 
         String provider = (req.getProvider() == null || req.getProvider().isBlank())
@@ -69,10 +85,10 @@ public class PaymentService {
         PaymentGateway gateway = gateways.get(provider);
 
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Khong tim thay user"));
+                .orElseThrow(() -> new UserNotFoundException(MSG_USER_NOT_FOUND));
 
         if (type == PaymentType.WITHDRAW && user.getWalletBalance().compareTo(req.getAmount()) < 0) {
-            throw new RuntimeException("So du vi khong du de rut");
+            throw new InsufficientBalanceException(MSG_BALANCE_TOO_LOW);
         }
 
         String orderCode = "PAY" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
@@ -110,15 +126,20 @@ public class PaymentService {
                 + dto.getResultCode() + "|" + dto.getAmount().toPlainString();
         if (!HmacUtil.verify(raw, secret, dto.getSignature())) {
             // Nobody may be named: the request proves nothing about who sent it. Recorded on its own (this transaction
-            // rolls back), with the order code it quoted, cleaned and cut like any text of an audit row.
-            eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.PAYMENT_WEBHOOK_REJECTED,
-                    AuditActor.unauthenticated(null), null, String.format(AUDIT_WEBHOOK_REJECTED, dto.getOrderCode())));
-            throw new RuntimeException("Sai chu ky webhook (HMAC khong khop)");
+            // rolls back), with the order code it quoted, cleaned and cut like any text of an audit row. Throttled, since
+            // anybody can send one: the same order code once per window, and a ceiling on all of them.
+            if (rejectedWebhooks.shouldRecord(dto.getOrderCode())) {
+                eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.PAYMENT_WEBHOOK_REJECTED,
+                        AuditActor.unauthenticated(null), null, String.format(AUDIT_WEBHOOK_REJECTED, dto.getOrderCode())));
+            } else {
+                log.warn("Webhook rejected (bad signature), audit row throttled, orderCode={}", dto.getOrderCode());
+            }
+            throw new PaymentWebhookRejectedException(MSG_WEBHOOK_REJECTED);
         }
 
         // Khóa đơn đến hết giao dịch: webhook phát lại đồng thời phải chờ rồi thấy đơn đã chốt.
         PaymentOrder order = orderRepo.findLockedByOrderCode(dto.getOrderCode())
-                .orElseThrow(() -> new RuntimeException("Khong tim thay don: " + dto.getOrderCode()));
+                .orElseThrow(() -> new PaymentOrderNotFoundException(MSG_ORDER_NOT_FOUND));
 
         if (order.getStatus() != PaymentStatus.PENDING) {
             return;
@@ -194,11 +215,7 @@ public class PaymentService {
     }
 
     public Map<String, Object> getStatus(String orderCode, Long userId) {
-        PaymentOrder o = orderRepo.findByOrderCode(orderCode)
-                .orElseThrow(() -> new RuntimeException("Khong tim thay don"));
-        if (!o.getUserId().equals(userId)) {
-            throw new RuntimeException("Don khong thuoc ve ban");
-        }
+        PaymentOrder o = ownedOrder(orderCode, userId);
         return toMap(o);
     }
 
@@ -209,9 +226,7 @@ public class PaymentService {
 
     @Transactional
     public Map<String, Object> cancel(String orderCode, Long userId) {
-        PaymentOrder o = orderRepo.findByOrderCode(orderCode)
-                .orElseThrow(() -> new RuntimeException("Khong tim thay don"));
-        if (!o.getUserId().equals(userId)) throw new RuntimeException("Don khong thuoc ve ban");
+        PaymentOrder o = ownedOrder(orderCode, userId);
         if (o.getStatus() == PaymentStatus.PENDING) {
             o.setStatus(PaymentStatus.CANCELLED);
             orderRepo.save(o);
@@ -220,6 +235,17 @@ public class PaymentService {
                     String.format(AUDIT_CANCELED, o.getType(), o.getAmount().toPlainString(), o.getOrderCode())));
         }
         return toMap(o);
+    }
+
+    /** The order {@code orderCode} of {@code userId}: 404 when there is none, 403 when it belongs to somebody else. */
+    private PaymentOrder ownedOrder(String orderCode, Long userId) {
+        PaymentOrder order = orderRepo.findByOrderCode(orderCode)
+                .orElseThrow(() -> new PaymentOrderNotFoundException(MSG_ORDER_NOT_FOUND));
+        if (!order.getUserId().equals(userId)) {
+            log.warn("Payment order access denied, userId={}, orderCode={}", userId, orderCode);
+            throw new PaymentOrderAccessDeniedException(MSG_ORDER_FORBIDDEN);
+        }
+        return order;
     }
 
     private Map<String, Object> toMap(PaymentOrder o) {

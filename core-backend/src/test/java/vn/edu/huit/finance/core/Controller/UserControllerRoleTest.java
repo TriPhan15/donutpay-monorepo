@@ -172,9 +172,13 @@ class UserControllerRoleTest {
         bob.setRole("ROLE_USER");
         when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
 
+        // A3: 403 (another user's data), not the 400 of the generic RuntimeException handler.
         mockMvc.perform(updateProfile(2L, "{\"phone\":\"0933333333\"}"))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.message").value("Bạn không có quyền chỉnh sửa tài khoản của người khác!"));
 
+        verify(userRepository, never()).findById(2L);
         verify(userRepository, never()).save(any());
     }
 }

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.envers.Audited;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,6 +22,8 @@ public class Transaction extends BaseEntity {
 
     /** Widest client id the column holds; the checkout request refuses a longer one. */
     public static final int CLIENT_ID_MAX_LENGTH = 64;
+    /** Width of the column behind {@link #source}. */
+    public static final int SOURCE_MAX_LENGTH = 16;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -83,5 +86,15 @@ public class Transaction extends BaseEntity {
      */
     @Column(name = "client_id", length = CLIENT_ID_MAX_LENGTH)
     private String clientId;
+
+    /**
+     * Where the transaction comes from. GOAL_REFUND is the money of a deleted savings goal going back to the wallet: an
+     * income for the wallet, never for the income totals. The column default lets ddl-auto=update add the column to a
+     * table that already has rows, and lets the JDBC inserts that do not name it (demo data) get NORMAL.
+     */
+    @Enumerated(EnumType.STRING)
+    @ColumnDefault("'NORMAL'")
+    @Column(name = "source", nullable = false, length = SOURCE_MAX_LENGTH)
+    private TransactionSource source = TransactionSource.NORMAL;
 
 }

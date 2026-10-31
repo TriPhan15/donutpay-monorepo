@@ -85,3 +85,46 @@ def test_empty_input_is_insufficient_with_zero_weeks():
 def test_categories_report_share_total_and_weeks():
     out = analyze_spending(_expenses_in_weeks(3)).model_dump(by_alias=True)
     assert out["categories"][0] == {"category": "Ăn uống", "total": 3000.0, "share": 0.5, "weeks": 3}
+
+
+PATHOLOGICAL_SECONDS = 5.0
+
+
+def _pathological_expenses(n_rare: int = 500, total: int = 5000, seed: int = 7) -> List[Expense]:
+    """Kịch bản B3: một danh mục chiếm gần hết chi tiêu (raw_bound về 1) và ~500 danh mục lẻ, 5000 khoản chi trong 26 tuần."""
+    import random
+    rng = random.Random(seed)
+    out = [Expense(FIRST_MONDAY + timedelta(days=DAYS_PER_WEEK * w), "Nhà ở", 1e9) for w in range(26)]
+    while len(out) < total:
+        out.append(Expense(FIRST_MONDAY + timedelta(days=rng.randrange(26 * DAYS_PER_WEEK)),
+                           f"Lẻ {rng.randrange(n_rare):03d}", 1000.0))
+    return out
+
+
+def test_pathological_input_finishes_within_seconds_and_keeps_the_original_categories():
+    import time
+    started = time.monotonic()
+    out = analyze_spending(_pathological_expenses()).model_dump(by_alias=True)
+    elapsed = time.monotonic() - started
+    assert elapsed < PATHOLOGICAL_SECONDS, f"{elapsed:.1f}s"
+    assert out["status"] == "OK"
+    # Chỉ đầu vào thuật toán bị gộp; danh sách danh mục của response vẫn là danh mục gốc.
+    assert len(out["categories"]) > 400
+    assert "Khác" not in {c["category"] for c in out["categories"]}
+
+
+def test_categories_beyond_the_mining_limit_are_merged_into_other():
+    from spending_analysis import MAX_MINED_CATEGORIES, OTHER_CATEGORY, _limit_mined_categories
+    totals = {f"c{i:03d}": float(1000 - i) for i in range(MAX_MINED_CATEGORIES + 10)}
+    sequences = [[tuple(sorted(totals))]]
+    merged, merged_totals = _limit_mined_categories(sequences, totals)
+    assert len(merged_totals) == MAX_MINED_CATEGORIES and OTHER_CATEGORY in merged_totals
+    assert sum(merged_totals.values()) == sum(totals.values())
+    assert len(merged[0][0]) == MAX_MINED_CATEGORIES and "c000" in merged[0][0]
+
+
+def test_few_categories_are_mined_unchanged():
+    from spending_analysis import _limit_mined_categories
+    sequences = [[("a", "b")], [("b",)]]
+    totals = {"a": 1.0, "b": 2.0}
+    assert _limit_mined_categories(sequences, totals) == (sequences, totals)

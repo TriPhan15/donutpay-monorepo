@@ -35,7 +35,7 @@ import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.NoSuchElementException;
+import vn.edu.huit.finance.core.Exception.SavingGoalNotFoundException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
@@ -180,13 +180,13 @@ class SavingGoalControllerTest {
     }
 
     @Test
-    void aGoalThatDoesNotExistIsA400LikeTheOtherSavingsEndpoints() throws Exception {
+    void aGoalThatDoesNotExistIsA404() throws Exception {
         when(savingGoalService.contributeToMySaving(anyLong(), any()))
-                .thenThrow(new NoSuchElementException("Không tìm thấy mục tiêu tiết kiệm"));
+                .thenThrow(new SavingGoalNotFoundException("Không tìm thấy mục tiêu tiết kiệm"));
 
         mockMvc.perform(signedIn(contribution(VALID_BODY)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(404))
                 .andExpect(jsonPath("$.message").value("Không tìm thấy mục tiêu tiết kiệm"));
     }
 

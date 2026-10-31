@@ -19,6 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.Category;
@@ -509,7 +510,7 @@ class TransactionServiceRollbackTest {
         Long receiptId = failedReceiptOfAlice(); // the AI read nothing and the owner has not answered
         Long transactionId = transactionIdOf(receiptId);
 
-        assertThrows(IllegalStateException.class, () -> service.approveReceipt(receiptId));
+        assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(receiptId));
 
         assertEquals("FAILED", receiptRepository.findById(receiptId).orElseThrow().getStatus());
         assertMoney("90000", transactionInDatabase(transactionId).getAmount());
@@ -522,7 +523,7 @@ class TransactionServiceRollbackTest {
         orphan.setStatus("WAITING_FOR_REVIEW");
         Long orphanId = receiptRepository.saveAndFlush(orphan).getId();
 
-        assertThrows(IllegalStateException.class, () -> service.approveReceipt(orphanId));
+        assertThrows(ReceiptConflictException.class, () -> service.approveReceipt(orphanId));
 
         assertEquals("WAITING_FOR_REVIEW", receiptRepository.findById(orphanId).orElseThrow().getStatus());
     }
@@ -761,6 +762,58 @@ class TransactionServiceRollbackTest {
         // 1,000,000 + 500,000 from the other writer - 50,000 from the edit. Without the lock the edit would have
         // written 950,000 and the 500,000 would have been lost.
         assertMoney("1450000", walletInDatabase());
+    }
+
+    /**
+     * Another request (an edit of the same transaction) holds the wallet lock, has changed the amount from 100,000 to
+     * 150,000 and taken the 50,000 from the wallet, and has not committed. {@code action} runs meanwhile, waits for the
+     * lock, and must work from what that request committed, not from the amount it read before waiting.
+     */
+    private void runWhileAnotherEditHoldsTheWallet(Runnable action) throws Exception {
+        Long transactionId = expense.getId();
+        CountDownLatch otherHoldsTheLock = new CountDownLatch(1);
+        CountDownLatch otherMayCommit = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> otherEdit = pool.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                User locked = entityManager.find(User.class, aliceId, LockModeType.PESSIMISTIC_WRITE);
+                locked.setWalletBalance(locked.getWalletBalance().subtract(new BigDecimal("50000")));
+                entityManager.find(Transaction.class, transactionId).setAmount(new BigDecimal("150000.00"));
+                otherHoldsTheLock.countDown();
+                awaitQuietly(otherMayCommit);
+            }));
+            assertTrue(otherHoldsTheLock.await(TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+            Future<?> waiting = pool.submit(action);
+            assertThrows(TimeoutException.class, () -> waiting.get(PROBE_MILLIS, TimeUnit.MILLISECONDS),
+                    "the second request has to wait for the wallet lock of the first");
+
+            otherMayCommit.countDown();
+            otherEdit.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            waiting.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } finally {
+            otherMayCommit.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void twoEditsOfTheSameTransactionAtOnceLeaveTheWalletInStepWithTheSavedAmount() throws Exception {
+        // A10: 100,000 → 150,000 by the other edit, then → 200,000 by this one, which must charge 50,000 more, not 100,000.
+        runWhileAnotherEditHoldsTheWallet(() -> service.updateTransaction(expense.getId(), amount("200000")));
+
+        assertMoney("200000", transactionInDatabase(expense.getId()).getAmount());
+        // 1,000,000 - 50,000 - 50,000: the wallet always equals the start minus the amount that is saved.
+        assertMoney("900000", walletInDatabase());
+    }
+
+    @Test
+    void aDeleteThatWaitedForAnEditGivesBackTheAmountThatEditSaved() throws Exception {
+        // A10: the other edit saved 150,000, so deleting must give back 150,000, not the 100,000 read before the wait.
+        runWhileAnotherEditHoldsTheWallet(() -> service.deleteTransaction(expense.getId()));
+
+        assertFalse(transactionRepository.existsById(expense.getId()));
+        assertMoney("1100000", walletInDatabase());
     }
 
     @Test

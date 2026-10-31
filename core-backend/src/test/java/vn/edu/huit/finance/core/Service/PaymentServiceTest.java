@@ -12,6 +12,7 @@ import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.*;
+import vn.edu.huit.finance.core.Exception.PaymentWebhookRejectedException;
 import vn.edu.huit.finance.core.Repository.PaymentOrderRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
@@ -124,7 +125,7 @@ class PaymentServiceTest {
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> service.createOrder(req("WITHDRAW", "50000", "MOCK"), USER_ID));
-        assertTrue(ex.getMessage().contains("khong du"));
+        assertTrue(ex.getMessage().contains("không đủ"));
         verify(orderRepo, never()).save(any());
         verifyNoInteractions(auditLogService);
     }
@@ -257,9 +258,9 @@ class PaymentServiceTest {
 
     @Test
     void webhook_badSignature_throws() {
-        RuntimeException ex = assertThrows(RuntimeException.class,
+        RuntimeException ex = assertThrows(PaymentWebhookRejectedException.class,
                 () -> service.handleWebhook(webhook("PAY123", "TXN1", "00", "50000", false)));
-        assertTrue(ex.getMessage().contains("chu ky"));
+        assertTrue(ex.getMessage().contains("chữ ký"));
         verify(orderRepo, never()).findByOrderCode(any());
 
         // Recorded on its own (this transaction rolls back), naming nobody: the request proves nothing about its sender.
@@ -269,6 +270,16 @@ class PaymentServiceTest {
         assertEquals(AuditAction.PAYMENT_WEBHOOK_REJECTED, event.getValue().entry().action());
         assertEquals(AuditActor.unauthenticated(null), event.getValue().entry().actor());
         assertFalse(event.getValue().entry().description().contains("badsig"));
+    }
+
+    @Test
+    void webhook_badSignatureRepeatedForTheSameOrder_isRecordedOnce() {
+        for (int i = 0; i < 5; i++) {
+            assertThrows(PaymentWebhookRejectedException.class,
+                    () -> service.handleWebhook(webhook("PAY123", "TXN1", "00", "50000", false)));
+        }
+
+        verify(eventPublisher, times(1)).publishEvent(any(SecurityAuditEvent.class));
     }
 
     @Test

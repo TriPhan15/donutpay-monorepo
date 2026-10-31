@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import vn.edu.huit.finance.core.Service.AsyncMailSender;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -128,7 +128,7 @@ class CrossSessionTokenRevocationTest {
     @SpyBean private CustomUserDetailsService userDetailsService;
     @MockBean private CurrentUserProvider currentUserProvider;
     @MockBean private AuditLogService auditLogService;
-    @MockBean private JavaMailSender mailSender;
+    @MockBean private AsyncMailSender mailSender;
 
     private Long aliceId;
 

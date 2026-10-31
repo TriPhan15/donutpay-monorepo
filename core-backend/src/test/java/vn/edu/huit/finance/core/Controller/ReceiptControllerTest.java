@@ -29,6 +29,7 @@ import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
+import vn.edu.huit.finance.core.Exception.InvalidRequestException;
 import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -159,10 +160,13 @@ class ReceiptControllerTest {
     static Stream<Arguments> otherRefusals() {
         return Stream.of(
                 Arguments.of(new ReceiptNotFoundException("Không tìm thấy hóa đơn"), 404, "Không tìm thấy hóa đơn"),
-                Arguments.of(new IllegalStateException("Chỉ có thể gửi yêu cầu xem xét cho các hóa đơn bị lỗi (FAILED)"), 400,
+                Arguments.of(new ReceiptConflictException("Chỉ có thể gửi yêu cầu xem xét cho các hóa đơn bị lỗi (FAILED)"), 409,
                         "Chỉ có thể gửi yêu cầu xem xét cho các hóa đơn bị lỗi (FAILED)"),
-                Arguments.of(new IllegalArgumentException("Số tiền điều chỉnh phải lớn hơn 0"), 400,
-                        "Số tiền điều chỉnh phải lớn hơn 0"));
+                Arguments.of(new InvalidRequestException("Số tiền điều chỉnh phải lớn hơn 0"), 400,
+                        "Số tiền điều chỉnh phải lớn hơn 0"),
+                // A4: anything without a handler of its own is a 500 with a fixed text, never its message.
+                Arguments.of(new IllegalStateException("could not connect to smtp.example.com:587"), 500,
+                        "Hệ thống đang gặp sự cố, vui lòng thử lại sau"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -445,7 +449,7 @@ class ReceiptControllerTest {
                 Arguments.of(new ReceiptNotFoundException("Không tìm thấy hóa đơn"), 404, "Không tìm thấy hóa đơn"),
                 Arguments.of(new ReceiptConflictException("Chỉ có thể thử lại hóa đơn đang ở trạng thái lỗi (FAILED)"), 409,
                         "Chỉ có thể thử lại hóa đơn đang ở trạng thái lỗi (FAILED)"),
-                Arguments.of(new IllegalArgumentException("Số tiền điều chỉnh phải lớn hơn 0"), 400, "Số tiền điều chỉnh phải lớn hơn 0"));
+                Arguments.of(new InvalidRequestException("Số tiền điều chỉnh phải lớn hơn 0"), 400, "Số tiền điều chỉnh phải lớn hơn 0"));
     }
 
     @ParameterizedTest(name = "{0}")

@@ -31,6 +31,8 @@ public class Receipt extends BaseEntity {
     public static final int AI_RAW_DATA_MAX_LENGTH = 32768;
     /** Width of the column behind {@link #errorCode}. */
     public static final int ERROR_CODE_MAX_LENGTH = 40;
+    /** Width of the column behind {@link #imageUrl}. */
+    public static final int IMAGE_URL_MAX_LENGTH = 2048;
 
     private static final String MSG_MOVE_NOT_ALLOWED = "Không thể chuyển hóa đơn từ trạng thái %s sang trạng thái %s";
     private static final String MSG_NOT_A_NEW_RECEIPT = "Lần đọc đầu tiên chỉ được ghi cùng với hóa đơn mới";
@@ -45,7 +47,7 @@ public class Receipt extends BaseEntity {
 
     private LocalDate extractedDate;
 
-    @Column(name = "image_url", length = 2048)
+    @Column(name = "image_url", length = IMAGE_URL_MAX_LENGTH)
     private String imageUrl;
 
     @Column(nullable = false)
@@ -81,6 +83,15 @@ public class Receipt extends BaseEntity {
     private Transaction transaction;
 
     /**
+     * The user the receipt belongs to: set once when it is created, from the signed-in caller who saved the transaction
+     * (never from a request). Every permission check of a user on a receipt goes through it ({@link #ownerId}). Null only
+     * on a row from before the column whose owner could not be filled in: then only an administrator acts on it.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
+    /**
      * Every reading of the receipt, oldest first. Lazy, and only ever appended to: the first reading of a new receipt is
      * saved with it through this list, and a later one is saved on its own (ReceiptProcessingAttemptRepository), so that
      * recording a reading never loads the earlier ones. Not audited (the attempts are a history of their own).
@@ -103,6 +114,18 @@ public class Receipt extends BaseEntity {
     /** The readings of the receipt, oldest first. Loads them for a saved receipt: services query the repository instead. */
     public List<ReceiptProcessingAttempt> getAttempts() {
         return Collections.unmodifiableList(attempts);
+    }
+
+    /**
+     * The id of the receipt's owner. A row written before the owner column, on a local database the runbook's backfill
+     * did not reach, falls back to the owner of the transaction that carries it; null when neither exists. Reading the id
+     * of a lazy owner loads nothing.
+     */
+    public Long ownerId() {
+        if (owner != null) {
+            return owner.getId();
+        }
+        return transaction != null && transaction.getUser() != null ? transaction.getUser().getId() : null;
     }
 
     /** The status as the lifecycle knows it; empty when the row holds a text that is none of its statuses. */

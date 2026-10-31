@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import vn.edu.huit.finance.core.Service.AsyncMailSender;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -87,7 +87,7 @@ class AuthServiceResetPasswordTest {
     private static final Pattern OTP_IN_MAIL = Pattern.compile("\\d{6}");
 
     @Mock private UserRepository userRepository;
-    @Mock private JavaMailSender mailSender;
+    @Mock private AsyncMailSender mailSender;
     @Mock private EntityManager entityManager;
     @Mock private AuditLogService auditLogService;
     @Mock private ApplicationEventPublisher eventPublisher;

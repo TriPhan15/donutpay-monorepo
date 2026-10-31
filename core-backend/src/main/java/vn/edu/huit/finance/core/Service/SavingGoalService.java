@@ -9,7 +9,9 @@ import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.SavingGoal;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.SavingGoalNotFoundException;
 import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
 import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
@@ -21,7 +23,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -168,8 +169,9 @@ public class SavingGoalService {
 
         String audit = AUDIT_DELETED;
         if (refund.signum() > 0) {
-            Object transactionId = transactionService.recordSavingsMovement(refundTransaction(goal, refund))
-                    .get(KEY_TRANSACTION_ID);
+            // GOAL_REFUND: the wallet gets the money back, but it is no income for the statistics or the AI.
+            Object transactionId = transactionService.recordSavingsMovement(refundTransaction(goal, refund),
+                    TransactionSource.GOAL_REFUND).get(KEY_TRANSACTION_ID);
             audit = String.format(AUDIT_DELETED_WITH_REFUND, refund.toPlainString(), transactionId);
             log.info("Saving goal refunded to the wallet, userId={}, goalId={}, amount={}", caller.getId(), goalId, refund);
         }
@@ -194,7 +196,7 @@ public class SavingGoalService {
     private static SavingGoal requireOwned(Optional<SavingGoal> found, Long goalId, User caller) {
         SavingGoal goal = found.orElseThrow(() -> {
             log.warn("Saving goal not found, userId={}, goalId={}", caller.getId(), goalId);
-            return new NoSuchElementException(MSG_GOAL_NOT_FOUND);
+            return new SavingGoalNotFoundException(MSG_GOAL_NOT_FOUND);
         });
         if (!goal.getUser().getId().equals(caller.getId())) {
             log.warn("Saving goal access denied, userId={}, goalId={}", caller.getId(), goalId);

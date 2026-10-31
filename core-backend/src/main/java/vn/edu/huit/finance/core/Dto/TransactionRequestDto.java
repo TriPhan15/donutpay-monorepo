@@ -1,13 +1,16 @@
 package vn.edu.huit.finance.core.Dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Util.ImageUrls;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,16 +19,27 @@ import java.util.List;
 @Data
 public class TransactionRequestDto {
 
+    // Cùng giới hạn với TransactionUpdateRequestDto: số tiền khớp cột (2 chữ số thập phân, nên ví không bị trừ theo số
+    // chưa làm tròn), chữ khớp cột varchar(255), nên quá dài là 400 thay vì lỗi DB (409 sai nghĩa).
+    private static final int AMOUNT_INTEGER_DIGITS = 17;
+    private static final int AMOUNT_FRACTION_DIGITS = 2;
+    private static final int TEXT_MAX_LENGTH = 255;
+
     @NotNull(message = "Số tiền không được để trống")
     @Positive(message = "Số tiền giao dịch phải lớn hơn 0")
+    @Digits(integer = AMOUNT_INTEGER_DIGITS, fraction = AMOUNT_FRACTION_DIGITS,
+            message = "Số tiền giao dịch chỉ được có tối đa {integer} chữ số nguyên và {fraction} chữ số thập phân")
     private BigDecimal amount;
 
+    @Size(max = TEXT_MAX_LENGTH, message = "Ghi chú tối đa {max} ký tự")
     private String note;
 
     @NotBlank(message = "Địa chỉ giao dịch không được để trống")
+    @Size(max = TEXT_MAX_LENGTH, message = "Địa chỉ giao dịch tối đa {max} ký tự")
     private String location;
 
     @NotBlank(message = "Vui lòng chọn nguồn tiền")
+    @Size(max = TEXT_MAX_LENGTH, message = "Nguồn tiền tối đa {max} ký tự")
     private String paymentMethod;
 
     @NotNull(message = "Ngày giao dịch không được để trống")
@@ -33,6 +47,7 @@ public class TransactionRequestDto {
 
     private Long categoryId;
 
+    @Size(max = TEXT_MAX_LENGTH, message = "Tên danh mục tối đa {max} ký tự")
     private String categoryName;
 
     private Long receiptId;
@@ -42,6 +57,9 @@ public class TransactionRequestDto {
     /** What the AI answered for the scanned receipt, as one JSON text; it is kept as the receipt's first attempt, never on the transaction. */
     @Size(max = Receipt.AI_RAW_DATA_MAX_LENGTH, message = "Dữ liệu AI của hóa đơn (rawReceiptData) tối đa {max} ký tự")
     private String rawReceiptData;
+    /** Link ảnh hóa đơn (từ POST /api/upload). Chỉ nhận https://, vì trang admin hiện nó thành một link bấm được. */
+    @Size(max = ImageUrls.MAX_LENGTH, message = "Link ảnh hóa đơn tối đa {max} ký tự")
+    @Pattern(regexp = ImageUrls.HTTPS_OR_BLANK_REGEX, message = ImageUrls.MSG_INVALID)
     private String imageUrl;
     private List<String> additionalImages;
 

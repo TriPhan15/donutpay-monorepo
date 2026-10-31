@@ -177,3 +177,21 @@ def test_max_patterns_stop_sets_truncated():
     assert cut.truncated and len(cut.explored) == 3
     exact = WCMSpade(min_sup=0.5, max_patterns=len(full.explored)).mine(seqs, totals)
     assert not exact.truncated and exact.explored.keys() == full.explored.keys()
+
+
+def test_join_budget_stops_the_dfs_and_sets_truncated():
+    seqs, totals = _random_db(3, 30, "ABCDEF")
+    full = WCMSpade(min_sup=0.2).mine(seqs, totals)
+    assert not full.truncated
+    cut = WCMSpade(min_sup=0.2, max_joins=5).mine(seqs, totals)
+    assert cut.truncated and len(cut.explored) < len(full.explored)
+
+
+def test_join_budget_of_the_rules_returns_what_was_found():
+    from wcm_spade import sequential_rules
+    seqs, totals = _random_db(3, 30, "ABCDEF")
+    result = WCMSpade(min_sup=0.2).mine(seqs, totals)
+    full = sequential_rules(result, min_lift=0.0, min_laplace_confidence=0.0)
+    assert full
+    assert len(sequential_rules(result, min_lift=0.0, min_laplace_confidence=0.0, max_joins=3)) <= len(full)
+    assert sequential_rules(result, min_lift=0.0, min_laplace_confidence=0.0, max_joins=0) == []

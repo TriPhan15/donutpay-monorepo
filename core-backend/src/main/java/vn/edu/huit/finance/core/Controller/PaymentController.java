@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
+import vn.edu.huit.finance.core.Exception.InvalidTokenException;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.PaymentService;
 
@@ -19,14 +21,17 @@ import java.util.Map;
 @RequestMapping("/api/payment")
 public class PaymentController {
 
+    private static final String MSG_NOT_SIGNED_IN = "Bạn chưa đăng nhập";
+    private static final String MSG_USER_NOT_FOUND = "Không tìm thấy người dùng";
+
     @Autowired private PaymentService paymentService;
     @Autowired private UserRepository userRepository;
 
     private Long currentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getName() == null) throw new RuntimeException("Chua dang nhap");
+        if (auth == null || auth.getName() == null) throw new InvalidTokenException(MSG_NOT_SIGNED_IN);
         return userRepository.findByEmail(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Khong tim thay user: " + auth.getName()))
+                .orElseThrow(() -> new UserNotFoundException(MSG_USER_NOT_FOUND))
                 .getId();
     }
 
@@ -39,7 +44,7 @@ public class PaymentController {
     }
 
     @PostMapping("/webhook")
-    public ResponseEntity<ApiResponse<Void>> webhook(@RequestBody PaymentWebhookDto dto) {
+    public ResponseEntity<ApiResponse<Void>> webhook(@Valid @RequestBody PaymentWebhookDto dto) {
         paymentService.handleWebhook(dto);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
                 .code(200).message("OK").build());

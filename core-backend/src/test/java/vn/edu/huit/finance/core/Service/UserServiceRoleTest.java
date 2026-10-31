@@ -15,7 +15,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.AdminAccountProtectedException;
 import vn.edu.huit.finance.core.Exception.InvalidRoleException;
+import vn.edu.huit.finance.core.Exception.ProfileAccessDeniedException;
+import vn.edu.huit.finance.core.Exception.ProfileUpdateRefusedException;
+import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
@@ -54,7 +58,7 @@ class UserServiceRoleTest {
         dto.setUsername("new");
         dto.setEmail("new@example.com");
         dto.setPhone("0900000002");
-        dto.setPassword("secret1");
+        dto.setPassword("secret123");
         dto.setRole(role);
         return dto;
     }
@@ -76,7 +80,7 @@ class UserServiceRoleTest {
     @ParameterizedTest
     @ValueSource(strings = {"ADMIN", "admin", "ROLE_ADMIN", " role_admin "})
     void createUserStoresEverySpellingOfAdminAsRoleAdmin(String spelling) {
-        when(passwordEncoder.encode("secret1")).thenReturn("hash");
+        when(passwordEncoder.encode("secret123")).thenReturn("hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User created = service.createUser(createDto(spelling));
@@ -87,7 +91,7 @@ class UserServiceRoleTest {
     @ParameterizedTest
     @ValueSource(strings = {"USER", "user", "ROLE_USER"})
     void createUserStoresEverySpellingOfUserAsRoleUser(String spelling) {
-        when(passwordEncoder.encode("secret1")).thenReturn("hash");
+        when(passwordEncoder.encode("secret123")).thenReturn("hash");
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         assertEquals("ROLE_USER", service.createUser(createDto(spelling)).getRole());
@@ -202,7 +206,7 @@ class UserServiceRoleTest {
     void updatingAnUnknownUserSaysSo() {
         when(userRepository.findById(ID)).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () -> service.updateUser(ID, updateDto("ADMIN")));
+        assertThrows(UserNotFoundException.class, () -> service.updateUser(ID, updateDto("ADMIN")));
     }
 
     // ---- updateOwnProfile: the user editing themselves ----
@@ -351,9 +355,107 @@ class UserServiceRoleTest {
         when(userRepository.findById(ID)).thenReturn(Optional.of(user("ROLE_USER", true)));
         doThrow(new DataIntegrityViolationException("transactions reference the user")).when(userRepository).flush();
 
-        assertThrows(RuntimeException.class, () -> service.deleteUser(ID));
+        assertThrows(DataIntegrityViolationException.class, () -> service.deleteUser(ID));
 
         verifyNoInteractions(eventPublisher);
+    }
+
+    // ---- deleteUser (A1) ----
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ROLE_ADMIN", "ADMIN", " role_admin "})
+    void anAdministratorAccountIsNeverDeleted(String storedRole) {
+        when(userRepository.findById(ID)).thenReturn(Optional.of(user(storedRole, true)));
+
+        assertThrows(AdminAccountProtectedException.class, () -> service.deleteUser(ID));
+
+        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(eventPublisher, auditLogService);
+    }
+
+    @Test
+    void aUserWithTransactionsIsLockedAndTheLockIsReallySaved_neverDeleted() {
+        User alice = whenLoaded(user("ROLE_USER", true));
+        when(userRepository.existsLinkedRecords(ID)).thenReturn(true);
+
+        assertEquals(UserDeletionOutcome.LOCKED, service.deleteUser(ID));
+
+        assertFalse(alice.isActive());
+        verify(userRepository).save(alice);
+        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).flush();
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void aUserWithoutLinkedRecordsIsDeleted() {
+        User alice = user("ROLE_USER", true);
+        when(userRepository.findById(ID)).thenReturn(Optional.of(alice));
+        when(userRepository.existsLinkedRecords(ID)).thenReturn(false);
+
+        assertEquals(UserDeletionOutcome.DELETED, service.deleteUser(ID));
+
+        verify(userRepository).delete(alice);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void deletingAnUnknownUserIsNotFound() {
+        when(userRepository.findById(ID)).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> service.deleteUser(ID));
+    }
+
+    // ---- the username rule, at the service (A8) ----
+
+    @ParameterizedTest
+    @ValueSource(strings = {"bob@example.com", "alice@other.com", "ALICE@example.com", "a@b"})
+    void aUsernameWithAnAtThatIsNotTheOwnersEmailIsRefused(String username) {
+        User alice = user("ROLE_USER", true);
+        when(userRepository.findById(ID)).thenReturn(Optional.of(alice));
+        UserUpdateDto dto = new UserUpdateDto();
+        dto.setUsername(username);
+
+        assertThrows(ProfileUpdateRefusedException.class, () -> service.updateOwnProfile(ID, dto));
+
+        assertEquals("alice", alice.getUsername());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void theOwnersOwnEmailIsAcceptedAsUsername() {
+        User alice = whenLoaded(user("ROLE_USER", true));
+        UserUpdateDto dto = new UserUpdateDto();
+        dto.setUsername("alice@example.com");
+
+        service.updateOwnProfile(ID, dto);
+
+        assertEquals("alice@example.com", alice.getUsername());
+        verify(userRepository).save(alice);
+    }
+
+    @Test
+    void aUsernameWithoutAnAtIsAccepted() {
+        User alice = whenLoaded(user("ROLE_USER", true));
+        UserUpdateDto dto = new UserUpdateDto();
+        dto.setUsername("alice_2026");
+
+        service.updateOwnProfile(ID, dto);
+
+        assertEquals("alice_2026", alice.getUsername());
+    }
+
+    // ---- updateOwnProfile with the caller (A3) ----
+
+    @Test
+    void aUserEditingAnotherAccountIsRefusedBeforeItIsRead() {
+        User caller = user("ROLE_USER", true);
+
+        assertThrows(ProfileAccessDeniedException.class, () -> service.updateOwnProfile(caller, ID + 1, new UserUpdateDto()));
+
+        verify(userRepository, never()).findById(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test

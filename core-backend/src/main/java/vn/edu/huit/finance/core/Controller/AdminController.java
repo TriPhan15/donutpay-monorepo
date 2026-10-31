@@ -25,6 +25,9 @@ import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.AuditLogFilterRequestDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
 import vn.edu.huit.finance.core.Dto.ReceiptStatusCountDto;
+import vn.edu.huit.finance.core.Dto.CategoryRenameRequestDto;
+import vn.edu.huit.finance.core.Dto.CategoryRequestDto;
+import vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto;
 import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.*;
@@ -42,6 +45,7 @@ import vn.edu.huit.finance.core.Service.LoginAttemptService;
 import vn.edu.huit.finance.core.Service.ReceiptProcessingService;
 import vn.edu.huit.finance.core.Service.SubscriptionPlanService;
 import vn.edu.huit.finance.core.Service.TransactionService;
+import vn.edu.huit.finance.core.Service.UserDeletionOutcome;
 import vn.edu.huit.finance.core.Service.UserService;
 
 import java.math.BigDecimal;
@@ -64,9 +68,13 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 public class AdminController {
     private static final int DEFAULT_PAGE_SIZE = 10;
+    static final int MAX_PAGE_SIZE = 100;
     private static final int TOP_SPENDERS_LIMIT = 5;
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
+    private static final String MSG_USER_DELETED = "Đã xóa vĩnh viễn tài khoản";
+    private static final String MSG_USER_LOCKED_INSTEAD =
+            "Tài khoản đã có dữ liệu (giao dịch, ngân sách...) nên đã được khóa thay vì xóa vĩnh viễn";
     private static final String AUDIT_UNLOCK = "Gỡ khóa đăng nhập sớm cho email: %s / IP: %s";
     private static final String AUDIT_SEGMENTATION = "Chạy phân lớp khách hàng RFM (ngũ phân vị): %d người dùng được gán nhãn";
     private static final String MSG_FILTER_FIELD_INVALID = "Giá trị của %s không hợp lệ";
@@ -185,7 +193,7 @@ public class AdminController {
         Page<User> usersPage = userRepo.findAll(PageRequest.of(Math.max(userPage, 0), normalizePageSize(size), Sort.by(Sort.Direction.DESC, "id")));
         model.addAttribute("users", usersPage.getContent());
         model.addAttribute("usersPage", usersPage);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", normalizePageSize(size));
         return "admin/users";
     }
 
@@ -216,18 +224,10 @@ public class AdminController {
     }
     @PostMapping("/subscriptions/add")
     public String addSubscription(
-            @RequestParam String planName,
-            @RequestParam Double price,
-            @RequestParam Integer durationDays,
-            @RequestParam Integer maxAiScans,
+            @Valid @ModelAttribute SubscriptionPlanRequestDto values,
             @RequestParam(defaultValue = "false") boolean isWcmSpadeEnabled) {
-
-        SubscriptionPlan values = new SubscriptionPlan();
-        values.setPlanName(planName);
-        values.setPrice(price);
-        values.setDurationDays(durationDays);
-        values.setMaxAiScans(maxAiScans);
-        values.setWcmSpadeEnabled(isWcmSpadeEnabled);
+        // The form field is named isWcmSpadeEnabled, which does not bind to the DTO's wcmSpadeEnabled by itself.
+        values.setWcmSpadeEnabled(values.isWcmSpadeEnabled() || isWcmSpadeEnabled);
         subscriptionPlanService.createPlan(values);
 
         return "redirect:/admin/subscriptions";
@@ -237,21 +237,14 @@ public class AdminController {
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createUserAjax(@Valid @RequestBody UserCreateDto dto) {
-        try {
-            // Recorded by UserService (USER_CREATED, by the caller) in the transaction of the creation.
-            User user = userService.createUser(dto);
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<Map<String, Object>>builder()
-                    .code(201)
-                    .message("Tạo tài khoản thành công")
-                    .data(toUserResponse(user))
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Map<String, Object>>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_CREATED, by the caller) in the transaction of the creation. A refusal (bad role,
+        // duplicate email...) is answered by GlobalExceptionHandler, never with the raw exception message.
+        User user = userService.createUser(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<Map<String, Object>>builder()
+                .code(201)
+                .message("Tạo tài khoản thành công")
+                .data(toUserResponse(user))
+                .build());
     }
 
     @PutMapping("/ajax/users/{id}")
@@ -260,61 +253,39 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateUserAjax(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateDto dto) {
-        try {
-            // Recorded by UserService (USER_UPDATED, and USER_ROLE_CHANGED for a new role) in the transaction of the update.
-            User user = userService.updateUser(id, dto);
-
-            return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
-                    .code(200)
-                    .message("Cập nhật thông tin thành công")
-                    .data(toUserResponse(user))
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Map<String, Object>>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_UPDATED, and USER_ROLE_CHANGED for a new role) in the transaction of the update.
+        User user = userService.updateUser(id, dto);
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+                .code(200)
+                .message("Cập nhật thông tin thành công")
+                .data(toUserResponse(user))
+                .build());
     }
 
     @DeleteMapping("/ajax/users/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteUserAjax(@PathVariable Long id) {
-        try {
-            // Recorded by UserService (USER_DELETED) in the transaction of the deletion.
-            userService.deleteUser(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Xóa tài khoản thành công")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_DELETED, or USER_STATUS_CHANGED when it only locks) in its transaction.
+        // An ADMIN account or an unknown id is answered by GlobalExceptionHandler (403 / 404).
+        UserDeletionOutcome outcome = userService.deleteUser(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message(outcome == UserDeletionOutcome.DELETED ? MSG_USER_DELETED : MSG_USER_LOCKED_INSTEAD)
+                .build());
     }
 
     @PutMapping("/ajax/users/{id}/toggle-status")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> toggleUserStatusAjax(@PathVariable Long id) {
-        try {
-            // Recorded by UserService (USER_STATUS_CHANGED) in the transaction of the change.
-            userService.toggleUserStatus(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Cập nhật trạng thái thành công")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
-                    .code(400)
-                    .message(e.getMessage())
-                    .build());
-        }
+        // Recorded by UserService (USER_STATUS_CHANGED) in the transaction of the change. An ADMIN account or an unknown
+        // id is answered by GlobalExceptionHandler (403 / 404).
+        userService.toggleUserStatus(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Cập nhật trạng thái thành công")
+                .build());
     }
 
     @GetMapping("/backup")
@@ -359,7 +330,7 @@ public class AdminController {
     @PostMapping("/ajax/subscriptions")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> createSubscriptionAjax(@RequestBody SubscriptionPlan plan) {
+    public ResponseEntity<ApiResponse<Void>> createSubscriptionAjax(@Valid @RequestBody SubscriptionPlanRequestDto plan) {
         subscriptionPlanService.createPlan(plan);
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(201).message("Thành công").build());
     }
@@ -367,7 +338,8 @@ public class AdminController {
     @PutMapping("/ajax/subscriptions/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> updateSubscriptionAjax(@PathVariable Long id, @RequestBody SubscriptionPlan dto) {
+    public ResponseEntity<ApiResponse<Void>> updateSubscriptionAjax(@PathVariable Long id,
+                                                                @Valid @RequestBody SubscriptionPlanRequestDto dto) {
         subscriptionPlanService.updatePlan(id, dto);
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).message("Thành công").build());
     }
@@ -422,8 +394,9 @@ public class AdminController {
         return error.getDefaultMessage();
     }
 
-    private int normalizePageSize(int size) {
-        return size > 0 ? size : DEFAULT_PAGE_SIZE;
+    /** Cỡ trang của các trang admin: mặc định khi không hợp lệ, tối đa MAX_PAGE_SIZE để ?size=1000000 không tải cả bảng. */
+    static int normalizePageSize(int size) {
+        return size > 0 ? Math.min(size, MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE;
     }
 
     private String formatCurrencyWithoutDecimal(BigDecimal amount) {
@@ -444,16 +417,17 @@ public class AdminController {
     @PostMapping("/ajax/categories")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> addCategoryAjax(@RequestParam String name, @RequestParam String type) {
-        categoryService.createCategory(name, type);
+    public ResponseEntity<ApiResponse<Void>> addCategoryAjax(@Valid @ModelAttribute CategoryRequestDto dto) {
+        categoryService.createCategory(dto.getName(), dto.getType());
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(201).message("Thêm thành công").build());
     }
 
     @PutMapping("/ajax/categories/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> updateCategoryAjax(@PathVariable Long id, @RequestParam String name) {
-        categoryService.renameCategory(id, name);
+    public ResponseEntity<ApiResponse<Void>> updateCategoryAjax(@PathVariable Long id,
+                                                             @Valid @ModelAttribute CategoryRenameRequestDto dto) {
+        categoryService.renameCategory(id, dto.getName());
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).message("Cập nhật thành công").build());
     }
 
@@ -470,22 +444,14 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> unlockUserOrIp(
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String ipAddress) {
-        try {
-            loginAttemptService.resetAttempts(email, ipAddress);
-            // The lockout lives in memory, outside any transaction: recorded once lifted, in a row of its own.
-            eventPublisher.publishEvent(SecurityAuditEvent.ofCurrentCaller(AuditAction.AUTH_LOGIN_UNLOCKED,
-                    String.format(AUDIT_UNLOCK, email, ipAddress)));
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Đã gỡ khóa giải ban thành công!")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder()
-                    .code(400)
-                    .message("Gỡ khóa thất bại: " + e.getMessage())
-                    .build());
-        }
+        loginAttemptService.resetAttempts(email, ipAddress);
+        // The lockout lives in memory, outside any transaction: recorded once lifted, in a row of its own.
+        eventPublisher.publishEvent(SecurityAuditEvent.ofCurrentCaller(AuditAction.AUTH_LOGIN_UNLOCKED,
+                String.format(AUDIT_UNLOCK, email, ipAddress)));
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Đã gỡ khóa giải ban thành công!")
+                .build());
 
     }
 
@@ -500,32 +466,23 @@ public class AdminController {
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> approveReviewAjax(@PathVariable Long id) {
-        try {
-            appReviewService.approveReview(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Đã duyệt đánh giá thành công!")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().code(400).message(e.getMessage()).build());
-        }
+        // An unknown id is a 404 from GlobalExceptionHandler.
+        appReviewService.approveReview(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Đã duyệt đánh giá thành công!")
+                .build());
     }
 
     @DeleteMapping("/ajax/reviews/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteReviewAjax(@PathVariable Long id) {
-        try {
-            appReviewService.deleteReview(id);
-
-            return ResponseEntity.ok(ApiResponse.<Void>builder()
-                    .code(200)
-                    .message("Đã xóa đánh giá thành công!")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.<Void>builder().code(400).message(e.getMessage()).build());
-        }
+        appReviewService.deleteReview(id);
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(200)
+                .message("Đã xóa đánh giá thành công!")
+                .build());
     }
     @PostMapping("/ajax/segmentation/run")
     @ResponseBody

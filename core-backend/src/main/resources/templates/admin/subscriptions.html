@@ -186,7 +186,8 @@
             e.preventDefault();
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
-            data.isWcmSpadeEnabled = document.getElementById('spadeCheck').checked;
+            delete data.isWcmSpadeEnabled;
+            data.wcmSpadeEnabled = document.getElementById('spadeCheck').checked;
 
             fetch('/admin/ajax/subscriptions', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
@@ -194,6 +195,8 @@
                 if(resData.code === 201 || resData.status === 200) {
                     Toast.fire({ icon: 'success', title: 'Đã tạo gói thành công!' });
                     setTimeout(() => location.reload(), 1000);
+                } else {
+                    Toast.fire({ icon: 'error', title: resData.message || 'Không lưu được gói' });
                 }
             });
         });
@@ -213,7 +216,8 @@
             const id = document.getElementById('editPlanId').value;
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
-            data.isWcmSpadeEnabled = document.getElementById('editSpadeCheck').checked;
+            delete data.isWcmSpadeEnabled;
+            data.wcmSpadeEnabled = document.getElementById('editSpadeCheck').checked;
 
             fetch(`/admin/ajax/subscriptions/${id}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
@@ -221,6 +225,8 @@
                 if(resData.code === 200 || resData.status === 200) {
                     Toast.fire({ icon: 'success', title: 'Cập nhật thành công!' });
                     setTimeout(() => location.reload(), 1000);
+                } else {
+                    Toast.fire({ icon: 'error', title: resData.message || 'Không lưu được gói' });
                 }
             });
         });

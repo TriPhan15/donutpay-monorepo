@@ -3,6 +3,7 @@ package vn.edu.huit.finance.core.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
@@ -23,10 +24,12 @@ import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.TransactionSortField;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.DuplicateReceiptException;
 import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
+import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -160,14 +163,14 @@ public class TransactionService {
      */
     @Transactional
     public Map<String, Object> createTransaction(TransactionRequestDto request, Long userId) {
-        return create(request, userId, AuditActor.system(), false);
+        return create(request, userId, AuditActor.system(), false, TransactionSource.NORMAL);
     }
 
     /** Same as {@link #createTransaction} for the signed-in caller. Transactional itself, because it calls that method directly. */
     @Transactional
     public Map<String, Object> createMyTransaction(TransactionRequestDto request) {
         User caller = currentUserProvider.getCurrentUser();
-        return create(request, caller.getId(), AuditActor.of(caller), false);
+        return create(request, caller.getId(), AuditActor.of(caller), false, TransactionSource.NORMAL);
     }
 
     /**
@@ -178,17 +181,27 @@ public class TransactionService {
      */
     @Transactional
     public Map<String, Object> recordSavingsMovement(TransactionRequestDto request) {
+        return recordSavingsMovement(request, TransactionSource.NORMAL);
+    }
+
+    /**
+     * {@link #recordSavingsMovement(TransactionRequestDto)} with the source of the row: GOAL_REFUND for the refund of a
+     * deleted goal, so that income totals can leave it out. Never taken from a request.
+     */
+    @Transactional
+    public Map<String, Object> recordSavingsMovement(TransactionRequestDto request, TransactionSource source) {
         User caller = currentUserProvider.getCurrentUser();
-        return create(request, caller.getId(), AuditActor.of(caller), true);
+        return create(request, caller.getId(), AuditActor.of(caller), true, source);
     }
 
     /**
      * The checkout itself. A replay of an id already recorded writes no audit row: it changes nothing. Otherwise the rows
      * (the transaction; the receipt and the AI's reading when one came with it; a category created by name) commit with it.
      */
-    private Map<String, Object> create(TransactionRequestDto request, Long userId, AuditActor actor, boolean savingsAllowed) {
+    private Map<String, Object> create(TransactionRequestDto request, Long userId, AuditActor actor, boolean savingsAllowed,
+                                       TransactionSource source) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
+                .orElseThrow(() -> new UserNotFoundException(MSG_USER_NOT_FOUND));
 
         // Luôn khóa ví trước khi đọc số dư (có hay không có clientId), để hai lần ghi đồng thời không ghi đè số dư của nhau.
         user = lockWallet(user);
@@ -222,6 +235,7 @@ public class TransactionService {
         transaction.setTransactionDate(request.getTransactionDate());
         transaction.setExpense(request.isExpense());
         transaction.setClientId(clientId);
+        transaction.setSource(source);
 
         transaction.setUser(user);
         transaction.setCategory(category);
@@ -232,7 +246,7 @@ public class TransactionService {
                 String imagesJson = new ObjectMapper().writeValueAsString(request.getAdditionalImages());
                 transaction.setAdditionalImages(imagesJson);
             } catch (JsonProcessingException e) {
-                throw new RuntimeException("Lỗi xử lý hình ảnh đính kèm");
+                throw new IllegalStateException("Additional images could not be written as JSON", e);
             }
         }
 
@@ -273,10 +287,6 @@ public class TransactionService {
         User caller = currentUserProvider.getCurrentUser();
         Transaction transaction = findOwnedTransaction(transactionId, caller.getId());
         refuseSavingsContribution(transaction, caller.getId());
-        // Taken before anything changes: the budget alert needs to know what this transaction counted for until now.
-        BudgetAlertService.SpendingSnapshot spendingBefore = BudgetAlertService.SpendingSnapshot.of(transaction);
-        Set<YearMonth> monthsBefore = expenseMonthOf(transaction.isExpense(), transaction.getTransactionDate());
-
         BigDecimal newAmount = request.getAmount() != null ? request.getAmount() : transaction.getAmount();
         boolean newExpense = request.getExpense() != null ? request.getExpense() : transaction.isExpense();
         AuditActor actor = AuditActor.of(caller);
@@ -290,15 +300,26 @@ public class TransactionService {
             throw new SavingsLedgerException(MSG_SAVINGS_MANAGED_BY_GOAL);
         }
 
+        // Khóa ví rồi mới đọc lại giao dịch: chênh lệch số dư phải tính từ số tiền mà request đồng thời (nếu có) đã commit,
+        // không phải từ số tiền đọc được trước khi chờ khóa (giống approveReceipt). Khóa cả khi số tiền không đổi, vì lưu
+        // giao dịch ghi lại mọi cột, kể cả số tiền.
+        User owner = lockWallet(caller);
+        transaction = reloadAfterWalletLock(transactionId, caller.getId());
+        refuseSavingsContribution(transaction, caller.getId());
+        newAmount = request.getAmount() != null ? request.getAmount() : transaction.getAmount();
+        newExpense = request.getExpense() != null ? request.getExpense() : transaction.isExpense();
+        // Taken before anything changes: the budget alert needs to know what this transaction counted for until now.
+        BudgetAlertService.SpendingSnapshot spendingBefore = BudgetAlertService.SpendingSnapshot.of(transaction);
+        Set<YearMonth> monthsBefore = expenseMonthOf(transaction.isExpense(), transaction.getTransactionDate());
+
         BigDecimal walletChange = signedAmount(newAmount, newExpense)
                 .subtract(signedAmount(transaction.getAmount(), transaction.isExpense()));
         boolean dateChanges = request.getTransactionDate() != null
                 && !request.getTransactionDate().equals(transaction.getTransactionDate());
         // Described before the entity changes: the row names what was there before and what is there now.
         String changes = describeChanges(transaction, request, newAmount, newExpense, newCategory, dateChanges);
+        transaction.setUser(owner);
         if (walletChange.signum() != 0) {
-            User owner = lockWallet(caller);
-            transaction.setUser(owner);
             moveWallet(owner, walletChange);
         }
 
@@ -348,12 +369,13 @@ public class TransactionService {
     public void deleteTransaction(Long transactionId) {
         User caller = currentUserProvider.getCurrentUser();
         Transaction transaction = findOwnedTransaction(transactionId, caller.getId());
-        if (SavingsContributions.isContribution(transaction) && savingGoalRepository.existsByUserId(caller.getId())) {
-            refuseSavingsContribution(transaction, caller.getId());
-        }
+        refuseProtectedSavingsContribution(transaction, caller.getId());
+        // Như updateTransaction: khóa ví rồi đọc lại, để tiền hoàn lại là số tiền đã commit sau khi có khóa.
+        User owner = lockWallet(caller);
+        transaction = reloadAfterWalletLock(transactionId, caller.getId());
+        refuseProtectedSavingsContribution(transaction, caller.getId());
 
         BigDecimal undo = signedAmount(transaction.getAmount(), transaction.isExpense()).negate();
-        User owner = lockWallet(caller);
         // Xóa một khoản thu sẽ trừ lại tiền khỏi ví: cùng quy tắc với thanh toán, số dư không được xuống dưới 0.
         moveWallet(owner, undo, MSG_DELETE_WOULD_OVERDRAW);
         transactionRepo.delete(transaction);
@@ -365,6 +387,13 @@ public class TransactionService {
                         categoryIdOf(transaction), sign(undo), undo.toPlainString())));
 
         log.info("Transaction deleted, userId={}, transactionId={}, walletChange={}", caller.getId(), transactionId, undo);
+    }
+
+    /** Xóa: khoản góp tiết kiệm chỉ bị từ chối khi người dùng còn mục tiêu (mục tiêu đang giữ số tiền đó). */
+    private void refuseProtectedSavingsContribution(Transaction transaction, Long userId) {
+        if (SavingsContributions.isContribution(transaction) && savingGoalRepository.existsByUserId(userId)) {
+            refuseSavingsContribution(transaction, userId);
+        }
     }
 
     /** Khoản góp tiết kiệm chỉ đổi qua mục tiêu: sửa hay xóa ở đây sẽ làm ví lệch với số tiền của mục tiêu. */
@@ -384,14 +413,14 @@ public class TransactionService {
             return new ReceiptNotFoundException(MSG_RECEIPT_NOT_FOUND);
         });
 
-        // A receipt that no transaction carries yet has no owner, so nobody may cancel it through here.
+        // The owner column decides (A7); a receipt without an owner (an old row) can only be handled by an administrator.
         Transaction owningTransaction = receipt.getTransaction();
-        if (owningTransaction == null || !owningTransaction.getUser().getId().equals(userId)) {
+        if (!userId.equals(receipt.ownerId())) {
             log.warn("Receipt access denied, userId={}, receiptId={}", userId, receiptId);
             throw new TransactionAccessDeniedException(MSG_RECEIPT_FORBIDDEN);
         }
         if (!ReceiptStatus.PENDING.matches(receipt.getStatus())) {
-            throw new IllegalStateException(MSG_RECEIPT_NOT_PENDING);
+            throw new ReceiptConflictException(MSG_RECEIPT_NOT_PENDING);
         }
 
         String previousStatus = receipt.getStatus();
@@ -399,7 +428,9 @@ public class TransactionService {
         receiptRepo.save(receipt);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, userId));
         // The receipt status is part of the transaction's search document: the index reads it again after the commit.
-        eventPublisher.publishEvent(TransactionChangedEvent.upserted(owningTransaction.getId(), userId, Set.of()));
+        if (owningTransaction != null) {
+            eventPublisher.publishEvent(TransactionChangedEvent.upserted(owningTransaction.getId(), userId, Set.of()));
+        }
         auditLogService.record(AuditEntry.of(AuditAction.RECEIPT_CANCELED, AuditActor.of(caller), receiptId,
                 String.format(AUDIT_RECEIPT_CANCELED, previousStatus, receipt.getStatus())));
         log.info("Receipt canceled, userId={}, receiptId={}", userId, receiptId);
@@ -424,7 +455,7 @@ public class TransactionService {
         Transaction transaction = receipt.getTransaction();
         if (transaction == null) {
             log.warn("Receipt approval refused, no transaction is linked, receiptId={}", receiptId);
-            throw new IllegalStateException(MSG_RECEIPT_UNLINKED);
+            throw new ReceiptConflictException(MSG_RECEIPT_UNLINKED);
         }
 
         User owner = lockWallet(transaction.getUser());
@@ -528,6 +559,21 @@ public class TransactionService {
         }
     }
 
+    /**
+     * The transaction as it is once the caller's wallet is locked: everything another request committed while this one
+     * waited for the lock (an edit of the same transaction, or its deletion, which makes it a 404) is read again.
+     */
+    private Transaction reloadAfterWalletLock(Long transactionId, Long userId) {
+        Transaction transaction = findOwnedTransaction(transactionId, userId);
+        try {
+            entityManager.refresh(transaction);
+        } catch (EntityNotFoundException e) {
+            log.warn("Transaction deleted while waiting for the wallet lock, userId={}, transactionId={}", userId, transactionId);
+            throw new TransactionNotFoundException(MSG_TRANSACTION_NOT_FOUND);
+        }
+        return transaction;
+    }
+
     /** A transaction that does not exist is a 404, one that exists but is somebody else's a 403. */
     private Transaction findOwnedTransaction(Long transactionId, Long userId) {
         Transaction transaction = transactionRepo.findDetailedById(transactionId).orElseThrow(() -> {
@@ -549,17 +595,17 @@ public class TransactionService {
     private BigDecimal approvableTotal(Receipt receipt) {
         if (ReceiptStatus.CANCELED.matches(receipt.getStatus())) {
             log.warn("Receipt approval refused, the receipt is canceled, receiptId={}", receipt.getId());
-            throw new IllegalStateException(MSG_RECEIPT_CANCELED);
+            throw new ReceiptConflictException(MSG_RECEIPT_CANCELED);
         }
         if (!receipt.canMoveTo(ReceiptStatus.APPROVED)) {
             log.warn("Receipt approval refused, receiptId={}, status={}", receipt.getId(), receipt.getStatus());
-            throw new IllegalStateException(MSG_RECEIPT_NOT_APPROVABLE);
+            throw new ReceiptConflictException(MSG_RECEIPT_NOT_APPROVABLE);
         }
         BigDecimal total = OcrService.validTotal(receipt.getExtractedTotal());
         // A total that rounds to zero (0.004) passes the rule above but is no total either.
         if (total == null || total.signum() <= 0) {
             log.warn("Receipt approval refused, the receipt has no usable total, receiptId={}", receipt.getId());
-            throw new IllegalStateException(MSG_RECEIPT_NO_TOTAL);
+            throw new ReceiptConflictException(MSG_RECEIPT_NO_TOTAL);
         }
         return total;
     }

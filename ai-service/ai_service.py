@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
+import asyncio
 import uvicorn
 import torch
 from PIL import Image, ImageOps
@@ -14,7 +15,7 @@ import logging
 from starlette.concurrency import run_in_threadpool
 
 from spending_analysis import DEFAULT_TOP_N, SpadeAnalyzeResponse, analyze_spending
-from spending_data import MAX_AMOUNT, MAX_TRANSACTIONS, TransactionIn, expenses_from
+from spending_data import MAX_AMOUNT, MAX_TRANSACTIONS, TransactionIn, count_undated, expenses_from
 from wcm_spade import DEFAULT_MIN_SUP
 import budget_advisor
 import rfm_segmentation
@@ -101,6 +102,33 @@ def _run_donut_locked(pil_img: Image.Image) -> str:
         return _run_donut(pil_img)
 
 
+# Số lượt scan được xếp hàng sau lượt đang chạy. Lượt chờ nằm ở event loop (asyncio), không giữ thread của threadpool,
+# nên nhiều scan cùng lúc không làm treo /spade/* và /admin/*. Hàng đầy thì trả 503.
+SCAN_QUEUE_LIMIT = 4
+SCAN_BUSY_MESSAGE = "Hệ thống đang đọc nhiều hóa đơn cùng lúc, vui lòng thử lại sau ít phút."
+
+
+class _ScanGate:
+    """Một lượt DONUT mỗi lúc (Semaphore(1)) và đếm số lượt đã nhận (đang chạy + đang chờ) trên một event loop."""
+
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        self.loop = loop
+        self.semaphore = asyncio.Semaphore(1)
+        self.admitted = 0
+
+
+_scan_gate: Optional[_ScanGate] = None
+
+
+def _current_scan_gate() -> _ScanGate:
+    """Gate của event loop đang chạy. Uvicorn chỉ có một loop; test có thể tạo nhiều loop nên gate được tạo lại theo loop."""
+    global _scan_gate
+    loop = asyncio.get_running_loop()
+    if _scan_gate is None or _scan_gate.loop is not loop:
+        _scan_gate = _ScanGate(loop)
+    return _scan_gate
+
+
 @app.get("/health")
 async def health_check() -> Dict[str, str]:
     return {"status": "ok"}
@@ -140,11 +168,21 @@ async def extract_receipt_info(image: UploadFile = File(...)):
     if len(contents) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=IMAGE_TOO_LARGE_MESSAGE)
 
-    pil_img = await run_in_threadpool(_decode_image, contents)
-    logger.info("Đã mở ảnh, kích thước %s", pil_img.size)
+    gate = _current_scan_gate()
+    if gate.admitted >= 1 + SCAN_QUEUE_LIMIT:
+        logger.warning("Từ chối scan: %d lượt đang chạy/chờ", gate.admitted)
+        raise HTTPException(status_code=503, detail=SCAN_BUSY_MESSAGE)
+    gate.admitted += 1
+    try:
+        pil_img = await run_in_threadpool(_decode_image, contents)
+        logger.info("Đã mở ảnh, kích thước %s", pil_img.size)
 
-    # Suy luận trong threadpool để event loop vẫn trả lời /health và các request khác
-    sequence = await run_in_threadpool(_run_donut_locked, pil_img)
+        # Chờ lượt ở event loop; chỉ lượt đang chạy mới chiếm một thread để suy luận,
+        # nên event loop vẫn trả lời /health và các request khác.
+        async with gate.semaphore:
+            sequence = await run_in_threadpool(_run_donut_locked, pil_img)
+    finally:
+        gate.admitted -= 1
 
     try:
         prediction = processor.token2json(sequence)
@@ -187,13 +225,16 @@ class RecommendRequest(BaseModel):
 @app.post("/spade/analyze", response_model=SpadeAnalyzeResponse)
 def analyze_patterns(req: SpadeRequest) -> SpadeAnalyzeResponse:
     """Phân tích chi tiêu 26 tuần (CPU-bound nên dùng def, chạy trong threadpool)."""
+    skipped = count_undated(req.transactions)
+    if skipped:
+        logger.warning("spade/analyze: bỏ %d giao dịch có ngày không đọc được", skipped)
     return analyze_spending(
-        expenses_from(req.transactions), top_n=req.top_n, min_sup=req.min_sup_factor
+        expenses_from(req.transactions), top_n=req.top_n, min_sup=req.min_sup_factor, skipped_rows=skipped
     )
 
 
-@app.post("/spade/recommend")
-def recommend_budget(req: RecommendRequest):
+@app.post("/spade/recommend", response_model=budget_advisor.RecommendResponse)
+def recommend_budget(req: RecommendRequest) -> Dict[str, Any]:
     logger.info("BudgetAdvisor nhận %d giao dịch", len(req.transactions))
     try:
         result = budget_advisor.advise(
@@ -205,7 +246,14 @@ def recommend_budget(req: RecommendRequest):
             needed_monthly=req.needed_monthly,
         )
     except budget_advisor.AdviceError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        # Chỉ trả các câu cố định đã biết; nội dung khác (nếu có) chỉ nằm trong log.
+        message = str(e)
+        if message not in budget_advisor.ADVICE_ERROR_MESSAGES:
+            logger.error("BudgetAdvisor từ chối với lý do ngoài danh sách: %s", message)
+            message = budget_advisor.ADVICE_FAILED_MESSAGE
+        else:
+            logger.info("BudgetAdvisor từ chối: %s", message)
+        raise HTTPException(status_code=422, detail=message)
 
     logger.info("BudgetAdvisor: %d đề xuất", len(result.get("recommendations", [])))
     return result
@@ -225,8 +273,18 @@ class AdminSegmentRequest(BaseModel):
     users: List[UserRFM] = Field(max_length=MAX_RFM_USERS)
 
 
-@app.post("/admin/segment")
-def segment_users(req: AdminSegmentRequest):
+class SegmentOut(BaseModel):
+    user_id: str
+    label: str
+    rfm: str
+
+
+class AdminSegmentResponse(BaseModel):
+    segments: List[SegmentOut]
+
+
+@app.post("/admin/segment", response_model=AdminSegmentResponse)
+def segment_users(req: AdminSegmentRequest) -> Dict[str, Any]:
     logger.info("Đang phân lớp %d khách hàng RFM...", len(req.users))
     results = rfm_segmentation.segment_users(
         [RfmInput(u.user_id, u.recency, u.frequency, u.monetary) for u in req.users]

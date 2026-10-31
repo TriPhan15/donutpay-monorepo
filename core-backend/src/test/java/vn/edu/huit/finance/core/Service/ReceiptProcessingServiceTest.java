@@ -14,6 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Exception.InvalidRequestException;
 import vn.edu.huit.finance.core.Document.OcrField;
 import vn.edu.huit.finance.core.Dto.OcrCorrectionEvent;
 import vn.edu.huit.finance.core.Dto.OcrFieldCorrection;
@@ -29,6 +30,7 @@ import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
 import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.InvalidImageUrlException;
 import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -224,7 +226,7 @@ class ReceiptProcessingServiceTest {
         Receipt receipt = receipt(status, transactionOf(alice));
         repositoryHolds(receipt);
 
-        IllegalStateException refused = assertThrows(IllegalStateException.class,
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class,
                 () -> service.submitFeedback(RECEIPT_ID, new BigDecimal("150000")));
 
         assertTrue(refused.getMessage().contains("FAILED"));
@@ -246,7 +248,7 @@ class ReceiptProcessingServiceTest {
     void anAmountThatIsNotPositiveOrPlausibleIsRejectedBeforeAnythingIsLoaded(String amount) {
         BigDecimal manualAmount = amount == null ? null : new BigDecimal(amount);
 
-        assertThrows(IllegalArgumentException.class, () -> service.submitFeedback(RECEIPT_ID, manualAmount));
+        assertThrows(InvalidRequestException.class, () -> service.submitFeedback(RECEIPT_ID, manualAmount));
 
         verifyNoInteractions(receiptRepo, currentUserProvider);
     }
@@ -364,7 +366,7 @@ class ReceiptProcessingServiceTest {
         Receipt receipt = receipt(status, transactionOf(alice));
         repositoryHolds(receipt);
 
-        assertThrows(IllegalStateException.class, () -> service.rejectReceipt(RECEIPT_ID));
+        assertThrows(ReceiptConflictException.class, () -> service.rejectReceipt(RECEIPT_ID));
 
         assertEquals(status, receipt.getStatus());
         verify(receiptRepo, never()).save(any());
@@ -481,6 +483,16 @@ class ReceiptProcessingServiceTest {
         assertNotNull(first.getCompletedAt());
         // Nothing is saved here: the transaction is saved by its caller and cascades to the receipt and the attempt.
         verifyNoInteractions(receiptRepo, attemptRepo);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"javascript:alert(document.cookie)", " data:text/html,<script>x</script>", "http://img.example.com/1.jpg"})
+    void aReceiptImageLinkThatIsNotHttpsIsRefusedEvenWhenItGetsPastTheDto(String imageUrl) {
+        Transaction transaction = transactionOf(alice);
+
+        assertThrows(InvalidImageUrlException.class, () -> service.attachReceipt(transaction, FULL_SCAN, imageUrl));
+
+        assertNull(transaction.getReceipt());
     }
 
     @Test
@@ -845,7 +857,7 @@ class ReceiptProcessingServiceTest {
         ReceiptUpdateRequestDto request = edit(VERSION);
         request.setExtractedTotal(new BigDecimal(total));
 
-        assertThrows(IllegalArgumentException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
+        assertThrows(InvalidRequestException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
 
         verifyNoInteractions(receiptRepo, currentUserProvider);
     }
@@ -856,7 +868,7 @@ class ReceiptProcessingServiceTest {
         ReceiptUpdateRequestDto request = edit(VERSION);
         request.setExtractedDate(LocalDate.parse(date));
 
-        assertThrows(IllegalArgumentException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
+        assertThrows(InvalidRequestException.class, () -> service.editMyReceipt(RECEIPT_ID, request));
 
         verifyNoInteractions(receiptRepo, currentUserProvider);
     }
@@ -1046,6 +1058,23 @@ class ReceiptProcessingServiceTest {
         assertEquals(status, receipt.getStatus());
         verify(receiptRepo, never()).claimFailedForRetry(any(), any());
         verify(receiptRepo, never()).saveAndFlush(any());
+        verify(attemptRepo, never()).save(any());
+        verifyNoInteractions(ocrService, eventPublisher, auditLogService);
+    }
+
+    @Test
+    void aReceiptThatWasReadTheMaximumNumberOfTimesIsNotRetriedAgain() {
+        // A7 (secondary): every retry adds a row of receipt_processing_attempts, so their number is bounded.
+        signedInAsAlice();
+        Receipt receipt = failedReceipt("FAILED", transactionOf(alice));
+        repositoryHolds(receipt);
+        when(attemptRepo.findLastAttemptNumber(RECEIPT_ID)).thenReturn(ReceiptProcessingService.MAX_ATTEMPTS_PER_RECEIPT);
+
+        ReceiptConflictException refused = assertThrows(ReceiptConflictException.class,
+                () -> service.retryMyReceipt(RECEIPT_ID, retry(NEW_SCAN, CLIENT_ID)));
+
+        assertTrue(refused.getMessage().contains(String.valueOf(ReceiptProcessingService.MAX_ATTEMPTS_PER_RECEIPT)));
+        verify(receiptRepo, never()).claimFailedForRetry(any(), any());
         verify(attemptRepo, never()).save(any());
         verifyNoInteractions(ocrService, eventPublisher, auditLogService);
     }
@@ -1392,5 +1421,55 @@ class ReceiptProcessingServiceTest {
 
         assertEquals(List.of(new OcrCorrectionEvent(RECEIPT_ID, TRANSACTION_ID, ALICE_ID,
                 List.of(new OcrFieldCorrection(OcrField.TOTAL_COST, null, "150000")))), publishedCorrections());
+    }
+
+    // ------------------------------------------------------------------------------------------------ A7: the owner column
+
+    private static Receipt ownedReceipt(String status, User owner, Transaction carrier) {
+        Receipt receipt = receipt(status, carrier);
+        receipt.setOwner(owner);
+        return receipt;
+    }
+
+    @Test
+    void aNewReceiptBelongsToTheUserItsTransactionIsSavedFor() {
+        Transaction transaction = transactionOf(alice);
+
+        service.attachReceipt(transaction, FULL_SCAN, null);
+
+        assertSame(alice, transaction.getReceipt().getOwner());
+    }
+
+    @Test
+    void theOwnerOfAReceiptNoTransactionCarriesCanStillReadAndSendItsAmount() {
+        signedInAsAlice();
+        Receipt orphan = ownedReceipt("FAILED", alice, null);
+        repositoryHolds(orphan);
+
+        assertEquals(RECEIPT_ID, service.getMyReceipt(RECEIPT_ID).getId());
+        service.submitFeedback(RECEIPT_ID, new BigDecimal("150000"));
+
+        assertEquals("WAITING_FOR_REVIEW", orphan.getStatus());
+    }
+
+    @Test
+    void anotherUsersReceiptIsA403_whicheverTransactionCarriesIt() {
+        signedInAsAlice();
+        // The owner column decides: bob's receipt stays bob's even on a transaction of alice.
+        repositoryHolds(ownedReceipt("FAILED", bob, transactionOf(alice)));
+
+        assertThrows(TransactionAccessDeniedException.class, () -> service.getMyReceipt(RECEIPT_ID));
+        assertThrows(TransactionAccessDeniedException.class, () -> service.submitFeedback(RECEIPT_ID, new BigDecimal("1")));
+        assertThrows(TransactionAccessDeniedException.class,
+                () -> service.retryMyReceipt(RECEIPT_ID, retry(NEW_SCAN, CLIENT_ID)));
+        verify(receiptRepo, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void aReceiptWithNeitherOwnerNorTransactionIsNobodys() {
+        signedInAsAlice();
+        repositoryHolds(receipt("FAILED", null));
+
+        assertThrows(TransactionAccessDeniedException.class, () -> service.getMyReceipt(RECEIPT_ID));
     }
 }

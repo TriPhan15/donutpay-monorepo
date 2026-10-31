@@ -102,74 +102,104 @@ def test_extract_receipt_info_success(mocker):
     assert set(normalized["invalid_fields"]) == {"seller", "address", "timestamp"}
 
 
-SCAN_SECONDS = 0.3
+EVENT_TIMEOUT_SECONDS = 10
+
+
+def _scan_files() -> dict:
+    return {"image": ("receipt.jpg", _make_test_image_bytes(), "image/jpeg")}
+
+
+async def _wait_until(condition, what: str) -> None:
+    """Cho toi khi condition() dung, nhuong event loop giua cac lan kiem; qua han thi bao loi."""
+    deadline = time.monotonic() + EVENT_TIMEOUT_SECONDS
+    while not condition():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"Het thoi gian cho: {what}")
+        await asyncio.sleep(0.01)
 
 
 def test_scans_run_one_at_a_time_and_health_stays_responsive(mocker):
     """Hai POST /donut/scan gui cung luc phai doc lan luot (toi da 1 luot
-    DONUT chay cung luc), con GET /health van tra 200 truoc khi luot scan
-    thu hai xong, tuc la suy luan khong chan event loop."""
-    state: Dict[str, int] = {"running": 0, "max_running": 0}
-    state_lock = threading.Lock()
+    DONUT chay cung luc), con GET /health van tra 200 trong luc luot dau
+    dang chay, tuc la suy luan khong chan event loop. Dong bo bang
+    threading.Event, khong dua vao do thoi gian."""
+    events: List[str] = []
+    events_lock = threading.Lock()
+    first_started = threading.Event()
+    release_first = threading.Event()
+    state: Dict[str, int] = {"calls": 0, "running": 0, "max_running": 0}
 
     def fake_run_donut(pil_img: Image.Image) -> str:
-        # Mock: thay suy luan DONUT that bang ham ngu (blocking) va dem so
-        # luot dang chay cung luc.
-        with state_lock:
+        # Mock: thay suy luan DONUT that; luot dau dung lai cho toi khi test cho phep.
+        with events_lock:
+            state["calls"] += 1
+            call = state["calls"]
             state["running"] += 1
             state["max_running"] = max(state["max_running"], state["running"])
-        time.sleep(SCAN_SECONDS)
-        with state_lock:
+            events.append(f"start{call}")
+        if call == 1:
+            first_started.set()
+            assert release_first.wait(EVENT_TIMEOUT_SECONDS)
+        with events_lock:
             state["running"] -= 1
+            events.append(f"end{call}")
         return "<s_seller>dummy text</s_seller>"
 
     mocker.patch.object(ai_service, "_run_donut", side_effect=fake_run_donut)
-    mocker.patch.object(
-        ai_service.processor,
-        "token2json",
-        return_value={"seller": {"total_cost": "100.000đ"}},
-    )
+    mocker.patch.object(ai_service.processor, "token2json", return_value={"seller": {"total_cost": "100.000đ"}})
 
-    async def scenario() -> List[Tuple[str, int, float]]:
+    async def scenario() -> Tuple[List[int], int, bool]:
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as async_client:
-            started = time.monotonic()
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as async_client:
+            scans = [asyncio.create_task(async_client.post("/donut/scan", files=_scan_files())) for _ in range(2)]
+            await _wait_until(first_started.is_set, "luot scan dau bat dau")
+            await _wait_until(lambda: ai_service._scan_gate.admitted == 2, "luot scan thu hai vao hang")
+            health = await async_client.get("/health")
+            first_still_running = not release_first.is_set() and events == ["start1"]
+            release_first.set()
+            responses = await asyncio.gather(*scans)
+            return [r.status_code for r in responses], health.status_code, first_still_running
 
-            async def scan() -> Tuple[str, int, float]:
-                response = await async_client.post(
-                    "/donut/scan",
-                    files={
-                        "image": (
-                            "receipt.jpg",
-                            _make_test_image_bytes(),
-                            "image/jpeg",
-                        )
-                    },
-                )
-                return "scan", response.status_code, time.monotonic() - started
+    scan_statuses, health_status, first_still_running = asyncio.run(scenario())
 
-            async def health() -> Tuple[str, int, float]:
-                # Cho hai scan vao truoc de /health chay trong luc DONUT ban
-                await asyncio.sleep(SCAN_SECONDS / 3)
-                response = await async_client.get("/health")
-                return "health", response.status_code, time.monotonic() - started
-
-            return list(await asyncio.gather(scan(), scan(), health()))
-
-    results = asyncio.run(scenario())
-
-    scans = sorted(done for kind, _, done in results if kind == "scan")
-    health_status, health_done = next(
-        (status, done) for kind, status, done in results if kind == "health"
-    )
-    assert [status for kind, status, _ in results if kind == "scan"] == [200, 200]
+    assert scan_statuses == [200, 200]
+    assert health_status == 200 and first_still_running
     assert state["max_running"] == 1
-    assert health_status == 200
-    assert health_done < scans[1]
-    # Tuan tu that su: luot thu hai xong sau it nhat hai lan ngu
-    assert scans[1] >= 2 * SCAN_SECONDS
+    assert events == ["start1", "end1", "start2", "end2"]
+
+
+def test_scan_answers_503_when_the_queue_is_full(mocker):
+    """Mot luot dang chay + SCAN_QUEUE_LIMIT luot cho: luot ke tiep bi tu choi 503 ngay,
+    khong chiem thread; sau khi giai phong, cac luot da nhan van xong 200."""
+    mocker.patch.object(ai_service, "SCAN_QUEUE_LIMIT", 1)
+    started = threading.Event()
+    release = threading.Event()
+
+    def fake_run_donut(pil_img: Image.Image) -> str:
+        started.set()
+        assert release.wait(EVENT_TIMEOUT_SECONDS)
+        return "<s_seller>x</s_seller>"
+
+    mocker.patch.object(ai_service, "_run_donut", side_effect=fake_run_donut)
+    mocker.patch.object(ai_service.processor, "token2json", return_value={"seller": {"total_cost": "100.000đ"}})
+
+    async def scenario() -> Tuple[List[int], httpx.Response]:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as async_client:
+            accepted = [asyncio.create_task(async_client.post("/donut/scan", files=_scan_files())) for _ in range(2)]
+            await _wait_until(started.is_set, "luot scan dau bat dau")
+            await _wait_until(lambda: ai_service._scan_gate.admitted == 2, "hang cho day")
+            refused = await async_client.post("/donut/scan", files=_scan_files())
+            release.set()
+            responses = await asyncio.gather(*accepted)
+            return [r.status_code for r in responses], refused
+
+    accepted_statuses, refused = asyncio.run(scenario())
+
+    assert refused.status_code == 503
+    assert refused.json() == {"detail": ai_service.SCAN_BUSY_MESSAGE}
+    assert accepted_statuses == [200, 200]
+    assert ai_service._scan_gate.admitted == 0
 
 
 def _image_bytes(width: int, height: int, fmt: str) -> bytes:
@@ -307,22 +337,28 @@ def test_analyze_rejects_out_of_range_input(bad):
     assert client.post("/spade/analyze", json=bad).status_code == 422
 
 
-def test_recommend_budget(mocker):
-    """POST /spade/recommend tra ve loi khuyen lay tu budget_advisor.advise
-    (da mock), khong phu thuoc thuat toan tinh ngan sach that."""
-    fake_advice = {
-        "trends": [],
-        "tagStats": [],
+def _fake_advice(summary: str) -> dict:
+    """Dict dung hinh dang advise() tra ve (response_model cua /spade/recommend kiem no)."""
+    return {
+        "tagStats": [{"tag": "an uong", "monthlyAvg": 50000, "share": 100.0, "type": "neutral"}],
         "goal": {
             "neededMonthly": 1000000,
             "monthlyIncome": 5000000,
             "monthlyExpense": 3000000,
             "surplus": 2000000,
             "gap": -1000000,
+            "hasDeadline": True,
         },
         "recommendations": [],
-        "summary": "Đề xuất ngân sách giả lập cho kiểm thử.",
+        "summary": summary,
+        "meta": {"nMonths": 1, "firstMonth": "2026-09", "lastMonth": "2026-09", "skippedRows": 0},
     }
+
+
+def test_recommend_budget(mocker):
+    """POST /spade/recommend tra ve loi khuyen lay tu budget_advisor.advise
+    (da mock), khong phu thuoc thuat toan tinh ngan sach that."""
+    fake_advice = _fake_advice("Đề xuất ngân sách giả lập cho kiểm thử.")
     # Mock: chan ham budget_advisor.advise, ep tra ve dict loi khuyen gia
     # lap de chi kiem tra endpoint truyen/tra du lieu dung.
     mocker.patch("budget_advisor.advise", return_value=fake_advice)
@@ -384,13 +420,22 @@ def test_recommend_maps_advice_error_to_422_with_fixed_text(mocker):
     assert r.status_code == 422 and r.json() == {"detail": budget_advisor.NOT_ENOUGH_HISTORY_MESSAGE}
 
 
+def test_recommend_hides_an_advice_error_text_that_is_not_a_known_fixed_text(mocker):
+    import budget_advisor
+    mocker.patch("budget_advisor.advise",
+                 side_effect=budget_advisor.AdviceError("KeyError: 'amount' at budget_advisor.py:88"))
+    r = client.post("/spade/recommend", json={"transactions": [_tx()]})
+    assert r.status_code == 422 and r.json() == {"detail": budget_advisor.ADVICE_FAILED_MESSAGE}
+    assert "KeyError" not in r.text
+
+
 def test_recommend_rejects_months_left_zero():
     r = client.post("/spade/recommend", json={"transactions": [_tx()], "months_left": 0})
     assert r.status_code == 422
 
 
 def test_recommend_ignores_old_max_cut_ratio(mocker):
-    m = mocker.patch("budget_advisor.advise", return_value={"summary": "ok"})
+    m = mocker.patch("budget_advisor.advise", return_value=_fake_advice("ok"))
     r = client.post("/spade/recommend", json={"transactions": [_tx()], "max_cut_ratio": 5, "alpha": 1})
     assert r.status_code == 200
     assert "max_cut_ratio" not in m.call_args.kwargs and "alpha" not in m.call_args.kwargs
@@ -417,3 +462,31 @@ def test_admin_segment_endpoint_returns_labels_and_codes():
     {"user_id": "abc", "recency": 1, "frequency": 1, "monetary": 1}])
 def test_admin_segment_rejects_bad_users(user):
     assert client.post("/admin/segment", json={"users": [user]}).status_code == 422
+
+
+def test_analyze_and_recommend_report_rows_with_an_unreadable_date():
+    """B7: dòng ngày sai bị bỏ im lặng trước đây; nay vẫn 200 nhưng meta.skippedRows báo số dòng bị bỏ."""
+    bad = [_tx(date="31/02/2026"), _tx(date="")]
+    analyze = client.post("/spade/analyze", json={"transactions": bad})
+    assert analyze.status_code == 200 and analyze.json()["meta"]["skippedRows"] == 2
+    txs = [_tx("Ăn uống", 3_000_000, _prev_month_day(1))] + bad
+    recommend = client.post("/spade/recommend", json={"transactions": txs})
+    assert recommend.status_code == 200 and recommend.json()["meta"]["skippedRows"] == 2
+
+
+def test_recommend_and_segment_declare_their_response_models():
+    """B7: /spade/recommend va /admin/segment co response_model, ten field giu nguyen."""
+    schema = client.get("/openapi.json").json()
+    for path in ("/spade/recommend", "/admin/segment"):
+        ok = schema["paths"][path]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
+        assert "$ref" in ok, path
+    goal = schema["components"]["schemas"]["GoalOut"]["properties"]
+    assert {"neededMonthly", "monthlyIncome", "monthlyExpense", "surplus", "gap", "hasDeadline"} == set(goal)
+
+
+def test_recommend_accepts_the_source_field_and_leaves_goal_refunds_out_of_income():
+    txs = [_tx("Ăn uống", 3_000_000, _prev_month_day(1)),
+           {"category": "Thu khác", "amount": 9_000_000, "date": _prev_month_day(1, 15), "isExpense": False,
+            "source": "GOAL_REFUND"}]
+    r = client.post("/spade/recommend", json={"transactions": txs})
+    assert r.status_code == 200 and r.json()["goal"]["monthlyIncome"] == 0

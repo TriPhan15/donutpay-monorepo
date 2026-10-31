@@ -8,7 +8,7 @@ import logging
 from collections import defaultdict
 from datetime import date
 from enum import Enum
-from typing import Dict, List, Sequence, Set
+from typing import Dict, List, Mapping, Sequence, Set, Tuple
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -30,6 +30,9 @@ MIN_PATTERN_ITEMS = 2
 ALGORITHM_NAME = "WCM-SPADE"
 FLOAT_DIGITS = 4
 GAP_DIGITS = 1
+# Số danh mục tối đa đưa vào WCM-SPADE (kể cả OTHER_CATEGORY); phần lẻ gộp lại để thuật toán không bùng nổ.
+MAX_MINED_CATEGORIES = 50
+OTHER_CATEGORY = "Khác"
 
 
 class _CamelModel(BaseModel):
@@ -100,6 +103,8 @@ class AnalysisMeta(_CamelModel):
     min_support: float
     raw_support_bound: int
     max_weight: float
+    # Số giao dịch bị bỏ vì ngày không đọc được (spending_data.count_undated).
+    skipped_rows: int = 0
 
 
 class SpadeAnalyzeResponse(_CamelModel):
@@ -148,12 +153,39 @@ def _habits(expenses: Sequence[Expense], top_n: int) -> List[HabitOut]:
     ]
 
 
+def _limit_mined_categories(
+    sequences: List[List[Tuple[str, ...]]], totals: Mapping[str, float]
+) -> Tuple[List[List[Tuple[str, ...]]], Dict[str, float]]:
+    """Giữ ``MAX_MINED_CATEGORIES`` danh mục chi nhiều nhất cho WCM-SPADE, gộp phần còn lại thành ``OTHER_CATEGORY``.
+
+    Nhiều danh mục lẻ làm mọi danh mục đều "phổ biến" và DFS/sinh luật bùng nổ. Chỉ đầu vào thuật toán bị gộp;
+    ``categories`` và ``habits`` của response vẫn tính trên danh mục gốc. Dưới ngưỡng thì giữ nguyên.
+    """
+    if len(totals) <= MAX_MINED_CATEGORIES:
+        return sequences, dict(totals)
+    ordered = sorted(totals, key=lambda c: (-totals[c], c))
+    kept = set(ordered[:MAX_MINED_CATEGORIES - 1])
+    merged_totals: Dict[str, float] = defaultdict(float)
+    for category, total in totals.items():
+        merged_totals[category if category in kept else OTHER_CATEGORY] += total
+    merged = [
+        [tuple(sorted({c if c in kept else OTHER_CATEGORY for c in itemset})) for itemset in sequence]
+        for sequence in sequences
+    ]
+    logger.info("WCM-SPADE: gộp %d danh mục lẻ thành '%s'", len(totals) - len(kept), OTHER_CATEGORY)
+    return merged, dict(merged_totals)
+
+
 def analyze_spending(
     expenses: Sequence[Expense],
     top_n: int = DEFAULT_TOP_N,
     min_sup: float = DEFAULT_MIN_SUP,
+    skipped_rows: int = 0,
 ) -> SpadeAnalyzeResponse:
-    """Phân tích chi tiêu (CPU-bound, đồng bộ). Khoản chi đã loại tiết kiệm."""
+    """Phân tích chi tiêu (CPU-bound, đồng bộ). Khoản chi đã loại tiết kiệm.
+
+    ``skipped_rows``: số giao dịch người gọi đã bỏ vì ngày sai, chỉ để báo lại trong ``meta``.
+    """
     db = weekly_database(expenses)
     weeks_with_data = len(db.labels)
     categories = _categories(db.expenses)
@@ -164,7 +196,8 @@ def analyze_spending(
     raw_bound = 0
     max_weight = 0.0
     if weeks_with_data >= MIN_WEEKS_WITH_DATA:
-        result = WCMSpade(min_sup=min_sup).mine(db.sequences, db.spending_totals)
+        sequences, totals = _limit_mined_categories(db.sequences, db.spending_totals)
+        result = WCMSpade(min_sup=min_sup).mine(sequences, totals)
         raw_bound, max_weight = result.raw_bound, result.max_weight
         if result.truncated:
             logger.warning("WCM-SPADE bị cắt do giới hạn số mẫu")
@@ -213,5 +246,6 @@ def analyze_spending(
             min_support=min_sup,
             raw_support_bound=raw_bound,
             max_weight=_round(max_weight),
+            skipped_rows=skipped_rows,
         ),
     )

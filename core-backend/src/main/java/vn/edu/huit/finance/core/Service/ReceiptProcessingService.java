@@ -22,6 +22,8 @@ import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.InvalidImageUrlException;
+import vn.edu.huit.finance.core.Exception.InvalidRequestException;
 import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
@@ -33,6 +35,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Service.Realtime.ReceiptWaitingReviewEvent;
+import vn.edu.huit.finance.core.Util.ImageUrls;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -105,6 +108,10 @@ public class ReceiptProcessingService {
     private static final String AUDIT_OWNER = "chủ sở hữu #%d";
     private static final String AUDIT_NO_OWNER = "không thuộc giao dịch nào";
     private static final int MONEY_SCALE = 2;
+    /** Số lần đọc tối đa của một hóa đơn (lần đầu lúc lưu giao dịch + các lần thử lại). */
+    static final int MAX_ATTEMPTS_PER_RECEIPT = 10;
+    private static final String MSG_RETRY_LIMIT =
+            "Hóa đơn đã được đọc %d lần, không thể thử lại nữa. Bạn có thể gửi số tiền để quản trị viên duyệt";
 
     @Autowired
     private ReceiptRepository receiptRepo;
@@ -134,7 +141,13 @@ public class ReceiptProcessingService {
     public void attachReceipt(Transaction transaction, String rawReceiptData, String imageUrl) {
         Receipt receipt = new Receipt();
         if (imageUrl != null && !imageUrl.isBlank()) {
-            receipt.setImageUrl(imageUrl.trim());
+            // Kiểm lại dù DTO đã validate: link này được admin bấm mở trên /admin/receipts.
+            String trimmed = imageUrl.trim();
+            if (!ImageUrls.isSafe(trimmed)) {
+                log.warn("Receipt image URL refused: not an https link");
+                throw new InvalidImageUrlException(ImageUrls.MSG_INVALID);
+            }
+            receipt.setImageUrl(trimmed);
         }
 
         // The AI answered on the phone before the checkout was sent, so the new receipt takes the outcome of that reading
@@ -151,6 +164,8 @@ public class ReceiptProcessingService {
         }
 
         receipt.setTransaction(transaction);
+        // The owner is the user the transaction is saved for: the signed-in caller of the checkout, never the request.
+        receipt.setOwner(transaction.getUser());
         transaction.setReceipt(receipt);
         log.info("Receipt attached to a new transaction, status={}, errorCode={}, attempt={}",
                 receipt.getStatus(), receipt.getErrorCode(), ReceiptProcessingAttempt.FIRST_ATTEMPT_NUMBER);
@@ -280,8 +295,7 @@ public class ReceiptProcessingService {
         if (changedFields.contains(AUDIT_FIELD_VENDOR)) {
             // The seller is searchable text of the transaction (no amount or month changed): the search index reads the
             // transaction again once this edit has committed.
-            eventPublisher.publishEvent(TransactionChangedEvent.upserted(
-                    receipt.getTransaction().getId(), caller.getId(), Set.of()));
+            reindexCarrier(receipt, caller.getId());
         }
         String editedVendor = request.getVendorName() == null || request.getVendorName().isBlank() ? null : request.getVendorName();
         latestReading(receipt).ifPresent(ai -> publishCorrections(saved, caller.getId(), ai, editedVendor, total, date, true));
@@ -319,6 +333,11 @@ public class ReceiptProcessingService {
             log.warn("Receipt retry refused, userId={}, receiptId={}, status={}", caller.getId(), receiptId, receipt.getStatus());
             throw new ReceiptConflictException(MSG_RETRY_NOT_FAILED);
         }
+        // Mỗi lần thử thêm một dòng receipt_processing_attempts: giới hạn để bảng không phình vô hạn.
+        if (attemptRepo.findLastAttemptNumber(receiptId) >= MAX_ATTEMPTS_PER_RECEIPT) {
+            log.warn("Receipt retry refused, attempt limit reached, userId={}, receiptId={}", caller.getId(), receiptId);
+            throw new ReceiptConflictException(String.format(MSG_RETRY_LIMIT, MAX_ATTEMPTS_PER_RECEIPT));
+        }
 
         int claimed = receiptRepo.claimFailedForRetry(receiptId, receipt.getVersion());
         // The claim cleared the persistence context, so this is the row as it is now, whoever changed it last.
@@ -346,7 +365,7 @@ public class ReceiptProcessingService {
         recordReadingOutcome(saved, attemptNumber, actor);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_CONTENT, caller.getId()));
         // The receipt status is part of the transaction's search document: the index reads it again after the commit.
-        eventPublisher.publishEvent(TransactionChangedEvent.upserted(saved.getTransaction().getId(), caller.getId(), Set.of()));
+        reindexCarrier(saved, caller.getId());
         log.info("Receipt retried, userId={}, receiptId={}, attempt={}, status={} -> {}, errorCode={}, version={}",
                 caller.getId(), receiptId, attemptNumber, ReceiptStatus.FAILED, saved.getStatus(),
                 saved.getErrorCode(), saved.getVersion());
@@ -364,7 +383,7 @@ public class ReceiptProcessingService {
         User caller = currentUserProvider.getCurrentUser();
         Receipt receipt = findOwnedReceipt(receiptId, caller.getId());
         if (!ReceiptStatus.FAILED.matches(receipt.getStatus())) {
-            throw new IllegalStateException(MSG_FEEDBACK_NOT_FAILED);
+            throw new ReceiptConflictException(MSG_FEEDBACK_NOT_FAILED);
         }
 
         receipt.setExtractedTotal(amount);
@@ -372,7 +391,7 @@ public class ReceiptProcessingService {
         receiptRepo.save(receipt);
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, caller.getId()));
         // The receipt status is part of the transaction's search document: the index reads it again after the commit.
-        eventPublisher.publishEvent(TransactionChangedEvent.upserted(receipt.getTransaction().getId(), caller.getId(), Set.of()));
+        reindexCarrier(receipt, caller.getId());
         // The admin web is told (Redis Pub/Sub, then a toast) only after the commit, by AdminEventPublisher.
         eventPublisher.publishEvent(new ReceiptWaitingReviewEvent(receipt.getId()));
         publishCorrections(receipt, caller.getId(), latestReading(receipt).orElseGet(ExtractedReceiptDto::empty), null, amount,
@@ -402,16 +421,16 @@ public class ReceiptProcessingService {
         }
         if (!receipt.canMoveTo(ReceiptStatus.FAILED)) {
             log.warn("Receipt rejection refused, receiptId={}, status={}", receiptId, receipt.getStatus());
-            throw new IllegalStateException(MSG_REJECT_NOT_ALLOWED);
+            throw new ReceiptConflictException(MSG_REJECT_NOT_ALLOWED);
         }
 
         String previousStatus = receipt.getStatus();
         receipt.failWith(ReceiptErrorCode.REJECTED_BY_ADMIN);
         receiptRepo.save(receipt);
 
-        // A receipt no transaction carries belongs to nobody: only the admin summary counts it.
+        // A receipt without an owner (an old row) belongs to nobody: only the admin summary counts it.
         Transaction carrier = receipt.getTransaction();
-        Long ownerId = carrier != null ? carrier.getUser().getId() : null;
+        Long ownerId = receipt.ownerId();
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, ownerId));
         if (carrier != null) {
             // The receipt status is part of the transaction's search document: the index reads it again after the commit.
@@ -520,7 +539,7 @@ public class ReceiptProcessingService {
     private static BigDecimal validAmount(BigDecimal amount) {
         BigDecimal rounded = amount == null ? null : amount.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         if (rounded == null || rounded.signum() <= 0 || rounded.compareTo(OcrService.MAX_TOTAL) > 0) {
-            throw new IllegalArgumentException(MSG_AMOUNT_INVALID);
+            throw new InvalidRequestException(MSG_AMOUNT_INVALID);
         }
         return rounded;
     }
@@ -528,9 +547,19 @@ public class ReceiptProcessingService {
     /** A date the owner sends is held to the rule OcrService applies to one the AI read; a field that was left out passes. */
     private static LocalDate validReceiptDate(LocalDate date) {
         if (date != null && (date.getYear() < OcrService.MIN_YEAR || date.getYear() > OcrService.MAX_YEAR)) {
-            throw new IllegalArgumentException(MSG_DATE_INVALID);
+            throw new InvalidRequestException(MSG_DATE_INVALID);
         }
         return date;
+    }
+
+    /**
+     * The receipt's status and seller are part of the search document of the transaction that carries it: the index reads
+     * that transaction again after the commit. A receipt no transaction carries is in no document.
+     */
+    private void reindexCarrier(Receipt receipt, Long userId) {
+        if (receipt.getTransaction() != null) {
+            eventPublisher.publishEvent(TransactionChangedEvent.upserted(receipt.getTransaction().getId(), userId, Set.of()));
+        }
     }
 
     /** A receipt that does not exist is a 404, one that exists but is somebody else's (or nobody's) a 403. */
@@ -543,10 +572,9 @@ public class ReceiptProcessingService {
         return receipt;
     }
 
-    /** The owner of a receipt is the owner of the transaction that carries it; a receipt none carries has no owner. */
+    /** The receipt's owner column decides (A7), whether or not a transaction carries it; a receipt without one is nobody's. */
     private static void requireOwner(Receipt receipt, Long userId) {
-        Transaction carrier = receipt.getTransaction();
-        if (carrier == null || !carrier.getUser().getId().equals(userId)) {
+        if (!Objects.equals(receipt.ownerId(), userId) || userId == null) {
             log.warn("Receipt access denied, userId={}, receiptId={}", userId, receipt.getId());
             throw new TransactionAccessDeniedException(MSG_RECEIPT_FORBIDDEN);
         }

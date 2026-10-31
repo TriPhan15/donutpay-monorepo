@@ -818,10 +818,10 @@ class ReceiptWorkflowIntegrationTest {
         Long version = stored(receiptId).getVersion();
         assertThrows(ReceiptConflictException.class, () -> receiptService.editMyReceipt(receiptId, edit(version, "Sửa", null, null)));
         assertThrows(ReceiptConflictException.class, () -> receiptService.retryMyReceipt(receiptId, retry(NEW_SCAN, null)));
-        assertThrows(IllegalStateException.class, () -> receiptService.submitFeedback(receiptId, new BigDecimal("1")));
-        assertThrows(IllegalStateException.class, () -> receiptService.rejectReceipt(receiptId));
-        assertThrows(IllegalStateException.class, () -> transactionService.approveReceipt(receiptId));
-        assertThrows(IllegalStateException.class, () -> transactionService.cancelMyReceipt(receiptId));
+        assertThrows(ReceiptConflictException.class, () -> receiptService.submitFeedback(receiptId, new BigDecimal("1")));
+        assertThrows(ReceiptConflictException.class, () -> receiptService.rejectReceipt(receiptId));
+        assertThrows(ReceiptConflictException.class, () -> transactionService.approveReceipt(receiptId));
+        assertThrows(ReceiptConflictException.class, () -> transactionService.cancelMyReceipt(receiptId));
         assertEquals("CANCELED", stored(receiptId).getStatus());
     }
 

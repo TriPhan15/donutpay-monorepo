@@ -28,7 +28,7 @@ import logging
 import math
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,11 @@ IDList = Dict[int, List[int]]
 DEFAULT_MIN_SUP: float = 0.25
 DEFAULT_MAX_PATTERN_LENGTH: int = 4
 DEFAULT_MAX_PATTERNS: int = 50_000
+# Ngân sách số phép nối id-list (mỗi phép nối là một nút được duyệt) cho DFS và cho bước sinh luật.
+# Dữ liệu thường dùng vài trăm tới vài nghìn phép nối; ngân sách chỉ chặn dữ liệu bệnh lý (rất nhiều danh mục
+# cùng "phổ biến") để một request không chiếm CPU nhiều phút. Hết ngân sách thì dừng và đánh dấu truncated.
+DEFAULT_MAX_JOINS: int = 200_000
+RULE_MAX_JOINS: int = 200_000
 
 # Sai số dấu phẩy động khi so ngưỡng weighted support.
 FLOAT_TOLERANCE: float = 1e-9
@@ -132,11 +137,14 @@ class WCMSpade:
         max_pattern_length: int = DEFAULT_MAX_PATTERN_LENGTH,
         max_patterns: int = DEFAULT_MAX_PATTERNS,
         use_cmap: bool = True,
+        max_joins: int = DEFAULT_MAX_JOINS,
     ) -> None:
         self.min_sup = min_sup
         self.max_pattern_length = max_pattern_length
         self.max_patterns = max_patterns
         self.use_cmap = use_cmap
+        self.max_joins = max_joins
+        self._joins = 0
 
         self._n_sequences = 0
         self._raw_bound = MIN_RAW_BOUND
@@ -243,6 +251,14 @@ class WCMSpade:
         self._record(itemsets, idlist)
         return True
 
+    def _spend_join(self) -> bool:
+        """Trừ một phép nối khỏi ngân sách; hết ngân sách thì đánh dấu truncated."""
+        if self._joins >= self.max_joins:
+            self._truncated = True
+            return False
+        self._joins += 1
+        return True
+
     def _cmap_allows(self, cmap: Dict[Item, Dict[Item, int]], last: Item, y: Item) -> bool:
         if not self.use_cmap:
             return True
@@ -259,6 +275,8 @@ class WCMSpade:
                 return
             if not self._cmap_allows(self._cmap_s, last, y):
                 continue
+            if not self._spend_join():
+                return
             new_idlist = self._s_extend(idlist, y_idlist)
             if len(new_idlist) >= self._raw_bound:
                 child = itemsets + ((y,),)
@@ -272,6 +290,8 @@ class WCMSpade:
                 return
             if y <= last or not self._cmap_allows(self._cmap_i, last, y):
                 continue
+            if not self._spend_join():
+                return
             new_idlist = self._i_extend(idlist, y_idlist)
             if len(new_idlist) >= self._raw_bound:
                 child = itemsets[:-1] + (itemsets[-1] + (y,),)
@@ -286,6 +306,7 @@ class WCMSpade:
         self._n_sequences = len(normalized)
         self._explored = {}
         self._truncated = False
+        self._joins = 0
         all_idlists = self._build_idlists(normalized)
         self._item_weights = item_weights_from_totals(all_idlists.keys(), spending_totals)
         max_weight = max(self._item_weights.values(), default=NEUTRAL_WEIGHT)
@@ -312,7 +333,8 @@ class WCMSpade:
             self._extend(root, idlist, 1)
 
         if self._truncated:
-            logger.warning("WCM-SPADE dừng sớm: đạt max_patterns=%d", self.max_patterns)
+            logger.warning("WCM-SPADE dừng sớm: %d mẫu (max_patterns=%d), %d phép nối (max_joins=%d)",
+                           len(self._explored), self.max_patterns, self._joins, self.max_joins)
 
         shown = [
             p for p in self._explored.values()
@@ -368,10 +390,30 @@ class SequentialRule:
         return self.confidence / (self.consequent_support / self.n_sequences)
 
 
+class _JoinBudget:
+    """Đếm phép nối id-list của bước sinh luật; ``spend`` trả False khi đã hết."""
+
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        self.used = 0
+        self.exhausted = False
+
+    def spend(self) -> bool:
+        if self.used >= self.limit:
+            self.exhausted = True
+            return False
+        self.used += 1
+        return True
+
+
 def _frequent_itemsets(
-    item_idlists: Mapping[Item, IDList], max_size: int, min_support: int
+    item_idlists: Mapping[Item, IDList], max_size: int, min_support: int,
+    budget: Optional[_JoinBudget] = None,
 ) -> Dict[Itemset, IDList]:
-    """Itemset (cùng ngày) có support thô ≥ ``min_support``, kèm id-list, không trọng số."""
+    """Itemset (cùng ngày) có support thô ≥ ``min_support``, kèm id-list, không trọng số.
+
+    Hết ``budget`` thì dừng: trả các itemset đã tìm được tới lúc đó.
+    """
     singles = {
         (item,): item_idlists[item]
         for item in sorted(item_idlists)
@@ -385,6 +427,9 @@ def _frequent_itemsets(
             for (item,), item_idlist in singles.items():
                 if item <= itemset[-1]:
                     continue
+                if budget is not None and not budget.spend():
+                    found.update(next_level)
+                    return found
                 joined = WCMSpade._i_extend(idlist, item_idlist)
                 if len(joined) >= min_support:
                     next_level[itemset + (item,)] = joined
@@ -409,6 +454,7 @@ def sequential_rules(
     min_antecedent_support: int = MIN_ANTECEDENT_SUPPORT,
     min_laplace_confidence: float = MIN_LAPLACE_CONFIDENCE,
     min_lift: float = MIN_LIFT,
+    max_joins: int = RULE_MAX_JOINS,
 ) -> List[SequentialRule]:
     """Sinh luật A ⇒ B (A, B là itemset cùng ngày, A ∩ B = ∅) từ id-list thô.
 
@@ -443,14 +489,20 @@ def sequential_rules(
        kèm hiệu chỉnh Holm, hoặc tách holdout) theo Webb, G. I. (2007) "Discovering
        significant patterns", Machine Learning 68(1):1–33 (CHƯA KIỂM CHỨNG). Kết quả
        chỉ là mô tả lịch sử chi tiêu, không phải phát hiện có ý nghĩa thống kê.
+
+    Số phép nối id-list (tìm itemset và ghép cặp A, B) bị chặn bởi ``max_joins``: hết ngân sách thì trả các luật
+    đã tìm được (ghi log cảnh báo). Dữ liệu thường không chạm tới ngân sách này.
     """
     if result.n_sequences == 0:
         return []
+    budget = _JoinBudget(max_joins)
     itemsets = _frequent_itemsets(
-        result.item_idlists, result.max_pattern_length - 1, RULE_MIN_SUPPORT
+        result.item_idlists, result.max_pattern_length - 1, RULE_MIN_SUPPORT, budget
     )
     candidates: List[SequentialRule] = []
     for antecedent, a_idlist in itemsets.items():
+        if budget.exhausted:
+            break
         if len(a_idlist) < min_antecedent_support:
             continue
         for consequent, b_idlist in itemsets.items():
@@ -458,6 +510,8 @@ def sequential_rules(
                 continue
             if not set(antecedent).isdisjoint(consequent):
                 continue
+            if not budget.spend():
+                break
             joined = WCMSpade._s_extend(a_idlist, b_idlist)
             if len(joined) < RULE_MIN_SUPPORT:
                 continue
@@ -475,6 +529,8 @@ def sequential_rules(
                 and rule.lift >= min_lift - FLOAT_TOLERANCE
             ):
                 candidates.append(rule)
+    if budget.exhausted:
+        logger.warning("Sinh luật dừng sớm: hết ngân sách %d phép nối, %d luật ứng viên", max_joins, len(candidates))
     rules = [rule for rule in candidates if not _dominated(rule, candidates)]
     rules.sort(
         key=lambda r: (-r.laplace_confidence, -r.lift, -r.support, r.antecedent, r.consequent)

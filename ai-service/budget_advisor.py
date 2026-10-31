@@ -5,8 +5,11 @@ from collections import defaultdict
 from datetime import date
 from typing import FrozenSet, List, Literal, Optional, Sequence, Tuple
 
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+
 from local_time import local_today
-from spending_data import TransactionIn, expenses_from, incomes_from
+from spending_data import TransactionIn, count_undated, expenses_from, incomes_from
 
 # Must match essentialExpenses in mobile-app/lib/core/constants/transaction_categories.dart
 # (the DefaultCategory names core-backend stores).
@@ -25,10 +28,59 @@ ADVICE_MAX_MONTHS = 6
 NO_EXPENSE_MESSAGE = "Không có giao dịch chi để phân tích."
 NOT_ENOUGH_HISTORY_MESSAGE = "Cần ít nhất một tháng chi tiêu trọn vẹn để AI đưa ra lời khuyên."
 NO_DEADLINE_PREFIX = "Mục tiêu chưa có hạn nên AI không tính số cần góp mỗi tháng."
+ADVICE_FAILED_MESSAGE = "AI chưa thể đưa ra lời khuyên cho dữ liệu này."
+# Các câu AdviceError được phép trả nguyên văn cho app; câu khác bị thay bằng ADVICE_FAILED_MESSAGE.
+ADVICE_ERROR_MESSAGES: FrozenSet[str] = frozenset({NO_EXPENSE_MESSAGE, NOT_ENOUGH_HISTORY_MESSAGE})
 
 
 class AdviceError(ValueError):
     """The request cannot be advised on; the message is one of the fixed texts above."""
+
+
+class _CamelModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+# Response của /spade/recommend: tên field (camelCase) giữ đúng như dict advise() trả về, app mobile đang đọc chúng.
+class TagStatOut(_CamelModel):
+    tag: str
+    monthly_avg: int
+    share: float
+    type: Literal["essential", "discretionary", "neutral"]
+
+
+class GoalOut(_CamelModel):
+    needed_monthly: int
+    monthly_income: int
+    monthly_expense: int
+    surplus: int
+    gap: int
+    has_deadline: bool
+
+
+class RecommendationOut(_CamelModel):
+    tag: str
+    current: int
+    suggested: int
+    delta: int
+    action: str
+    reason: str
+
+
+class AdviceMeta(_CamelModel):
+    n_months: int
+    first_month: str
+    last_month: str
+    # Số giao dịch bị bỏ vì ngày không đọc được (spending_data.count_undated).
+    skipped_rows: int = 0
+
+
+class RecommendResponse(_CamelModel):
+    tag_stats: List[TagStatOut]
+    goal: GoalOut
+    recommendations: List[RecommendationOut]
+    summary: str
+    meta: AdviceMeta
 
 
 def classify(category: str) -> Literal["essential", "discretionary", "neutral"]:
@@ -75,7 +127,10 @@ def advise(
         raise AdviceError(NO_EXPENSE_MESSAGE)
 
     first_day = min([e.day for e in expenses] + [i.day for i in incomes])
-    months = full_months(first_day, today)
+    # Chỉ các tháng trọn vẹn có ít nhất một khoản chi: tháng trống ở giữa không được tính là chi 0đ,
+    # nếu không một giao dịch lẻ từ lâu sẽ chia nhỏ chi tiêu thật và thổi phồng phần dư.
+    expense_months = {(e.day.year, e.day.month) for e in expenses}
+    months = [m for m in full_months(first_day, today) if m in expense_months]
     month_set = set(months)
     exp = [e for e in expenses if (e.day.year, e.day.month) in month_set]
     if not months or not exp:
@@ -99,8 +154,12 @@ def advise(
         for t, m in sorted(tag_monthly.items(), key=lambda kv: kv[1], reverse=True)
     ]
 
-    has_deadline = months_left is not None or needed_monthly is not None
-    if needed_monthly is None:
+    # Không có mục tiêu (target = 0) thì không có hạn và không cần góp gì, dù request có months_left/needed_monthly.
+    has_target = target > 0
+    has_deadline = has_target and (months_left is not None or needed_monthly is not None)
+    if not has_target:
+        needed_monthly = 0.0
+    elif needed_monthly is None:
         if months_left is not None and months_left > 0:
             needed_monthly = max(target - current, 0.0) / months_left
         else:
@@ -177,5 +236,6 @@ def advise(
             "nMonths": n_months,
             "firstMonth": f"{months[0][0]}-{months[0][1]:02d}",
             "lastMonth": f"{months[-1][0]}-{months[-1][1]:02d}",
+            "skippedRows": count_undated(transactions),
         },
     }

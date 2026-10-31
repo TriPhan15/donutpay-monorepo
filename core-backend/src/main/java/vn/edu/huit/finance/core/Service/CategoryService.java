@@ -2,15 +2,28 @@ package vn.edu.huit.finance.core.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.Category;
+import vn.edu.huit.finance.core.Entity.DefaultCategory;
+import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Exception.CategoryInUseException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Repository.CategoryRepository;
+import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
+import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * The shared categories. createCategory, renameCategory and deleteCategory are for administrators only (the caller
@@ -27,6 +40,8 @@ public class CategoryService {
     private static final String MSG_CATEGORY_NOT_FOUND = "Không tìm thấy danh mục";
     private static final String MSG_CATEGORY_REQUIRED = "Thiếu danh mục (categoryId hoặc categoryName)";
     private static final String MSG_CATEGORY_IN_USE = "Không thể xóa danh mục [%s] vì đang có giao dịch sử dụng nó!";
+    private static final String MSG_DEFAULT_LOCKED = "Không thể đổi tên hoặc xóa danh mục mặc định [%s]";
+    private static final String MSG_DEFAULT_NAME_TAKEN = "Tên [%s] là tên của một danh mục mặc định";
     private static final String AUDIT_CREATED_BY_NAME = "Tạo danh mục \"%s\" (%s) theo tên người dùng nhập";
     private static final String AUDIT_CREATED = "Thêm danh mục \"%s\" (%s)";
     private static final String AUDIT_RENAMED = "Đổi tên danh mục \"%s\" → \"%s\"";
@@ -38,8 +53,17 @@ public class CategoryService {
     @Autowired
     private AuditLogService auditLogService;
 
+    @Autowired
+    private TransactionRepository transactionRepository;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    /** Thêm một danh mục; tên trùng tên danh mục mặc định (Tiết kiệm, Ăn uống...) bị từ chối. */
     @Transactional
     public Category createCategory(String name, String type) {
+        name = name.trim();
+        refuseDefaultName(name);
         Category category = new Category();
         category.setName(name);
         category.setType(type);
@@ -50,15 +74,32 @@ public class CategoryService {
         return created;
     }
 
+    /**
+     * Đổi tên một danh mục do admin thêm. Danh mục mặc định không đổi tên được (quy tắc tiết kiệm và phần loại trừ khỏi
+     * ngân sách/thống kê dựa vào tên "Tiết kiệm"), và không đổi sang tên của một danh mục mặc định. Tên lưu trùng ở
+     * transactions.category_name được cập nhật theo, và mỗi giao dịch được phát lại để chỉ mục tìm kiếm đọc tên mới.
+     */
     @Transactional
     public Category renameCategory(Long categoryId, String name) {
+        name = name.trim();
         Category category = findCategory(categoryId);
+        refuseDefaultCategory(category);
+        refuseDefaultName(name);
         String previousName = category.getName();
         category.setName(name);
         Category renamed = categoryRepository.save(category);
 
+        List<Transaction> transactions = transactionRepository.findAllByCategory_Id(categoryId);
+        Set<Long> owners = new HashSet<>();
+        for (Transaction transaction : transactions) {
+            transaction.setCategoryName(renamed.getName());
+            owners.add(transaction.getUser().getId());
+            eventPublisher.publishEvent(TransactionChangedEvent.upserted(transaction.getId(), transaction.getUser().getId(), Set.of()));
+        }
+        owners.forEach(userId -> eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.TRANSACTION_DETAILS, userId)));
+
         record(AuditAction.CATEGORY_UPDATED, categoryId, String.format(AUDIT_RENAMED, previousName, renamed.getName()));
-        log.info("Category renamed, categoryId={}", categoryId);
+        log.info("Category renamed, categoryId={}, transactions={}", categoryId, transactions.size());
         return renamed;
     }
 
@@ -66,12 +107,13 @@ public class CategoryService {
     @Transactional
     public void deleteCategory(Long categoryId) {
         Category category = findCategory(categoryId);
+        refuseDefaultCategory(category);
         try {
             categoryRepository.delete(category);
             categoryRepository.flush();
         } catch (DataIntegrityViolationException e) {
             log.warn("Category deletion refused, it is still in use, categoryId={}", categoryId);
-            throw new IllegalStateException(String.format(MSG_CATEGORY_IN_USE, category.getName()));
+            throw new CategoryInUseException(String.format(MSG_CATEGORY_IN_USE, category.getName()));
         }
 
         record(AuditAction.CATEGORY_DELETED, categoryId, String.format(AUDIT_DELETED, category.getName(), category.getType()));
@@ -119,6 +161,25 @@ public class CategoryService {
             log.warn("Category not found, categoryId={}", categoryId);
             return new InvalidCategoryException(MSG_CATEGORY_NOT_FOUND);
         });
+    }
+
+    /** Danh mục mặc định (cùng tên và loại với một DefaultCategory) không được đổi tên hay xóa. */
+    private static void refuseDefaultCategory(Category category) {
+        boolean isDefault = Arrays.stream(DefaultCategory.values()).anyMatch(d ->
+                d.getDisplayName().equals(category.getName()) && d.getType().equals(category.getType()));
+        if (isDefault) {
+            log.warn("Change of a default category refused, categoryId={}", category.getId());
+            throw new InvalidCategoryException(String.format(MSG_DEFAULT_LOCKED, category.getName()));
+        }
+    }
+
+    /** Tên của một danh mục mặc định (không phân biệt hoa thường) không được dùng cho danh mục khác. */
+    private static void refuseDefaultName(String name) {
+        boolean taken = Arrays.stream(DefaultCategory.values()).anyMatch(d -> d.getDisplayName().equalsIgnoreCase(name));
+        if (taken) {
+            log.warn("Category name of a default category refused");
+            throw new InvalidCategoryException(String.format(MSG_DEFAULT_NAME_TAKEN, name));
+        }
     }
 
     /** By the administrator who called, looked up when the row is written. */

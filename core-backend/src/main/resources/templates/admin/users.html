@@ -250,7 +250,7 @@
                     .then(res => res.json())
                     .then(data => {
                         if(data.code === 200) {
-                            Toast.fire({ icon: 'success', title: 'Đã xóa vĩnh viễn!' });
+                            Toast.fire({ icon: 'success', title: data.message || 'Đã xóa vĩnh viễn!' });
                         } else {
                             Toast.fire({ icon: 'warning', title: data.message });
                         }

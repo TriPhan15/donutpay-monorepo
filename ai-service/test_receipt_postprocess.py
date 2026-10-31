@@ -220,3 +220,28 @@ def test_postprocess_never_breaks_an_exact_v5_prediction() -> None:
 def test_future_receipt_date_is_invalid(raw, valid):
     result = normalize_timestamp_field(raw, today=date(2026, 10, 28))
     assert result.valid is valid and result.iso is not None
+
+
+@pytest.mark.parametrize("raw", ["10.30.15", "Giờ in 10.30.15", "21.08.26"])
+def test_dotted_two_digit_year_is_not_read_as_a_date(raw: str) -> None:
+    """B7: "10.30.15" là giờ 10:30:15, không được đọc thành ngày 2015-10-30 (đảo ngày/tháng)."""
+    from receipt_postprocess import parse_timestamp
+    assert parse_timestamp(raw) is None
+
+
+@pytest.mark.parametrize(("raw", "iso"), [
+    ("21/08/26", "2026-08-21"), ("21-08-26 10:30", "2026-08-21T10:30:00"), ("21.08.2026", "2026-08-21"),
+    ("13/08/2020 10.30.15", "2020-08-13T10:30:00"),
+])
+def test_two_digit_year_with_slash_or_dash_and_dotted_four_digit_year_still_parse(raw: str, iso: str) -> None:
+    from receipt_postprocess import parse_timestamp
+    assert parse_timestamp(raw) == iso
+
+
+def test_the_latest_accepted_year_follows_the_vietnam_date_not_the_server_clock(monkeypatch) -> None:
+    """B7: năm tối đa tính theo local_today() (UTC+7), như phần kiểm tra ngày tương lai."""
+    import receipt_postprocess
+    monkeypatch.setattr(receipt_postprocess, "local_today", lambda: date(2031, 1, 1))
+    assert receipt_postprocess.parse_timestamp("01/01/2032") == "2032-01-01"
+    monkeypatch.setattr(receipt_postprocess, "local_today", lambda: date(2026, 12, 31))
+    assert receipt_postprocess.parse_timestamp("01/01/2032") is None

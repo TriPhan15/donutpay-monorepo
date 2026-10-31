@@ -10,10 +10,15 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.ModelAndView;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.DuplicateReceiptResponseDto;
@@ -29,8 +34,12 @@ public class GlobalExceptionHandler {
     private static final String MSG_CONCURRENT_CHANGE =
             "Dữ liệu vừa được thay đổi bởi một yêu cầu khác, vui lòng tải lại rồi thử lại";
     private static final String MSG_SYSTEM_ERROR = "Hệ thống đang gặp sự cố, vui lòng thử lại sau";
+    private static final String TYPE_MISMATCH = "typeMismatch";
+    private static final String MSG_UNREADABLE_BODY = "Dữ liệu gửi lên không đúng định dạng";
+    private static final String MSG_PARAMETER_INVALID = "Giá trị của tham số %s không hợp lệ";
     private static final String REASON_NOT_OWNER = "Dữ liệu thuộc về người dùng khác";
     private static final String REASON_ROLE = "Phân quyền theo vai trò";
+    private static final String MSG_UPLOAD_TOO_LARGE = "Ảnh quá lớn (tối đa 15MB), vui lòng chụp lại với độ phân giải thấp hơn";
 
     // Every 403 is recorded (AUTH_ACCESS_DENIED), in a row written on its own: the request's transaction has rolled back.
     @Autowired
@@ -54,6 +63,19 @@ public class GlobalExceptionHandler {
                     .build());
         }
         return new ModelAndView("error").addObject("errorMessage", errorMessage);
+    }
+
+    // 400: a form or query bound to a DTO with @Valid @ModelAttribute (admin pages) broke a rule. MethodArgumentNotValid
+    // (a JSON body) is a subclass and keeps its own handler above.
+    @ExceptionHandler(BindException.class)
+    public Object handleBindException(BindException ex, HttpServletRequest request) {
+        // A value that did not even convert ("abc" for a number) gets a short text of ours, not Spring's class names.
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> TYPE_MISMATCH.equals(error.getCode())
+                        ? String.format(MSG_PARAMETER_INVALID, error.getField())
+                        : error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Dữ liệu không hợp lệ: " + errorMessage, request);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
@@ -137,7 +159,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
 
-    @ExceptionHandler({TransactionNotFoundException.class, ReceiptNotFoundException.class, OcrFeedbackNotFoundException.class})
+    @ExceptionHandler({TransactionNotFoundException.class, ReceiptNotFoundException.class, OcrFeedbackNotFoundException.class,
+            AppReviewNotFoundException.class, SubscriptionPlanNotFoundException.class, PaymentOrderNotFoundException.class,
+            SavingGoalNotFoundException.class})
     public Object handleTransactionOrReceiptNotFound(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
@@ -149,8 +173,8 @@ public class GlobalExceptionHandler {
     }
 
     // 403 and not 404: the caller is signed in and the record exists, but it belongs to somebody else.
-    @ExceptionHandler(TransactionAccessDeniedException.class)
-    public Object handleTransactionAccessDenied(TransactionAccessDeniedException ex, HttpServletRequest request) {
+    @ExceptionHandler({TransactionAccessDeniedException.class, PaymentOrderAccessDeniedException.class})
+    public Object handleTransactionAccessDenied(RuntimeException ex, HttpServletRequest request) {
         eventPublisher.publishEvent(SecurityAuditEvent.accessDenied(REASON_NOT_OWNER, request.getMethod(), request.getRequestURI()));
         return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
     }
@@ -162,9 +186,45 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(InvalidUploadException.class)
+    public Object handleInvalidUpload(InvalidUploadException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    // 413: the file is over the limit of ImageUploadService, or over spring.servlet.multipart.max-file-size.
+    @ExceptionHandler({UploadTooLargeException.class, MaxUploadSizeExceededException.class})
+    public Object handleUploadTooLarge(Exception ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE, MSG_UPLOAD_TOO_LARGE, request);
+    }
+
+    // 503 with a fixed text: the image storage failed; the cause was logged by ImageUploadService.
+    @ExceptionHandler(FileStorageUnavailableException.class)
+    public Object handleFileStorageUnavailable(FileStorageUnavailableException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+    }
+
+    // 403: PUT /api/users/{id} with another user's id. Recorded like any other 403 about somebody else's data.
+    @ExceptionHandler(ProfileAccessDeniedException.class)
+    public Object handleProfileAccessDenied(ProfileAccessDeniedException ex, HttpServletRequest request) {
+        eventPublisher.publishEvent(SecurityAuditEvent.accessDenied(REASON_NOT_OWNER, request.getMethod(), request.getRequestURI()));
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
+    // 403: an ADMIN account cannot be locked, unlocked or deleted from the admin pages; nothing was written.
+    @ExceptionHandler(AdminAccountProtectedException.class)
+    public Object handleAdminAccountProtected(AdminAccountProtectedException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
     // 409: the receipt is not in a state that allows the request, or another request changed it first; nothing was written.
     @ExceptionHandler(ReceiptConflictException.class)
     public Object handleReceiptConflict(ReceiptConflictException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    // 409: the category is still used by a transaction or a budget, or a search reindex is already running; nothing was written.
+    @ExceptionHandler({CategoryInUseException.class, ReindexInProgressException.class})
+    public Object handleConflictingState(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
@@ -200,7 +260,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({InsufficientBalanceException.class, InvalidRoleException.class, InvalidSortFieldException.class,
-            ProfileUpdateRefusedException.class})
+            ProfileUpdateRefusedException.class, InvalidImageUrlException.class, PaymentWebhookRejectedException.class,
+            InvalidRequestException.class})
     public Object handleRejectedInput(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
@@ -215,15 +276,31 @@ public class GlobalExceptionHandler {
         return new ModelAndView("error").addObject("errorMessage", message);
     }
 
+    // 400 with a fixed text: a body that is not JSON, or does not fit the DTO (Jackson's message names classes and fields).
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public Object handleUnreadableBody(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("Unreadable request body, uri={}", request.getRequestURI());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, MSG_UNREADABLE_BODY, request);
+    }
+
+    // 400: a path or query parameter of the wrong type (/api/transactions/abc).
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Object handleArgumentTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, String.format(MSG_PARAMETER_INVALID, ex.getName()), request);
+    }
+
+    // 400: a multipart request without its file part (POST /api/upload without "file").
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public Object handleMissingRequestPart(MissingServletRequestPartException ex, HttpServletRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Thiếu tham số bắt buộc: " + ex.getRequestPartName(), request);
+    }
+
+    // 500 with a fixed text: every exception meant for the user has its own handler above, so what reaches this one is
+    // unexpected (SMTP, NullPointerException, a library), and its message stays in the log with the stack trace.
     @ExceptionHandler(RuntimeException.class)
     public Object handleRuntimeExceptions(RuntimeException ex, HttpServletRequest request) {
-        if (isJsonRequest(request)) {
-            return ResponseEntity.badRequest().body(ApiResponse.<String>builder()
-                    .code(400)
-                    .message(ex.getMessage())
-                    .build());
-        }
-        return new ModelAndView("error").addObject("errorMessage", ex.getMessage());
+        log.error("Unexpected error, uri={}", request.getRequestURI(), ex);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, MSG_SYSTEM_ERROR, request);
     }
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)

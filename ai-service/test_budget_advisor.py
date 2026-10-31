@@ -51,7 +51,7 @@ def test_income_and_expense_share_one_span():
                   _inc(10_000_000, "2026-09-05"), _exp("Mua sắm", 9_000_000, "2026-10-02")],
                  today=TODAY)
     assert out["goal"]["monthlyExpense"] == 3_000_000 and out["goal"]["monthlyIncome"] == 5_000_000
-    assert out["meta"] == {"nMonths": 2, "firstMonth": "2026-08", "lastMonth": "2026-09"}
+    assert out["meta"] == {"nMonths": 2, "firstMonth": "2026-08", "lastMonth": "2026-09", "skippedRows": 0}
 
 
 def test_only_current_month_raises_not_enough_history():
@@ -94,3 +94,48 @@ def test_savings_rows_are_not_spending():
 def test_advisor_no_longer_mines_patterns():
     assert not hasattr(budget_advisor, "WCMSpade")
     assert "trends" not in advise(_two_full_months(), today=TODAY)
+
+
+def test_months_without_any_expense_are_not_counted():
+    """B5: một khoản chi lẻ từ lâu, còn lại chỉ có tháng trước: chi tiêu không bị chia cho các tháng trống."""
+    out = advise([_exp("Ăn uống", 10_000, "2026-04-01"), _exp("Ăn uống", 6_000_000, "2026-09-10"),
+                  _inc(5_000_000, "2026-09-05")], today=TODAY)
+    assert out["meta"] == {"nMonths": 2, "firstMonth": "2026-04", "lastMonth": "2026-09", "skippedRows": 0}
+    assert out["goal"]["monthlyExpense"] == 3_005_000
+
+
+def test_a_lone_old_expense_in_a_partial_month_leaves_one_month():
+    out = advise([_exp("Ăn uống", 10_000, "2026-04-20"), _exp("Ăn uống", 6_000_000, "2026-09-10"),
+                  _inc(5_000_000, "2026-09-05")], today=TODAY)
+    assert out["meta"]["nMonths"] == 1
+    assert out["goal"]["monthlyExpense"] == 6_000_000 and out["goal"]["surplus"] == -1_000_000
+
+
+@pytest.mark.parametrize("extra", [{"months_left": 3}, {"needed_monthly": 500_000}, {"months_left": 3, "target": 0}])
+def test_without_a_target_there_is_no_deadline(extra):
+    """B6: target = 0 hoặc thiếu thì hasDeadline = False và không cần góp gì."""
+    out = advise(_two_full_months(), today=TODAY, **extra)
+    assert out["goal"]["hasDeadline"] is False and out["goal"]["neededMonthly"] == 0
+    assert out["summary"].startswith(NO_DEADLINE_PREFIX)
+
+
+def test_rows_with_an_unreadable_date_are_counted_in_meta():
+    """B7: ngày sai định dạng bị bỏ (không 422, vì APK cũ) nhưng số dòng bị bỏ có trong meta."""
+    out = advise(_two_full_months() + [_exp("Ăn uống", 1, "31/02/2026"), _exp("Ăn uống", 1, "không phải ngày")],
+                 today=TODAY)
+    assert out["meta"]["skippedRows"] == 2
+
+
+def test_a_goal_refund_is_no_income():
+    """A6: tiền mục tiêu tiết kiệm đã xóa quay về ví (source GOAL_REFUND) không làm phồng thu nhập tháng."""
+    refund = TransactionIn(category="Thu khác", amount=50_000_000, date="2026-09-20", isExpense=False, source="GOAL_REFUND")
+    with_refund = advise(_two_full_months() + [refund], today=TODAY)
+    without = advise(_two_full_months(), today=TODAY)
+    assert with_refund["goal"]["monthlyIncome"] == without["goal"]["monthlyIncome"] == 3_000_000
+
+
+def test_rows_without_a_source_count_as_before():
+    plain = TransactionIn(category="Thu khác", amount=2_000_000, date="2026-09-20", isExpense=False)
+    normal = TransactionIn(category="Thu khác", amount=2_000_000, date="2026-09-21", isExpense=False, source="NORMAL")
+    out = advise(_two_full_months() + [plain, normal], today=TODAY)
+    assert out["goal"]["monthlyIncome"] == 5_000_000

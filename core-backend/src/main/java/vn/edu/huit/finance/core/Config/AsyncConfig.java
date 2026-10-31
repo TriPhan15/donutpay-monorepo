@@ -17,6 +17,24 @@ import java.util.concurrent.Executor;
 @Slf4j
 public class AsyncConfig {
 
+    /** Pool của AsyncMailSender: mail OTP gửi ngoài request. */
+    public static final String MAIL_EXECUTOR = "mailAsyncExecutor";
+    private static final int MAIL_POOL_SIZE = 2;
+    private static final int MAIL_QUEUE_CAPACITY = 100;
+
+    @Bean(name = MAIL_EXECUTOR)
+    public Executor mailAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(MAIL_POOL_SIZE);
+        executor.setMaxPoolSize(MAIL_POOL_SIZE);
+        executor.setQueueCapacity(MAIL_QUEUE_CAPACITY);
+        executor.setThreadNamePrefix("MailAsync-");
+        // Hàng đợi đầy: bỏ mail đó và ghi lỗi; request đã trả lời, người dùng có thể xin mã lại.
+        executor.setRejectedExecutionHandler((task, pool) -> log.error("MailAsyncExecutor queue is full, dropping one mail"));
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "mongoAsyncExecutor")
     public Executor threadPoolTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
