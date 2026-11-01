@@ -137,8 +137,8 @@ public class AdminController {
         for (ReceiptStatusCountDto receiptStatus : summary.getReceiptStatuses()) {
             String status = receiptStatus.getStatus();
 
-            if ("SUCCESS".equals(status)) status = "Thành công";
-            else if ("FAILED".equals(status)) status = "Lỗi AI";
+            if (ReceiptStatus.LEGACY_SUCCESS.equals(status)) status = "Thành công";
+            else if (ReceiptStatus.FAILED.name().equals(status)) status = "Lỗi AI";
             else status = "Đang xử lý";
 
             aiLabels.add(status);
