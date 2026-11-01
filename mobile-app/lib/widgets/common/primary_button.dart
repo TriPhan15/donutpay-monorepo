@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:finance_ai_app/core/theme/app_typography.dart';
+
 class PrimaryButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -21,7 +23,10 @@ class PrimaryButton extends StatelessWidget {
         onPressed: onPressed,
         child: Text(
           text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontSize: AppTextSize.title,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

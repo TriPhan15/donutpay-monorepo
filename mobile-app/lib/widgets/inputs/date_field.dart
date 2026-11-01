@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/repositories/settings_repository.dart';
 import 'package:finance_ai_app/widgets/inputs/date_picker_sheet.dart';
@@ -150,7 +151,7 @@ class DateField extends StatelessWidget {
               note,
               style: TextStyle(
                 color: errorText != null ? colors.error : helperColor,
-                fontSize: 12,
+                fontSize: AppTextSize.caption,
               ),
             ),
           ),
