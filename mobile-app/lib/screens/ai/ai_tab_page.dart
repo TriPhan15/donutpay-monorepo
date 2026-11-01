@@ -4,6 +4,7 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/utils/savings_goal_planner.dart';
 import 'package:finance_ai_app/core/utils/spending_history.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
+import 'package:finance_ai_app/models/savings_goal.dart';
 import 'package:finance_ai_app/models/spending_analysis.dart';
 import 'package:finance_ai_app/models/spending_balance.dart';
 import 'package:finance_ai_app/models/spending_highlights.dart';
@@ -151,18 +152,18 @@ class _AITabPageState extends State<AITabPage> {
           .getTransactions(userId)
           .catchError((_) => <TransactionModel>[]),
       RemoteApiHelper.instance.fetchSavings().catchError(
-        (_) => <Map<String, dynamic>>[],
+        (_) => <SavingsGoal>[],
       ),
     ]);
 
     final txs = results[0] as List<TransactionModel>;
-    final goals = results[1] as List<Map<String, dynamic>>;
+    final goals = results[1] as List<SavingsGoal>;
 
     // A newer load has started: its list is the fresher one, so this one must not overwrite it.
     if (!mounted || requestId != _loadRequestId) return;
     setState(() {
       _transactions = txs;
-      _savingsGoals = goals;
+      _savingsGoals = [for (final goal in goals) goal.json];
       _isLoading = false;
     });
 

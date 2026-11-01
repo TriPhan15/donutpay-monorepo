@@ -13,6 +13,7 @@ import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/models/app_notification.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/receipt_detail.dart';
+import 'package:finance_ai_app/models/savings_goal.dart';
 import 'package:finance_ai_app/models/spending_analysis.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'dart:convert';
@@ -855,14 +856,25 @@ class RemoteApiHelper {
     }
   }
 
-  /// Throws when the savings cannot be read, so a screen can tell "none" from "could not load".
-  Future<List<Map<String, dynamic>>> fetchSavings() async {
+  /// Throws when the savings cannot be read (or are not a list of goals), so a screen can tell "none" from "could not
+  /// load".
+  Future<List<SavingsGoal>> fetchSavings() async {
     final res = await _dio.get('/api/savings');
-    return List<Map<String, dynamic>>.from(res.data['data'] ?? []);
+    final goals = List<Map<String, dynamic>>.from(res.data['data'] ?? []);
+    return [for (final goal in goals) SavingsGoal.fromJson(goal)];
   }
 
-  Future<void> addSaving(Map<String, dynamic> data) async {
-    await _dio.post('/api/savings', data: data);
+  /// POST /api/savings: a new goal with nothing saved yet. The server sends no goal back and the answer is not read.
+  /// A missing [deadline] is left out of the body.
+  Future<void> addSaving({
+    required String title,
+    required double target,
+    String? deadline,
+  }) async {
+    await _dio.post(
+      '/api/savings',
+      data: {'title': title, 'target': target, 'deadline': ?deadline},
+    );
     notifyDataChanged();
   }
 
@@ -888,17 +900,21 @@ class RemoteApiHelper {
   }
 
   /// POST /api/savings/{id}/contributions: moves [amount] from the wallet into the goal [id]. The server records it as
-  /// an expense in the "Tiết kiệm" category, so the balance and the Ledger change too. Returns the goal as it is now
-  /// (`{id, title, target, current, deadline}`); throws when it is refused (e.g. 400 when the wallet is too low).
-  Future<Map<String, dynamic>> contributeToSaving(
-    String id,
-    double amount,
-  ) async {
+  /// an expense in the "Tiết kiệm" category, so the balance and the Ledger change too. Returns the goal as it is now;
+  /// throws when it is refused (e.g. 400 when the wallet is too low) or when the answer holds no goal.
+  Future<SavingsGoal> contributeToSaving(String id, double amount) async {
     final res = await _dio.post(
       '/api/savings/$id/contributions',
       data: {'amount': amount},
     );
     notifyDataChanged();
-    return Map<String, dynamic>.from(res.data['data'] as Map);
+    return SavingsGoal.fromJson(
+      Map<String, dynamic>.from(res.data['data'] as Map),
+    );
   }
+
+  /// The wallet balance the server keeps for the signed-in user; null when the answer has none. Throws when it cannot
+  /// be read, or is not a number.
+  Future<double?> fetchWalletBalance() async =>
+      ((await fetchMe())['walletBalance'] as num?)?.toDouble();
 }

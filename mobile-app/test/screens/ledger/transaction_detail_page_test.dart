@@ -146,6 +146,38 @@ void main() {
     expect(find.byType(TransactionDetailPage), findsNothing);
   });
 
+  group('a savings row and the goals of the user', () {
+    final blocksDelete = {
+      'a goal': () => okResponse([
+        {'id': 1, 'title': 'Du lịch', 'target': 1000000, 'current': 0},
+      ]),
+      'a refused request': () => jsonResponse(500, {'code': 500}),
+      'data that is not a list': () => okResponse('oops'),
+      'a goal that is not an object': () => okResponse([1]),
+    };
+    blocksDelete.forEach((how, answer) {
+      testWidgets('$how keeps the row locked', (tester) async {
+        backend.on('GET', '/api/savings', (_) => answer());
+        await pump(tester, _tx(category: 'Tiết kiệm', title: 'Góp'));
+        expect(find.text(_savingsManaged), findsOneWidget);
+        expect(find.text('Xóa'), findsNothing);
+      });
+    });
+
+    final allowsDelete = {
+      'no goal': () => okResponse([]),
+      'an answer without data': () => okResponse(null),
+    };
+    allowsDelete.forEach((how, answer) {
+      testWidgets('$how lets the row be deleted, not edited', (tester) async {
+        backend.on('GET', '/api/savings', (_) => answer());
+        await pump(tester, _tx(category: 'Tiết kiệm', title: 'Góp'));
+        expect(find.text('Xóa'), findsOneWidget);
+        expect(find.text('Sửa giao dịch'), findsNothing);
+      });
+    });
+  });
+
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {
     testWidgets(
       'the head card shows the category tile, the title and the amount at 24 (${mode.name})',

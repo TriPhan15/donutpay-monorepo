@@ -37,7 +37,7 @@ class ContributeSheet extends StatefulWidget {
   final DateTime today;
 
   /// Moves the amount into the goal and returns the goal as it is now; throws when it is refused.
-  final Future<Map<String, dynamic>> Function(double amount) onSubmit;
+  final Future<SavingsGoal> Function(double amount) onSubmit;
 
   /// The wallet balance for the wallet line; null or a failure leaves the number out.
   final Future<double?> Function()? loadBalance;
@@ -111,7 +111,7 @@ class _ContributeSheetState extends State<ContributeSheet> {
     if (_isSending || amount == null) return;
     final loc = context.loc;
     setState(() => _isSending = true);
-    final Map<String, dynamic> updated;
+    final SavingsGoal updated;
     try {
       updated = await widget.onSubmit(amount);
     } catch (e) {
