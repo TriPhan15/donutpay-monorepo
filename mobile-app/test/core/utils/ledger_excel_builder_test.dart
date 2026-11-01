@@ -152,9 +152,40 @@ void main() {
     'the texts of the share come from the month, the file is dated today',
     () {
       final file = build();
-      expect(file.title, 'Chi tiêu tháng tháng 10 2026');
-      expect(file.shareText, 'Báo cáo chi tiêu tháng tháng 10 2026');
-      expect(file.fileName, 'chi_tieu_tháng 10 202601112026.xlsx');
+      expect(file.title, 'Chi tiêu tháng 10-2026');
+      expect(file.shareText, 'Báo cáo chi tiêu tháng 10-2026');
+      expect(file.fileName, 'chi_tieu_10-2026_01112026.xlsx');
     },
   );
+
+  for (final locale in AppLocalizations.supportedLocales) {
+    group('in ${locale.languageCode}', () {
+      final localized = lookupAppLocalizations(locale);
+
+      for (var m = 1; m <= 12; m++) {
+        test('month $m has a sheet name Excel accepts and a plain file name', () {
+          final file = LedgerExcelBuilder.build(
+            loc: localized,
+            month: DateTime(2026, m, 15),
+            transactions: const [],
+            budgets: const [],
+            now: DateTime(2026, 11, 1),
+          )!;
+          final sheetName = Excel.decodeBytes(file.bytes).tables.keys.last;
+          final monthKey = '${m.toString().padLeft(2, '0')}-2026';
+
+          expect(sheetName.length, lessThanOrEqualTo(31));
+          expect(sheetName, contains(monthKey));
+          // The word for "month" is already in the text of the sheet name: it must not come twice.
+          expect(
+            RegExp('tháng.*tháng', caseSensitive: false).hasMatch(sheetName),
+            isFalse,
+          );
+          expect(RegExp(r'[\/*?:\[\]]').hasMatch(sheetName), isFalse);
+          expect(file.fileName, matches(RegExp(r'^[a-z0-9_-]+\.xlsx$')));
+          expect(file.fileName, contains('_${monthKey}_01112026'));
+        });
+      }
+    });
+  }
 }

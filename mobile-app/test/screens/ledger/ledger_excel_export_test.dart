@@ -27,8 +27,9 @@ const int exportPolls = 100;
 const Duration exportPollStep = Duration(milliseconds: 50);
 const String _shareChannel = 'dev.fluttercommunity.plus/share';
 
-/// How intl names a month in Vietnamese ("MMMM"): "tháng 11".
-String _viMonth(DateTime d) => 'tháng ${d.month}';
+/// The month the way the report names it: "11-2026".
+String _monthKey(DateTime d) =>
+    '${d.month.toString().padLeft(2, '0')}-${d.year}';
 
 Map<String, Object?> _serverRow(
   int id,
@@ -153,7 +154,7 @@ void main() {
   });
 
   /// Opens the ledger, taps the export button and returns what reached the share sheet (null when nothing did).
-  Future<_Shared?> export(WidgetTester tester) async {
+  Future<_Shared?> export(WidgetTester tester, {bool failShare = false}) async {
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -163,6 +164,7 @@ void main() {
       const MethodChannel(_shareChannel),
       (call) async {
         shared.complete(call.arguments as Map<Object?, Object?>);
+        if (failShare) throw PlatformException(code: 'share-failed');
         return 'dev.fluttercommunity.plus/share/unavailable';
       },
     );
@@ -192,6 +194,11 @@ void main() {
       await tester.pump();
     }
     if (!shared.isCompleted) return null;
+    if (failShare) {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      return null;
+    }
     final args = await shared.future;
     return tester.runAsync(() async {
       final path = (args['paths']! as List).single as String;
@@ -227,7 +234,7 @@ void main() {
         [dateText, loc.categorySavings, 200000.0],
         [loc.ledgerExcelTotal, '', 45000.0, 1000000.0],
         [loc.ledgerBalance, '', '', 955000.0],
-        [loc.ledgerExcelBudgetHeader('${_viMonth(now)} ${now.year}')],
+        [loc.ledgerExcelBudgetHeader(_monthKey(now))],
         [
           loc.transactionCategoryLabel,
           loc.ledgerExcelLimit,
@@ -243,20 +250,25 @@ void main() {
     tester,
   ) async {
     final shared = (await export(tester))!;
-    final monthName = '${_viMonth(now)} ${now.year}';
+    final month = _monthKey(now);
 
     // The empty default sheet of a new workbook is still in the file, in front of the month.
     expect(shared.excel.tables.keys.toList(), [
       'Sheet1',
-      loc.ledgerExcelSheet(monthName),
+      'Chi tiêu tháng $month',
     ]);
-    expect(shared.sheet.sheetName, loc.ledgerExcelSheet(monthName));
-    expect(
-      shared.fileName,
-      '${loc.ledgerExcelFileName(monthName, today())}.xlsx',
-    );
-    expect(shared.subject, loc.ledgerExcelSheet(monthName));
-    expect(shared.text, loc.ledgerExcelShareText(monthName));
+    expect(shared.fileName, 'chi_tieu_${month}_${today()}.xlsx');
+    expect(shared.subject, 'Chi tiêu tháng $month');
+    expect(shared.text, 'Báo cáo chi tiêu tháng $month');
+  });
+
+  testWidgets('when the file cannot be shared the user gets a message', (
+    tester,
+  ) async {
+    final shared = await export(tester, failShare: true);
+
+    expect(shared, isNull);
+    expect(find.text(loc.ledgerExcelFailed), findsOneWidget);
   });
 }
 

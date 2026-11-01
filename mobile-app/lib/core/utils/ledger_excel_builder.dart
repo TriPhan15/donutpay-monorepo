@@ -28,7 +28,12 @@ class LedgerExcelFile {
 /// Builds the Excel report of the statistics tab: the transactions of one month, their totals and the budgets.
 abstract final class LedgerExcelBuilder {
   static const String _dateFormat = 'dd/MM/yyyy';
-  static const String _monthFormat = 'MMMM yyyy';
+
+  /// The month in the sheet name and the file name: digits and '-', whatever the language ("10-2026").
+  static const String _monthFormat = 'MM-yyyy';
+
+  /// Excel refuses a longer sheet name and reports the file as damaged.
+  static const int maxSheetNameLength = 31;
   static const String _fileDateFormat = 'ddMMyyyy';
   static const String _fileExtension = '.xlsx';
 
@@ -41,10 +46,10 @@ abstract final class LedgerExcelBuilder {
     required Iterable<BudgetModel> budgets,
     required DateTime now,
   }) {
-    final monthName = DateFormat(_monthFormat, loc.localeName).format(month);
+    final monthName = DateFormat(_monthFormat).format(month);
     final title = loc.ledgerExcelSheet(monthName);
     final excel = Excel.createExcel();
-    final sheet = excel[title];
+    final sheet = excel[_sheetName(title)];
 
     final inMonth = transactions
         .where(
@@ -65,6 +70,10 @@ abstract final class LedgerExcelBuilder {
       shareText: loc.ledgerExcelShareText(monthName),
     );
   }
+
+  static String _sheetName(String title) => title.length <= maxSheetNameLength
+      ? title
+      : title.substring(0, maxSheetNameLength);
 
   static void _appendTransactions(
     Sheet sheet,

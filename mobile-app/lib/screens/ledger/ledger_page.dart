@@ -568,25 +568,31 @@ class LedgerPageState extends State<LedgerPage> {
 
   Future<void> _exportToExcel() async {
     final loc = context.loc;
-    final report = LedgerExcelBuilder.build(
-      loc: loc,
-      month: _selectedDate,
-      transactions: _transactions,
-      budgets: _budgets,
-      now: DateTime.now(),
-    );
-    if (report == null) return;
+    try {
+      final report = LedgerExcelBuilder.build(
+        loc: loc,
+        month: _selectedDate,
+        transactions: _transactions,
+        budgets: _budgets,
+        now: DateTime.now(),
+      );
+      if (report == null) throw StateError('The workbook could not be encoded');
 
-    final file = File('${Directory.systemTemp.path}/${report.fileName}');
-    await file.writeAsBytes(report.bytes);
-    if (!mounted) return;
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path)],
-        fileNameOverrides: [report.fileName],
-        subject: report.title,
-        text: report.shareText,
-      ),
-    );
+      final file = File('${Directory.systemTemp.path}/${report.fileName}');
+      await file.writeAsBytes(report.bytes);
+      if (!mounted) return;
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          fileNameOverrides: [report.fileName],
+          subject: report.title,
+          text: report.shareText,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Lỗi xuất Excel: $e');
+      if (!mounted) return;
+      AppToast.error(context, loc.ledgerExcelFailed);
+    }
   }
 }
