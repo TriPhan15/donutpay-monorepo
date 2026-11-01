@@ -11,6 +11,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Exception.CategoryInUseException;
 import vn.edu.huit.finance.core.Exception.CategoryNameTakenException;
+import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
@@ -297,6 +298,25 @@ class CategoryServiceTest {
         Category created = service.createCategory(Normalizer.normalize("Học phí", Normalizer.Form.NFD), "EXPENSE");
 
         assertEquals(Normalizer.normalize("Học phí", Normalizer.Form.NFC), created.getName());
+    }
+
+    @Test
+    void listFor_givesTheDefaultAndTheCallersCategoriesAsTheDtoTheAppAlreadyParses() {
+        when(categoryRepository.findVisibleTo(ALICE_ID)).thenReturn(List.of(category(1L, "Ăn uống"), category(2L, "Cafe sáng")));
+
+        List<CategoryResponseDto> listed = service.listFor(alice);
+
+        assertEquals(List.of(1L, 2L), listed.stream().map(CategoryResponseDto::getId).toList());
+        assertEquals(List.of("Ăn uống", "Cafe sáng"), listed.stream().map(CategoryResponseDto::getName).toList());
+        assertEquals(List.of("EXPENSE", "EXPENSE"), listed.stream().map(CategoryResponseDto::getType).toList());
+    }
+
+    @Test
+    void listFor_readsOnly() throws NoSuchMethodException {
+        Transactional transactional = CategoryService.class.getMethod("listFor", User.class).getAnnotation(Transactional.class);
+
+        assertNotNull(transactional);
+        assertTrue(transactional.readOnly());
     }
 
     @Test

@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
@@ -73,9 +74,8 @@ class CategoryOwnershipTest {
         return categoryRepository.findAll().stream().filter(c -> c.getName().equalsIgnoreCase(name)).count();
     }
 
-    /** What GET /api/categories lists for the user. */
-    private List<String> visibleTo(User user) {
-        return categoryRepository.findVisibleTo(user.getId()).stream().map(Category::getName).toList();
+    private static List<String> namesOf(List<CategoryResponseDto> categories) {
+        return categories.stream().map(CategoryResponseDto::getName).toList();
     }
 
     // -------------------------------------------------------------------------------------- the same name twice
@@ -105,13 +105,24 @@ class CategoryOwnershipTest {
     // -------------------------------------------------------------------------------------------- who sees what
 
     @Test
-    void aUserSeesTheDefaultCategoriesAndTheirOwn_neverAnotherUsers() {
+    void listForGivesTheDefaultCategoriesAndTheCallersOwn_neverAnotherUsers() {
         sharedCategory("Ăn uống", EXPENSE);
         typed(alice, CAFE);
         typed(bob, "Phở tối");
 
-        assertEquals(List.of("Ăn uống", CAFE), visibleTo(alice));
-        assertEquals(List.of("Ăn uống", "Phở tối"), visibleTo(bob));
+        assertEquals(List.of("Ăn uống", CAFE), namesOf(service.listFor(alice)));
+        assertEquals(List.of("Ăn uống", "Phở tối"), namesOf(service.listFor(bob)));
+    }
+
+    @Test
+    void listForKeepsTheShapeTheAppParses_idNameAndType() {
+        Category food = sharedCategory("Ăn uống", EXPENSE);
+
+        CategoryResponseDto dto = service.listFor(alice).get(0);
+
+        assertEquals(food.getId(), dto.getId());
+        assertEquals("Ăn uống", dto.getName());
+        assertEquals(EXPENSE, dto.getType());
     }
 
     @Test
@@ -144,7 +155,7 @@ class CategoryOwnershipTest {
         assertNull(fromAlice.getOwner(), "a default category belongs to nobody");
         assertEquals(fromAlice.getId(), fromBob.getId());
         assertEquals(1, countNamed("Ăn uống"));
-        assertEquals(List.of("Ăn uống"), visibleTo(bob));
+        assertEquals(List.of("Ăn uống"), namesOf(service.listFor(bob)));
     }
 
     @Test
@@ -191,8 +202,8 @@ class CategoryOwnershipTest {
 
         service.createCategory("Học phí", EXPENSE);
 
-        assertEquals(List.of("Học phí"), visibleTo(alice));
-        assertEquals(List.of("Học phí"), visibleTo(bob));
+        assertEquals(List.of("Học phí"), namesOf(service.listFor(alice)));
+        assertEquals(List.of("Học phí"), namesOf(service.listFor(bob)));
         assertNull(categoryRepository.findAll().get(0).getOwner());
     }
 }

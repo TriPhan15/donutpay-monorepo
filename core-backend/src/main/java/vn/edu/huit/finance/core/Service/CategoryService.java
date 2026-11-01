@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
@@ -65,6 +66,12 @@ public class CategoryService {
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+
+    /** The default categories and those of the user, as the app lists them. */
+    @Transactional(readOnly = true)
+    public List<CategoryResponseDto> listFor(User caller) {
+        return categoryRepository.findVisibleTo(caller.getId()).stream().map(CategoryResponseDto::from).toList();
+    }
 
     /** Thêm một danh mục mặc định (không có chủ); tên trùng tên danh mục mặc định (Tiết kiệm, Ăn uống...) bị từ chối. */
     @Transactional
