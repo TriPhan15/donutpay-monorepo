@@ -437,22 +437,21 @@ class RemoteApiHelper {
     return Map<String, dynamic>.from(res.data['data'] ?? {});
   }
 
+  /// The categories of the signed-in user (GET /api/categories). A failure is thrown, never answered with an empty
+  /// list: an empty list is a real answer, and a caller that took a failure for it would wipe what it has cached.
+  /// Throws [DioException] when the request fails and [FormatException] when the answer has an unknown shape.
   Future<List<Map<String, dynamic>>> fetchCategories() async {
-    try {
-      final response = await _dio.get('/api/categories');
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        } else if (data is Map && data.containsKey('data')) {
-          return List<Map<String, dynamic>>.from(data['data'] ?? []);
-        }
+    final response = await _dio.get('/api/categories');
+    final data = response.data;
+    if (response.statusCode == 200) {
+      if (data is List) return List<Map<String, dynamic>>.from(data);
+      if (data is Map && data.containsKey('data')) {
+        return List<Map<String, dynamic>>.from(data['data'] ?? []);
       }
-    } catch (e) {
-      debugPrint('Lỗi tải danh mục từ Backend bằng Dio: $e');
     }
-    return [];
+    throw FormatException(
+      'GET /api/categories: unexpected answer (${response.statusCode}).',
+    );
   }
 
   Future<List<TransactionModel>> fetchTransactions() async {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
 import '../helpers/captured_logs.dart';
@@ -329,5 +330,41 @@ void main() {
 
       await expectSignedInAs(7, 'access-1', 'refresh-1');
     });
+  });
+
+  group('clearSession', () {
+    test(
+      'empties the cached categories, which belong to the user who signed out',
+      () async {
+        await startWith({});
+        TransactionCategories.expenseSelectable = ['Nuôi mèo'];
+        TransactionCategories.incomeSelectable = ['Lương'];
+        TransactionCategories.selectable = ['Nuôi mèo', 'Lương'];
+
+        await SessionService.clearSession();
+
+        expect(TransactionCategories.forType(isExpense: true), isEmpty);
+        expect(TransactionCategories.forType(isExpense: false), isEmpty);
+        expect(TransactionCategories.selectable, isEmpty);
+      },
+    );
+
+    test(
+      'a session that is not remembered ends at the cold start with an empty cache',
+      () async {
+        TransactionCategories.expenseSelectable = ['Nuôi mèo'];
+
+        await startWith({
+          _sessionKey: jsonEncode({
+            'userId': 7,
+            'token': 'access',
+            'refreshToken': 'refresh',
+            'remember': false,
+          }),
+        });
+
+        expect(TransactionCategories.forType(isExpense: true), isEmpty);
+      },
+    );
   });
 }

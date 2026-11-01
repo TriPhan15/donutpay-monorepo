@@ -300,6 +300,23 @@ void main() {
     });
   });
 
+  testWidgets(
+    'a server that cannot list the categories is reported in the form instead of passing for an empty list',
+    (tester) async {
+      serveBudgets([]);
+      backend.on(
+        'GET',
+        '/api/categories',
+        (_) => jsonResponse(500, {'code': 500, 'message': 'Lỗi hệ thống'}),
+      );
+
+      await pumpScreen(tester);
+      await tap(tester, find.byKey(BudgetScreen.addKey));
+
+      expect(find.text('Không tải được danh mục'), findsOneWidget);
+    },
+  );
+
   group('deleting', () {
     Future<void> swipe(WidgetTester tester) async {
       await tester.drag(find.text('Ăn uống'), const Offset(-600, 0));

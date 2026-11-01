@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -77,24 +78,107 @@ void main() {
   });
 
   group('TransactionCategories.loadFromApi', () {
-    test('the savings category cannot be picked for a manual expense', () async {
-      final backend = FakeBackend();
+    final backend = FakeBackend();
+
+    setUpAll(() {
       RemoteApiHelper.instance.init(httpClientAdapter: backend);
-      backend.on(
-        'GET',
-        '/api/categories',
-        (_) => okResponse([
-          {'id': 1, 'name': 'Ăn uống', 'type': 'EXPENSE'},
-          {'id': 2, 'name': 'Tiết kiệm', 'type': 'EXPENSE'},
-          {'id': 3, 'name': 'Lương', 'type': 'INCOME'},
-        ]),
+    });
+
+    setUp(backend.reset);
+
+    test(
+      'the savings category cannot be picked for a manual expense',
+      () async {
+        backend.on(
+          'GET',
+          '/api/categories',
+          (_) => okResponse([
+            {'id': 1, 'name': 'Ăn uống', 'type': 'EXPENSE'},
+            {'id': 2, 'name': 'Tiết kiệm', 'type': 'EXPENSE'},
+            {'id': 3, 'name': 'Lương', 'type': 'INCOME'},
+          ]),
+        );
+
+        await TransactionCategories.loadFromApi();
+
+        expect(TransactionCategories.forType(isExpense: true), ['Ăn uống']);
+        expect(TransactionCategories.forType(isExpense: false), ['Lương']);
+        expect(TransactionCategories.isSavings(' Tiết kiệm '), isTrue);
+      },
+    );
+
+    group('with categories already cached', () {
+      setUp(() async {
+        backend.reset();
+        backend.on(
+          'GET',
+          '/api/categories',
+          (_) => okResponse([
+            {'id': 1, 'name': 'Ăn uống', 'type': 'EXPENSE'},
+            {'id': 2, 'name': 'Nuôi mèo', 'type': 'EXPENSE'},
+            {'id': 3, 'name': 'Lương', 'type': 'INCOME'},
+          ]),
+        );
+        await TransactionCategories.loadFromApi();
+      });
+
+      tearDown(TransactionCategories.clear);
+
+      test('a failed load leaves the cached categories as they were', () async {
+        for (final failure in <ResponseBody Function(RequestOptions)>[
+          (_) => jsonResponse(500, {'code': 500, 'message': 'Lỗi hệ thống'}),
+          (_) => jsonResponse(200, {'unexpected': 'shape'}),
+          (options) => throw DioException.connectionError(
+            requestOptions: options,
+            reason: 'no network',
+          ),
+        ]) {
+          backend.on('GET', '/api/categories', failure);
+
+          await TransactionCategories.loadFromApi();
+
+          expect(TransactionCategories.forType(isExpense: true), [
+            'Ăn uống',
+            'Nuôi mèo',
+          ]);
+          expect(TransactionCategories.forType(isExpense: false), ['Lương']);
+          expect(TransactionCategories.selectable, [
+            'Ăn uống',
+            'Nuôi mèo',
+            'Lương',
+          ]);
+        }
+      });
+
+      test('a successful load replaces them', () async {
+        backend.on(
+          'GET',
+          '/api/categories',
+          (_) => okResponse([
+            {'id': 1, 'name': 'Ăn uống', 'type': 'EXPENSE'},
+            {'id': 4, 'name': 'Thưởng', 'type': 'INCOME'},
+          ]),
+        );
+
+        await TransactionCategories.loadFromApi();
+
+        expect(TransactionCategories.forType(isExpense: true), ['Ăn uống']);
+        expect(TransactionCategories.forType(isExpense: false), ['Thưởng']);
+      });
+
+      test(
+        'clear() empties the cache, and a list read earlier is not touched',
+        () {
+          final readBefore = TransactionCategories.forType(isExpense: true);
+
+          TransactionCategories.clear();
+
+          expect(TransactionCategories.forType(isExpense: true), isEmpty);
+          expect(TransactionCategories.forType(isExpense: false), isEmpty);
+          expect(TransactionCategories.selectable, isEmpty);
+          expect(readBefore, ['Ăn uống', 'Nuôi mèo']);
+        },
       );
-
-      await TransactionCategories.loadFromApi();
-
-      expect(TransactionCategories.forType(isExpense: true), ['Ăn uống']);
-      expect(TransactionCategories.forType(isExpense: false), ['Lương']);
-      expect(TransactionCategories.isSavings(' Tiết kiệm '), isTrue);
     });
   });
 }

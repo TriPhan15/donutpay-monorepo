@@ -80,30 +80,40 @@ class TransactionCategories {
   static List<String> incomeSelectable = [];
   static List<String> selectable = [];
 
+  /// Loads the categories of the signed-in user. The cache is replaced only once the server has answered: when the
+  /// request fails it keeps what it holds, so a flaky network never empties the forms and the category grid.
   static Future<void> loadFromApi() async {
+    final List<Map<String, dynamic>> cats;
     try {
-      final cats = await RemoteApiHelper.instance.fetchCategories();
-      expenseSelectable.clear();
-      incomeSelectable.clear();
-
-      for (var c in cats) {
-        final name = c['name'].toString();
-        final type = c['type'].toString();
-        if (type == 'EXPENSE') {
-          // Contributions are recorded only through a savings goal, never picked by hand.
-          if (!isSavings(name)) expenseSelectable.add(name);
-        } else {
-          incomeSelectable.add(name);
-        }
-      }
-
-      selectable = _uniquePreserveOrder([
-        ...expenseSelectable,
-        ...incomeSelectable,
-      ]);
+      cats = await RemoteApiHelper.instance.fetchCategories();
     } catch (e) {
-      debugPrint("Lỗi nạp danh mục TransactionCategories: $e");
+      debugPrint('Lỗi tải danh mục, giữ danh mục đang có: $e');
+      return;
     }
+
+    final expense = <String>[];
+    final income = <String>[];
+    for (final c in cats) {
+      final name = c['name'].toString();
+      final type = c['type'].toString();
+      if (type == 'EXPENSE') {
+        // Contributions are recorded only through a savings goal, never picked by hand.
+        if (!isSavings(name)) expense.add(name);
+      } else {
+        income.add(name);
+      }
+    }
+    expenseSelectable = expense;
+    incomeSelectable = income;
+    selectable = _uniquePreserveOrder([...expense, ...income]);
+  }
+
+  /// Forgets the cached categories. They are the ones of the signed-in user, so they go when the session ends
+  /// (SessionService.clearSession); the screens that need them load them again.
+  static void clear() {
+    expenseSelectable = [];
+    incomeSelectable = [];
+    selectable = [];
   }
 
   static List<String> forType({required bool isExpense}) {
