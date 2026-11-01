@@ -112,6 +112,10 @@ public enum AuditAction {
     // -------------------------------------------------------------------------------------------- system operations
     SYSTEM_BACKUP_CREATED(SYSTEM, null, SUCCESS, "Sao lưu cơ sở dữ liệu", "CREATE_BACKUP"),
     SYSTEM_DATABASE_RESTORED(SYSTEM, null, SUCCESS, "Phục hồi cơ sở dữ liệu", "RESTORE_DB"),
+    /** The daily backup was dumped, checksummed, read back with pg_restore --list and copied to MongoDB. */
+    SYSTEM_BACKUP_VERIFIED(SYSTEM, null, SUCCESS, "Sao lưu tự động đã kiểm tra"),
+    /** A step of the daily backup failed; the administrators are mailed. */
+    SYSTEM_BACKUP_SCHEDULED_FAILED(SYSTEM, null, FAILURE, "Sao lưu tự động thất bại"),
     MONGO_BACKUP_CREATED(SYSTEM, null, SUCCESS, "Sao lưu MongoDB"),
     MONGO_RESTORED(SYSTEM, null, SUCCESS, "Phục hồi MongoDB"),
     SYSTEM_SEGMENTATION_RUN(SYSTEM, null, SUCCESS, "Phân lớp khách hàng (AI)", "AI_SEGMENT"),

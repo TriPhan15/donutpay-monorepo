@@ -17,6 +17,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByWalletBalanceLessThan(BigDecimal amount);
 
     Optional<User> findByEmail(String email);
+
+    /** Tài khoản còn hoạt động của một vai trò (đã chuẩn hóa, ví dụ Roles.ADMIN): người nhận mail cảnh báo sao lưu hỏng. */
+    List<User> findByRoleAndActiveTrue(String role);
     Optional<User> findByUsername(String username);
 
     /**
