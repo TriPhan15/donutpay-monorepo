@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
@@ -13,6 +14,7 @@ import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
 import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
+import 'package:finance_ai_app/widgets/receipt/receipt_detail_sheet.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_image_viewer.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
@@ -51,6 +53,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   /// True while an action runs: a second tap cannot start a second send or delete.
   bool _busy = false;
+
+  /// What the receipt sheet last reported. The page has no way to reload [_tx], so this stands in for its
+  /// `receiptStatus` (the record tells "reported no status" from "reported nothing yet").
+  ({ReceiptStatus? status})? _reportedReceipt;
+
+  ReceiptStatus? get _receiptStatus =>
+      _reportedReceipt == null ? _tx.receiptStatus : _reportedReceipt!.status;
+
+  /// True while the receipt sheet is open: a second tap on the row cannot open a second one.
+  bool _receiptSheetOpen = false;
 
   @override
   void initState() {
@@ -195,6 +207,24 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     _close();
   }
 
+  /// Only a transaction the server has can have its receipt opened: the receipt is found by the id of the transaction.
+  bool get _canOpenReceipt => _tx.id != null && !_tx.isUnsynced;
+
+  Future<void> _openReceipt() async {
+    if (_receiptSheetOpen) return;
+    _receiptSheetOpen = true;
+    await showReceiptDetailSheet(
+      context,
+      transactionId: _tx.id!,
+      onReceipt: (receipt) {
+        if (mounted) {
+          setState(() => _reportedReceipt = (status: receipt.listStatus));
+        }
+      },
+    );
+    _receiptSheetOpen = false;
+  }
+
   void _openPhoto(String url) {
     Navigator.push(
       context,
@@ -278,10 +308,22 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           style: valueStyle,
         ),
       ),
-      if (_tx.receiptStatus != null)
+      if (_receiptStatus != null)
         _DetailRow(
           label: loc.transactionDetailReceipt,
-          value: ReceiptStatusBadge(status: _tx.receiptStatus!),
+          value: _canOpenReceipt
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ReceiptStatusBadge(status: _receiptStatus!),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ],
+                )
+              : ReceiptStatusBadge(status: _receiptStatus!),
+          onTap: _canOpenReceipt ? _openReceipt : null,
         ),
       if (_tx.isUnsynced) _syncRow(context),
     ];
@@ -444,14 +486,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 /// One label / value line of the detail card. A Wrap, not a Row: with a narrow screen or a large font the value drops
 /// to its own line instead of overflowing.
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({required this.label, required this.value, this.onTap});
 
   final String label;
   final Widget value;
 
+  /// Makes the whole row a button; null leaves it as plain text.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: SizedBox(
         width: double.infinity,
@@ -473,5 +518,6 @@ class _DetailRow extends StatelessWidget {
         ),
       ),
     );
+    return onTap == null ? row : InkWell(onTap: onTap, child: row);
   }
 }
