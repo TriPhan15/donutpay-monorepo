@@ -1,6 +1,5 @@
 package vn.edu.huit.finance.core.Controller;
 
-import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.envers.AuditReader;
 import org.hibernate.envers.AuditReaderFactory;
@@ -8,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +19,7 @@ import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import vn.edu.huit.finance.core.Dto.AdminDashboardSummaryDto;
+import vn.edu.huit.finance.core.Dto.AdminUserResponseDto;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.AuditLogFilterRequestDto;
 import vn.edu.huit.finance.core.Dto.MonthlyTransactionCountDto;
@@ -31,7 +30,6 @@ import vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto;
 import vn.edu.huit.finance.core.Dto.UserCreateDto;
 import vn.edu.huit.finance.core.Dto.UserUpdateDto;
 import vn.edu.huit.finance.core.Entity.*;
-import vn.edu.huit.finance.core.Repository.*;
 import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.AdminStatisticsService;
 import vn.edu.huit.finance.core.Service.AppReviewService;
@@ -48,8 +46,6 @@ import vn.edu.huit.finance.core.Service.TransactionService;
 import vn.edu.huit.finance.core.Service.UserDeletionOutcome;
 import vn.edu.huit.finance.core.Service.UserService;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.List;
@@ -70,6 +66,7 @@ public class AdminController {
     private static final int DEFAULT_PAGE_SIZE = 10;
     static final int MAX_PAGE_SIZE = 100;
     private static final int TOP_SPENDERS_LIMIT = 5;
+    private static final int SEGMENTED_USERS_LIMIT = 10;
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
     private static final String MSG_USER_DELETED = "Đã xóa vĩnh viễn tài khoản";
@@ -85,24 +82,17 @@ public class AdminController {
     private static final String MSG_RESTORE_SUCCESS = "Đã phục hồi từ bản sao lưu FULL mới nhất!";
     private static final String MSG_RESTORE_FAILED = "Lỗi phục hồi! Không tìm thấy bản sao lưu FULL hoặc pg_restore lỗi.";
 
-    @Autowired private UserRepository userRepo;
     @Autowired private CustomerSegmentationService customerSegmentationService;
     @Autowired private AdminStatisticsService adminStatisticsService;
     @Autowired private ReceiptProcessingService receiptProcessingService;
-    @Autowired private CategoryRepository categoryRepo;
-    @Autowired private CampaignRepository campaignRepo;
-    @Autowired private ReceiptRepository receiptRepo;
     @Autowired private BackupService backupService;
     @Autowired private UserService userService;
     @Autowired private TransactionService transactionService;
-    @Autowired private EntityManager entityManager;
-    @Autowired private SubscriptionPlanRepository subscriptionPlanRepository;
     @Autowired private SubscriptionPlanService subscriptionPlanService;
     @Autowired private CategoryService categoryService;
     @Autowired private AppReviewService appReviewService;
     @Autowired private AuditLogQueryService auditLogQueryService;
     @Autowired private LoginAttemptService loginAttemptService;
-    @Autowired private AppReviewRepository appReviewRepository;
     @Autowired private ApplicationEventPublisher eventPublisher;
     @Autowired private SpendingLeaderboardService leaderboardService;
     /**
@@ -117,7 +107,7 @@ public class AdminController {
         AdminDashboardSummaryDto summary = adminStatisticsService.getDashboardSummary(
                 currentMonth, TransactionService.LOW_BALANCE_THRESHOLD);
 
-        model.addAttribute("totalVolume", formatCurrencyWithoutDecimal(summary.getTotalVolume()));
+        model.addAttribute("totalVolume", summary.wholeTotalVolume());
         model.addAttribute("totalUsers", summary.getTotalUsers());
         model.addAttribute("lowBalanceUsers", summary.getLowBalanceUsers());
         model.addAttribute("totalTransactionsThisMonth", summary.getTransactionsInPeriod());
@@ -135,13 +125,7 @@ public class AdminController {
         List<Long> aiData = new java.util.ArrayList<>();
 
         for (ReceiptStatusCountDto receiptStatus : summary.getReceiptStatuses()) {
-            String status = receiptStatus.getStatus();
-
-            if ("SUCCESS".equals(status)) status = "Thành công";
-            else if ("FAILED".equals(status)) status = "Lỗi AI";
-            else status = "Đang xử lý";
-
-            aiLabels.add(status);
+            aiLabels.add(ReceiptStatus.dashboardLabelOf(receiptStatus.getStatus()));
             aiData.add(receiptStatus.getCount());
         }
 
@@ -152,7 +136,7 @@ public class AdminController {
         model.addAttribute("segmentData", List.copyOf(segmentCounts.values()));
         model.addAttribute("segmentDisplayNames", Arrays.stream(CustomerSegment.values())
                 .collect(Collectors.toMap(CustomerSegment::name, CustomerSegment::getDisplayName)));
-        Page<User> segmentedUsers = userRepo.findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "id")));
+        Page<User> segmentedUsers = userService.listNewestFirst(PageRequest.of(0, SEGMENTED_USERS_LIMIT));
         model.addAttribute("segmentedUsers", segmentedUsers.getContent());
         return "admin/dashboard";
     }
@@ -166,8 +150,7 @@ public class AdminController {
 
     @GetMapping("/categories")
     public String showCategories(Model model) {
-        List<Category> categories = categoryRepo.findAll();
-        model.addAttribute("categories", categories);
+        model.addAttribute("categories", categoryService.listAll());
         return "admin/categories";
     }
 
@@ -177,7 +160,7 @@ public class AdminController {
             @RequestParam(defaultValue = "10") int size,
             Model model) {
         // Trang hóa đơn chỉ còn danh sách hóa đơn (Duyệt / Từ chối); quản lý tài khoản nằm ở /admin/users.
-        Page<Receipt> receiptsPage = receiptRepo.findAllByOrderByCreatedAtDesc(
+        Page<Receipt> receiptsPage = receiptProcessingService.listNewestFirst(
                 PageRequest.of(Math.max(receiptPage, 0), normalizePageSize(size)));
         model.addAttribute("receipts", receiptsPage.getContent());
         model.addAttribute("receiptsPage", receiptsPage);
@@ -190,7 +173,7 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int userPage,
             @RequestParam(defaultValue = "10") int size,
             Model model) {
-        Page<User> usersPage = userRepo.findAll(PageRequest.of(Math.max(userPage, 0), normalizePageSize(size), Sort.by(Sort.Direction.DESC, "id")));
+        Page<User> usersPage = userService.listNewestFirst(PageRequest.of(Math.max(userPage, 0), normalizePageSize(size)));
         model.addAttribute("users", usersPage.getContent());
         model.addAttribute("usersPage", usersPage);
         model.addAttribute("pageSize", normalizePageSize(size));
@@ -218,8 +201,7 @@ public class AdminController {
 
     @GetMapping("/subscriptions")
     public String viewSubscriptions(Model model) {
-        List<SubscriptionPlan> plans = subscriptionPlanRepository.findAll();
-        model.addAttribute("plans", plans);
+        model.addAttribute("plans", subscriptionPlanService.listAll());
         return "admin/subscriptions";
     }
     @PostMapping("/subscriptions/add")
@@ -236,29 +218,29 @@ public class AdminController {
     @PostMapping("/ajax/users")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> createUserAjax(@Valid @RequestBody UserCreateDto dto) {
+    public ResponseEntity<ApiResponse<AdminUserResponseDto>> createUserAjax(@Valid @RequestBody UserCreateDto dto) {
         // Recorded by UserService (USER_CREATED, by the caller) in the transaction of the creation. A refusal (bad role,
         // duplicate email...) is answered by GlobalExceptionHandler, never with the raw exception message.
         User user = userService.createUser(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<Map<String, Object>>builder()
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.<AdminUserResponseDto>builder()
                 .code(201)
                 .message("Tạo tài khoản thành công")
-                .data(toUserResponse(user))
+                .data(AdminUserResponseDto.from(user))
                 .build());
     }
 
     @PutMapping("/ajax/users/{id}")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateUserAjax(
+    public ResponseEntity<ApiResponse<AdminUserResponseDto>> updateUserAjax(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateDto dto) {
         // Recorded by UserService (USER_UPDATED, and USER_ROLE_CHANGED for a new role) in the transaction of the update.
         User user = userService.updateUser(id, dto);
-        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
+        return ResponseEntity.ok(ApiResponse.<AdminUserResponseDto>builder()
                 .code(200)
                 .message("Cập nhật thông tin thành công")
-                .data(toUserResponse(user))
+                .data(AdminUserResponseDto.from(user))
                 .build());
     }
 
@@ -399,21 +381,6 @@ public class AdminController {
         return size > 0 ? Math.min(size, MAX_PAGE_SIZE) : DEFAULT_PAGE_SIZE;
     }
 
-    private String formatCurrencyWithoutDecimal(BigDecimal amount) {
-        BigDecimal safeAmount = amount != null ? amount : BigDecimal.ZERO;
-        return safeAmount.setScale(0, RoundingMode.DOWN).toPlainString();
-    }
-
-    private Map<String, Object> toUserResponse(User user) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", user.getId());
-        response.put("username", user.getUsername());
-        response.put("email", user.getEmail());
-        response.put("role", user.getRole());
-        response.put("isActive", user.isActive());
-        return response;
-    }
-
     @PostMapping("/ajax/categories")
     @ResponseBody
     @PreAuthorize("hasRole('ADMIN')")
@@ -457,8 +424,7 @@ public class AdminController {
 
     @GetMapping("/reviews")
     public String showReviews(Model model) {
-        List<AppReview> reviews = appReviewRepository.findAllByOrderByCreatedAtDesc();
-        model.addAttribute("reviews", reviews);
+        model.addAttribute("reviews", appReviewService.listNewestFirst());
         return "admin/reviews";
     }
 

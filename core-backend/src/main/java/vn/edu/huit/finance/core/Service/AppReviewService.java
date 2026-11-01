@@ -15,6 +15,8 @@ import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
 import vn.edu.huit.finance.core.Exception.AppReviewNotFoundException;
 
+import java.util.List;
+
 /**
  * Reviews users leave about the app. A user submits one as the caller of the request (resolved from the JWT, never from
  * the body); moderation is for administrators only (the caller checks that), and each decision and its audit row,
@@ -38,6 +40,12 @@ public class AppReviewService {
 
     @Autowired
     private CurrentUserProvider currentUserProvider;
+
+    /** For the admin page: every review, the newest first. */
+    @Transactional(readOnly = true)
+    public List<AppReview> listNewestFirst() {
+        return appReviewRepository.findAllByOrderByCreatedAtDesc();
+    }
 
     /** Saves a review by the caller, waiting for moderation. Throws UserNotFoundException (404) without a known caller. */
     @Transactional

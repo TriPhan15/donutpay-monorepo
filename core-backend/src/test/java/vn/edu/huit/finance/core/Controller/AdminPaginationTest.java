@@ -103,7 +103,7 @@ class AdminPaginationTest {
 
     @Test
     void usersPageOne_asksTheRepositoryForTheSecondPage_andLinksToTheOtherPages() throws Exception {
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(usersPage(1, PAGE_SIZE, TOTAL_ROWS));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(usersPage(1, PAGE_SIZE, TOTAL_ROWS));
 
         mockMvc.perform(get("/admin/users").param("userPage", "1"))
                 .andExpect(status().isOk())
@@ -115,14 +115,14 @@ class AdminPaginationTest {
                         containsString("href=\"/admin/users?userPage=2&amp;size=10\""))));
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(userRepo).findAll(pageable.capture());
+        verify(userService).listNewestFirst(pageable.capture());
         assertEquals(1, pageable.getValue().getPageNumber());
         assertEquals(PAGE_SIZE, pageable.getValue().getPageSize());
     }
 
     @Test
     void receiptsPageOne_keepsTheSizeInTheLinks() throws Exception {
-        when(receiptRepo.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(receiptsPage(1, 5, TOTAL_ROWS));
+        when(receiptProcessingService.listNewestFirst(any(Pageable.class))).thenReturn(receiptsPage(1, 5, TOTAL_ROWS));
 
         mockMvc.perform(get("/admin/receipts").param("receiptPage", "1").param("size", "5"))
                 .andExpect(status().isOk())
@@ -134,14 +134,14 @@ class AdminPaginationTest {
                         containsString("href=\"/admin/receipts?receiptPage=4&amp;size=5\""))));
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(receiptRepo).findAllByOrderByCreatedAtDesc(pageable.capture());
+        verify(receiptProcessingService).listNewestFirst(pageable.capture());
         assertEquals(1, pageable.getValue().getPageNumber());
         assertEquals(5, pageable.getValue().getPageSize());
     }
 
     @Test
     void theFirstPageHasNoPreviousLink() throws Exception {
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(usersPage(0, PAGE_SIZE, TOTAL_ROWS));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(usersPage(0, PAGE_SIZE, TOTAL_ROWS));
 
         mockMvc.perform(get("/admin/users"))
                 .andExpect(status().isOk())
@@ -154,7 +154,7 @@ class AdminPaginationTest {
 
     @Test
     void theLastPageHasNoNextLink() throws Exception {
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(usersPage(2, PAGE_SIZE, TOTAL_ROWS));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(usersPage(2, PAGE_SIZE, TOTAL_ROWS));
 
         mockMvc.perform(get("/admin/users").param("userPage", "2"))
                 .andExpect(status().isOk())
@@ -167,7 +167,7 @@ class AdminPaginationTest {
 
     @Test
     void withManyPages_onlyAWindowAroundTheCurrentPageIsListed_plusTheFirstAndLast() throws Exception {
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(usersPage(10, PAGE_SIZE, 200));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(usersPage(10, PAGE_SIZE, 200));
 
         mockMvc.perform(get("/admin/users").param("userPage", "10"))
                 .andExpect(status().isOk())
@@ -183,8 +183,8 @@ class AdminPaginationTest {
 
     @Test
     void aSinglePageShowsNoPaginationBar() throws Exception {
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(usersPage(0, PAGE_SIZE, 3));
-        when(receiptRepo.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(receiptsPage(0, PAGE_SIZE, 3));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(usersPage(0, PAGE_SIZE, 3));
+        when(receiptProcessingService.listNewestFirst(any(Pageable.class))).thenReturn(receiptsPage(0, PAGE_SIZE, 3));
 
         mockMvc.perform(get("/admin/users"))
                 .andExpect(status().isOk())
@@ -196,12 +196,12 @@ class AdminPaginationTest {
 
     @Test
     void aNegativePageNumberIsTreatedAsTheFirstPage() throws Exception {
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(usersPage(0, PAGE_SIZE, TOTAL_ROWS));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(usersPage(0, PAGE_SIZE, TOTAL_ROWS));
 
         mockMvc.perform(get("/admin/users").param("userPage", "-4")).andExpect(status().isOk());
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(userRepo).findAll(pageable.capture());
+        verify(userService).listNewestFirst(pageable.capture());
         assertEquals(0, pageable.getValue().getPageNumber());
     }
 }

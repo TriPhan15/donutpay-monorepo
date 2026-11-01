@@ -92,7 +92,7 @@ class AdminControllerCharacterizationTest {
         when(adminStatisticsService.getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD)).thenReturn(summary);
         when(leaderboardService.topSpenders(now, 5)).thenReturn(List.of());
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(new EnumMap<>(CustomerSegment.class));
     }
 
@@ -192,7 +192,7 @@ class AdminControllerCharacterizationTest {
 
     @Test
     void theReviewsPageListsTheReviewsNewestFirstAsGiven() throws Exception {
-        when(appReviewRepository.findAllByOrderByCreatedAtDesc())
+        when(appReviewService.listNewestFirst())
                 .thenReturn(List.of(review(2L, "Rất tiện"), review(1L, "Dùng ổn")));
 
         mockMvc.perform(get("/admin/reviews"))

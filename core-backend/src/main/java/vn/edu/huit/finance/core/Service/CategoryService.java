@@ -59,6 +59,12 @@ public class CategoryService {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    /** Mọi danh mục, cho trang quản trị. */
+    @Transactional(readOnly = true)
+    public List<Category> listAll() {
+        return categoryRepository.findAll();
+    }
+
     /** Thêm một danh mục; tên trùng tên danh mục mặc định (Tiết kiệm, Ăn uống...) bị từ chối. */
     @Transactional
     public Category createCategory(String name, String type) {
