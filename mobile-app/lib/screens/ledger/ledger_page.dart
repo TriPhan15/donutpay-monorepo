@@ -119,6 +119,7 @@ class LedgerPageState extends State<LedgerPage> {
         _isLoading = false;
         _transactions = [];
         _budgets = [];
+        _refreshPeriod();
       });
       return;
     }
@@ -142,6 +143,7 @@ class LedgerPageState extends State<LedgerPage> {
       _transactionsFailed = transactionsFailed;
       _transactions = txs;
       _budgets = budgets ?? [];
+      _refreshPeriod();
     });
     _openPendingTransaction();
     if (budgets != null) {
@@ -187,7 +189,10 @@ class LedgerPageState extends State<LedgerPage> {
       AppToast.info(context, context.loc.notificationsTransactionNotFound);
       return;
     }
-    setState(() => _selectedDate = tx.date);
+    setState(() {
+      _selectedDate = tx.date;
+      _refreshPeriod();
+    });
     unawaited(_openDetails(tx));
   }
 
@@ -235,9 +240,21 @@ class LedgerPageState extends State<LedgerPage> {
   String _monthLabel(AppLocalizations loc) =>
       DateFormat('MMMM yyyy', loc.localeName).format(_selectedDate);
 
-  /// Every transaction of the period on screen: what the totals, the chart, the calendar and the categories measure.
-  List<TransactionModel> get _periodAll =>
-      _transactions.where((tx) => _inSelectedPeriod(tx.date)).toList();
+  /// Every transaction of the period on screen: what the totals, the calendar and the categories measure. Kept by
+  /// [_refreshPeriod], not worked out again on every build.
+  List<TransactionModel> _periodAll = [];
+
+  /// The income and the spending of [_periodAll].
+  DayTotals _periodTotals = const DayTotals(income: 0, expense: 0);
+
+  /// Works out [_periodAll] and [_periodTotals] again. To be called, inside setState, by everything that changes
+  /// [_transactions], [_period] or [_selectedDate].
+  void _refreshPeriod() {
+    _periodAll = _transactions
+        .where((tx) => _inSelectedPeriod(tx.date))
+        .toList();
+    _periodTotals = LedgerStats.totals(_periodAll);
+  }
 
   /// The transactions of the period that match the search box; the filter is applied on top of them.
   List<TransactionModel> get _searchMatches {
@@ -287,14 +304,6 @@ class LedgerPageState extends State<LedgerPage> {
     });
   }
 
-  double get _periodIncome => _periodAll
-      .where((tx) => !tx.isExpense)
-      .fold(0.0, (s, tx) => s + tx.amount);
-
-  double get _periodExpense => _periodAll
-      .where((tx) => tx.countsAsSpending)
-      .fold(0.0, (s, tx) => s + tx.amount);
-
   void _shiftPeriod(int dir) {
     _showPeriodOf(switch (_period) {
       LedgerPeriod.week => _selectedDate.add(Duration(days: 7 * dir)),
@@ -312,7 +321,10 @@ class LedgerPageState extends State<LedgerPage> {
   /// Moves the page to the week, month or year (whichever is on screen) that contains [day].
   void _showPeriodOf(DateTime day) {
     if (!mounted) return;
-    setState(() => _selectedDate = day);
+    setState(() {
+      _selectedDate = day;
+      _refreshPeriod();
+    });
   }
 
   /// The day the calendar selects in the month of [firstDay]: today in the current month, else the first day.
@@ -330,6 +342,7 @@ class LedgerPageState extends State<LedgerPage> {
       if (period != LedgerPeriod.month && _view == StatsView.calendar) {
         _view = StatsView.chart;
       }
+      _refreshPeriod();
     });
   }
 
@@ -338,7 +351,10 @@ class LedgerPageState extends State<LedgerPage> {
   void _setView(StatsView view) {
     setState(() {
       _view = view;
-      if (view == StatsView.calendar) _period = LedgerPeriod.month;
+      if (view == StatsView.calendar) {
+        _period = LedgerPeriod.month;
+        _refreshPeriod();
+      }
     });
   }
 
@@ -406,8 +422,8 @@ class LedgerPageState extends State<LedgerPage> {
             StatsHeaderBand(
               periodLabel: _periodLabel(loc),
               period: _period,
-              income: _periodIncome,
-              expense: _periodExpense,
+              income: _periodTotals.income,
+              expense: _periodTotals.expense,
               filterActive: _filter.isActive,
               searching: _isSearching,
               searchController: _searchController,

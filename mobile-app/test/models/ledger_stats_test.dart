@@ -156,4 +156,46 @@ void main() {
     expect(groups.first.expense, 97000);
     expect(groups[1].income, 18500000);
   });
+
+  test(
+    'totals: income, spending and savings of a whole list, savings left out of both',
+    () {
+      final totals = LedgerStats.totals([
+        _tx(55000, DateTime(2026, 10, 20, 8)),
+        _tx(42000, DateTime(2026, 10, 3, 7)),
+        _tx(18500000, DateTime(2026, 10, 19, 9), isExpense: false),
+        _tx(300000, DateTime(2026, 9, 1), isExpense: false, category: 'Thưởng'),
+        _tx(
+          1000000,
+          DateTime(2026, 10, 19, 10),
+          category: TransactionCategories.savings,
+        ),
+      ]);
+      expect(totals.income, 18800000);
+      expect(totals.expense, 97000);
+    },
+  );
+
+  test('totals of nothing are zero', () {
+    final totals = LedgerStats.totals(const []);
+    expect(totals.income, 0);
+    expect(totals.expense, 0);
+  });
+
+  test('totals add up what byDay and groupByDay report for each day', () {
+    final txs = [
+      _tx(55000, DateTime(2026, 10, 20, 8)),
+      _tx(18500000, DateTime(2026, 10, 19, 9), isExpense: false),
+      _tx(10000, DateTime(2026, 10, 19, 6)),
+      _tx(
+        70000,
+        DateTime(2026, 10, 18),
+        category: TransactionCategories.savings,
+      ),
+    ];
+    final totals = LedgerStats.totals(txs);
+    final days = LedgerStats.byDay(txs).values;
+    expect(totals.income, days.fold<double>(0, (s, d) => s + d.income));
+    expect(totals.expense, days.fold<double>(0, (s, d) => s + d.expense));
+  });
 }
