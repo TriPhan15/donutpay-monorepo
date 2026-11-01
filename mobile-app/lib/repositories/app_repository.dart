@@ -78,9 +78,6 @@ class AppRepository {
   static final AppRepository instance = AppRepository._();
   AppRepository._();
 
-  /// How the backend labels expense categories in GET /api/categories.
-  static const String _serverExpenseType = 'EXPENSE';
-
   /// 4xx answers that say nothing about the transaction itself (the session ran out, the server timed out or is busy),
   /// so the transaction is kept and can be sent again. Every other 4xx is a refusal of the transaction.
   static const Set<int> _retryableClientErrors = {
@@ -405,7 +402,7 @@ class AppRepository {
     final categories = await RemoteApiHelper.instance.fetchCategories();
     return [
       for (final category in categories)
-        if (category['type'] == _serverExpenseType &&
+        if (category['type'] == TransactionCategories.serverExpenseType &&
             !TransactionCategories.isSavings(category['name'].toString()))
           (
             id: (category['id'] as num).toInt(),
