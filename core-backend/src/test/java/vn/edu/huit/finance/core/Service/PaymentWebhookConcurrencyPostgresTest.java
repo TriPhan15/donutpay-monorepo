@@ -11,8 +11,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -32,6 +34,7 @@ import vn.edu.huit.finance.core.Service.Payment.PaymentGatewayRegistry;
 import vn.edu.huit.finance.core.Util.HmacUtil;
 
 import java.math.BigDecimal;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -41,10 +44,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Cùng một webhook thanh toán được gửi lại hai lần cùng lúc, trên PostgreSQL 15 thật: dịch vụ thật qua proxy
- * @Transactional thật, mỗi lần gọi một thread và một giao dịch riêng. Chỉ một lần được cộng ví. Cách dựng container theo
+ * Cùng một webhook thanh toán được gửi lại hai lần cùng lúc, và webhook gặp lệnh hủy đơn cùng lúc, trên PostgreSQL 15
+ * thật: dịch vụ thật qua proxy @Transactional thật, mỗi lần gọi một thread và một giao dịch riêng. Chỉ một lần được
+ * cộng ví; đơn đã được webhook chốt SUCCESS thì lệnh hủy không ghi đè được. Cách dựng container theo
  * {@link ReceiptConcurrencyPostgresTest}: container riêng, cổng ngẫu nhiên, "create" chứ không "create-drop". Bị bỏ qua
  * khi không có Docker.
  */
@@ -74,6 +80,9 @@ class PaymentWebhookConcurrencyPostgresTest {
     private static final String DEPOSIT_CATEGORY = "Nạp ví điện tử";
     private static final int CALLERS = 2;
     private static final long TIMEOUT_SECONDS = 20;
+    private static final long POLL_MILLIS = 50;
+    private static final String LOCK_WAITERS_SQL = "select count(*) from pg_stat_activity "
+            + "where datname = current_database() and wait_event_type = 'Lock'";
 
     @Container
     private static final GenericContainer<?> POSTGRES = new GenericContainer<>(DockerImageName.parse(IMAGE))
@@ -97,6 +106,7 @@ class PaymentWebhookConcurrencyPostgresTest {
     @Autowired private TransactionRepository transactionRepository;
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private PlatformTransactionManager transactionManager;
     @MockBean private PaymentGatewayRegistry gateways;
     @MockBean private CurrentUserProvider currentUserProvider;
     @MockBean private AuditLogService auditLogService;
@@ -156,6 +166,59 @@ class PaymentWebhookConcurrencyPostgresTest {
     }
 
     @Test
+    void cancelWhileTheWebhookHoldsTheOrder_waitsForIt_andCannotOverwriteSuccess() throws Exception {
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        Future<Map<String, Object>> cancel;
+        try {
+            // The webhook is processed in a transaction that is still open: the order is locked, the wallet credited.
+            cancel = new TransactionTemplate(transactionManager).execute(status -> {
+                paymentService.handleWebhook(signedWebhook());
+                Future<Map<String, Object>> late = pool.submit(() -> paymentService.cancel(ORDER_CODE, userId));
+                awaitDoneOrWaitingOnALock(late);
+                assertFalse(late.isDone(), "the cancel must wait for the lock held by the webhook");
+                return late;
+            });
+            Map<String, Object> answer = cancel.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            assertEquals(PaymentStatus.SUCCESS.name(), answer.get("status"), "the cancel answers with the closed order");
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertEquals(PaymentStatus.SUCCESS, orderRepository.findByOrderCode(ORDER_CODE).orElseThrow().getStatus());
+        BigDecimal wallet = userRepository.findById(userId).orElseThrow().getWalletBalance();
+        assertEquals(0, AMOUNT.compareTo(wallet), "the wallet keeps the deposit, but was " + wallet);
+    }
+
+    @Test
+    void webhookAndCancelInParallel_leaveTheOrderAndTheWalletConsistent() throws Exception {
+        PaymentWebhookDto webhook = signedWebhook();
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(CALLERS);
+        try {
+            Future<Void> hook = pool.submit(() -> {
+                start.await();
+                paymentService.handleWebhook(webhook);
+                return null;
+            });
+            Future<Map<String, Object>> cancel = pool.submit(() -> {
+                start.await();
+                return paymentService.cancel(ORDER_CODE, userId);
+            });
+            start.countDown();
+            hook.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            cancel.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        PaymentStatus status = orderRepository.findByOrderCode(ORDER_CODE).orElseThrow().getStatus();
+        BigDecimal wallet = userRepository.findById(userId).orElseThrow().getWalletBalance();
+        BigDecimal expected = status == PaymentStatus.SUCCESS ? AMOUNT : BigDecimal.ZERO;
+        assertTrue(status == PaymentStatus.SUCCESS || status == PaymentStatus.CANCELLED, "the order is closed: " + status);
+        assertEquals(0, expected.compareTo(wallet), "status " + status + " but the wallet is " + wallet);
+    }
+
+    @Test
     void withdrawWithoutFunds_commitsTheOrderAsFailed_andLeavesTheWalletAlone() {
         BigDecimal balance = new BigDecimal("100000");
         BigDecimal withdrawal = new BigDecimal("500000");
@@ -173,6 +236,22 @@ class PaymentWebhookConcurrencyPostgresTest {
         BigDecimal wallet = userRepository.findById(userId).orElseThrow().getWalletBalance();
         assertEquals(0, balance.compareTo(wallet), "the wallet is untouched, but was " + wallet);
         assertEquals(0, transactionRepository.count());
+    }
+
+    /** Waits until the call has finished or a session waits on a lock, i.e. is queued behind the open transaction. */
+    private void awaitDoneOrWaitingOnALock(Future<?> call) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
+        try {
+            while (!call.isDone() && System.nanoTime() < deadline) {
+                Integer waiting = jdbc.queryForObject(LOCK_WAITERS_SQL, Integer.class);
+                if (waiting != null && waiting > 0) {
+                    return;
+                }
+                Thread.sleep(POLL_MILLIS);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private static PaymentWebhookDto signedWebhook() {

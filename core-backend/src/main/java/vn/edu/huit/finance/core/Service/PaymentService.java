@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -215,7 +216,7 @@ public class PaymentService {
     }
 
     public Map<String, Object> getStatus(String orderCode, Long userId) {
-        PaymentOrder o = ownedOrder(orderCode, userId);
+        PaymentOrder o = ownedBy(userId, orderRepo.findByOrderCode(orderCode));
         return toMap(o);
     }
 
@@ -224,9 +225,14 @@ public class PaymentService {
                 .map(this::toMap).toList();
     }
 
+    /**
+     * Cancels a pending order of {@code userId}. The order is read under the same lock as in {@link #handleWebhook}, so a
+     * webhook that is closing it at this moment finishes first and the cancel then sees the closed order: it never
+     * overwrites a SUCCESS (the wallet has already moved). An order that is not PENDING is returned as it is.
+     */
     @Transactional
     public Map<String, Object> cancel(String orderCode, Long userId) {
-        PaymentOrder o = ownedOrder(orderCode, userId);
+        PaymentOrder o = ownedBy(userId, orderRepo.findLockedByOrderCode(orderCode));
         if (o.getStatus() == PaymentStatus.PENDING) {
             o.setStatus(PaymentStatus.CANCELLED);
             orderRepo.save(o);
@@ -237,12 +243,11 @@ public class PaymentService {
         return toMap(o);
     }
 
-    /** The order {@code orderCode} of {@code userId}: 404 when there is none, 403 when it belongs to somebody else. */
-    private PaymentOrder ownedOrder(String orderCode, Long userId) {
-        PaymentOrder order = orderRepo.findByOrderCode(orderCode)
-                .orElseThrow(() -> new PaymentOrderNotFoundException(MSG_ORDER_NOT_FOUND));
+    /** The found order if it is {@code userId}'s: 404 when there is none, 403 when it belongs to somebody else. */
+    private PaymentOrder ownedBy(Long userId, Optional<PaymentOrder> found) {
+        PaymentOrder order = found.orElseThrow(() -> new PaymentOrderNotFoundException(MSG_ORDER_NOT_FOUND));
         if (!order.getUserId().equals(userId)) {
-            log.warn("Payment order access denied, userId={}, orderCode={}", userId, orderCode);
+            log.warn("Payment order access denied, userId={}, orderCode={}", userId, order.getOrderCode());
             throw new PaymentOrderAccessDeniedException(MSG_ORDER_FORBIDDEN);
         }
         return order;
