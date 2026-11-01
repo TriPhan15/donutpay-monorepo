@@ -26,7 +26,9 @@ import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.BearerToken;
 import vn.edu.huit.finance.core.Security.ClientIp;
+import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
 import vn.edu.huit.finance.core.Security.JwtUtil;
+import vn.edu.huit.finance.core.Security.TokenRejection;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.AuthService;
@@ -58,6 +60,7 @@ public class AuthController {
     private static final String AUDIT_LOCK_TRIGGERED = "Khóa đăng nhập 15 phút sau quá nhiều lần nhập sai (brute-force)";
     private static final String AUDIT_SOCIAL_LOGIN_SUCCESS = "Đăng nhập App Mobile qua %s";
     private static final String AUDIT_SOCIAL_LOGIN_FAILED = "Đăng nhập qua %s thất bại";
+    private static final String AUDIT_SOCIAL_LOGIN_LOCKED = "Đăng nhập qua %s bị từ chối: tài khoản đã bị khóa";
     // A provider name the client sent is only repeated in the audit row when it is one the server supports.
     private static final Set<String> SOCIAL_PROVIDERS = Set.of("google", "facebook");
     private static final String UNSUPPORTED_PROVIDER = "nhà cung cấp không hỗ trợ";
@@ -169,29 +172,40 @@ public class AuthController {
 
     @PostMapping("/social-login")
     public ResponseEntity<?> socialLogin(@RequestBody java.util.Map<String, String> req) {
+        String provider = req.get("provider");
+        String token = req.get("token");
+        if (provider == null || token == null) {
+            return ResponseEntity.status(400)
+                    .body(java.util.Map.of("message", "Thiếu provider hoặc token"));
+        }
+
+        // Only a refusal of the provider's token is a 401. Any other failure (database, bug) is not the caller's fault:
+        // it goes to GlobalExceptionHandler (500) instead of being passed off as a bad token.
+        final User user;
         try {
-            String provider = req.get("provider");
-            String token = req.get("token");
-            if (provider == null || token == null) {
-                return ResponseEntity.status(400)
-                        .body(java.util.Map.of("message", "Thiếu provider hoặc token"));
-            }
-
-            User user = socialAuthService.authenticate(provider, token);
-            authService.markLoggedIn(user);
-            eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.AUTH_LOGIN_SUCCESS, AuditActor.of(user),
-                    user.getId(), String.format(AUDIT_SOCIAL_LOGIN_SUCCESS, providerName(provider))));
-            String jwt = jwtUtil.generateToken(user.getEmail(), user.getCredentialsVersion());
-            String refreshToken = jwtUtil.generateRefreshToken(user.getEmail(), user.getCredentialsVersion());
-
-            return signedIn(jwt, refreshToken, user, user.getEmail());
-
-        } catch (Exception e) {
+            user = socialAuthService.authenticate(provider, token);
+        } catch (SocialLoginRejectedException e) {
             // The provider's token is opaque: nobody is named, only the provider (when it is one the server supports).
             publishLoginRefusal(AuditAction.AUTH_LOGIN_FAILED, null,
-                    String.format(AUDIT_SOCIAL_LOGIN_FAILED, providerName(req.get("provider"))));
+                    String.format(AUDIT_SOCIAL_LOGIN_FAILED, providerName(provider)));
             return ResponseEntity.status(401).body(java.util.Map.of("message", SocialLoginRejectedException.MESSAGE));
         }
+
+        if (CustomUserDetailsService.isLocked(user)) {
+            // The provider vouched for the email, so the account is named in the audit row; no token, no sign-in time.
+            eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.AUTH_LOGIN_FAILED, AuditActor.of(user),
+                    user.getId(), String.format(AUDIT_SOCIAL_LOGIN_LOCKED, providerName(provider))));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(java.util.Map.of("message", TokenRejection.ACCOUNT_LOCKED.getMessage()));
+        }
+
+        authService.markLoggedIn(user);
+        eventPublisher.publishEvent(SecurityAuditEvent.of(AuditAction.AUTH_LOGIN_SUCCESS, AuditActor.of(user),
+                user.getId(), String.format(AUDIT_SOCIAL_LOGIN_SUCCESS, providerName(provider))));
+        String jwt = jwtUtil.generateToken(user.getEmail(), user.getCredentialsVersion());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail(), user.getCredentialsVersion());
+
+        return signedIn(jwt, refreshToken, user, user.getEmail());
     }
 
     @PostMapping("/forgot-password")

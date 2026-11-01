@@ -1,5 +1,6 @@
 package vn.edu.huit.finance.core.Controller;
 
+import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -22,6 +23,8 @@ import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.JwtUtil;
+import vn.edu.huit.finance.core.Security.Roles;
+import vn.edu.huit.finance.core.Security.TokenRejection;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.AuthService;
@@ -32,6 +35,8 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -344,5 +349,46 @@ class AuthControllerBehaviourTest {
         verify(jwtUtil, never()).generateToken(anyString(), any());
         verify(userRepository, never()).save(any());
         assertEquals(AuditAction.AUTH_LOGIN_FAILED, theAuditRowOfTheController().entry().action());
+    }
+
+    @Test
+    void socialLogin_deactivatedAccount_answers403WithTheLockedText_andIssuesNoToken() throws Exception {
+        alice.setActive(false);
+        when(socialAuthService.authenticate("Google", PROVIDER_TOKEN)).thenReturn(alice);
+
+        mockMvc.perform(socialLogin())
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(TokenRejection.ACCOUNT_LOCKED.getMessage()))
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(jwtUtil, never()).generateToken(anyString(), any());
+        verify(jwtUtil, never()).generateRefreshToken(anyString(), any());
+        verify(userRepository, never()).updateLoginTimes(any(), any());
+        SecurityAuditEvent row = theAuditRowOfTheController();
+        assertEquals(AuditAction.AUTH_LOGIN_FAILED, row.entry().action());
+        assertEquals(AuditActor.of(alice), row.entry().actor());
+    }
+
+    @Test
+    void socialLogin_accountWithTheLockedRole_answers403_andIssuesNoToken() throws Exception {
+        alice.setRole(Roles.LOCKED);
+        when(socialAuthService.authenticate("Google", PROVIDER_TOKEN)).thenReturn(alice);
+
+        mockMvc.perform(socialLogin())
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(TokenRejection.ACCOUNT_LOCKED.getMessage()));
+
+        verify(jwtUtil, never()).generateToken(anyString(), any());
+    }
+
+    @Test
+    void socialLogin_anyOtherFailure_isNotTurnedInto401_itGoesToTheGlobalHandler() {
+        when(socialAuthService.authenticate(any(), any())).thenThrow(new IllegalStateException("database down"));
+
+        ServletException thrown = assertThrows(ServletException.class, () -> mockMvc.perform(socialLogin()));
+
+        assertInstanceOf(IllegalStateException.class, thrown.getCause());
+        verify(jwtUtil, never()).generateToken(anyString(), any());
+        verifyNoInteractions(controllerEvents);
     }
 }
