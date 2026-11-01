@@ -10,14 +10,11 @@ import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_fields.dart';
 import 'package:finance_ai_app/screens/linked/widgets/top_up_quick_amounts.dart';
 import 'package:finance_ai_app/screens/linked/widgets/wallet_logo.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// Asks how much to sync from [wallet]; the amount, or null when the sheet is closed.
 Future<double?> showTopUpSheet(BuildContext context, PaymentWallet wallet) {
-  return showModalBottomSheet<double>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => TopUpSheet(wallet: wallet),
-  );
+  return showAppSheet<double>(context, (_) => TopUpSheet(wallet: wallet));
 }
 
 /// The "Đồng bộ tiền" sheet (T9 spec 3.9, mockup M1): the wallet card, the amount field, the four quick amounts, the

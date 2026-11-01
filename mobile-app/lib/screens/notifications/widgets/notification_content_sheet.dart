@@ -5,6 +5,7 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/models/app_notification.dart';
 import 'package:finance_ai_app/screens/notifications/widgets/notification_row.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// "Notification details" (T9 spec 3.7, R7): the whole of a notification the app has no page for. A title with a close
 /// button, the Type and Time rows, and the full message on a light grey block, where it can be selected and copied.
@@ -12,10 +13,9 @@ Future<void> showNotificationContentSheet(
   BuildContext context,
   AppNotification notification,
 ) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => _NotificationContentSheet(notification: notification),
+  return showAppSheet<void>(
+    context,
+    (_) => _NotificationContentSheet(notification: notification),
   );
 }
 

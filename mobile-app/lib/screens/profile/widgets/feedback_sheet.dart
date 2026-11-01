@@ -5,16 +5,13 @@ import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/models/feedback_draft.dart';
 import 'package:finance_ai_app/screens/profile/widgets/profile_sheet_frame.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// "Đánh giá ứng dụng" (T9 spec 3.10, M2): five large stars, suggestion chips that are joined into the comment, the
 /// comment field and Send.
 Future<void> showFeedbackSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => _FeedbackSheet(host: context),
-  );
+  return showAppSheet<void>(context, (_) => _FeedbackSheet(host: context));
 }
 
 class _FeedbackSheet extends StatefulWidget {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// The ways of bringing receipts in, in the order of the sheet.
 enum ScanOption { cameraOne, galleryOne, cameraMany, galleryMany }
@@ -9,15 +10,7 @@ enum ScanOption { cameraOne, galleryOne, cameraMany, galleryMany }
 /// The scan sheet (T9 spec, 3.1, layout 17): four rows with an icon, a name and a line that explains it. Closes itself
 /// and returns the picked option, or null when dismissed.
 Future<ScanOption?> showScanOptionsSheet(BuildContext context) {
-  return showModalBottomSheet<ScanOption>(
-    context: context,
-    // Four explained rows are taller than the default 9/16 of the screen: the sheet takes the height it needs.
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (_) => const _ScanOptionsSheet(),
-  );
+  return showAppSheet<ScanOption>(context, (_) => const _ScanOptionsSheet());
 }
 
 class _ScanOptionsSheet extends StatelessWidget {

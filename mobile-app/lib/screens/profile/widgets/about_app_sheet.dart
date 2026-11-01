@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/screens/profile/widgets/profile_sheet_frame.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// The version shown to the user; the same as `version:` in pubspec.yaml (no package to read it at run time).
 const String appVersion = '1.0.0';
@@ -13,11 +14,7 @@ const String _logoAsset = 'assets/images/logo.png';
 /// "Về ứng dụng" (T9 spec 3.10, M2): logo C, name and description, then the Version, Developer, School and open
 /// source licence rows. Replaces Flutter's own about dialog and its English texts.
 Future<void> showAboutAppSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (sheetContext) => const _AboutAppSheet(),
-  );
+  return showAppSheet<void>(context, (sheetContext) => const _AboutAppSheet());
 }
 
 class _AboutAppSheet extends StatelessWidget {

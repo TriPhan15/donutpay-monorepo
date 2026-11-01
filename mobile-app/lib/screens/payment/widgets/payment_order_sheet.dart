@@ -6,14 +6,11 @@ import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/payment_order.dart';
 import 'package:finance_ai_app/screens/payment/widgets/payment_status_pill.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// Shows the details of [order]; true when the user asked to cancel it (only offered while it is pending).
 Future<bool?> showPaymentOrderSheet(BuildContext context, PaymentOrder order) {
-  return showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => PaymentOrderSheet(order: order),
-  );
+  return showAppSheet<bool>(context, (_) => PaymentOrderSheet(order: order));
 }
 
 /// "Chi tiết đơn" (T9 spec 3.9, mockup R3): the amount with its state pill, the Ví / Mã đơn / Thời gian rows and, while

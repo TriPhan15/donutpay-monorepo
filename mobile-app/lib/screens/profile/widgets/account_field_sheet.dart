@@ -4,6 +4,7 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/screens/profile/widgets/profile_sheet_frame.dart';
 import 'package:finance_ai_app/widgets/auth/auth_text_field.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// The small sheet of the account screen (T9 spec 3.8, mockup M4): one field and Lưu. [onSave] gets the text as typed
 /// and answers whether it was saved; the sheet closes only then, so a refused value stays for the user to fix.
@@ -17,10 +18,9 @@ Future<bool> showAccountFieldSheet(
   required TextInputType keyboardType,
   required Future<bool> Function(String value) onSave,
 }) async {
-  final saved = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => _AccountFieldSheet(
+  final saved = await showAppSheet<bool>(
+    context,
+    (_) => _AccountFieldSheet(
       title: title,
       label: label,
       icon: icon,
