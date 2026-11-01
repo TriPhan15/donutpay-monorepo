@@ -52,6 +52,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -72,6 +73,9 @@ public class AdminController {
     private static final int TOP_SPENDERS_LIMIT = 5;
     private static final int CHART_MONTHS = 6;
     private static final String CHART_LABEL_PREFIX = "Tháng ";
+    private static final String LABEL_RECEIPT_SUCCESS = "Thành công";
+    private static final String LABEL_RECEIPT_FAILED = "Lỗi AI";
+    private static final String LABEL_RECEIPT_PROCESSING = "Đang xử lý";
     private static final String MSG_USER_DELETED = "Đã xóa vĩnh viễn tài khoản";
     private static final String MSG_USER_LOCKED_INSTEAD =
             "Tài khoản đã có dữ liệu (giao dịch, ngân sách...) nên đã được khóa thay vì xóa vĩnh viễn";
@@ -131,22 +135,13 @@ public class AdminController {
                 .toList());
         model.addAttribute("chartData", chart.stream().map(MonthlyTransactionCountDto::getTransactionCount).toList());
 
-        List<String> aiLabels = new java.util.ArrayList<>();
-        List<Long> aiData = new java.util.ArrayList<>();
-
+        // Nhiều trạng thái (chờ duyệt, đang đọc...) cùng hiện là "Đang xử lý": gộp theo nhãn để biểu đồ không có lát trùng tên.
+        Map<String, Long> receiptsByLabel = new LinkedHashMap<>();
         for (ReceiptStatusCountDto receiptStatus : summary.getReceiptStatuses()) {
-            String status = receiptStatus.getStatus();
-
-            if ("SUCCESS".equals(status)) status = "Thành công";
-            else if ("FAILED".equals(status)) status = "Lỗi AI";
-            else status = "Đang xử lý";
-
-            aiLabels.add(status);
-            aiData.add(receiptStatus.getCount());
+            receiptsByLabel.merge(receiptStatusLabel(receiptStatus.getStatus()), receiptStatus.getCount(), Long::sum);
         }
-
-        model.addAttribute("aiLabels", aiLabels);
-        model.addAttribute("aiData", aiData);
+        model.addAttribute("aiLabels", List.copyOf(receiptsByLabel.keySet()));
+        model.addAttribute("aiData", List.copyOf(receiptsByLabel.values()));
         Map<CustomerSegment, Long> segmentCounts = customerSegmentationService.countBySegment();
         model.addAttribute("segmentNames", segmentCounts.keySet().stream().map(CustomerSegment::getDisplayName).toList());
         model.addAttribute("segmentData", List.copyOf(segmentCounts.values()));
@@ -157,6 +152,14 @@ public class AdminController {
         return "admin/dashboard";
     }
 
+
+    private static String receiptStatusLabel(String status) {
+        return switch (status == null ? "" : status) {
+            case "SUCCESS" -> LABEL_RECEIPT_SUCCESS;
+            case "FAILED" -> LABEL_RECEIPT_FAILED;
+            default -> LABEL_RECEIPT_PROCESSING;
+        };
+    }
 
     @GetMapping("/login")
     public String showLoginPage() {

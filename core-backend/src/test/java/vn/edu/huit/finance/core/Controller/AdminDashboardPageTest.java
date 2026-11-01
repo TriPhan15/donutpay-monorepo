@@ -125,6 +125,30 @@ class AdminDashboardPageTest {
         verify(adminStatisticsService).getMonthlyTransactionCounts(now, 6);
     }
 
+    @Test
+    void receiptStatusesThatShareALabelAreMergedIntoOneSliceAndTheBarChartCountsTransactions() throws Exception {
+        YearMonth now = YearMonth.now();
+        when(adminStatisticsService.getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD))
+                .thenReturn(new AdminDashboardSummaryDto(BigDecimal.ZERO, 0, 0, List.of(),
+                        List.of(new ReceiptStatusCountDto("WAITING_FOR_REVIEW", 4),
+                                new ReceiptStatusCountDto("SUCCESS", 5),
+                                new ReceiptStatusCountDto("PROCESSING", 2),
+                                new ReceiptStatusCountDto("FAILED", 1),
+                                new ReceiptStatusCountDto("PENDING", 3))));
+        when(leaderboardService.topSpenders(now, 5)).thenReturn(List.of());
+        when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
+        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
+
+        mockMvc.perform(get("/admin/dashboard"))
+                .andExpect(model().attribute("aiLabels", List.of("Đang xử lý", "Thành công", "Lỗi AI")))
+                .andExpect(model().attribute("aiData", List.of(9L, 5L, 1L)))
+                .andExpect(content().string(allOf(
+                        containsString("Số giao dịch 6 tháng qua"),
+                        containsString("label: \"Số giao dịch\""),
+                        not(containsString("Số lượng Hóa đơn")))));
+    }
+
     private void stubEmptyDashboard() {
         YearMonth now = YearMonth.now();
         when(adminStatisticsService.getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD))

@@ -61,7 +61,11 @@ public class TransactionRequestDto {
     @Size(max = ImageUrls.MAX_LENGTH, message = "Link ảnh hóa đơn tối đa {max} ký tự")
     @Pattern(regexp = ImageUrls.HTTPS_OR_BLANK_REGEX, message = ImageUrls.MSG_INVALID)
     private String imageUrl;
-    private List<String> additionalImages;
+    /** Ảnh phụ: tối đa {@link ImageUrls#MAX_ADDITIONAL_IMAGES} link, mỗi link theo cùng luật với {@code imageUrl}. */
+    @Size(max = ImageUrls.MAX_ADDITIONAL_IMAGES, message = "Tối đa {max} ảnh phụ cho một giao dịch")
+    private List<@NotBlank(message = ImageUrls.MSG_INVALID)
+                 @Size(max = ImageUrls.MAX_LENGTH, message = "Link ảnh hóa đơn tối đa {max} ký tự")
+                 @Pattern(regexp = ImageUrls.HTTPS_OR_BLANK_REGEX, message = ImageUrls.MSG_INVALID) String> additionalImages;
 
     /**
      * Optional idempotency key, made up by the client for one attempt to save (a UUID will do) and sent again unchanged

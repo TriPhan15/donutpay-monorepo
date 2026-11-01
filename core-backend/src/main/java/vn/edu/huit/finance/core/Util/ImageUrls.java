@@ -13,6 +13,12 @@ public final class ImageUrls {
     /** Bằng độ dài cột receipts.image_url. */
     public static final int MAX_LENGTH = Receipt.IMAGE_URL_MAX_LENGTH;
 
+    /**
+     * Số ảnh phụ tối đa của một giao dịch (TransactionRequestDto.additionalImages). Mobile hiện không gửi ảnh phụ,
+     * nên giới hạn chỉ chặn client lạ gửi hàng nghìn link vào cột TEXT.
+     */
+    public static final int MAX_ADDITIONAL_IMAGES = 5;
+
     /** Rỗng (bỏ qua ảnh) hoặc một link https không có khoảng trắng; khoảng trắng hai đầu được trim khi lưu. */
     public static final String HTTPS_OR_BLANK_REGEX = "(?i)^\\s*(https://\\S+)?\\s*$";
 
