@@ -156,4 +156,23 @@ void main() {
     expect(groups.first.expense, 97000);
     expect(groups[1].income, 18500000);
   });
+
+  test(
+    'totals adds all income and all spending, savings transfers left out',
+    () {
+      final totals = LedgerStats.totals([
+        _tx(55000, DateTime(2026, 10, 20)),
+        _tx(42000, DateTime(2026, 10, 3)),
+        _tx(18500000, DateTime(2026, 10, 19), isExpense: false),
+        _tx(
+          1000000,
+          DateTime(2026, 10, 19),
+          category: TransactionCategories.savings,
+        ),
+      ]);
+      expect(totals.expense, 97000);
+      expect(totals.income, 18500000);
+      expect(LedgerStats.totals(const []).expense, 0);
+    },
+  );
 }

@@ -1,13 +1,12 @@
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:excel/excel.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 import 'dart:io';
 
-import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/ledger_excel_builder.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -230,10 +229,6 @@ class LedgerPageState extends State<LedgerPage> {
         return loc.ledgerYearLabel('${_selectedDate.year}');
     }
   }
-
-  /// The selected month as the language of [loc] names it, e.g. "October 2026".
-  String _monthLabel(AppLocalizations loc) =>
-      DateFormat('MMMM yyyy', loc.localeName).format(_selectedDate);
 
   /// Every transaction of the period on screen: what the totals, the chart, the calendar and the categories measure.
   List<TransactionModel> get _periodAll =>
@@ -573,105 +568,25 @@ class LedgerPageState extends State<LedgerPage> {
 
   Future<void> _exportToExcel() async {
     final loc = context.loc;
-    final monthName = _monthLabel(loc);
+    final report = LedgerExcelBuilder.build(
+      loc: loc,
+      month: _selectedDate,
+      transactions: _transactions,
+      budgets: _budgets,
+      now: DateTime.now(),
+    );
+    if (report == null) return;
 
-    var excel = Excel.createExcel();
-    var sheet = excel[loc.ledgerExcelSheet(monthName)];
-
-    sheet.appendRow([
-      TextCellValue(loc.ledgerExcelDate),
-      TextCellValue(loc.transactionCategoryLabel),
-      TextCellValue(loc.transactionExpenseMoney),
-      TextCellValue(loc.transactionIncomeMoney),
-    ]);
-
-    double totalExpense = 0;
-    double totalIncome = 0;
-
-    final monthTxs = _transactions
-        .where(
-          (tx) =>
-              tx.date.year == _selectedDate.year &&
-              tx.date.month == _selectedDate.month,
-        )
-        .toList();
-
-    for (var tx in monthTxs) {
-      final dateStr = DateFormat('dd/MM/yyyy').format(tx.date);
-      if (tx.isExpense) {
-        if (tx.countsAsSpending) totalExpense += tx.amount;
-        sheet.appendRow([
-          TextCellValue(dateStr),
-          TextCellValue(TransactionCategories.displayName(loc, tx.category)),
-          DoubleCellValue(tx.amount),
-          TextCellValue(''),
-        ]);
-      } else {
-        totalIncome += tx.amount;
-        sheet.appendRow([
-          TextCellValue(dateStr),
-          TextCellValue(TransactionCategories.displayName(loc, tx.category)),
-          TextCellValue(''),
-          DoubleCellValue(tx.amount),
-        ]);
-      }
-    }
-
-    sheet.appendRow([]);
-    sheet.appendRow([
-      TextCellValue(loc.ledgerExcelTotal),
-      TextCellValue(''),
-      DoubleCellValue(totalExpense),
-      DoubleCellValue(totalIncome),
-    ]);
-    sheet.appendRow([
-      TextCellValue(loc.ledgerBalance),
-      TextCellValue(''),
-      TextCellValue(''),
-      DoubleCellValue(totalIncome - totalExpense),
-    ]);
-
-    sheet.appendRow([]);
-    sheet.appendRow([TextCellValue(loc.ledgerExcelBudgetHeader(monthName))]);
-    sheet.appendRow([
-      TextCellValue(loc.transactionCategoryLabel),
-      TextCellValue(loc.ledgerExcelLimit),
-      TextCellValue(loc.ledgerExcelSpent),
-      TextCellValue(loc.ledgerExcelRemaining),
-    ]);
-
-    final monthStart = DateTime(_selectedDate.year, _selectedDate.month, 1);
-    final monthEnd = DateTime(_selectedDate.year, _selectedDate.month + 1, 0);
-    for (final progress in BudgetProgress.overlapping(
-      monthStart,
-      monthEnd,
-      _budgets,
-      _transactions,
-    )) {
-      sheet.appendRow([
-        TextCellValue(progress.budget.categoryLabel(loc)),
-        DoubleCellValue(progress.limit),
-        DoubleCellValue(progress.spent),
-        DoubleCellValue(progress.remaining),
-      ]);
-    }
-
-    final directory = Directory.systemTemp;
-    final fileName =
-        '${loc.ledgerExcelFileName(monthName, DateFormat('ddMMyyyy').format(DateTime.now()))}.xlsx';
-    final file = File('${directory.path}/$fileName');
-    final bytes = excel.encode();
-    if (bytes != null) {
-      await file.writeAsBytes(bytes);
-      if (!mounted) return;
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          fileNameOverrides: [fileName],
-          subject: loc.ledgerExcelSheet(monthName),
-          text: loc.ledgerExcelShareText(monthName),
-        ),
-      );
-    }
+    final file = File('${Directory.systemTemp.path}/${report.fileName}');
+    await file.writeAsBytes(report.bytes);
+    if (!mounted) return;
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        fileNameOverrides: [report.fileName],
+        subject: report.title,
+        text: report.shareText,
+      ),
+    );
   }
 }
