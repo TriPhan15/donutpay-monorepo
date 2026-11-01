@@ -103,6 +103,8 @@ File này thêm `receipts.owner_id` (khóa ngoại tới `users`) và `receipts_
 từ giao dịch gắn với nó. Hóa đơn không gắn giao dịch nào giữ `owner_id` NULL, chỉ admin xử lý được. Chạy lại không đổi gì.
 Chưa chạy file này thì app vẫn nhận ra chủ của hóa đơn cũ qua giao dịch gắn với nó.
 
+RB6 (hai index `idx_transactions_user_date` và `idx_receipts_status_created`) có file `indexes-migration.sql`, chạy bằng `psql` như mục 2. Server mới không cần chạy. `CREATE INDEX` khóa ghi vào bảng đang tạo index (đọc vẫn được) trong lúc tạo: DB local nhỏ thì chỉ một thoáng, bảng lớn thì dừng `core-api` trước. Chạy lại không đổi gì.
+
 ## 4. Không cần chạy thử migration trên dữ liệu cũ
 
 Server deploy bắt đầu từ DB trống, nên không cần chạy thử 4 file migration trên bản sao dữ liệu cũ.

@@ -20,7 +20,7 @@ import java.util.Optional;
  */
 @Audited
 @Entity
-@Table(name = "receipts")
+@Table(name = "receipts", indexes = @Index(name = "idx_receipts_status_created", columnList = "status, created_at"))
 @Getter
 @Setter
 @NoArgsConstructor

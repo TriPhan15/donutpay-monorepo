@@ -11,9 +11,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 @Audited
 @Entity
-@Table(name = "transactions", uniqueConstraints = @UniqueConstraint(
-        name = "uk_transactions_user_client_id",
-        columnNames = {"user_id", "client_id"}))
+@Table(name = "transactions",
+        uniqueConstraints = @UniqueConstraint(name = "uk_transactions_user_client_id", columnNames = {"user_id", "client_id"}),
+        indexes = @Index(name = "idx_transactions_user_date", columnList = "user_id, transaction_date"))
 @Getter
 @Setter
 @NoArgsConstructor
