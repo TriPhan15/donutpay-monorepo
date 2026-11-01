@@ -1838,6 +1838,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'This goal is past its deadline: set a new date or keep contributing';
 
   @override
+  String get aiLoadFailedTitle => 'Couldn\'t load your data';
+
+  @override
+  String get aiLoadFailedNotice =>
+      'Couldn\'t refresh your data. You are seeing what was loaded earlier.';
+
+  @override
   String get aiSpadeLoadFailedTitle => 'Couldn\'t load the analysis';
 
   @override

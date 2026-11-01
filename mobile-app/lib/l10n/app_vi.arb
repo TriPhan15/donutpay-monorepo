@@ -521,6 +521,8 @@
   "aiAddGoal": "Thêm mục tiêu tiết kiệm để AI phân tích.",
   "aiGoalNoDeadline": "Mục tiêu chưa có hạn, góp lúc nào cũng được",
   "aiGoalOverdue": "Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp",
+  "aiLoadFailedTitle": "Chưa tải được dữ liệu",
+  "aiLoadFailedNotice": "Chưa làm mới được dữ liệu. Bạn đang xem dữ liệu đã tải trước đó.",
   "aiSpadeLoadFailedTitle": "Không tải được phân tích",
   "aiSpadeLoadFailedMessage": "Kiểm tra kết nối rồi làm mới để thử lại.",
   "aiSpadeNotEnoughTitle": "Chưa đủ dữ liệu",

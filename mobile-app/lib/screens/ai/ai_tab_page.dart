@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/core/utils/savings_goal_planner.dart';
 import 'package:finance_ai_app/core/utils/spending_history.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -33,6 +35,19 @@ typedef PickDateRange =
 const int _pickerFirstYear = 2020;
 const int _pickerLastYear = 2100;
 const int _httpServerError = 500;
+
+/// One request of a load: what it gave, or why it failed. A failure is logged here and never thrown, so the other
+/// request of the load still counts.
+typedef _Attempt<T> = ({T? value, Object? error});
+
+Future<_Attempt<T>> _attempt<T>(Future<T> request) async {
+  try {
+    return (value: await request, error: null);
+  } catch (e) {
+    debugPrint('Lỗi tải dữ liệu tab AI: $e');
+    return (value: null, error: e);
+  }
+}
 
 /// The first day, then the last one, each in the date sheet of the app (T9 spec 3.3); the last day cannot be before
 /// the first.
@@ -79,6 +94,13 @@ class _AITabPageState extends State<AITabPage> {
   static const double _bottomGap = 100;
 
   bool _isLoading = true;
+
+  /// Why the last load failed (the transactions, the goals or both); null when it went through. What was loaded before
+  /// stays on screen meanwhile.
+  Object? _loadError;
+
+  /// Whether the transactions were ever loaded: without them a failure leaves nothing to show.
+  bool _transactionsLoaded = false;
   List<TransactionModel> _transactions = [];
   SpendingAnalysis? _analysis;
   List<Map<String, dynamic>> _savingsGoals = [];
@@ -146,26 +168,28 @@ class _AITabPageState extends State<AITabPage> {
       return;
     }
 
-    final results = await Future.wait([
-      AppRepository.instance
-          .getTransactions(userId)
-          .catchError((_) => <TransactionModel>[]),
-      RemoteApiHelper.instance.fetchSavings().catchError(
-        (_) => <Map<String, dynamic>>[],
-      ),
-    ]);
-
-    final txs = results[0] as List<TransactionModel>;
-    final goals = results[1] as List<Map<String, dynamic>>;
+    final (transactionsResult, goalsResult) = await (
+      _attempt(AppRepository.instance.getTransactions(userId)),
+      _attempt(RemoteApiHelper.instance.fetchSavings()),
+    ).wait;
+    final txs = transactionsResult.value;
+    final goals = goalsResult.value;
 
     // A newer load has started: its list is the fresher one, so this one must not overwrite it.
     if (!mounted || requestId != _loadRequestId) return;
+    // A request that failed leaves what was loaded before as it is: an empty list would pass for "no data".
     setState(() {
-      _transactions = txs;
-      _savingsGoals = goals;
+      if (txs != null) {
+        _transactions = txs;
+        _transactionsLoaded = true;
+      }
+      if (goals != null) _savingsGoals = goals;
+      _loadError = transactionsResult.error ?? goalsResult.error;
       _isLoading = false;
     });
 
+    // The analysis and the advice are worked out from the transactions: without fresh ones the last ones stay.
+    if (txs == null) return;
     _loadSpadePatterns(reportErrors: reportErrors);
     _loadBudgetAdvice(txs);
   }
@@ -310,6 +334,18 @@ class _AITabPageState extends State<AITabPage> {
     if (_isLoading) {
       return const Scaffold(body: Center(child: AppStateView.loading()));
     }
+    final loadError = _loadError;
+    if (loadError != null && !_transactionsLoaded) {
+      return Scaffold(
+        body: Center(
+          child: AppStateView.error(
+            title: context.loc.aiLoadFailedTitle,
+            message: UserFacingError.messageOf(loadError, context.loc),
+            onRetry: () => _load(reportErrors: true),
+          ),
+        ),
+      );
+    }
     // The band runs up under the status bar and keeps its content below it itself.
     return Scaffold(
       body: SafeArea(
@@ -356,6 +392,7 @@ class _AITabPageState extends State<AITabPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: _transactions.isEmpty
                 ? [
+                    if (_loadError != null) _buildLoadFailedNotice(),
                     const SizedBox(height: 24),
                     AppStateView.empty(
                       icon: Icons.insights_outlined,
@@ -365,6 +402,7 @@ class _AITabPageState extends State<AITabPage> {
                     advice,
                   ]
                 : [
+                    if (_loadError != null) _buildLoadFailedNotice(),
                     AiHighlightsCard(
                       highlights: SpendingHighlights.of(
                         transactions: _transactions,
@@ -391,6 +429,44 @@ class _AITabPageState extends State<AITabPage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Above the cards when a refresh failed: they show what was loaded before, and the user can try again.
+  Widget _buildLoadFailedNotice() {
+    final loc = context.loc;
+    final warning = Theme.of(context).semanticColors.warningColor;
+    return Container(
+      margin: const EdgeInsets.only(top: _gutter),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      decoration: BoxDecoration(
+        color: warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cloud_off_rounded, color: warning, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  loc.aiLoadFailedNotice,
+                  style: const TextStyle(fontSize: AppTextSize.secondary),
+                ),
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => _load(reportErrors: true),
+              child: Text(loc.commonRetry),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

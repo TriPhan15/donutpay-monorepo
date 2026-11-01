@@ -1793,6 +1793,13 @@ class AppLocalizationsVi extends AppLocalizations {
       'Mục tiêu đã quá hạn, hãy cập nhật hạn mới hoặc tiếp tục góp';
 
   @override
+  String get aiLoadFailedTitle => 'Chưa tải được dữ liệu';
+
+  @override
+  String get aiLoadFailedNotice =>
+      'Chưa làm mới được dữ liệu. Bạn đang xem dữ liệu đã tải trước đó.';
+
+  @override
   String get aiSpadeLoadFailedTitle => 'Không tải được phân tích';
 
   @override
