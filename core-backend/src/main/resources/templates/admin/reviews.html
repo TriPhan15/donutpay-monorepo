@@ -59,6 +59,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div th:replace="~{admin/layout/_pagination :: bar(${reviewsPage}, '/admin/reviews', 'reviewPage', ${pageSize})}"></div>
             </div>
         </div>
 
@@ -70,7 +71,10 @@
         <script>
             $(document).ready(function() {
                 $('#reviewsTable').DataTable({
-                    "pageLength": 10,
+                    // Phân trang do server làm (thanh phân trang ở trên); DataTables chỉ sắp xếp trong trang đang xem.
+                    "paging": false,
+                    "info": false,
+                    "searching": false,
                     "order": [ [0, "desc"] ],
                     "language": { "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/vi.json" }
                 });

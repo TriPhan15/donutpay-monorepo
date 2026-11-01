@@ -84,10 +84,11 @@ class AdminListingsTest {
     }
 
     @Test
-    void reviewsAreListedNewestFirst() {
-        List<AppReview> reviews = List.of(new AppReview());
-        when(appReviewRepository.findAllByOrderByCreatedAtDesc()).thenReturn(reviews);
+    void reviewsAreListedNewestFirstInTheRequestedPage() {
+        Page<AppReview> page = new PageImpl<>(List.of(new AppReview()));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(appReviewRepository.findAllByOrderByCreatedAtDesc(pageable)).thenReturn(page);
 
-        assertEquals(reviews, appReviewService.listNewestFirst());
+        assertSame(page, appReviewService.listNewestFirst(pageable));
     }
 }

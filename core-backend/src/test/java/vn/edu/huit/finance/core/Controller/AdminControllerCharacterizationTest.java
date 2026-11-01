@@ -192,8 +192,8 @@ class AdminControllerCharacterizationTest {
 
     @Test
     void theReviewsPageListsTheReviewsNewestFirstAsGiven() throws Exception {
-        when(appReviewService.listNewestFirst())
-                .thenReturn(List.of(review(2L, "Rất tiện"), review(1L, "Dùng ổn")));
+        when(appReviewService.listNewestFirst(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(review(2L, "Rất tiện"), review(1L, "Dùng ổn"))));
 
         mockMvc.perform(get("/admin/reviews"))
                 .andExpect(status().isOk())

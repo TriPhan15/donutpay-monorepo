@@ -423,8 +423,15 @@ public class AdminController {
     }
 
     @GetMapping("/reviews")
-    public String showReviews(Model model) {
-        model.addAttribute("reviews", appReviewService.listNewestFirst());
+    public String showReviews(
+            @RequestParam(defaultValue = "0") int reviewPage,
+            @RequestParam(defaultValue = "10") int size,
+            Model model) {
+        Page<AppReview> reviewsPage = appReviewService.listNewestFirst(
+                PageRequest.of(Math.max(reviewPage, 0), normalizePageSize(size)));
+        model.addAttribute("reviews", reviewsPage.getContent());
+        model.addAttribute("reviewsPage", reviewsPage);
+        model.addAttribute("pageSize", normalizePageSize(size));
         return "admin/reviews";
     }
 

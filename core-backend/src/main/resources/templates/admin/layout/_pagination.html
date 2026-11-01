@@ -2,9 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <!--/*
-    Thanh phân trang dùng chung cho các trang admin phân trang ở server (Người dùng, Hóa đơn).
+    Thanh phân trang dùng chung cho các trang admin phân trang ở server (Người dùng, Hóa đơn, Đánh giá).
     Tham số: page = Page của Spring Data (số trang tính từ 0), baseUrl = đường dẫn của trang,
-    pageParam = tên tham số số trang (userPage, receiptPage), size = cỡ trang để giữ nguyên khi chuyển trang.
+    pageParam = tên tham số số trang (userPage, receiptPage, reviewPage), size = cỡ trang để giữ nguyên khi chuyển trang.
     Chỉ hiện khi có nhiều hơn một trang. Số trang hiển thị tính từ 1.
 */-->
 <nav th:fragment="bar(page, baseUrl, pageParam, size)" th:if="${page.totalPages > 1}" data-pagination-bar
