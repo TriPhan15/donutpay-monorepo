@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart' show DatabaseException;
 
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
@@ -22,6 +26,7 @@ import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/budget/budget_alert_presenter.dart';
+import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 import 'package:finance_ai_app/widgets/receipt/scan_queue_banner.dart';
 
 import '../helpers/fake_backend.dart';
@@ -40,6 +45,16 @@ const List<(String, IconData)> _tabs = [
 const MethodChannel _imagePickerChannel = MethodChannel(
   'plugins.flutter.io/image_picker',
 );
+
+/// The toast for a queue that could not be written to storage.
+const String _storageFailedText =
+    'Không cập nhật được hàng chờ hóa đơn trên máy. Vui lòng thử lại.';
+
+/// A storage failure of the queue.
+class _DiskFull implements DatabaseException {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
 
 Finder _inBottomBar(Finder finder) =>
     find.descendant(of: find.byType(BottomAppBar), matching: finder);
@@ -558,6 +573,112 @@ void main() {
       await tester.pumpAndSettle();
 
       expectSelectedTab(tester, colors, 1);
+    });
+
+    /// Picks two photos from the gallery for the queue, which then fails with [error], from the Ledger tab.
+    Future<ColorScheme> pickManyWhileQueueFails(
+      WidgetTester tester,
+      Object error,
+    ) async {
+      scanQueue.enqueueError = error;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_imagePickerChannel, (call) async {
+            return call.method == 'pickMultiImage'
+                ? ['/tmp/a.jpg', '/tmp/b.jpg']
+                : null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_imagePickerChannel, null),
+      );
+      final colors = (await openMainScaffold(tester)).colorScheme;
+      await tester.tap(_inBottomBar(find.text('Thống kê')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn nhiều ảnh'));
+      await tester.pumpAndSettle();
+      return colors;
+    }
+
+    /// Lets the toast that the failure showed run out, so no timer is left when the test ends.
+    Future<void> letToastGo(WidgetTester tester) async {
+      await tester.pump(
+        AppToast.displayDuration + AppToast.transitionDuration * 2,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    for (final (name, error) in <(String, Object)>[
+      ('a database error', _DiskFull()),
+      ('a file error', const FileSystemException('copy failed', '/tmp/a.jpg')),
+    ]) {
+      testWidgets(
+        '$name while queueing shows the storage toast and keeps the tab that was open',
+        (tester) async {
+          final colors = await pickManyWhileQueueFails(tester, error);
+
+          expect(scanQueue.enqueued, [
+            ['/tmp/a.jpg', '/tmp/b.jpg'],
+          ]);
+          expect(find.text(_storageFailedText), findsOneWidget);
+          expect(find.textContaining('Đã thêm'), findsNothing);
+          expectSelectedTab(tester, colors, 1);
+          await letToastGo(tester);
+        },
+      );
+    }
+
+    testWidgets('a pick that ends after the screen is gone queues nothing', (
+      tester,
+    ) async {
+      final picked = Completer<List<String>>();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_imagePickerChannel, (call) async {
+            return call.method == 'pickMultiImage' ? picked.future : null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_imagePickerChannel, null),
+      );
+      await openMainScaffold(tester);
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn nhiều ảnh'));
+      await tester.pump();
+
+      await tester.pumpWidget(const SizedBox());
+      picked.complete(['/tmp/a.jpg']);
+      await tester.pumpAndSettle();
+
+      expect(scanQueue.enqueued, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a failed gallery pick shows the gallery error dialog', (
+      tester,
+    ) async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_imagePickerChannel, (call) async {
+            if (call.method == 'pickMultiImage') {
+              throw PlatformException(code: 'photo_access_denied');
+            }
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_imagePickerChannel, null),
+      );
+      await openMainScaffold(tester);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn nhiều ảnh'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Không mở được thư viện ảnh'), findsOneWidget);
+      expect(scanQueue.enqueued, isEmpty);
     });
   });
 

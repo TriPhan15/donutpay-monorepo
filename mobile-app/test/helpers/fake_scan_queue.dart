@@ -40,6 +40,9 @@ class FakeScanQueue implements ReceiptScanQueue {
   /// When set, [remove] throws it instead of dropping the item.
   Object? removeError;
 
+  /// When set, [enqueue] throws it instead of taking the images.
+  Object? enqueueError;
+
   /// What [confirmAllValid] and [confirmItems] answer.
   BulkConfirmResult bulkResult = BulkConfirmResult.none;
 
@@ -58,6 +61,7 @@ class FakeScanQueue implements ReceiptScanQueue {
     itemsGate = null;
     removeGate = null;
     removeError = null;
+    enqueueError = null;
     resumeCalls = 0;
     acceptedOf = _all;
     bulkResult = BulkConfirmResult.none;
@@ -69,6 +73,7 @@ class FakeScanQueue implements ReceiptScanQueue {
   @override
   Future<int> enqueue(List<String> imagePaths) async {
     enqueued.add(imagePaths);
+    if (enqueueError case final Object error) throw error;
     return acceptedOf(imagePaths);
   }
 
