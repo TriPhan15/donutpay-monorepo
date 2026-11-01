@@ -1,5 +1,4 @@
-import 'package:intl/intl.dart';
-
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 
 /// How the period of the spending report is chosen.
@@ -29,12 +28,8 @@ class SpendingRange {
   /// The daily chart shows at most this many points: a month has one per day.
   static const int maxDayPoints = 31;
 
-  static final DateFormat _dayMonth = DateFormat('dd/MM');
-  static final DateFormat _dayMonthYear = DateFormat('dd/MM/yy');
-
   /// A range longer than this names its points with the year, so that the same day of two years cannot be confused.
   static const int _daysPerYear = 365;
-  static final DateFormat _fullDate = DateFormat('dd/MM/yyyy');
 
   final SpendingPeriod period;
 
@@ -103,7 +98,8 @@ class SpendingRange {
       1;
 
   /// The first and the last day as text, for example `21/09/2026 - 27/09/2026`.
-  String get label => '${_fullDate.format(start)} - ${_fullDate.format(end)}';
+  String get label =>
+      '${AppDateFormat.date.format(start)} - ${AppDateFormat.date.format(end)}';
 
   /// Whether [date] is on one of the days of the range, whatever its time of day.
   bool contains(DateTime date) {
@@ -128,7 +124,10 @@ class SpendingRange {
       return SpendingBucket(
         label: period == SpendingPeriod.week
             ? _weekdayLabel(loc, from.weekday)
-            : (days > _daysPerYear ? _dayMonthYear : _dayMonth).format(from),
+            : (days > _daysPerYear
+                      ? AppDateFormat.dayMonthShortYear
+                      : AppDateFormat.dayMonth)
+                  .format(from),
         start: from,
         end: to.isAfter(endExclusive) ? endExclusive : to,
       );

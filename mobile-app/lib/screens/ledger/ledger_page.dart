@@ -10,6 +10,7 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/models/transaction_filter.dart';
@@ -57,7 +58,6 @@ class LedgerPageState extends State<LedgerPage> {
   static const int _lastYear = 2100;
 
   static const double _gutter = 16;
-  static const String _dayPattern = 'dd/MM';
 
   /// Room under the list for the scan button of the tab bar.
   static const double _bottomSpace = 100;
@@ -220,7 +220,7 @@ class LedgerPageState extends State<LedgerPage> {
     switch (_period) {
       case LedgerPeriod.week:
         final e = _weekEnd.subtract(const Duration(days: 1));
-        return '${DateFormat('dd/MM').format(_weekStart)} - ${DateFormat('dd/MM/yyyy').format(e)}';
+        return '${AppDateFormat.dayMonth.format(_weekStart)} - ${AppDateFormat.date.format(e)}';
       case LedgerPeriod.month:
         return loc.statsMonthLabel(
           '${_selectedDate.month}',
@@ -507,7 +507,7 @@ class LedgerPageState extends State<LedgerPage> {
       onOpen: _openDetails,
       title: calendar
           ? loc.statsTransactionsOfDay(
-              DateFormat(_dayPattern).format(_selectedDate),
+              AppDateFormat.dayMonth.format(_selectedDate),
             )
           : loc.statsTransactions,
       trailing: calendar
@@ -597,7 +597,7 @@ class LedgerPageState extends State<LedgerPage> {
         .toList();
 
     for (var tx in monthTxs) {
-      final dateStr = DateFormat('dd/MM/yyyy').format(tx.date);
+      final dateStr = AppDateFormat.date.format(tx.date);
       if (tx.isExpense) {
         if (tx.countsAsSpending) totalExpense += tx.amount;
         sheet.appendRow([
@@ -658,7 +658,7 @@ class LedgerPageState extends State<LedgerPage> {
 
     final directory = Directory.systemTemp;
     final fileName =
-        '${loc.ledgerExcelFileName(monthName, DateFormat('ddMMyyyy').format(DateTime.now()))}.xlsx';
+        '${loc.ledgerExcelFileName(monthName, AppDateFormat.fileDate.format(DateTime.now()))}.xlsx';
     final file = File('${directory.path}/$fileName');
     final bytes = excel.encode();
     if (bytes != null) {

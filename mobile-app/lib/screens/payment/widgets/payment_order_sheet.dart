@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/payment_order.dart';
 import 'package:finance_ai_app/screens/payment/widgets/payment_status_pill.dart';
@@ -99,9 +99,7 @@ class PaymentOrderSheet extends StatelessWidget {
             _row(
               colors,
               loc.paymentDetailTime,
-              createdAt == null
-                  ? ''
-                  : DateFormat('dd/MM/yyyy HH:mm').format(createdAt),
+              createdAt == null ? '' : AppDateFormat.dateTime.format(createdAt),
             ),
             if (order.isPending) ...[
               const SizedBox(height: 16),

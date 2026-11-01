@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/models/savings_goal.dart';
@@ -56,14 +56,11 @@ class _SavingsGoalFormPageState extends State<SavingsGoalFormPage> {
   static const double _gutter = 16;
   static const double _cardGap = 12;
 
-  /// The goals store their date as text in this pattern (digits only, the same in every language).
-  static final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
-
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   DateTime? _deadline;
 
-  /// A stored deadline that is not in [_dateFormat] (written by another client): shown and sent back as it is, until
+  /// A stored deadline that is not in [AppDateFormat.date] (written by another client): shown and sent back as it is, until
   /// the user picks a date or removes it.
   String? _unreadDeadline;
   bool _amountShown = false;
@@ -111,7 +108,7 @@ class _SavingsGoalFormPageState extends State<SavingsGoalFormPage> {
   static DateTime? _parse(String? text) {
     if (text == null) return null;
     try {
-      return _dateFormat.parseStrict(text);
+      return AppDateFormat.date.parseStrict(text);
     } on FormatException {
       return null;
     }
@@ -158,7 +155,7 @@ class _SavingsGoalFormPageState extends State<SavingsGoalFormPage> {
       target: amount,
       deadline: deadline == null
           ? _unreadDeadline
-          : _dateFormat.format(deadline),
+          : AppDateFormat.date.format(deadline),
     );
     if (!mounted) return;
     setState(() => _isSaving = false);
@@ -301,7 +298,7 @@ class _SavingsGoalFormPageState extends State<SavingsGoalFormPage> {
     final loc = context.loc;
     final colors = Theme.of(context).colorScheme;
     final shown = switch (_deadline) {
-      final DateTime day => _dateFormat.format(day),
+      final DateTime day => AppDateFormat.date.format(day),
       null => _unreadDeadline,
     };
     return Column(
