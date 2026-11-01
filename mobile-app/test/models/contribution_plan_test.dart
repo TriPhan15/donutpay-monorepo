@@ -96,6 +96,24 @@ void main() {
       expect(s.chip, isNull);
     });
 
+    test('rounding up to 1.000 never asks more than the goal misses', () {
+      // 1.500 left over one month: 2.000 would be an over-contribution.
+      final s = ContributionSuggestion.of(
+        goal(target: 25e6, current: 25e6 - 1500, deadline: '28/11/2026'),
+        today,
+      )!;
+      expect(s.amount, 1500);
+      expect(s.chip, isNull);
+    });
+
+    test('a rest that is not a whole thousand is asked as it is', () {
+      final s = ContributionSuggestion.of(
+        goal(target: 25e6, current: 25e6 - 400, deadline: '29/10/2026'),
+        today,
+      )!;
+      expect(s.amount, 400);
+    });
+
     test('no deadline, overdue or done: no suggestion', () {
       expect(ContributionSuggestion.of(goal(), today), isNull);
       expect(

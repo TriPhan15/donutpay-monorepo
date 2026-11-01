@@ -1769,6 +1769,10 @@
   "@linkedPollTimedOut": {
     "description": "The payment status did not change in time."
   },
+  "linkedOpenPayUrlFailed": "Couldn't open the payment page. Please try again.",
+  "@linkedOpenPayUrlFailed": {
+    "description": "The payment page of a new sync order could not be opened, so nothing is waited for."
+  },
   "linkedDemoWallet": "Demo wallet",
   "@linkedDemoWallet": {
     "description": "Name of the demo e-wallet."

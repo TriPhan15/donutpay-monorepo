@@ -43,7 +43,7 @@ class ContributionPreview {
 }
 
 /// The monthly contribution that keeps a goal on time (T9 spec, 3.6): what is missing over the months left to the
-/// deadline ([SavingsGoalPlanner.monthlyNeed]), never more than what is missing, rounded up to 1.000 ₫. [chip] is the
+/// deadline ([SavingsGoalPlanner.monthlyNeed]), rounded up to 1.000 ₫ but never more than what is missing. [chip] is the
 /// quick amount to badge "Gợi ý" and preselect: the smallest one not below [amount] and not above what is missing, null
 /// when there is none (the field then starts with [amount] itself).
 class ContributionSuggestion {
@@ -74,7 +74,9 @@ class ContributionSuggestion {
     if (need <= 0) return null;
     // Whole dong first, so that a floating-point crumb never pushes it to the next thousand.
     final dong = need.round();
-    final amount = ((dong + _roundTo - 1) ~/ _roundTo * _roundTo).toDouble();
+    final rounded = ((dong + _roundTo - 1) ~/ _roundTo * _roundTo).toDouble();
+    // Rounding up must not put more in than the goal misses (1.500 ₫ left is asked as 1.500, not 2.000).
+    final amount = math.min(rounded, goal.remaining);
     // A chip above what is missing would put more in than the goal needs.
     final chips = quickAmounts.where((q) => q >= amount && q <= goal.remaining);
     return ContributionSuggestion._(amount, chips.isEmpty ? null : chips.first);

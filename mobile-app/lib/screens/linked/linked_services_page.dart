@@ -39,6 +39,9 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
   bool _syncing = false;
   Timer? _poll;
 
+  /// True while a status check is on the way: the next tick then waits for it instead of asking again.
+  bool _checking = false;
+
   /// What the banner names while [_syncing]: the amount and the wallet it comes from.
   double _syncAmount = 0;
   PaymentWallet? _syncWallet;
@@ -73,11 +76,17 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
       final orderCode = order['orderCode'] as String;
       final payUrl = order['payUrl'] as String;
       final uri = Uri.parse(payUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      final opened =
+          await canLaunchUrl(uri) &&
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
       // Left while the order was created: nobody is there to tell, and dispose has nothing to cancel.
       if (!mounted) return;
+      if (!opened) {
+        // Nothing can be paid, so nothing is waited for.
+        AppToast.error(context, context.loc.linkedOpenPayUrlFailed);
+        setState(() => _syncing = false);
+        return;
+      }
       _pollSync(orderCode, amount);
     } catch (e) {
       UserFacingError.log('Create sync order', e);
@@ -94,8 +103,11 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
 
   void _pollSync(String orderCode, double amount) {
     _poll?.cancel();
+    _checking = false;
     int tries = 0;
     _poll = Timer.periodic(const Duration(seconds: 2), (t) async {
+      if (_checking) return;
+      _checking = true;
       tries++;
       try {
         final st = await RemoteApiHelper.instance.paymentStatus(orderCode);
@@ -119,6 +131,8 @@ class _LinkedServicesPageState extends State<LinkedServicesPage> {
       } catch (e) {
         // One failed check is not the end: the next tick asks again.
         UserFacingError.log('Payment status', e);
+      } finally {
+        _checking = false;
       }
       if (tries >= _maxPollTries && t.isActive) {
         t.cancel();

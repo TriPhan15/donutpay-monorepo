@@ -2486,6 +2486,12 @@ abstract class AppLocalizations {
   /// **'No payment result yet. Please check again in the sync history.'**
   String get linkedPollTimedOut;
 
+  /// The payment page of a new sync order could not be opened, so nothing is waited for.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the payment page. Please try again.'**
+  String get linkedOpenPayUrlFailed;
+
   /// Name of the demo e-wallet.
   ///
   /// In en, this message translates to:
