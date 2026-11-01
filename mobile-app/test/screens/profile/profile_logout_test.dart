@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
@@ -129,6 +130,22 @@ void main() {
         expect(logout.headers['Authorization'], 'Bearer access-token');
         expect(logout.data, {'refreshToken': 'refresh-token'});
         expectSignedOut(tester);
+      },
+    );
+
+    testWidgets(
+      'empties the cached categories, so the next account does not see the ones of this user',
+      (tester) async {
+        backend.on('POST', _logoutPath, (_) => okResponse(null));
+        TransactionCategories.expenseSelectable = ['Nuôi mèo'];
+        TransactionCategories.incomeSelectable = ['Lương'];
+        await pumpProfile(tester);
+
+        await confirmLogout(tester);
+
+        expectSignedOut(tester);
+        expect(TransactionCategories.forType(isExpense: true), isEmpty);
+        expect(TransactionCategories.forType(isExpense: false), isEmpty);
       },
     );
 
