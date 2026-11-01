@@ -15,6 +15,7 @@ import 'package:finance_ai_app/screens/ledger/edit_transaction_page.dart';
 import 'package:finance_ai_app/screens/ledger/transaction_detail_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/widgets/receipt/receipt_detail_sheet.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_image_viewer.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
@@ -378,4 +379,131 @@ void main() {
       expect(image.loadingBuilder, isNotNull);
     },
   );
+
+  group('receipt sheet', () {
+    const receiptOfTransaction = '/api/receipts/transaction/5';
+
+    Map<String, dynamic> receipt(String status) => {
+      'id': 7,
+      'transactionId': 5,
+      'status': status,
+      'version': 3,
+      'vendorName': 'Highlands',
+      'extractedTotal': status == 'FAILED' ? null : 55000,
+      'extractedDate': '2026-10-20',
+      'imageUrl': null,
+      'errorCode': status == 'FAILED' ? 'AI_NO_TOTAL' : null,
+      'errorMessage': status == 'FAILED' ? 'AI không đọc được tổng tiền' : null,
+    };
+
+    ReceiptStatus? shownStatus(WidgetTester tester) => tester
+        .widget<ReceiptStatusBadge>(find.byType(ReceiptStatusBadge))
+        .status;
+
+    testWidgets(
+      'tapping the receipt row of a synced transaction opens the sheet',
+      (tester) async {
+        backend.on(
+          'GET',
+          receiptOfTransaction,
+          (_) => okResponse(receipt('COMPLETED_RAW')),
+        );
+        await pump(tester, _tx(receiptStatus: ReceiptStatus.success));
+
+        await tester.tap(find.text('Hóa đơn'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ReceiptDetailSheet), findsOneWidget);
+        expect(backend.calls, ['GET $receiptOfTransaction']);
+        expect(find.text('Sửa thông tin'), findsOneWidget);
+      },
+    );
+
+    testWidgets('two quick taps open one sheet', (tester) async {
+      backend.on(
+        'GET',
+        receiptOfTransaction,
+        (_) => okResponse(receipt('COMPLETED_RAW')),
+      );
+      await pump(tester, _tx(receiptStatus: ReceiptStatus.success));
+
+      await tester.tap(find.text('Hóa đơn'));
+      await tester.tap(find.text('Hóa đơn'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReceiptDetailSheet), findsOneWidget);
+    });
+
+    testWidgets('a transaction the server does not have has no way in', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        _tx(
+          id: null,
+          clientId: 'client-1',
+          syncStatus: SyncStatus.error,
+          receiptStatus: ReceiptStatus.success,
+        ),
+      );
+
+      await tester.tap(find.text('Hóa đơn'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReceiptDetailSheet), findsNothing);
+      expect(backend.requests, isEmpty);
+    });
+
+    testWidgets(
+      'a change made in the sheet updates the status label of the page',
+      (tester) async {
+        backend.on(
+          'GET',
+          receiptOfTransaction,
+          (_) => okResponse(receipt('FAILED')),
+        );
+        backend.on('POST', '/api/receipts/feedback/7', (_) => okResponse(null));
+        await pump(tester, _tx(receiptStatus: ReceiptStatus.failed));
+        expect(shownStatus(tester), ReceiptStatus.failed);
+
+        await tester.tap(find.text('Hóa đơn'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Gửi số tiền đúng'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), '55000');
+        await tester.pump();
+        backend.on(
+          'GET',
+          receiptOfTransaction,
+          (_) => okResponse(receipt('WAITING_FOR_REVIEW')),
+        );
+        await tester.tap(find.text('Gửi'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(Icons.close_rounded));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ReceiptDetailSheet), findsNothing);
+        expect(shownStatus(tester), ReceiptStatus.processing);
+      },
+    );
+
+    testWidgets(
+      'an approved receipt shows as completed, whatever the old label said',
+      (tester) async {
+        backend.on(
+          'GET',
+          receiptOfTransaction,
+          (_) => okResponse(receipt('APPROVED')),
+        );
+        await pump(tester, _tx(receiptStatus: ReceiptStatus.processing));
+
+        await tester.tap(find.text('Hóa đơn'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byIcon(Icons.close_rounded));
+        await tester.pumpAndSettle();
+
+        expect(shownStatus(tester), ReceiptStatus.success);
+      },
+    );
+  });
 }

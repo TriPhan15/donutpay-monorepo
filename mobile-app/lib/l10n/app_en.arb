@@ -3550,5 +3550,121 @@
         "type": "String"
       }
     }
+  },
+  "receiptDetailTitle": "Receipt",
+  "@receiptDetailTitle": {
+    "description": "Title of the receipt detail sheet opened from the transaction detail page."
+  },
+  "receiptDetailStatus": "Status",
+  "@receiptDetailStatus": {
+    "description": "Row label in the receipt detail sheet: where the receipt stands."
+  },
+  "receiptDetailVendor": "Store",
+  "@receiptDetailVendor": {
+    "description": "Label of the store name in the receipt detail sheet and its edit form."
+  },
+  "receiptDetailTotal": "Total",
+  "@receiptDetailTotal": {
+    "description": "Label of the receipt total in the receipt detail sheet and its forms."
+  },
+  "receiptDetailDate": "Date",
+  "@receiptDetailDate": {
+    "description": "Label of the receipt date in the receipt detail sheet."
+  },
+  "receiptDetailNoValue": "Not available",
+  "@receiptDetailNoValue": {
+    "description": "Shown in place of a receipt field that has no value."
+  },
+  "receiptDetailStatusPending": "Waiting to be read",
+  "@receiptDetailStatusPending": {
+    "description": "Lifecycle status PENDING of a receipt."
+  },
+  "receiptDetailStatusProcessing": "Processing",
+  "@receiptDetailStatusProcessing": {
+    "description": "Lifecycle status PROCESSING of a receipt."
+  },
+  "receiptDetailStatusCompleted": "Read by AI",
+  "@receiptDetailStatusCompleted": {
+    "description": "Lifecycle status COMPLETED_RAW of a receipt: the AI read a total and nobody changed it."
+  },
+  "receiptDetailStatusEdited": "Edited by you",
+  "@receiptDetailStatusEdited": {
+    "description": "Lifecycle status EDITED of a receipt: its owner corrected what the AI read."
+  },
+  "receiptDetailStatusFailed": "Could not be read",
+  "@receiptDetailStatusFailed": {
+    "description": "Lifecycle status FAILED of a receipt."
+  },
+  "receiptDetailStatusWaitingForReview": "Waiting for review",
+  "@receiptDetailStatusWaitingForReview": {
+    "description": "Lifecycle status WAITING_FOR_REVIEW of a receipt: the owner sent the amount and waits for an administrator."
+  },
+  "receiptDetailStatusApproved": "Approved",
+  "@receiptDetailStatusApproved": {
+    "description": "Lifecycle status APPROVED of a receipt."
+  },
+  "receiptDetailStatusCanceled": "Canceled",
+  "@receiptDetailStatusCanceled": {
+    "description": "Lifecycle status CANCELED of a receipt."
+  },
+  "receiptDetailStatusUnknown": "Unknown",
+  "@receiptDetailStatusUnknown": {
+    "description": "Status of a receipt that this version of the app does not know."
+  },
+  "receiptDetailFailedTitle": "This receipt could not be read",
+  "@receiptDetailFailedTitle": {
+    "description": "Title of the error block of a FAILED receipt; the reason from the server is shown under it."
+  },
+  "receiptDetailEdit": "Edit details",
+  "@receiptDetailEdit": {
+    "description": "Button of the receipt detail sheet: correct the store, total and date."
+  },
+  "receiptDetailRetry": "Read again",
+  "@receiptDetailRetry": {
+    "description": "Button of the receipt detail sheet: scan the photo of a FAILED receipt again."
+  },
+  "receiptDetailSendAmount": "Send the right amount",
+  "@receiptDetailSendAmount": {
+    "description": "Button of the receipt detail sheet: tell an administrator the right total of a FAILED receipt."
+  },
+  "receiptDetailEditHint": "The transaction and your balance only change after an administrator approves.",
+  "@receiptDetailEditHint": {
+    "description": "Hint under the receipt edit form: editing a receipt does not change the transaction or the wallet."
+  },
+  "receiptDetailSendAmountHint": "Enter the right total of this receipt. An administrator will check it before the transaction is updated.",
+  "@receiptDetailSendAmountHint": {
+    "description": "Hint above the amount field of the send-the-right-amount form."
+  },
+  "receiptDetailSend": "Send",
+  "@receiptDetailSend": {
+    "description": "Button that sends the right amount of a FAILED receipt."
+  },
+  "receiptDetailEdited": "Receipt updated",
+  "@receiptDetailEdited": {
+    "description": "Toast after the receipt was edited."
+  },
+  "receiptDetailRetried": "Receipt read again",
+  "@receiptDetailRetried": {
+    "description": "Toast after a FAILED receipt was read again and a total was found."
+  },
+  "receiptDetailRetryStillFailed": "The total still could not be read",
+  "@receiptDetailRetryStillFailed": {
+    "description": "Toast after a FAILED receipt was read again and no total was found."
+  },
+  "receiptDetailAmountSent": "Sent to an administrator for review",
+  "@receiptDetailAmountSent": {
+    "description": "Toast after the right amount of a FAILED receipt was sent."
+  },
+  "receiptDetailLoadFailedTitle": "Could not load the receipt",
+  "@receiptDetailLoadFailedTitle": {
+    "description": "Title of the error view of the receipt detail sheet."
+  },
+  "receiptDetailConflict": "The receipt has changed. It was reloaded: please check it and try again.",
+  "@receiptDetailConflict": {
+    "description": "Toast when the server refuses an action on a receipt (409) and the message of the server cannot be shown in this language."
+  },
+  "receiptDetailPhotoFailed": "Could not download the receipt photo to read it again.",
+  "@receiptDetailPhotoFailed": {
+    "description": "Toast when the photo of a FAILED receipt cannot be downloaded for a new scan."
   }
 }
