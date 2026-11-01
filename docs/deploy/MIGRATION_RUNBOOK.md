@@ -103,6 +103,20 @@ File này thêm `receipts.owner_id` (khóa ngoại tới `users`) và `receipts_
 từ giao dịch gắn với nó. Hóa đơn không gắn giao dịch nào giữ `owner_id` NULL, chỉ admin xử lý được. Chạy lại không đổi gì.
 Chưa chạy file này thì app vẫn nhận ra chủ của hóa đơn cũ qua giao dịch gắn với nó.
 
+B8 (chủ sở hữu danh mục) cũng có file riêng, chạy tương tự:
+
+```bash
+docker exec -i finance-postgres psql -X -v ON_ERROR_STOP=1 -U "$DB_USERNAME" -d finance_db \
+  < core-backend/src/main/resources/db/category-owner-migration.sql
+```
+
+File này thêm `categories.owner_id` (khóa ngoại tới `users`), cột phụ `owner_key`, `categories_aud.owner_id`, index của `owner_id`
+và ràng buộc tên danh mục là duy nhất theo từng chủ (`UNIQUE (owner_key, name)`: hai người dùng có thể cùng một tên, một người
+không có hai danh mục trùng tên). Mọi danh mục cũ giữ `owner_id` NULL, tức là vẫn là danh mục dùng chung như trước, vì không
+biết ai đã gõ chúng. Nếu DB cũ đã có hai danh mục trùng tên, file không thêm ràng buộc và không gộp gì, chỉ báo số tên trùng ở dòng
+NOTICE cuối: gộp tay rồi chạy lại. Chạy lại không đổi gì, chạy trước hay sau khi `core-api` khởi động đều được. Từ bản này
+`GET /api/categories` cần đăng nhập và chỉ trả danh mục chung cùng danh mục của người gọi.
+
 ## 4. Không cần chạy thử migration trên dữ liệu cũ
 
 Server deploy bắt đầu từ DB trống, nên không cần chạy thử 4 file migration trên bản sao dữ liệu cũ.

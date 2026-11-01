@@ -152,7 +152,6 @@ public class SecurityConfig {
                         .requestMatchers(AuthPaths.CHANGE_PASSWORD_URL, AuthPaths.LOGOUT_URL, AuthPaths.CHECK_URL).authenticated()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/payment/webhook").permitAll()
-                        .requestMatchers("/api/categories").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
                 )

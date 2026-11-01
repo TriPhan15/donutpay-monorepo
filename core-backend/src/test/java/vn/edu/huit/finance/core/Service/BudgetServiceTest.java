@@ -171,7 +171,7 @@ class BudgetServiceTest {
     @Test
     void createBudget_savesTheBudgetForTheCaller_withTheRequestedCategoryAndPeriod() {
         signedInAsAlice();
-        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(false);
         when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> {
             Budget saved = invocation.getArgument(0);
@@ -211,7 +211,7 @@ class BudgetServiceTest {
     @Test
     void createBudget_throwsDuplicate_andSavesNothing_whenTheUserAlreadyHasThatCategoryAndPeriod() {
         signedInAsAlice();
-        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(true);
 
         assertThrows(DuplicateBudgetException.class, () -> service.createBudget(request(FOOD_ID)));
@@ -223,7 +223,7 @@ class BudgetServiceTest {
     @Test
     void createBudget_throwsInvalidCategory_andSavesNothing_whenTheCategoryDoesNotExist() {
         signedInAsAlice();
-        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.empty());
+        when(categoryRepository.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.empty());
 
         assertThrows(InvalidCategoryException.class, () -> service.createBudget(request(FOOD_ID)));
 
@@ -235,7 +235,7 @@ class BudgetServiceTest {
     @Test
     void createBudget_withANewCategoryName_createsAnExpenseCategory_recordedWithTheCaller_andUsesItsId() {
         signedInAsAlice();
-        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Thú cưng")).thenReturn(Optional.empty());
+        when(categoryRepository.findVisibleByName("Thú cưng", ALICE_ID)).thenReturn(List.of());
         when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> {
             Category saved = invocation.getArgument(0);
             saved.setId(30L);
@@ -268,7 +268,7 @@ class BudgetServiceTest {
     @Test
     void createBudget_withAnExistingNameInAnotherCase_reusesThatCategory_andCreatesNone() {
         signedInAsAlice();
-        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("ăn UỐNG")).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleByName("Ăn uống", ALICE_ID)).thenReturn(List.of(food));
         when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(false);
         when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -282,7 +282,7 @@ class BudgetServiceTest {
     @Test
     void createBudget_withBothAnIdAndAName_usesTheId() {
         signedInAsAlice();
-        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(false);
         when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
         BudgetRequestDto request = request(FOOD_ID);
@@ -291,7 +291,7 @@ class BudgetServiceTest {
         BudgetResponseDto result = service.createBudget(request);
 
         assertEquals(FOOD_ID, result.getCategoryId());
-        verify(categoryRepository, never()).findFirstByNameIgnoreCaseOrderByIdAsc(any());
+        verify(categoryRepository, never()).findVisibleByName(any(), any());
         verify(categoryRepository, never()).save(any());
     }
 
@@ -311,7 +311,7 @@ class BudgetServiceTest {
     @Test
     void createBudget_byName_throwsDuplicate_whenTheCallerAlreadyHasABudgetForThatCategoryAndPeriod() {
         signedInAsAlice();
-        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Ăn uống")).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleByName("Ăn uống", ALICE_ID)).thenReturn(List.of(food));
         when(budgetRepository.existsDuplicate(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START)).thenReturn(true);
 
         assertThrows(DuplicateBudgetException.class, () -> service.createBudget(requestNamed("Ăn uống")));
@@ -324,7 +324,7 @@ class BudgetServiceTest {
         signedInAsAlice();
         Budget existing = budget(BUDGET_ID, alice, null);
         when(budgetRepository.findWithCategoryByIdAndUserId(BUDGET_ID, ALICE_ID)).thenReturn(Optional.of(existing));
-        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("ăn uống")).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleByName("Ăn uống", ALICE_ID)).thenReturn(List.of(food));
         when(budgetRepository.existsDuplicateExcluding(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START, BUDGET_ID))
                 .thenReturn(false);
         when(budgetRepository.saveAndFlush(any(Budget.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -342,7 +342,7 @@ class BudgetServiceTest {
         signedInAsAlice();
         Budget existing = budget(BUDGET_ID, alice, null);
         when(budgetRepository.findWithCategoryByIdAndUserId(BUDGET_ID, ALICE_ID)).thenReturn(Optional.of(existing));
-        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         when(budgetRepository.existsDuplicateExcluding(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START, BUDGET_ID))
                 .thenReturn(false);
         when(budgetRepository.saveAndFlush(existing)).thenReturn(existing);
@@ -378,7 +378,7 @@ class BudgetServiceTest {
         signedInAsAlice();
         Budget existing = budget(BUDGET_ID, alice, null);
         when(budgetRepository.findWithCategoryByIdAndUserId(BUDGET_ID, ALICE_ID)).thenReturn(Optional.of(existing));
-        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         when(budgetRepository.existsDuplicateExcluding(ALICE_ID, FOOD_ID, BudgetPeriodType.MONTH, START, BUDGET_ID))
                 .thenReturn(true);
 
@@ -394,7 +394,7 @@ class BudgetServiceTest {
         signedInAsAlice();
         Budget existing = budget(BUDGET_ID, alice, null);
         when(budgetRepository.findWithCategoryByIdAndUserId(BUDGET_ID, ALICE_ID)).thenReturn(Optional.of(existing));
-        when(categoryRepository.findById(FOOD_ID)).thenReturn(Optional.empty());
+        when(categoryRepository.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.empty());
 
         assertThrows(InvalidCategoryException.class, () -> service.updateBudget(BUDGET_ID, request(FOOD_ID)));
 

@@ -89,7 +89,7 @@ class CrossSessionTokenRevocationTest {
     private static final String NEW_PASSWORD = "NewPass456";
     private static final String OTHER_PASSWORD = "OtherPass789";
     private static final String PROTECTED_URL = "/api/budgets";
-    private static final String PUBLIC_URL = "/api/categories";
+    private static final String PUBLIC_URL = "/api/payment/webhook";
     private static final String SESSION_OUTDATED_MESSAGE = "Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.";
     private static final String TOKEN_REVOKED_MESSAGE = "Phiên đăng nhập đã bị thu hồi. Vui lòng đăng nhập lại.";
     private static final String TOKEN_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";

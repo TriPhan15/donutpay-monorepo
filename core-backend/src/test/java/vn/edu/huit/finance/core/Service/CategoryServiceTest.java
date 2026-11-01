@@ -10,6 +10,7 @@ import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Exception.CategoryInUseException;
+import vn.edu.huit.finance.core.Exception.CategoryNameTakenException;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
@@ -25,6 +26,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
 import java.lang.reflect.Method;
+import java.text.Normalizer;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -42,6 +44,15 @@ class CategoryServiceTest {
     @Mock private TransactionRepository transactionRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private CategoryService service;
+
+    private static final long ALICE_ID = 7L;
+    private final User alice = userWithId(ALICE_ID);
+
+    private static User userWithId(long id) {
+        User user = new User();
+        user.setId(id);
+        return user;
+    }
 
     private static Category category(Long id, String name) {
         Category category = new Category();
@@ -181,9 +192,9 @@ class CategoryServiceTest {
     @Test
     void resolveOrCreate_reusesAnExistingNameIgnoringCaseAndSurroundingSpaces_andRecordsNothing() {
         Category coffee = category(12L, "Cà phê");
-        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("cà PHÊ")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.findVisibleByName("cà PHÊ", ALICE_ID)).thenReturn(List.of(coffee));
 
-        Category resolved = service.resolveOrCreate(null, "  cà PHÊ ", CategoryService.TYPE_EXPENSE, AuditActor.system());
+        Category resolved = service.resolveOrCreate(null, "  cà PHÊ ", CategoryService.TYPE_EXPENSE, alice, AuditActor.system());
 
         assertSame(coffee, resolved);
         verify(categoryRepository, never()).save(any());
@@ -192,17 +203,18 @@ class CategoryServiceTest {
 
     @Test
     void resolveOrCreate_createsAnUnknownNameTrimmedWithTheGivenType_andRecordsItWithTheActor() {
-        when(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Thú cưng")).thenReturn(Optional.empty());
+        when(categoryRepository.findVisibleByName("Thú cưng", ALICE_ID)).thenReturn(List.of());
         when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> {
             Category saved = invocation.getArgument(0);
             saved.setId(30L);
             return saved;
         });
 
-        Category created = service.resolveOrCreate(null, " Thú cưng ", CategoryService.TYPE_EXPENSE, AuditActor.system());
+        Category created = service.resolveOrCreate(null, " Thú cưng ", CategoryService.TYPE_EXPENSE, alice, AuditActor.system());
 
         assertEquals("Thú cưng", created.getName());
         assertEquals("EXPENSE", created.getType());
+        assertSame(alice, created.getOwner(), "a name a user types belongs to that user");
         AuditEntry entry = recorded();
         assertEquals(AuditAction.CATEGORY_CREATED, entry.action());
         assertEquals(AuditActor.system(), entry.actor());
@@ -212,26 +224,79 @@ class CategoryServiceTest {
     @Test
     void resolveOrCreate_prefersTheIdOverTheName() {
         Category food = category(12L, "Ăn uống");
-        when(categoryRepository.findById(12L)).thenReturn(Optional.of(food));
+        when(categoryRepository.findVisibleById(12L, ALICE_ID)).thenReturn(Optional.of(food));
 
-        assertSame(food, service.resolveOrCreate(12L, "Khác hẳn", CategoryService.TYPE_EXPENSE, AuditActor.system()));
+        assertSame(food, service.resolveOrCreate(12L, "Khác hẳn", CategoryService.TYPE_EXPENSE, alice, AuditActor.system()));
 
-        verify(categoryRepository, never()).findFirstByNameIgnoreCaseOrderByIdAsc(any());
+        verify(categoryRepository, never()).findVisibleByName(any(), any());
         verify(categoryRepository, never()).save(any());
     }
 
     @Test
     void resolveOrCreate_refusesAnUnknownId_andABlankNameWithoutId() {
-        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+        when(categoryRepository.findVisibleById(99L, ALICE_ID)).thenReturn(Optional.empty());
 
         assertThrows(InvalidCategoryException.class,
-                () -> service.resolveOrCreate(99L, null, CategoryService.TYPE_EXPENSE, AuditActor.system()));
+                () -> service.resolveOrCreate(99L, null, CategoryService.TYPE_EXPENSE, alice, AuditActor.system()));
         InvalidCategoryException blank = assertThrows(InvalidCategoryException.class,
-                () -> service.resolveOrCreate(null, "   ", CategoryService.TYPE_EXPENSE, AuditActor.system()));
+                () -> service.resolveOrCreate(null, "   ", CategoryService.TYPE_EXPENSE, alice, AuditActor.system()));
 
         assertEquals("Thiếu danh mục (categoryId hoặc categoryName)", blank.getMessage());
         verify(categoryRepository, never()).save(any());
         verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void resolveOrCreate_aDefaultNameTypedByAUserIsTheSharedCategory_neverOneOwnedByThatUser() {
+        when(categoryRepository.findVisibleByName("Ăn uống", ALICE_ID)).thenReturn(List.of());
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Category created = service.resolveOrCreate(null, "  ĂN uống ", CategoryService.TYPE_EXPENSE, alice, AuditActor.system());
+
+        assertEquals("Ăn uống", created.getName(), "the canonical spelling of the default category");
+        assertNull(created.getOwner());
+    }
+
+    @Test
+    void resolveOrCreate_looksUpAndStoresTheNameInNfc() {
+        String decomposed = Normalizer.normalize("Cafe sáng", Normalizer.Form.NFD);
+        when(categoryRepository.findVisibleByName("Cafe sáng", ALICE_ID)).thenReturn(List.of());
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Category created = service.resolveOrCreate(null, decomposed, CategoryService.TYPE_EXPENSE, alice, AuditActor.system());
+
+        assertEquals(Normalizer.normalize("Cafe sáng", Normalizer.Form.NFC), created.getName());
+    }
+
+    @Test
+    void resolveOrCreate_anotherRequestCreatedTheSameNameFirst_isAConflictToRetry_notAnIntegrityError() {
+        when(categoryRepository.findVisibleByName("Thú cưng", ALICE_ID)).thenReturn(List.of());
+        when(categoryRepository.save(any(Category.class))).thenThrow(new DataIntegrityViolationException("uk_categories_owner_name"));
+
+        CategoryNameTakenException conflict = assertThrows(CategoryNameTakenException.class,
+                () -> service.resolveOrCreate(null, "Thú cưng", CategoryService.TYPE_EXPENSE, alice, AuditActor.system()));
+
+        assertEquals("Danh mục [Thú cưng] vừa được tạo bởi một yêu cầu khác, vui lòng thử lại", conflict.getMessage());
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void anAdministratorsCategoryIsADefaultOne_withNoOwner() {
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Category created = service.createCategory("  Học phí ", "EXPENSE");
+
+        assertNull(created.getOwner());
+        assertEquals("Học phí", created.getName());
+    }
+
+    @Test
+    void anAdministratorsNameIsStoredInNfc() {
+        when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Category created = service.createCategory(Normalizer.normalize("Học phí", Normalizer.Form.NFD), "EXPENSE");
+
+        assertEquals(Normalizer.normalize("Học phí", Normalizer.Form.NFC), created.getName());
     }
 
     @Test
@@ -241,7 +306,7 @@ class CategoryServiceTest {
                 CategoryService.class.getMethod("renameCategory", Long.class, String.class),
                 CategoryService.class.getMethod("deleteCategory", Long.class),
                 CategoryService.class.getMethod("resolveOrCreate", Long.class, String.class, String.class,
-                        AuditActor.class)}) {
+                        User.class, AuditActor.class)}) {
             assertTrue(AnnotatedElementUtils.hasAnnotation(method, Transactional.class), method.getName());
         }
     }

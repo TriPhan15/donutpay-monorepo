@@ -5,6 +5,8 @@ import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.Transaction;
 
+import java.text.Normalizer;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class SavingsContributionsTest {
@@ -36,6 +38,15 @@ class SavingsContributionsTest {
         assertThat(SavingsContributions.isContribution(
                 tx(true, category("Ăn uống", DefaultCategory.TYPE_EXPENSE)))).isFalse();
         assertThat(SavingsContributions.isSavingsCategory(null)).isFalse();
+    }
+
+    @Test
+    void aSavingsCategoryWhoseNameWasStoredDecomposedIsStillTheSavingsCategory() {
+        String decomposed = Normalizer.normalize(SavingsContributions.CATEGORY_NAME, Normalizer.Form.NFD);
+        assertThat(decomposed).isNotEqualTo(SavingsContributions.CATEGORY_NAME);
+
+        assertThat(SavingsContributions.isContribution(
+                tx(true, category(decomposed, DefaultCategory.TYPE_EXPENSE)))).isTrue();
     }
 
     @Test

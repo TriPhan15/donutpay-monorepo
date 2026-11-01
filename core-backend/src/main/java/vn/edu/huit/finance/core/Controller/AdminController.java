@@ -166,7 +166,7 @@ public class AdminController {
 
     @GetMapping("/categories")
     public String showCategories(Model model) {
-        List<Category> categories = categoryRepo.findAll();
+        List<Category> categories = categoryRepo.findAllWithOwner();
         model.addAttribute("categories", categories);
         return "admin/categories";
     }

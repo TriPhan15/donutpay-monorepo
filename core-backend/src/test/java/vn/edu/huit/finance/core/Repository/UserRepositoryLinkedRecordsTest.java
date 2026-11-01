@@ -67,6 +67,19 @@ class UserRepositoryLinkedRecordsTest {
     }
 
     @Test
+    void aCategoryTheUserNamedIsALinkedRecordToo_otherwiseDeletingTheAccountWouldBreakItsForeignKey() {
+        User bob = user("bob", "0900000002");
+        Category cafe = new Category();
+        cafe.setName("Cafe sáng");
+        cafe.setType("EXPENSE");
+        cafe.setOwner(alice);
+        entityManager.persistAndFlush(cafe);
+
+        assertTrue(userRepository.existsLinkedRecords(alice.getId()));
+        assertFalse(userRepository.existsLinkedRecords(bob.getId()));
+    }
+
+    @Test
     void aBudgetAloneIsALinkedRecordToo_andOtherUsersAreNotAffected() {
         User bob = user("bob", "0900000002");
         Budget budget = new Budget();

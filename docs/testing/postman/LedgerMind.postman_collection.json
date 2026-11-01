@@ -242,7 +242,7 @@
         },
         {
           "id": "1f1f33df-6269-5854-9e71-0b7293af0a88",
-          "name": "Danh mục (public)",
+          "name": "Danh mục",
           "event": [
             {
               "listen": "test",
@@ -267,9 +267,6 @@
                 "api",
                 "categories"
               ]
-            },
-            "auth": {
-              "type": "noauth"
             }
           }
         },

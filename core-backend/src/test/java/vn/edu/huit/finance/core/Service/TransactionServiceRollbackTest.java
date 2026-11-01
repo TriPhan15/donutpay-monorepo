@@ -219,7 +219,8 @@ class TransactionServiceRollbackTest {
 
         assertThrows(IllegalStateException.class, () -> service.updateTransaction(expense.getId(), request));
 
-        assertTrue(categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc("Freelance").isEmpty(), "the new category must not survive the failed edit");
+        assertTrue(categoryRepository.findAll().stream().noneMatch(category -> "Freelance".equalsIgnoreCase(category.getName())),
+                "the new category must not survive the failed edit");
         assertMoney("1000000", walletInDatabase());
     }
 

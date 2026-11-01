@@ -215,7 +215,7 @@ public class TransactionService {
             }
         }
 
-        Category category = resolveCategory(request.getCategoryId(), request.getCategoryName(), request.isExpense(), actor);
+        Category category = resolveCategory(request.getCategoryId(), request.getCategoryName(), request.isExpense(), user, actor);
         if (!savingsAllowed && SavingsContributions.isSavingsCategory(category)) {
             // Ví đã được khóa nhưng chưa ghi gì: rollback là đủ.
             log.warn("Generic checkout in the savings category refused, userId={}", userId);
@@ -292,7 +292,7 @@ public class TransactionService {
         AuditActor actor = AuditActor.of(caller);
         // Looked up before anything is written, so a request that is going to be rejected has not touched the wallet.
         Category newCategory = hasCategory(request)
-                ? resolveCategory(request.getCategoryId(), request.getCategoryName(), newExpense, actor)
+                ? resolveCategory(request.getCategoryId(), request.getCategoryName(), newExpense, caller, actor)
                 : null;
         if (SavingsContributions.isSavingsCategory(newCategory)) {
             log.warn("Moving a transaction into the savings category refused, userId={}, transactionId={}",
@@ -680,9 +680,12 @@ public class TransactionService {
                 || (request.getCategoryName() != null && !request.getCategoryName().isBlank());
     }
 
-    /** By id or by name (see {@link CategoryService#resolveOrCreate}); a new one is typed after the transaction. */
-    private Category resolveCategory(Long categoryId, String categoryName, boolean isExpense, AuditActor actor) {
-        return categoryService.resolveOrCreate(categoryId, categoryName, CategoryService.typeOf(isExpense), actor);
+    /**
+     * By id or by name (see {@link CategoryService#resolveOrCreate}), among the default categories and those of [owner],
+     * the user the transaction belongs to; a new one is typed after the transaction.
+     */
+    private Category resolveCategory(Long categoryId, String categoryName, boolean isExpense, User owner, AuditActor actor) {
+        return categoryService.resolveOrCreate(categoryId, categoryName, CategoryService.typeOf(isExpense), owner, actor);
     }
 
     /** What an edit changes, field by field: the amount, the direction and the category with their values, the rest by name. */
