@@ -113,13 +113,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final user = data['user'] as Map?;
       final userId = (user?['id'] ?? data['userId'] ?? res['userId']) as int?;
+      if (userId == null) {
+        await _rejectAnswerWithoutUserId();
+        return;
+      }
       if (token.isNotEmpty && refreshToken.isNotEmpty) {
         await SessionService.setTokens(token, refreshToken);
       }
-
-      if (userId != null) {
-        await SessionService.setCurrentUserId(userId);
-      }
+      await SessionService.setCurrentUserId(userId);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MainScaffold()),
@@ -142,6 +143,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } finally {
       if (mounted) setState(() => _isSocialLoading = false);
     }
+  }
+
+  /// A sign-up answer that names no user cannot open the app: its tabs would stay empty or end the session at the first
+  /// request. Nothing of it is kept; the user stays here with the error.
+  Future<void> _rejectAnswerWithoutUserId() async {
+    await SessionService.clearSession();
+    if (!mounted) return;
+    await AppDialog.error(
+      context,
+      title: context.loc.registerFailedTitle,
+      message: context.loc.loginInvalidResponse,
+    );
   }
 
   @override

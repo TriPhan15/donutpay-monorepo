@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
+import 'package:finance_ai_app/screens/main_scaffold.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 import 'package:finance_ai_app/widgets/common/primary_button.dart';
@@ -14,6 +16,7 @@ import 'package:finance_ai_app/widgets/common/primary_button.dart';
 import '../../helpers/app_settings_scope.dart';
 import '../../helpers/captured_logs.dart';
 import '../../helpers/fake_backend.dart';
+import '../../helpers/fake_local_store.dart';
 
 const String _loginPath = '/api/auth/login';
 const String _failedTitle = 'Đăng nhập thất bại';
@@ -23,6 +26,8 @@ void main() {
 
   setUpAll(() {
     RemoteApiHelper.instance.init(httpClientAdapter: backend);
+    // A successful sign-in warms the home data up in the background; it must not reach a real database.
+    AppRepository.instance.localStore = FakeLocalStore();
   });
 
   setUp(() async {
@@ -30,9 +35,11 @@ void main() {
     await SessionService.clearSession();
     SharedPreferences.setMockInitialValues({});
     backend.reset();
+    LoginScreen.home = (_) => const Scaffold(body: Text('home after sign-in'));
   });
 
   tearDown(() {
+    LoginScreen.home = (_) => const MainScaffold();
     Intl.defaultLocale = null;
   });
 
@@ -109,21 +116,23 @@ void main() {
   }
 
   group('remember me', () {
-    // The answer carries the tokens but no user id: the tokens are stored, then the screen stops on an error dialog, so
-    // the test never leaves the login screen.
-    void answerTokensWithoutUser() => backend.on(
+    void answerTokensWithUser() => backend.on(
       'POST',
       _loginPath,
-      (_) => okResponse({'token': 'access-1', 'refreshToken': 'refresh-1'}),
+      (_) => okResponse({
+        'token': 'access-1',
+        'refreshToken': 'refresh-1',
+        'user': {'id': 1},
+      }),
     );
 
     testWidgets('is ticked by default and the session survives a cold start', (
       tester,
     ) async {
-      answerTokensWithoutUser();
+      answerTokensWithUser();
       await signIn(tester);
 
-      expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
+      // The sign-in left the login screen, so the box is gone: the session that survives proves it was ticked.
       expect(SessionService.currentToken, 'access-1');
       await SessionService.init();
       expect(SessionService.currentToken, 'access-1');
@@ -132,7 +141,7 @@ void main() {
     testWidgets('unticked, the session ends at the next cold start', (
       tester,
     ) async {
-      answerTokensWithoutUser();
+      answerTokensWithUser();
       await withCapturedLogs((_) async {
         await signIn(tester, untickRememberMe: true);
 
