@@ -2568,4 +2568,96 @@ class AppLocalizationsEn extends AppLocalizations {
   String savingsOverfillHint(String missing) {
     return 'The goal only misses $missing. The extra still goes into the goal.';
   }
+
+  @override
+  String get receiptDetailTitle => 'Receipt';
+
+  @override
+  String get receiptDetailStatus => 'Status';
+
+  @override
+  String get receiptDetailVendor => 'Store';
+
+  @override
+  String get receiptDetailTotal => 'Total';
+
+  @override
+  String get receiptDetailDate => 'Date';
+
+  @override
+  String get receiptDetailNoValue => 'Not available';
+
+  @override
+  String get receiptDetailStatusPending => 'Waiting to be read';
+
+  @override
+  String get receiptDetailStatusProcessing => 'Processing';
+
+  @override
+  String get receiptDetailStatusCompleted => 'Read by AI';
+
+  @override
+  String get receiptDetailStatusEdited => 'Edited by you';
+
+  @override
+  String get receiptDetailStatusFailed => 'Could not be read';
+
+  @override
+  String get receiptDetailStatusWaitingForReview => 'Waiting for review';
+
+  @override
+  String get receiptDetailStatusApproved => 'Approved';
+
+  @override
+  String get receiptDetailStatusCanceled => 'Canceled';
+
+  @override
+  String get receiptDetailStatusUnknown => 'Unknown';
+
+  @override
+  String get receiptDetailFailedTitle => 'This receipt could not be read';
+
+  @override
+  String get receiptDetailEdit => 'Edit details';
+
+  @override
+  String get receiptDetailRetry => 'Read again';
+
+  @override
+  String get receiptDetailSendAmount => 'Send the right amount';
+
+  @override
+  String get receiptDetailEditHint =>
+      'The transaction and your balance only change after an administrator approves.';
+
+  @override
+  String get receiptDetailSendAmountHint =>
+      'Enter the right total of this receipt. An administrator will check it before the transaction is updated.';
+
+  @override
+  String get receiptDetailSend => 'Send';
+
+  @override
+  String get receiptDetailEdited => 'Receipt updated';
+
+  @override
+  String get receiptDetailRetried => 'Receipt read again';
+
+  @override
+  String get receiptDetailRetryStillFailed =>
+      'The total still could not be read';
+
+  @override
+  String get receiptDetailAmountSent => 'Sent to an administrator for review';
+
+  @override
+  String get receiptDetailLoadFailedTitle => 'Could not load the receipt';
+
+  @override
+  String get receiptDetailConflict =>
+      'The receipt has changed. It was reloaded: please check it and try again.';
+
+  @override
+  String get receiptDetailPhotoFailed =>
+      'Could not download the receipt photo to read it again.';
 }

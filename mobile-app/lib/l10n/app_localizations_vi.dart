@@ -2461,4 +2461,95 @@ class AppLocalizationsVi extends AppLocalizations {
   String savingsOverfillHint(String missing) {
     return 'Mục tiêu chỉ còn thiếu $missing. Phần dư vẫn được góp vào mục tiêu.';
   }
+
+  @override
+  String get receiptDetailTitle => 'Hóa đơn';
+
+  @override
+  String get receiptDetailStatus => 'Trạng thái';
+
+  @override
+  String get receiptDetailVendor => 'Cửa hàng';
+
+  @override
+  String get receiptDetailTotal => 'Tổng tiền';
+
+  @override
+  String get receiptDetailDate => 'Ngày';
+
+  @override
+  String get receiptDetailNoValue => 'Chưa có';
+
+  @override
+  String get receiptDetailStatusPending => 'Chờ đọc';
+
+  @override
+  String get receiptDetailStatusProcessing => 'Đang xử lý';
+
+  @override
+  String get receiptDetailStatusCompleted => 'AI đã đọc';
+
+  @override
+  String get receiptDetailStatusEdited => 'Bạn đã sửa';
+
+  @override
+  String get receiptDetailStatusFailed => 'Chưa đọc được';
+
+  @override
+  String get receiptDetailStatusWaitingForReview => 'Chờ quản trị viên duyệt';
+
+  @override
+  String get receiptDetailStatusApproved => 'Đã được duyệt';
+
+  @override
+  String get receiptDetailStatusCanceled => 'Đã hủy';
+
+  @override
+  String get receiptDetailStatusUnknown => 'Không rõ';
+
+  @override
+  String get receiptDetailFailedTitle => 'Chưa đọc được hóa đơn này';
+
+  @override
+  String get receiptDetailEdit => 'Sửa thông tin';
+
+  @override
+  String get receiptDetailRetry => 'Đọc lại';
+
+  @override
+  String get receiptDetailSendAmount => 'Gửi số tiền đúng';
+
+  @override
+  String get receiptDetailEditHint =>
+      'Giao dịch và số dư chỉ đổi sau khi quản trị viên duyệt.';
+
+  @override
+  String get receiptDetailSendAmountHint =>
+      'Nhập đúng tổng tiền trên hóa đơn. Quản trị viên sẽ kiểm tra rồi mới cập nhật giao dịch.';
+
+  @override
+  String get receiptDetailSend => 'Gửi';
+
+  @override
+  String get receiptDetailEdited => 'Đã cập nhật hóa đơn';
+
+  @override
+  String get receiptDetailRetried => 'Đã đọc lại hóa đơn';
+
+  @override
+  String get receiptDetailRetryStillFailed => 'Vẫn chưa đọc được tổng tiền';
+
+  @override
+  String get receiptDetailAmountSent => 'Đã gửi quản trị viên duyệt';
+
+  @override
+  String get receiptDetailLoadFailedTitle => 'Không tải được hóa đơn';
+
+  @override
+  String get receiptDetailConflict =>
+      'Hóa đơn đã thay đổi. Đã tải lại, bạn kiểm tra rồi thử lại nhé.';
+
+  @override
+  String get receiptDetailPhotoFailed =>
+      'Không tải được ảnh hóa đơn để đọc lại.';
 }

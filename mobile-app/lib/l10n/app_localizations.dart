@@ -4319,6 +4319,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The goal only misses {missing}. The extra still goes into the goal.'**
   String savingsOverfillHint(String missing);
+
+  /// Title of the receipt detail sheet opened from the transaction detail page.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt'**
+  String get receiptDetailTitle;
+
+  /// Row label in the receipt detail sheet: where the receipt stands.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get receiptDetailStatus;
+
+  /// Label of the store name in the receipt detail sheet and its edit form.
+  ///
+  /// In en, this message translates to:
+  /// **'Store'**
+  String get receiptDetailVendor;
+
+  /// Label of the receipt total in the receipt detail sheet and its forms.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get receiptDetailTotal;
+
+  /// Label of the receipt date in the receipt detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get receiptDetailDate;
+
+  /// Shown in place of a receipt field that has no value.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available'**
+  String get receiptDetailNoValue;
+
+  /// Lifecycle status PENDING of a receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to be read'**
+  String get receiptDetailStatusPending;
+
+  /// Lifecycle status PROCESSING of a receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
+  String get receiptDetailStatusProcessing;
+
+  /// Lifecycle status COMPLETED_RAW of a receipt: the AI read a total and nobody changed it.
+  ///
+  /// In en, this message translates to:
+  /// **'Read by AI'**
+  String get receiptDetailStatusCompleted;
+
+  /// Lifecycle status EDITED of a receipt: its owner corrected what the AI read.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited by you'**
+  String get receiptDetailStatusEdited;
+
+  /// Lifecycle status FAILED of a receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not be read'**
+  String get receiptDetailStatusFailed;
+
+  /// Lifecycle status WAITING_FOR_REVIEW of a receipt: the owner sent the amount and waits for an administrator.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for review'**
+  String get receiptDetailStatusWaitingForReview;
+
+  /// Lifecycle status APPROVED of a receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get receiptDetailStatusApproved;
+
+  /// Lifecycle status CANCELED of a receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get receiptDetailStatusCanceled;
+
+  /// Status of a receipt that this version of the app does not know.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get receiptDetailStatusUnknown;
+
+  /// Title of the error block of a FAILED receipt; the reason from the server is shown under it.
+  ///
+  /// In en, this message translates to:
+  /// **'This receipt could not be read'**
+  String get receiptDetailFailedTitle;
+
+  /// Button of the receipt detail sheet: correct the store, total and date.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit details'**
+  String get receiptDetailEdit;
+
+  /// Button of the receipt detail sheet: scan the photo of a FAILED receipt again.
+  ///
+  /// In en, this message translates to:
+  /// **'Read again'**
+  String get receiptDetailRetry;
+
+  /// Button of the receipt detail sheet: tell an administrator the right total of a FAILED receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Send the right amount'**
+  String get receiptDetailSendAmount;
+
+  /// Hint under the receipt edit form: editing a receipt does not change the transaction or the wallet.
+  ///
+  /// In en, this message translates to:
+  /// **'The transaction and your balance only change after an administrator approves.'**
+  String get receiptDetailEditHint;
+
+  /// Hint above the amount field of the send-the-right-amount form.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the right total of this receipt. An administrator will check it before the transaction is updated.'**
+  String get receiptDetailSendAmountHint;
+
+  /// Button that sends the right amount of a FAILED receipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get receiptDetailSend;
+
+  /// Toast after the receipt was edited.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt updated'**
+  String get receiptDetailEdited;
+
+  /// Toast after a FAILED receipt was read again and a total was found.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt read again'**
+  String get receiptDetailRetried;
+
+  /// Toast after a FAILED receipt was read again and no total was found.
+  ///
+  /// In en, this message translates to:
+  /// **'The total still could not be read'**
+  String get receiptDetailRetryStillFailed;
+
+  /// Toast after the right amount of a FAILED receipt was sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to an administrator for review'**
+  String get receiptDetailAmountSent;
+
+  /// Title of the error view of the receipt detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the receipt'**
+  String get receiptDetailLoadFailedTitle;
+
+  /// Toast when the server refuses an action on a receipt (409) and the message of the server cannot be shown in this language.
+  ///
+  /// In en, this message translates to:
+  /// **'The receipt has changed. It was reloaded: please check it and try again.'**
+  String get receiptDetailConflict;
+
+  /// Toast when the photo of a FAILED receipt cannot be downloaded for a new scan.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not download the receipt photo to read it again.'**
+  String get receiptDetailPhotoFailed;
 }
 
 class _AppLocalizationsDelegate
