@@ -170,7 +170,7 @@ class PaymentControllerTest {
         mockMvc.perform(signedIn(json(HttpMethod.POST, BASE + "/create", CREATE_BODY)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.message").value("Tao don thanh cong"))
+                .andExpect(jsonPath("$.message").value("Tạo đơn thành công"))
                 .andExpect(jsonPath("$.data.orderCode").isString())
                 .andExpect(jsonPath("$.data.amount").value(50000))
                 .andExpect(jsonPath("$.data.type").value("DEPOSIT"))
@@ -298,7 +298,7 @@ class PaymentControllerTest {
         mockMvc.perform(signedIn(request(HttpMethod.PUT, BASE + "/cancel/" + ORDER_CODE)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.message").value("Da huy don"))
+                .andExpect(jsonPath("$.message").value("Đã hủy đơn"))
                 .andExpect(jsonPath("$.data.orderCode").value(ORDER_CODE))
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"))
                 .andExpect(jsonPath("$.data.length()").value(8));

@@ -13,6 +13,7 @@ import vn.edu.huit.finance.core.Config.SecurityConfig;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Exception.PaymentWebhookRejectedException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
 import vn.edu.huit.finance.core.Security.JwtAuthFilter;
 import vn.edu.huit.finance.core.Security.JwtUtil;
@@ -42,6 +43,7 @@ class PaymentWebhookControllerTest {
 
     @MockBean private PaymentService paymentService;
     @MockBean private UserRepository userRepository;
+    @MockBean private CurrentUserProvider currentUserProvider;
     @MockBean private JwtUtil jwtUtil;
     @MockBean private CustomUserDetailsService userDetailsService;
     @MockBean private LoginAttemptService loginAttemptService;

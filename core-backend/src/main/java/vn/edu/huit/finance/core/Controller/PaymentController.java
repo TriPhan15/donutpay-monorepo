@@ -1,73 +1,65 @@
 package vn.edu.huit.finance.core.Controller;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.huit.finance.core.Dto.ApiResponse;
 import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
+import vn.edu.huit.finance.core.Dto.PaymentOrderResponseDto;
+import vn.edu.huit.finance.core.Dto.PaymentStatusResponseDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
-import vn.edu.huit.finance.core.Exception.InvalidTokenException;
-import vn.edu.huit.finance.core.Exception.UserNotFoundException;
-import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.PaymentService;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payment")
+@RequiredArgsConstructor
 public class PaymentController {
 
-    private static final String MSG_NOT_SIGNED_IN = "Bạn chưa đăng nhập";
-    private static final String MSG_USER_NOT_FOUND = "Không tìm thấy người dùng";
+    private static final int HTTP_OK = 200;
+    private static final String MSG_OK = "OK";
+    private static final String MSG_ORDER_CREATED = "Tạo đơn thành công";
+    private static final String MSG_ORDER_CANCELED = "Đã hủy đơn";
 
-    @Autowired private PaymentService paymentService;
-    @Autowired private UserRepository userRepository;
-
-    private Long currentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getName() == null) throw new InvalidTokenException(MSG_NOT_SIGNED_IN);
-        return userRepository.findByEmail(auth.getName())
-                .orElseThrow(() -> new UserNotFoundException(MSG_USER_NOT_FOUND))
-                .getId();
-    }
+    private final PaymentService paymentService;
+    private final CurrentUserProvider currentUserProvider;
 
     @PostMapping("/create")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> create(
+    public ResponseEntity<ApiResponse<PaymentOrderResponseDto>> create(
             @Valid @RequestBody CreatePaymentRequestDto req) {
-        Map<String, Object> data = paymentService.createOrder(req, currentUserId());
-        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
-                .code(200).message("Tao don thanh cong").data(data).build());
+        PaymentOrderResponseDto data = paymentService.createOrder(req, currentUserId());
+        return respond(MSG_ORDER_CREATED, data);
     }
 
     @PostMapping("/webhook")
     public ResponseEntity<ApiResponse<Void>> webhook(@Valid @RequestBody PaymentWebhookDto dto) {
         paymentService.handleWebhook(dto);
-        return ResponseEntity.ok(ApiResponse.<Void>builder()
-                .code(200).message("OK").build());
+        return respond(MSG_OK, null);
     }
 
     @GetMapping("/status/{orderCode}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> status(@PathVariable String orderCode) {
-        Map<String, Object> data = paymentService.getStatus(orderCode, currentUserId());
-        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
-                .code(200).message("OK").data(data).build());
+    public ResponseEntity<ApiResponse<PaymentStatusResponseDto>> status(@PathVariable String orderCode) {
+        return respond(MSG_OK, paymentService.getStatus(orderCode, currentUserId()));
     }
 
     @GetMapping("/mine")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> mine() {
-        List<Map<String, Object>> data = paymentService.history(currentUserId());
-        return ResponseEntity.ok(ApiResponse.<List<Map<String, Object>>>builder()
-                .code(200).message("OK").data(data).build());
+    public ResponseEntity<ApiResponse<List<PaymentStatusResponseDto>>> mine() {
+        return respond(MSG_OK, paymentService.history(currentUserId()));
     }
 
     @PutMapping("/cancel/{orderCode}")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> cancel(@PathVariable String orderCode) {
-        Map<String, Object> data = paymentService.cancel(orderCode, currentUserId());
-        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder()
-                .code(200).message("Da huy don").data(data).build());
+    public ResponseEntity<ApiResponse<PaymentStatusResponseDto>> cancel(@PathVariable String orderCode) {
+        return respond(MSG_ORDER_CANCELED, paymentService.cancel(orderCode, currentUserId()));
+    }
+
+    private Long currentUserId() {
+        return currentUserProvider.getCurrentUser().getId();
+    }
+
+    private static <T> ResponseEntity<ApiResponse<T>> respond(String message, T data) {
+        return ResponseEntity.ok(ApiResponse.<T>builder().code(HTTP_OK).message(message).data(data).build());
     }
 }
