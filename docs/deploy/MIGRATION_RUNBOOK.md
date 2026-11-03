@@ -1,6 +1,8 @@
-# Runbook: schema PostgreSQL và 4 file migration
+# Runbook: schema PostgreSQL và các file migration
 
-Các file migration nằm ở `core-backend/src/main/resources/db/`. Tài liệu này chỉ ra lúc nào cần chạy, lúc nào không.
+Các file migration nằm ở `core-backend/src/main/resources/db/`, gồm 7 file: 6 file migration và `username-email-collision-check.sql`
+(chỉ đọc). Bảng ở mục 2 liệt kê 3 migration và file kiểm tra; 3 migration còn lại (`receipt-owner-migration.sql`,
+`indexes-migration.sql`, `category-owner-migration.sql`) nằm ở mục 3. Tài liệu này chỉ ra lúc nào cần chạy, lúc nào không.
 
 ## 1. Server mới (deploy): không chạy migration
 
@@ -41,7 +43,7 @@ Không dùng `docker compose down -v`: lệnh này xóa **mọi** volume, gồm 
 Sau khi tạo lại, chỉ mục tìm kiếm Elasticsearch còn chứa giao dịch của DB cũ. Dựng lại chỉ mục từ trang admin
 (Vận hành NoSQL) nếu cần.
 
-### Cách 2: chạy 4 file migration
+### Cách 2: chạy các file migration bằng psql
 
 Dùng khi muốn giữ dữ liệu local. Trước khi chạy:
 
@@ -67,11 +69,15 @@ Thứ tự chạy, theo ngày ghi ở đầu mỗi file:
 | 3 | `budget-period-year-migration.sql` | Nới CHECK của `budgets.period_type` và `budgets_aud.period_type` để nhận `YEAR` | Báo lỗi nếu có dòng mang giá trị lạ. |
 | 4 | `username-email-collision-check.sql` | Chỉ `SELECT`: liệt kê tài khoản có username dạng email của người khác | Không sửa dữ liệu. Có dòng nào thì xử lý tay. |
 
-Cả 4 file đều idempotent: chạy lần hai không đổi gì.
+Cả 4 file trong bảng đều idempotent: chạy lần hai không đổi gì.
 
 Không file nào nới CHECK của `notifications.type`. Nếu DB local báo lỗi CHECK ở bảng `notifications`, dùng cách 1.
 
 ## 3. Cột mới sau đợt sửa schema (A6, A7)
+
+> **DB trên EC2 được tạo bằng bản code cũ** (trước khi có cột `transactions.source`) phải chạy khối SQL của mục này,
+> trọng tâm là ràng buộc CHECK của `transactions.source`, trước khi deploy bản mới. Lý do: `ddl-auto=update` không nới CHECK
+> đã có, nên lần nạp hoặc rút ví điện tử đầu tiên sẽ báo lỗi ràng buộc. DB trống của server mới thì không cần.
 
 Server mới không cần làm gì. Với DB local còn dữ liệu cũ, `ddl-auto=update` tự thêm cột khi `core-api` khởi động, nhưng
 không điền dữ liệu cũ và không thêm CHECK cho cột đã có. Nếu muốn tự làm (hoặc khi `update` báo lỗi), chạy bằng `psql`
@@ -151,4 +157,4 @@ NOTICE cuối: gộp tay rồi chạy lại. Chạy lại không đổi gì, ch�
 
 ## 4. Không cần chạy thử migration trên dữ liệu cũ
 
-Server deploy bắt đầu từ DB trống, nên không cần chạy thử 4 file migration trên bản sao dữ liệu cũ.
+Server deploy bắt đầu từ DB trống, nên không cần chạy thử các file migration trên bản sao dữ liệu cũ.

@@ -13,7 +13,7 @@ dữ liệu demo `SEED_DEMO=true`). Không chạy Postman Runner hay JMeter vào
 
 1. `.env` có `SPRING_PROFILES_ACTIVE=dev`, `SEED_DEMO=true`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO_PASSWORD` (xem
    `docs/deploy/DEPLOY_GUIDE.md`; seeder chỉ chạy khi bảng `users` còn trống).
-2. `docker compose up -d --build`, đợi `curl -s http://localhost:8080/actuator/health` trả `UP`.
+2. `docker compose up -d --build`, đợi `curl -s http://localhost/actuator/health` trả `UP` (cổng 80 qua Caddy; core-api không mở cổng 8080 ra máy host).
 3. Tài khoản dùng trong các bộ test:
    - người dùng: `demo.vanphong@example.com` / giá trị `SEED_DEMO_PASSWORD`;
    - admin: `admin@example.com` / giá trị `SEED_ADMIN_PASSWORD`.
@@ -23,7 +23,7 @@ dữ liệu demo `SEED_DEMO=true`). Không chạy Postman Runner hay JMeter vào
 
 ## 1. Swagger UI
 
-- Chỉ có ở profile `dev`: <http://localhost:8080/swagger-ui.html>. JSON: `/v3/api-docs/user` và `/v3/api-docs/admin`.
+- Chỉ có ở profile `dev`: <http://localhost/swagger-ui.html>. JSON: `/v3/api-docs/user` và `/v3/api-docs/admin`.
 - Ở mọi profile khác (`prod` trên EC2, test, không profile) hai URL này **không tồn tại** (404): `openapi-disabled.properties`
   tắt springdoc. Muốn bật tạm trên một máy khác thì đặt biến môi trường `SPRINGDOC_API_DOCS_ENABLED=true` và
   `SPRINGDOC_SWAGGER_UI_ENABLED=true`, rồi tắt lại.
@@ -59,7 +59,7 @@ Tham số (`-J<tên>=<giá trị>`):
 
 | Tham số | Mặc định | Ý nghĩa |
 |---|---|---|
-| `protocol`, `host`, `port` | `http`, `localhost`, `8080` | Địa chỉ core-backend |
+| `protocol`, `host`, `port` | `http`, `localhost`, `80` | Địa chỉ đi qua proxy Caddy (cổng 80); jmx mặc định `port=80` |
 | `users` | `20` | Số người dùng ảo (thread) |
 | `rampUp` | `20` | Số giây để khởi động hết các thread |
 | `loops` | `10` | Số vòng lặp đọc dữ liệu mỗi thread |

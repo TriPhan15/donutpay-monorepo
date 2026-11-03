@@ -44,8 +44,11 @@ kỳ file nào được commit.
 
 1. AWS Console → EC2 → **Launch instance**:
    - AMI: **Ubuntu Server 24.04 LTS** (hoặc 22.04).
-   - Loại máy: tối thiểu **t3.medium (4 GB RAM)**. Tổng giới hạn RAM trong compose khoảng 2,5 GB (ai-service 1 GB,
-     core-api 512 MB, MongoDB 512 MB, Redis 192 MB, proxy 128 MB) chưa tính PostgreSQL và hệ điều hành.
+   - Loại máy: khuyến nghị **t3.large (8 GB RAM)**. Tổng giới hạn RAM (`deploy.resources.limits.memory` trong
+     `docker-compose.yml`) của các service chạy mặc định là **4 928 MB**: data-mining-api (ai-service) 3 GB, PostgreSQL 512 MB,
+     MongoDB 512 MB, core-api 512 MB, Redis 192 MB, proxy 128 MB. Tổng này đã vượt 4 GB của t3.medium và chưa tính hệ điều
+     hành, nên t3.medium chỉ chạy được khi các container không dùng hết giới hạn và có swap (mục 4). Bật profile `search`
+     (Elasticsearch 1,5 GB) thì tổng lên 6 464 MB; thêm profile `tools` (Kibana 1 GB) thì 7 488 MB.
    - Ổ đĩa: **30 GB** gp3 trở lên (image PyTorch + model Donut khá nặng).
    - Key pair: tạo mới, tải file `.pem` về máy bạn: **[ĐIỀN]** đường dẫn. Không commit file này.
 2. **Security Group** (inbound), chỉ mở đúng 3 cổng:
@@ -276,7 +279,8 @@ sudo docker compose logs --tail=100 proxy                # lỗi chứng chỉ, 
 sudo docker stats --no-stream                            # RAM/CPU từng container
 ```
 
-Log mỗi container giới hạn 3 file × 10 MB, nên không làm đầy ổ đĩa.
+Mọi service chạy lâu dài trong `docker-compose.yml` giới hạn log 3 file × 10 MB (`logging.options`), nên không làm đầy
+ổ đĩa. Container khởi tạo một lần `elasticsearch-init-snapshots` (profile `search`) không khai báo log.
 
 ## 11. Rollback
 
@@ -309,7 +313,7 @@ Không bao giờ chạy `docker compose down -v` trên server: `-v` xóa volume 
 | Job `release-apk` dừng ở "Check release secrets" | Thiếu một secret/variable ở mục 7 (tên được in trong log) |
 | Build trên EC2 bị kill | Hết RAM: thêm swap (mục 4) hoặc dùng máy lớn hơn |
 | data-mining-api dừng ngay, log "Không tìm thấy weights" hoặc lỗi đọc safetensors | Chưa chép `model.safetensors` hoặc file chép thiếu (so `sha256sum`), xem "Chép model AI lên server" ở mục 5; chép xong chạy `sudo docker compose build data-mining-api && sudo docker compose up -d --wait` |
-| data-mining-api bị khởi động lại khi quét hóa đơn (`docker compose ps` báo restart, `dmesg` có "Out of memory") | Máy thiếu RAM cho model: thêm swap hoặc dùng máy ≥ 4 GB RAM |
+| data-mining-api bị khởi động lại khi quét hóa đơn (`docker compose ps` báo restart, `dmesg` có "Out of memory") | Máy thiếu RAM cho model: thêm swap hoặc dùng máy ≥ 8 GB RAM (t3.large) |
 
 ## 13. Máy dev (docker compose tại máy)
 
