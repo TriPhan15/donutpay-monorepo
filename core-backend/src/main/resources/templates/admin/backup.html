@@ -74,6 +74,36 @@
                             </div>
                         </div>
 
+                        <h5 class="text-primary fw-bold border-bottom pb-3 mb-4 mt-5"><i class="bi bi-clock-history me-2"></i>Sao lưu tự động hằng ngày</h5>
+
+                        <div class="card border-primary border-2 bg-primary bg-opacity-10 mb-4 rounded-4" id="scheduledBackupCard">
+                            <div class="card-body p-4">
+                                <dl class="row mb-3 text-dark">
+                                    <dt class="col-sm-4">Lịch</dt>
+                                    <dd class="col-sm-8" id="sbSchedule">Đang tải...</dd>
+                                    <dt class="col-sm-4">Lần chạy gần nhất</dt>
+                                    <dd class="col-sm-8" id="sbLastRun">Đang tải...</dd>
+                                    <dt class="col-sm-4">Kết quả</dt>
+                                    <dd class="col-sm-8" id="sbResult">Đang tải...</dd>
+                                    <dt class="col-sm-4">Dung lượng</dt>
+                                    <dd class="col-sm-8" id="sbSize">-</dd>
+                                    <dt class="col-sm-4">Nơi lưu</dt>
+                                    <dd class="col-sm-8" id="sbPlaces">-</dd>
+                                    <dt class="col-sm-4">SHA-256</dt>
+                                    <dd class="col-sm-8"><code id="sbSha" class="small text-break">-</code></dd>
+                                </dl>
+                                <ul class="text-dark small">
+                                    <li>Giữ <strong>7 bản hằng ngày</strong> và <strong>4 bản hằng tuần</strong> (chỉ bản tự động, không xóa bản bạn bấm tay). Mỗi bản được tính SHA-256 và kiểm tra đọc được bằng <code>pg_restore --list</code>; hỏng thì admin nhận mail.</li>
+                                    <li><strong>Giới hạn:</strong> MongoDB nằm cùng máy chủ với PostgreSQL, nên bản sao trong MongoDB chỉ chống lỗi file hoặc ổ đĩa của PostgreSQL, <strong>không chống mất cả máy chủ</strong>. Muốn chống mất máy chủ phải chép bản sao lưu ra ngoài (Google Drive/S3) khi triển khai.</li>
+                                </ul>
+                                <div class="text-center">
+                                    <button id="mongoCopyRestoreBtn" onclick="ConfirmRestoreFromMongoCopy()" class="btn btn-danger btn-lg px-5 fw-bold shadow">
+                                        <i class="bi bi-database-fill-down me-2"></i> Khôi phục từ bản trong MongoDB
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <h5 class="text-success fw-bold border-bottom pb-3 mb-4 mt-5"><i class="bi bi-database-fill me-2"></i>MongoDB (ocr_logs, ocr_feedbacks)</h5>
 
                         <div class="card border-success border-2 bg-success bg-opacity-10 mb-4 rounded-4" id="mongoBackupCard">
@@ -208,6 +238,59 @@
                         document.getElementById('loadingTarget').textContent = 'Đang giao tiếp với PostgreSQL...';
                     });
             }
+
+            function ConfirmRestoreFromMongoCopy() {
+                Swal.fire({
+                    title: 'BẠN CÓ CHẮC CHẮN?',
+                    html: "Đây là hành động <b>không thể hoàn tác</b>.<br/>Dữ liệu hiện tại sẽ bị ghi đè bằng bản sao lưu FULL mới nhất lưu trong MongoDB (sau khi kiểm tra SHA-256)!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Tôi hiểu rủi ro, Phục hồi!',
+                    cancelButtonText: 'Quay xe'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        runMongo('/admin/backup/scheduled/restore-from-mongo', msg => Swal.fire('Thành công!', msg, 'success'));
+                    }
+                });
+            }
+
+            function formatBytes(bytes) {
+                if (bytes === null || bytes === undefined) return '-';
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            // Trạng thái sao lưu tự động: chỉ đặt textContent, không bao giờ innerHTML, nên dữ liệu từ server không chạy được như mã.
+            function loadScheduledStatus() {
+                const set = (id, text) => { document.getElementById(id).textContent = text; };
+                fetch('/admin/backup/scheduled/status')
+                    .then(response => response.json())
+                    .then(s => {
+                        set('sbSchedule', (s.enabled ? 'Đang bật' : 'Đang tắt') + ' - cron ' + s.cron + ' (' + s.zone + ')');
+                        if (!s.hasRun) {
+                            set('sbLastRun', 'Chưa có lần chạy nào');
+                            set('sbResult', '-');
+                            return;
+                        }
+                        set('sbLastRun', s.lastRunAt.replace('T', ' '));
+                        set('sbResult', s.success ? 'Thành công' : 'Thất bại: ' + s.failureReason);
+                        set('sbSize', formatBytes(s.sizeBytes));
+                        const places = [];
+                        if (s.onDisk) places.push('Đĩa');
+                        if (s.inMongo) places.push('MongoDB');
+                        set('sbPlaces', places.length ? places.join(' + ') : 'Không có');
+                        set('sbSha', s.sha256 || '-');
+                    })
+                    .catch(() => {
+                        set('sbSchedule', 'Không tải được trạng thái');
+                        set('sbLastRun', '-');
+                        set('sbResult', '-');
+                    });
+            }
+            loadScheduledStatus();
 
             function ConfirmMongoBackup() {
                 Swal.fire({

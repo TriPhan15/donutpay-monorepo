@@ -116,7 +116,8 @@ class AuditActionTest {
         assertEquals(EnumSet.of(AuditAction.AUTH_LOGIN_FAILED, AuditAction.AUTH_LOGIN_LOCKED,
                 AuditAction.AUTH_PASSWORD_CHANGE_REJECTED, AuditAction.AUTH_PASSWORD_RESET_REJECTED,
                 AuditAction.AUTH_TOKEN_REFRESH_REJECTED, AuditAction.AUTH_TOKEN_REJECTED, AuditAction.AUTH_ACCESS_DENIED,
-                AuditAction.RECEIPT_PROCESSING_FAILED, AuditAction.PAYMENT_FAILED, AuditAction.PAYMENT_WEBHOOK_REJECTED),
+                AuditAction.RECEIPT_PROCESSING_FAILED, AuditAction.PAYMENT_FAILED, AuditAction.PAYMENT_WEBHOOK_REJECTED,
+                AuditAction.SYSTEM_BACKUP_SCHEDULED_FAILED),
                 failures);
     }
 
