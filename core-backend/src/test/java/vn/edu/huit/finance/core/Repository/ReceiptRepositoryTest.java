@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
@@ -319,5 +320,39 @@ class ReceiptRepositoryTest {
         Receipt after = receiptRepository.findById(carried.getId()).orElseThrow();
         assertNotSame(before, after);
         assertEquals(1L, after.getVersion());
+    }
+
+    @Test
+    void theAdminPageLoadsTheLinkedTransactionsWithoutOneQueryPerReceipt() {
+        User bob = new User();
+        bob.setUsername("bob");
+        bob.setPassword("hash");
+        bob.setEmail("bob@example.com");
+        bob.setPhone("0900000002");
+        entityManager.persist(bob);
+        Category drink = new Category();
+        drink.setName("Cà phê");
+        drink.setType("EXPENSE");
+        entityManager.persist(drink);
+        for (int i = 0; i < 3; i++) {
+            Receipt receipt = new Receipt();
+            receipt.setStatus("SUCCESS");
+            entityManager.persist(receipt);
+            Transaction transaction = transactionOf(bob, drink);
+            transaction.setReceipt(receipt);
+            entityManager.persist(transaction);
+        }
+        forgetLoadedEntities();
+
+        List<Receipt> page = receiptRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 10)).getContent();
+        long withTransaction = page.stream().filter(r -> r.getTransaction() != null).count();
+
+        assertEquals(5, page.size(), "the receipt without a transaction stays on the page");
+        assertEquals(4, withTransaction);
+        assertTrue(statistics().getPrepareStatementCount() <= 2,
+                "select (and count) only, got " + statistics().getPrepareStatementCount());
+        for (int i = 1; i < page.size(); i++) {
+            assertFalse(page.get(i - 1).getCreatedAt().isBefore(page.get(i).getCreatedAt()), "newest first");
+        }
     }
 }

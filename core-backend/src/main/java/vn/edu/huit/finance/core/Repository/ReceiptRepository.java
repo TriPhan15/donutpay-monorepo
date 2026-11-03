@@ -42,6 +42,7 @@ public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
            "AND UPPER(TRIM(r.status)) = :#{T(vn.edu.huit.finance.core.Entity.ReceiptStatus).FAILED.name()}")
     int claimFailedForRetry(@Param("id") Long id, @Param("version") Long version);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "transaction")
     Page<Receipt> findAllByOrderByCreatedAtDesc(Pageable pageable);
     @org.springframework.data.jpa.repository.Query("SELECT r.status, COUNT(r) FROM Receipt r GROUP BY r.status")
     List<Object[]> getReceiptStatusStatistics();
