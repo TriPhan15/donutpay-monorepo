@@ -172,7 +172,7 @@
                             method: 'POST',
                             body: new URLSearchParams(new FormData(this))
                         }).then(res => res.json()).then(data => {
-                            if (data.code === 201 || data.status === 200) {
+                            if (data.code === 200 || data.status === 200) {
                                 Toast.fire({ icon: 'success', title: 'Đã thêm danh mục!' });
                                 setTimeout(() => location.reload(), 1000);
                             } else {

@@ -215,7 +215,7 @@ public class AdminController {
 
     @PostMapping("/ajax/users")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<AdminUserResponseDto>> createUserAjax(@Valid @RequestBody UserCreateDto dto) {
         // Recorded by UserService (USER_CREATED, by the caller) in the transaction of the creation. A refusal (bad role,
         // duplicate email...) is answered by GlobalExceptionHandler, never with the raw exception message.
@@ -229,7 +229,7 @@ public class AdminController {
 
     @PutMapping("/ajax/users/{id}")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<AdminUserResponseDto>> updateUserAjax(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateDto dto) {
@@ -244,7 +244,7 @@ public class AdminController {
 
     @DeleteMapping("/ajax/users/{id}")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> deleteUserAjax(@PathVariable Long id) {
         // Recorded by UserService (USER_DELETED, or USER_STATUS_CHANGED when it only locks) in its transaction.
         // An ADMIN account or an unknown id is answered by GlobalExceptionHandler (403 / 404).
@@ -257,7 +257,7 @@ public class AdminController {
 
     @PutMapping("/ajax/users/{id}/toggle-status")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> toggleUserStatusAjax(@PathVariable Long id) {
         // Recorded by UserService (USER_STATUS_CHANGED) in the transaction of the change. An ADMIN account or an unknown
         // id is answered by GlobalExceptionHandler (403 / 404).
@@ -309,15 +309,15 @@ public class AdminController {
 
     @PostMapping("/ajax/subscriptions")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> createSubscriptionAjax(@Valid @RequestBody SubscriptionPlanRequestDto plan) {
         subscriptionPlanService.createPlan(plan);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().code(201).message("Thành công").build());
+        return ResponseEntity.ok(ApiResponse.<Void>builder().code(HttpStatus.OK.value()).message("Thành công").build());
     }
 
     @PutMapping("/ajax/subscriptions/{id}")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> updateSubscriptionAjax(@PathVariable Long id,
                                                                 @Valid @RequestBody SubscriptionPlanRequestDto dto) {
         subscriptionPlanService.updatePlan(id, dto);
@@ -326,7 +326,7 @@ public class AdminController {
 
     @PutMapping("/ajax/subscriptions/{id}/toggle")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> toggleSubscriptionAjax(@PathVariable Long id) {
         subscriptionPlanService.togglePlan(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).build());
@@ -334,7 +334,7 @@ public class AdminController {
 
     @DeleteMapping("/ajax/subscriptions/{id}")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> deleteSubscriptionAjax(@PathVariable Long id) {
         subscriptionPlanService.deletePlan(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).build());
@@ -381,15 +381,15 @@ public class AdminController {
 
     @PostMapping("/ajax/categories")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> addCategoryAjax(@Valid @ModelAttribute CategoryRequestDto dto) {
         categoryService.createCategory(dto.getName(), dto.getType());
-        return ResponseEntity.ok(ApiResponse.<Void>builder().code(201).message("Thêm thành công").build());
+        return ResponseEntity.ok(ApiResponse.<Void>builder().code(HttpStatus.OK.value()).message("Thêm thành công").build());
     }
 
     @PutMapping("/ajax/categories/{id}")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> updateCategoryAjax(@PathVariable Long id,
                                                              @Valid @ModelAttribute CategoryRenameRequestDto dto) {
         categoryService.renameCategory(id, dto.getName());
@@ -398,14 +398,14 @@ public class AdminController {
 
     @DeleteMapping("/ajax/categories/{id}")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> deleteCategoryAjax(@PathVariable Long id) {
         categoryService.deleteCategory(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder().code(200).message("Xóa thành công").build());
     }
     @PostMapping("/ajax/security/unlock")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> unlockUserOrIp(
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String ipAddress) {
@@ -435,7 +435,7 @@ public class AdminController {
 
     @PostMapping("/ajax/reviews/{id}/approve")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> approveReviewAjax(@PathVariable Long id) {
         // An unknown id is a 404 from GlobalExceptionHandler.
         appReviewService.approveReview(id);
@@ -447,7 +447,7 @@ public class AdminController {
 
     @DeleteMapping("/ajax/reviews/{id}")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> deleteReviewAjax(@PathVariable Long id) {
         appReviewService.deleteReview(id);
         return ResponseEntity.ok(ApiResponse.<Void>builder()
@@ -457,7 +457,7 @@ public class AdminController {
     }
     @PostMapping("/ajax/segmentation/run")
     @ResponseBody
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(Roles.HAS_ADMIN)
     public ResponseEntity<ApiResponse<Void>> runAiSegmentation() {
         int assigned = customerSegmentationService.runSegmentation();
 

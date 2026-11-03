@@ -192,7 +192,7 @@
             fetch('/admin/ajax/subscriptions', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
             }).then(res => res.json()).then(resData => {
-                if(resData.code === 201 || resData.status === 200) {
+                if(resData.code === 200 || resData.status === 200) {
                     Toast.fire({ icon: 'success', title: 'Đã tạo gói thành công!' });
                     setTimeout(() => location.reload(), 1000);
                 } else {

@@ -31,6 +31,7 @@ import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.ClientIp;
 import vn.edu.huit.finance.core.Security.JsonAuthenticationEntryPoint;
 import vn.edu.huit.finance.core.Security.JwtAuthFilter;
+import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.LoginAttemptService;
@@ -79,7 +80,7 @@ public class SecurityConfig {
                         // shutdown or after its session ended) only ever follows a REQUEST dispatch these rules already let
                         // through; checking it again would try to redirect a response that is already committed.
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
-                        .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/admin/**").hasAuthority(Roles.ADMIN)
                         .requestMatchers("/login", "/error", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -152,7 +153,7 @@ public class SecurityConfig {
                         .requestMatchers(AuthPaths.CHANGE_PASSWORD_URL, AuthPaths.LOGOUT_URL, AuthPaths.CHECK_URL).authenticated()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/payment/webhook").permitAll()
-                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers("/api/admin/**").hasAuthority(Roles.ADMIN)
                         .anyRequest().authenticated()
                 )
                 // A protected URL without an authenticated caller (no token, or one JwtAuthFilter could not use): JSON 401,
