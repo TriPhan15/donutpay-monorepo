@@ -102,6 +102,7 @@ class AuthControllerPasswordTest {
 
         User alice = new User();
         alice.setUsername(USERNAME);
+        alice.setEmail(USERNAME);
         alice.setActive(true);
         alice.setRole("ROLE_USER");
         alice.setLastActionTime(LocalDateTime.now());
@@ -113,6 +114,7 @@ class AuthControllerPasswordTest {
         // A locked user's token: JwtAuthFilter answers 403 if (and only if) it actually parses it.
         User bob = new User();
         bob.setUsername(LOCKED_USERNAME);
+        bob.setEmail(LOCKED_USERNAME);
         bob.setActive(false);
         bob.setRole("ROLE_USER");
         when(jwtUtil.parse(LOCKED_TOKEN, TokenType.ACCESS)).thenReturn(new TokenClaims(LOCKED_USERNAME, 0));

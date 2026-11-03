@@ -86,6 +86,7 @@ class AdminTransactionControllerTest {
         when(jwtUtil.parse(token, TokenType.ACCESS)).thenReturn(new TokenClaims(username, 0));
         User user = new User();
         user.setUsername(username);
+        user.setEmail(username);
         user.setActive(true);
         user.setRole(role);
         user.setLastActionTime(LocalDateTime.now());

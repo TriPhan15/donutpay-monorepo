@@ -11,6 +11,7 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 
 import java.util.Collections;
+import java.util.Objects;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -26,17 +27,23 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new DisabledException("Account is locked");
         }
 
-        String role = Roles.normalize(user.getRole());
+        return toUserDetails(user);
+    }
 
+    /**
+     * The principal of an account that is already loaded. Static on purpose, like {@link #isLocked}: the JWT filter builds
+     * it from the user it has loaded, without a second lookup, also where this service is mocked.
+     */
+    public static UserDetails toUserDetails(User user) {
         return new org.springframework.security.core.userdetails.User(
                 // Email, not username: it is unique and the JWT subject, so Authentication.getName() is always the email.
                 user.getEmail(),
-                user.getPassword(),
+                Objects.requireNonNullElse(user.getPassword(), ""),
                 user.isActive(),
                 true,
                 true,
                 !Roles.LOCKED.equals(user.getRole()),
-                Collections.singletonList(new SimpleGrantedAuthority(role))
+                Collections.singletonList(new SimpleGrantedAuthority(Roles.normalize(user.getRole())))
         );
     }
 

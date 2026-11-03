@@ -75,6 +75,8 @@ class UserControllerRoleTest {
         alice.setLastActionTime(LocalDateTime.now());
         when(jwtUtil.parse(TOKEN, TokenType.ACCESS)).thenReturn(new TokenClaims("alice", 0));
         when(userDetailsService.loadApplicationUser("alice")).thenReturn(alice);
+        // The principal is named by the email now, and CurrentUserProvider resolves it through the service.
+        when(userDetailsService.loadApplicationUser("alice@example.com")).thenReturn(alice);
         when(userDetailsService.loadUserByUsername("alice")).thenReturn(new org.springframework.security.core.userdetails.User(
                 "alice", "hash", AuthorityUtils.createAuthorityList("ROLE_USER")));
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(alice));

@@ -71,6 +71,7 @@ class CategoryApiControllerTest {
         alice = new User();
         alice.setId(7L);
         alice.setUsername(USERNAME);
+        alice.setEmail(USERNAME);
         alice.setActive(true);
         alice.setRole("ROLE_USER");
         alice.setLastActionTime(LocalDateTime.now());

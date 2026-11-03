@@ -22,6 +22,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -63,7 +64,10 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -330,6 +334,24 @@ class CrossSessionTokenRevocationTest {
         }
         // The next session starts with a sign-in, whose tokens carry the new version.
         assertGetsThrough(jwtUtil.generateToken(EMAIL, versionInDatabase()));
+    }
+
+    @Test
+    void aUsableAccessToken_loadsTheAccountOnceAndBuildsThePrincipalFromIt() throws Exception {
+        String accessToken = jwtUtil.generateToken(EMAIL, versionInDatabase());
+        clearInvocations(userDetailsService);
+        SecurityContextHolder.clearContext();
+        MockHttpServletRequest request = requestTo(PROTECTED_URL, accessToken);
+
+        jwtAuthFilter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        SecurityContextHolder.clearContext();
+        assertNotNull(authentication);
+        assertEquals(EMAIL, authentication.getName());
+        assertEquals(List.of("ROLE_USER"), authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList());
+        verify(userDetailsService, times(1)).loadApplicationUser(EMAIL);
+        verify(userDetailsService, never()).loadUserByUsername(anyString());
     }
 
     // --------------------------------------------------------------------- tokens that are not usable access tokens
