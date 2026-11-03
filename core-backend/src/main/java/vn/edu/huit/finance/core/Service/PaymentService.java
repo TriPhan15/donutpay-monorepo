@@ -7,6 +7,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
+import vn.edu.huit.finance.core.Dto.PaymentOrderResponseDto;
+import vn.edu.huit.finance.core.Dto.PaymentStatusResponseDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.*;
@@ -29,9 +31,7 @@ import vn.edu.huit.finance.core.Util.HmacUtil;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,7 +73,7 @@ public class PaymentService {
     private final RejectedWebhookAuditThrottle rejectedWebhooks = new RejectedWebhookAuditThrottle(Clock.systemUTC());
 
     @Transactional
-    public Map<String, Object> createOrder(CreatePaymentRequestDto req, Long userId) {
+    public PaymentOrderResponseDto createOrder(CreatePaymentRequestDto req, Long userId) {
         PaymentType type;
         try {
             type = PaymentType.valueOf(req.getType().trim().toUpperCase());
@@ -111,14 +111,14 @@ public class PaymentService {
 
         String payUrl = gateway.buildPaymentUrl(order);
 
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("orderCode", orderCode);
-        data.put("amount", order.getAmount());
-        data.put("type", type.name());
-        data.put("status", order.getStatus().name());
-        data.put("provider", provider);
-        data.put("payUrl", payUrl);
-        return data;
+        return PaymentOrderResponseDto.builder()
+                .orderCode(orderCode)
+                .amount(order.getAmount())
+                .type(type.name())
+                .status(order.getStatus().name())
+                .provider(provider)
+                .payUrl(payUrl)
+                .build();
     }
 
     @Transactional
@@ -215,14 +215,14 @@ public class PaymentService {
         transactionService.recordWalletTransfer(dto, order.getUserId());
     }
 
-    public Map<String, Object> getStatus(String orderCode, Long userId) {
+    public PaymentStatusResponseDto getStatus(String orderCode, Long userId) {
         PaymentOrder o = ownedBy(userId, orderRepo.findByOrderCode(orderCode));
-        return toMap(o);
+        return PaymentStatusResponseDto.from(o);
     }
 
-    public List<Map<String, Object>> history(Long userId) {
+    public List<PaymentStatusResponseDto> history(Long userId) {
         return orderRepo.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(this::toMap).toList();
+                .map(PaymentStatusResponseDto::from).toList();
     }
 
     /**
@@ -231,7 +231,7 @@ public class PaymentService {
      * overwrites a SUCCESS (the wallet has already moved). An order that is not PENDING is returned as it is.
      */
     @Transactional
-    public Map<String, Object> cancel(String orderCode, Long userId) {
+    public PaymentStatusResponseDto cancel(String orderCode, Long userId) {
         PaymentOrder o = ownedBy(userId, orderRepo.findLockedByOrderCode(orderCode));
         if (o.getStatus() == PaymentStatus.PENDING) {
             o.setStatus(PaymentStatus.CANCELLED);
@@ -240,7 +240,7 @@ public class PaymentService {
             auditLogService.record(AuditEntry.of(AuditAction.PAYMENT_CANCELED, AuditActor.currentCaller(), o.getId(),
                     String.format(AUDIT_CANCELED, o.getType(), o.getAmount().toPlainString(), o.getOrderCode())));
         }
-        return toMap(o);
+        return PaymentStatusResponseDto.from(o);
     }
 
     /** The found order if it is {@code userId}'s: 404 when there is none, 403 when it belongs to somebody else. */
@@ -251,19 +251,5 @@ public class PaymentService {
             throw new PaymentOrderAccessDeniedException(MSG_ORDER_FORBIDDEN);
         }
         return order;
-    }
-
-    private Map<String, Object> toMap(PaymentOrder o) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("orderCode", o.getOrderCode());
-        m.put("amount", o.getAmount());
-        m.put("type", o.getType().name());
-        m.put("status", o.getStatus().name());
-        m.put("provider", o.getProvider());
-        m.put("description", o.getDescription());
-        m.put("gatewayTxnId", o.getGatewayTxnId());
-        LocalDateTime c = o.getCreatedAt();
-        m.put("createdAt", c != null ? c.toString() : null);
-        return m;
     }
 }

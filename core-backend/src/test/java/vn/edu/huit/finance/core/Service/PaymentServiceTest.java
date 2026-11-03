@@ -9,6 +9,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
+import vn.edu.huit.finance.core.Dto.PaymentOrderResponseDto;
+import vn.edu.huit.finance.core.Dto.PaymentStatusResponseDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.*;
@@ -25,7 +27,6 @@ import vn.edu.huit.finance.core.Service.Payment.PaymentGatewayRegistry;
 import vn.edu.huit.finance.core.Util.HmacUtil;
 
 import java.math.BigDecimal;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -90,12 +91,12 @@ class PaymentServiceTest {
         when(mockGateway.buildPaymentUrl(any())).thenReturn("http://pay");
         when(userRepo.findById(USER_ID)).thenReturn(Optional.of(user("100000")));
 
-        Map<String, Object> data = service.createOrder(req("DEPOSIT", "50000", "MOCK"), USER_ID);
+        PaymentOrderResponseDto data = service.createOrder(req("DEPOSIT", "50000", "MOCK"), USER_ID);
 
-        assertEquals("PENDING", data.get("status"));
-        assertEquals("MOCK", data.get("provider"));
-        assertEquals("http://pay", data.get("payUrl"));
-        assertNotNull(data.get("orderCode"));
+        assertEquals("PENDING", data.getStatus());
+        assertEquals("MOCK", data.getProvider());
+        assertEquals("http://pay", data.getPayUrl());
+        assertNotNull(data.getOrderCode());
 
         ArgumentCaptor<PaymentOrder> cap = ArgumentCaptor.forClass(PaymentOrder.class);
         verify(orderRepo).save(cap.capture());
@@ -106,7 +107,7 @@ class PaymentServiceTest {
         AuditEntry entry = recorded();
         assertEquals(AuditAction.PAYMENT_CREATED, entry.action());
         assertEquals(AuditActor.of(user("100000")), entry.actor());
-        assertEquals("Tạo đơn DEPOSIT 50000 VNĐ qua MOCK, mã đơn " + data.get("orderCode"), entry.description());
+        assertEquals("Tạo đơn DEPOSIT 50000 VNĐ qua MOCK, mã đơn " + data.getOrderCode(), entry.description());
         assertFalse(entry.description().contains(cap.getValue().getSignature()));
     }
 
@@ -116,8 +117,8 @@ class PaymentServiceTest {
         when(mockGateway.buildPaymentUrl(any())).thenReturn("http://pay");
         when(userRepo.findById(USER_ID)).thenReturn(Optional.of(user("100000")));
 
-        Map<String, Object> data = service.createOrder(req("DEPOSIT", "50000", null), USER_ID);
-        assertEquals("MOCK", data.get("provider"));
+        PaymentOrderResponseDto data = service.createOrder(req("DEPOSIT", "50000", null), USER_ID);
+        assertEquals("MOCK", data.getProvider());
     }
 
     @Test
@@ -330,8 +331,8 @@ class PaymentServiceTest {
     void cancel_pending_setsCancelled() {
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
         when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
-        Map<String, Object> data = service.cancel("PAY123", USER_ID);
-        assertEquals("CANCELLED", data.get("status"));
+        PaymentStatusResponseDto data = service.cancel("PAY123", USER_ID);
+        assertEquals("CANCELLED", data.getStatus());
         AuditEntry entry = recorded();
         assertEquals(AuditAction.PAYMENT_CANCELED, entry.action());
         assertEquals(AuditActor.currentCaller(), entry.actor(), "the owner, i.e. the signed-in caller");
@@ -343,8 +344,8 @@ class PaymentServiceTest {
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
         order.setStatus(PaymentStatus.SUCCESS);
         when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
-        Map<String, Object> data = service.cancel("PAY123", USER_ID);
-        assertEquals("SUCCESS", data.get("status"));
+        PaymentStatusResponseDto data = service.cancel("PAY123", USER_ID);
+        assertEquals("SUCCESS", data.getStatus());
         verify(orderRepo, never()).save(any());
         verifyNoInteractions(auditLogService); // nothing changed, nothing recorded
     }

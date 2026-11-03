@@ -20,6 +20,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+import vn.edu.huit.finance.core.Dto.PaymentStatusResponseDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
 import vn.edu.huit.finance.core.Entity.PaymentOrder;
 import vn.edu.huit.finance.core.Entity.PaymentStatus;
@@ -34,7 +35,6 @@ import vn.edu.huit.finance.core.Service.Payment.PaymentGatewayRegistry;
 import vn.edu.huit.finance.core.Util.HmacUtil;
 
 import java.math.BigDecimal;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -170,18 +170,18 @@ class PaymentWebhookConcurrencyPostgresTest {
     @Test
     void cancelWhileTheWebhookHoldsTheOrder_waitsForIt_andCannotOverwriteSuccess() throws Exception {
         ExecutorService pool = Executors.newSingleThreadExecutor();
-        Future<Map<String, Object>> cancel;
+        Future<PaymentStatusResponseDto> cancel;
         try {
             // The webhook is processed in a transaction that is still open: the order is locked, the wallet credited.
             cancel = new TransactionTemplate(transactionManager).execute(status -> {
                 paymentService.handleWebhook(signedWebhook());
-                Future<Map<String, Object>> late = pool.submit(() -> paymentService.cancel(ORDER_CODE, userId));
+                Future<PaymentStatusResponseDto> late = pool.submit(() -> paymentService.cancel(ORDER_CODE, userId));
                 awaitDoneOrWaitingOnALock(late);
                 assertFalse(late.isDone(), "the cancel must wait for the lock held by the webhook");
                 return late;
             });
-            Map<String, Object> answer = cancel.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            assertEquals(PaymentStatus.SUCCESS.name(), answer.get("status"), "the cancel answers with the closed order");
+            PaymentStatusResponseDto answer = cancel.get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            assertEquals(PaymentStatus.SUCCESS.name(), answer.getStatus(), "the cancel answers with the closed order");
         } finally {
             pool.shutdownNow();
         }
@@ -202,7 +202,7 @@ class PaymentWebhookConcurrencyPostgresTest {
                 paymentService.handleWebhook(webhook);
                 return null;
             });
-            Future<Map<String, Object>> cancel = pool.submit(() -> {
+            Future<PaymentStatusResponseDto> cancel = pool.submit(() -> {
                 start.await();
                 return paymentService.cancel(ORDER_CODE, userId);
             });
