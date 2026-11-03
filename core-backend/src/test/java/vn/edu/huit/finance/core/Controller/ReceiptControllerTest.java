@@ -16,7 +16,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -105,9 +104,6 @@ class ReceiptControllerTest {
         alice.setRole("ROLE_USER");
         alice.setLastActionTime(LocalDateTime.now());
         when(userDetailsService.loadApplicationUser(USERNAME)).thenReturn(alice);
-        when(userDetailsService.loadUserByUsername(USERNAME)).thenReturn(
-                new org.springframework.security.core.userdetails.User(
-                        USERNAME, "hash", AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
     private static MockHttpServletRequestBuilder signedInPost(String urlWithQuery) {

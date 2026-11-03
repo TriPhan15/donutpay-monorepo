@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -91,9 +90,6 @@ class NotificationControllerTest {
         alice.setRole("ROLE_USER");
         alice.setLastActionTime(LocalDateTime.now());
         when(userDetailsService.loadApplicationUser(USERNAME)).thenReturn(alice);
-        when(userDetailsService.loadUserByUsername(USERNAME)).thenReturn(
-                new org.springframework.security.core.userdetails.User(
-                        USERNAME, "hash", AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
     private static MockHttpServletRequestBuilder signedIn(MockHttpServletRequestBuilder builder, String token) {

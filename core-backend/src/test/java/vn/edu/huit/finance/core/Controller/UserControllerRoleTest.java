@@ -9,7 +9,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -77,8 +76,6 @@ class UserControllerRoleTest {
         when(userDetailsService.loadApplicationUser("alice")).thenReturn(alice);
         // The principal is named by the email now, and CurrentUserProvider resolves it through the service.
         when(userDetailsService.loadApplicationUser("alice@example.com")).thenReturn(alice);
-        when(userDetailsService.loadUserByUsername("alice")).thenReturn(new org.springframework.security.core.userdetails.User(
-                "alice", "hash", AuthorityUtils.createAuthorityList("ROLE_USER")));
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(alice));
         when(userRepository.findById(ALICE_ID)).thenReturn(Optional.of(alice));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));

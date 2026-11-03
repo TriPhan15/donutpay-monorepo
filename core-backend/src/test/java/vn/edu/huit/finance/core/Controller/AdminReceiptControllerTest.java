@@ -88,8 +88,6 @@ class AdminReceiptControllerTest {
         user.setRole(role);
         user.setLastActionTime(LocalDateTime.now());
         when(userDetailsService.loadApplicationUser(username)).thenReturn(user);
-        when(userDetailsService.loadUserByUsername(username)).thenReturn(
-                new org.springframework.security.core.userdetails.User(username, "hash", AuthorityUtils.createAuthorityList(role)));
     }
 
     private static MockHttpServletRequestBuilder as(String token, String path) {

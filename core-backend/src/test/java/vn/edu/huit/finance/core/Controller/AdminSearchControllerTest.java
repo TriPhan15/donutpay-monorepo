@@ -11,7 +11,6 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -83,8 +82,6 @@ class AdminSearchControllerTest {
         user.setRole(role);
         user.setLastActionTime(LocalDateTime.now());
         when(userDetailsService.loadApplicationUser(username)).thenReturn(user);
-        when(userDetailsService.loadUserByUsername(username)).thenReturn(
-                new org.springframework.security.core.userdetails.User(username, "hash", AuthorityUtils.createAuthorityList(role)));
     }
 
     private static MockHttpServletRequestBuilder asAdmin(MockHttpServletRequestBuilder request) {

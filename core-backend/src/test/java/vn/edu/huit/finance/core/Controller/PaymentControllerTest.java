@@ -12,7 +12,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -109,9 +108,6 @@ class PaymentControllerTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(alice));
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(alice));
         when(userDetailsService.loadApplicationUser(EMAIL)).thenReturn(alice);
-        when(userDetailsService.loadUserByUsername(EMAIL)).thenReturn(
-                new org.springframework.security.core.userdetails.User(
-                        EMAIL, "hash", AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
     private static MockHttpServletRequestBuilder signedIn(MockHttpServletRequestBuilder builder) {

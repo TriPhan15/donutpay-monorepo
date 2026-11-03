@@ -14,7 +14,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
@@ -128,9 +127,6 @@ class JwtAuthFilterTest {
 
     private void stubUser(User user) {
         when(userDetailsService.loadApplicationUser(user.getUsername())).thenReturn(user);
-        when(userDetailsService.loadUserByUsername(user.getUsername())).thenReturn(
-                new org.springframework.security.core.userdetails.User(
-                        user.getUsername(), "hash", AuthorityUtils.createAuthorityList(Roles.USER)));
     }
 
     // MockMvc leaves getServletPath() empty; the filter branches on it, so set it explicitly.
