@@ -86,6 +86,7 @@ class NotificationControllerTest {
 
         User alice = new User();
         alice.setUsername(USERNAME);
+        alice.setEmail(USERNAME);
         alice.setActive(true);
         alice.setRole("ROLE_USER");
         alice.setLastActionTime(LocalDateTime.now());

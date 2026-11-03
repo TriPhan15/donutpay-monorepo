@@ -120,7 +120,7 @@ class JwtAuthFilterTest {
         User user = new User();
         user.setId(id);
         user.setUsername(name);
-        user.setEmail(name + "@example.com");
+        user.setEmail(name);
         user.setRole(Roles.USER);
         user.setActive(active);
         return user;

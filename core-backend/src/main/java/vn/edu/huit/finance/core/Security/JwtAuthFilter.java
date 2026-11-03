@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -110,8 +111,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            org.springframework.security.core.userdetails.UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(claims.subject());
+            // Built from the user loaded above: no second lookup per request.
+            UserDetails userDetails = CustomUserDetailsService.toUserDetails(user);
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(
@@ -152,7 +153,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
      * it would write its old balance and profile over what another request has committed meanwhile.
      */
     private void recordActivity(User user) {
-        // 🔥 FIX CHÍ MẠNG: Chỉ lưu Database nếu lần tương tác cuối đã quá 5 phút
+        // Chỉ ghi database nếu lần tương tác cuối đã quá 5 phút.
         LocalDateTime now = LocalDateTime.now();
         if (user.getLastActionTime() != null
                 && Duration.between(user.getLastActionTime(), now).toMinutes() <= LAST_ACTION_UPDATE_INTERVAL_MINUTES) {

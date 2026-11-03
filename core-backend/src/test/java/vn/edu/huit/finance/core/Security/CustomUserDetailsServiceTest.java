@@ -116,4 +116,15 @@ class CustomUserDetailsServiceTest {
 
         assertThatThrownBy(() -> service.loadUserByUsername("lk@x.com")).isInstanceOf(DisabledException.class);
     }
+
+    @Test
+    void toUserDetails_ofAUserWithoutPassword_hasAnEmptyPassword() {
+        User noPassword = user(7L, "np", "np@x.com");
+        noPassword.setPassword(null);
+
+        UserDetails details = CustomUserDetailsService.toUserDetails(noPassword);
+
+        assertThat(details.getPassword()).isEmpty();
+        assertThat(details.getUsername()).isEqualTo("np@x.com");
+    }
 }

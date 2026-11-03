@@ -111,6 +111,7 @@ class AuthControllerLogoutTest {
 
         User alice = new User();
         alice.setUsername(USERNAME);
+        alice.setEmail(USERNAME);
         alice.setActive(true);
         alice.setRole("ROLE_USER");
         alice.setLastActionTime(LocalDateTime.now());
@@ -439,6 +440,7 @@ class AuthControllerLogoutTest {
     void check_answers403_forALockedAccount() throws Exception {
         User locked = new User();
         locked.setUsername(USERNAME);
+        locked.setEmail(USERNAME);
         locked.setActive(false);
         locked.setRole("ROLE_USER");
         locked.setLastActionTime(LocalDateTime.now());
