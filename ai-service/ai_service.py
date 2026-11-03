@@ -21,7 +21,9 @@ import budget_advisor
 import rfm_segmentation
 from rfm_segmentation import RfmInput
 from receipt_postprocess import fields_from_sequence, normalize_receipt
+from logging_config import configure_logging
 
+configure_logging()
 logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
