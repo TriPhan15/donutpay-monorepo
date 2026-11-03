@@ -93,22 +93,16 @@ class _LoginScreenState extends State<LoginScreen> {
           (user?['id'] ?? data['userId'] ?? result['userId'] ?? result['id'])
               as int?;
 
+      if (userId == null) {
+        await _rejectAnswerWithoutUserId();
+        return;
+      }
       if (token.isNotEmpty && refreshToken.isNotEmpty) {
         await SessionService.setTokens(
           token,
           refreshToken,
           remember: _rememberMe,
         );
-      }
-
-      if (userId == null) {
-        if (!context.mounted) return;
-        await AppDialog.error(
-          context,
-          title: context.loc.loginFailedTitle,
-          message: context.loc.loginInvalidResponse,
-        );
-        return;
       }
       await SessionService.setCurrentUserId(userId);
       await SessionService.rememberEmail(_rememberMe ? normalizedEmail : null);
@@ -141,6 +135,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// A sign-in answer that names no user cannot open the app: its tabs would stay empty or end the session at the first
+  /// request. Nothing of it is kept; the user stays here with the error.
+  Future<void> _rejectAnswerWithoutUserId() async {
+    await SessionService.clearSession();
+    if (!mounted) return;
+    await AppDialog.error(
+      context,
+      title: context.loc.loginFailedTitle,
+      message: context.loc.loginInvalidResponse,
+    );
+  }
+
   /// The one way into the password recovery. The recovery screens never sign in: whatever happens there, the user
   /// comes back here, or to a new login screen, and signs in with the new password.
   void _openForgotPassword() {
@@ -165,6 +171,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = data['user'] as Map?;
       final userId = (user?['id'] ?? data['userId'] ?? res['userId']) as int?;
 
+      if (userId == null) {
+        await _rejectAnswerWithoutUserId();
+        return;
+      }
       if (token.isNotEmpty && refreshToken.isNotEmpty) {
         await SessionService.setTokens(
           token,
@@ -172,14 +182,11 @@ class _LoginScreenState extends State<LoginScreen> {
           remember: _rememberMe,
         );
       }
+      await SessionService.setCurrentUserId(userId);
 
-      if (userId != null) {
-        await SessionService.setCurrentUserId(userId);
-
-        AppRepository.instance
-            .getHomeSummary(userId)
-            .catchError((_) => <String, dynamic>{});
-      }
+      AppRepository.instance
+          .getHomeSummary(userId)
+          .catchError((_) => <String, dynamic>{});
 
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
