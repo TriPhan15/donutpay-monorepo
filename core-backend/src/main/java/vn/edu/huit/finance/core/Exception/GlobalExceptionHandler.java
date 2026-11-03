@@ -8,15 +8,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.ModelAndView;
@@ -37,6 +42,10 @@ public class GlobalExceptionHandler {
     private static final String TYPE_MISMATCH = "typeMismatch";
     private static final String MSG_UNREADABLE_BODY = "Dữ liệu gửi lên không đúng định dạng";
     private static final String MSG_PARAMETER_INVALID = "Giá trị của tham số %s không hợp lệ";
+    private static final String MSG_METHOD_NOT_ALLOWED = "Phương thức %s không được hỗ trợ cho địa chỉ này";
+    private static final String MSG_UNSUPPORTED_MEDIA_TYPE = "Định dạng dữ liệu gửi lên không được hỗ trợ";
+    private static final String MSG_URL_NOT_FOUND = "Không tìm thấy địa chỉ yêu cầu";
+    private static final String MSG_MISSING_HEADER = "Thiếu header bắt buộc: %s";
     private static final String REASON_NOT_OWNER = "Dữ liệu thuộc về người dùng khác";
     private static final String REASON_ROLE = "Phân quyền theo vai trò";
     private static final String MSG_UPLOAD_TOO_LARGE = "Ảnh quá lớn (tối đa 15MB), vui lòng chụp lại với độ phân giải thấp hơn";
@@ -276,6 +285,17 @@ public class GlobalExceptionHandler {
         return new ModelAndView("error").addObject("errorMessage", message);
     }
 
+    // The same, with the headers Spring set for the refusal (Allow, Accept) and the real code also on the error page.
+    private Object buildErrorResponse(HttpStatus status, String message, HttpHeaders headers, HttpServletRequest request) {
+        if (isJsonRequest(request)) {
+            return ResponseEntity.status(status).headers(headers).body(ApiResponse.<String>builder()
+                    .code(status.value())
+                    .message(message)
+                    .build());
+        }
+        return new ModelAndView("error", status).addObject("errorMessage", message);
+    }
+
     // 400 with a fixed text: a body that is not JSON, or does not fit the DTO (Jackson's message names classes and fields).
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public Object handleUnreadableBody(HttpMessageNotReadableException ex, HttpServletRequest request) {
@@ -293,6 +313,41 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestPartException.class)
     public Object handleMissingRequestPart(MissingServletRequestPartException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Thiếu tham số bắt buộc: " + ex.getRequestPartName(), request);
+    }
+
+    // 405: the URL exists but not for this method. The Allow header (from Spring) tells the client which ones it has.
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public Object handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        logRefusedRequest(HttpStatus.METHOD_NOT_ALLOWED, request);
+        return buildErrorResponse(HttpStatus.METHOD_NOT_ALLOWED, String.format(MSG_METHOD_NOT_ALLOWED, ex.getMethod()),
+                ex.getHeaders(), request);
+    }
+
+    // 415: the body is in a Content-Type the endpoint does not read (a form sent to a JSON endpoint).
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public Object handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+        logRefusedRequest(HttpStatus.UNSUPPORTED_MEDIA_TYPE, request);
+        return buildErrorResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, MSG_UNSUPPORTED_MEDIA_TYPE, ex.getHeaders(), request);
+    }
+
+    // 404: no controller and no static file for this URL.
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Object handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
+        logRefusedRequest(HttpStatus.NOT_FOUND, request);
+        return buildErrorResponse(HttpStatus.NOT_FOUND, MSG_URL_NOT_FOUND, HttpHeaders.EMPTY, request);
+    }
+
+    // 400: a header the endpoint requires (@RequestHeader) is missing.
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public Object handleMissingRequestHeader(MissingRequestHeaderException ex, HttpServletRequest request) {
+        logRefusedRequest(HttpStatus.BAD_REQUEST, request);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, String.format(MSG_MISSING_HEADER, ex.getHeaderName()),
+                HttpHeaders.EMPTY, request);
+    }
+
+    // A caller's mistake, not a fault of ours: warn level, without the stack trace.
+    private void logRefusedRequest(HttpStatus status, HttpServletRequest request) {
+        log.warn("Request refused with {}, method={}, uri={}", status.value(), request.getMethod(), request.getRequestURI());
     }
 
     // 500 with a fixed text: every exception meant for the user has its own handler above, so what reaches this one is
