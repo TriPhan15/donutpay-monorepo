@@ -44,8 +44,8 @@
                             <td class="text-center text-muted fw-bold" th:text="${plan.durationDays + ' ngày'}"></td>
 
                             <td class="text-center">
-                                <span th:if="${plan.maxAiScans == -1}" class="badge bg-warning text-dark"><i class="bi bi-infinity"></i> Unlimited</span>
-                                <span th:unless="${plan.maxAiScans == -1}" class="badge bg-light text-dark border" th:text="${plan.maxAiScans + ' lần/tháng'}"></span>
+                                <span th:if="${plan.maxAiScans == T(vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto).UNLIMITED_AI_SCANS}" class="badge bg-warning text-dark"><i class="bi bi-infinity"></i> Unlimited</span>
+                                <span th:unless="${plan.maxAiScans == T(vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto).UNLIMITED_AI_SCANS}" class="badge bg-light text-dark border" th:text="${plan.maxAiScans + ' lần/tháng'}"></span>
                             </td>
 
                             <td class="text-center">
@@ -111,7 +111,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted">Giới hạn AI Quét (Hóa đơn) <span class="text-danger">*</span></label>
-                                <input type="number" name="maxAiScans" class="form-control" required placeholder="Nhập -1 nếu vô hạn">
+                                <input type="number" name="maxAiScans" class="form-control" required th:placeholder="'Nhập ' + ${T(vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto).UNLIMITED_AI_SCANS} + ' nếu vô hạn'">
                             </div>
                             <div class="mb-3 form-check form-switch mt-4">
                                 <input class="form-check-input" type="checkbox" name="isWcmSpadeEnabled" id="spadeCheck" value="true">

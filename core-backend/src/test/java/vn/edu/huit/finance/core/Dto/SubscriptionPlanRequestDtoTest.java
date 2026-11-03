@@ -73,4 +73,35 @@ class SubscriptionPlanRequestDtoTest {
 
         assertEquals(Set.of("price", "durationDays", "maxAiScans"), invalidFields(dto));
     }
+
+    @Test
+    void minusOneMeansUnlimitedScansAndIsValid() throws Exception {
+        SubscriptionPlanRequestDto dto = JSON.readValue(body("wcmSpadeEnabled", true, "99000", 30,
+                SubscriptionPlanRequestDto.UNLIMITED_AI_SCANS, "VIP"), SubscriptionPlanRequestDto.class);
+
+        assertEquals(-1, SubscriptionPlanRequestDto.UNLIMITED_AI_SCANS);
+        assertTrue(invalidFields(dto).isEmpty());
+    }
+
+    @Test
+    void zeroScansIsStillValid() throws Exception {
+        assertTrue(invalidFields(JSON.readValue(body("wcmSpadeEnabled", true, "0", 30, 0, "Free"),
+                SubscriptionPlanRequestDto.class)).isEmpty());
+    }
+
+    @Test
+    void anyNegativeScansBelowMinusOneIsRefused() throws Exception {
+        SubscriptionPlanRequestDto dto = JSON.readValue(body("wcmSpadeEnabled", true, "99000", 30, -2, "VIP"),
+                SubscriptionPlanRequestDto.class);
+
+        assertEquals(Set.of("maxAiScans"), invalidFields(dto));
+    }
+
+    @Test
+    void theUpperBoundOnScansStillHolds() throws Exception {
+        SubscriptionPlanRequestDto dto = JSON.readValue(body("wcmSpadeEnabled", true, "99000", 30, 1_000_001, "VIP"),
+                SubscriptionPlanRequestDto.class);
+
+        assertEquals(Set.of("maxAiScans"), invalidFields(dto));
+    }
 }
