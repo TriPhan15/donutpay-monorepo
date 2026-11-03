@@ -17,6 +17,7 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/widgets/receipt_step_band.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/widgets/needs_check_field.dart';
+import 'package:finance_ai_app/screens/receipt_scanner/widgets/receipt_photo_header.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
 import 'package:finance_ai_app/models/review_exit.dart';
@@ -284,6 +285,36 @@ void main() {
         isEmpty,
         reason: 'the form stays open to type the total in',
       );
+    },
+  );
+
+  testWidgets(
+    'typing the total does not rebuild the photo part, only the buttons follow it',
+    (tester) async {
+      await openForm(tester);
+      expect(find.byType(ReceiptPhotoHeader), findsOneWidget);
+
+      var photoBuilds = 0;
+      var barBuilds = 0;
+      debugOnRebuildDirtyWidget = (element, builtOnce) {
+        if (element.widget is ReceiptPhotoHeader) photoBuilds++;
+        if (element.widget is FormSubmitBar) barBuilds++;
+      };
+      addTearDown(() => debugOnRebuildDirtyWidget = null);
+
+      await tester.enterText(_total, '5');
+      await tester.pump();
+      await tester.enterText(_total, '50');
+      await tester.pump();
+      await tester.enterText(_total, '');
+      await tester.pump();
+
+      expect(photoBuilds, 0, reason: 'the photo does not depend on the total');
+      expect(barBuilds, greaterThan(0), reason: 'the buttons follow the total');
+      final bar = tester.widget<Opacity>(
+        find.ancestor(of: _save, matching: find.byType(Opacity)),
+      );
+      expect(bar.opacity, FormSubmitBar.disabledOpacity);
     },
   );
 

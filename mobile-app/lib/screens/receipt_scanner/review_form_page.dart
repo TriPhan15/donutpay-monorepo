@@ -18,6 +18,7 @@ import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_fields.dart';
+import 'package:finance_ai_app/screens/receipt_scanner/receipt_submitter.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/widgets/needs_check_field.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/widgets/receipt_photo_header.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/widgets/receipt_step_band.dart';
@@ -28,9 +29,6 @@ import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_image_viewer.dart';
 import 'package:finance_ai_app/widgets/transactions/category_picker_sheet.dart';
-
-/// A day and a time, as receipts print them and as the duplicate dialog names the day of the saved one.
-const String _dateTimeFormat = 'dd/MM/yyyy HH:mm';
 
 /// The day of the receipt in the note about the balance (day and month only).
 const String _dayMonthFormat = 'dd/MM';
@@ -106,7 +104,6 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   @override
   void initState() {
     super.initState();
-    _amountController.addListener(_onAmountChanged);
     final scan = widget.initialScan;
     if (scan == null) {
       _callDonutApi();
@@ -120,15 +117,12 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
 
   @override
   void dispose() {
-    _amountController.removeListener(_onAmountChanged);
     _storeNameController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
   /// The buttons follow the total: faded while it is not a positive amount.
-  void _onAmountChanged() => setState(() {});
-
   bool get _canSave =>
       MoneyInputFormatter.parse(_amountController.text) != null;
 
@@ -293,31 +287,21 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     bool allowDuplicate = false,
   }) async {
     final loc = context.loc;
-    SyncStatus? status;
-    String? failure;
-    DuplicateReceiptException? duplicate;
-    try {
-      status = await AppRepository.instance.createTransaction(
-        userId,
-        draft,
-        allowDuplicate: allowDuplicate,
-      );
-    } on DuplicateReceiptException catch (e) {
-      debugPrint('Hóa đơn trùng với giao dịch ${e.existingTransactionId}');
-      duplicate = e;
-    } on TransactionRefusedException catch (e) {
-      failure = e.messageFor(loc);
-    } catch (e) {
-      debugPrint('Lỗi lưu giao dịch từ hóa đơn: $e');
-      failure = loc.transactionSaveFailed;
-    }
+    final result = await ReceiptSubmitter.send(
+      userId,
+      draft,
+      loc,
+      allowDuplicate: allowDuplicate,
+    );
     if (!mounted) return;
     setState(() => _isSaving = false);
 
+    final duplicate = result.duplicate;
     if (duplicate != null) {
       await _askAboutDuplicate(userId, draft, duplicate, exit);
       return;
     }
+    final failure = result.failure;
     if (failure != null) {
       await AppDialog.error(
         context,
@@ -326,7 +310,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       );
       return;
     }
-    if (status == SyncStatus.synced) {
+    if (result.status == SyncStatus.synced) {
       await AppDialog.success(
         context,
         title: loc.commonSuccess,
@@ -352,14 +336,9 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     ReviewExit exit,
   ) async {
     final loc = context.loc;
-    final savedAt = duplicate.existingTransactionDate;
     final saveAnyway = await AppDialog.choose(
       context,
-      title: savedAt == null
-          ? loc.reviewDuplicateTitleNoDate
-          : loc.reviewDuplicateTitle(
-              DateFormat(_dateTimeFormat).format(savedAt),
-            ),
+      title: ReceiptSubmitter.duplicateTitle(loc, duplicate),
       message: loc.reviewDuplicateMessage,
       confirmText: loc.reviewDuplicateSaveAnyway,
       cancelText: loc.reviewDuplicateView,
@@ -436,7 +415,6 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       onCategory: (category) => setState(() => _selectedCategory = category),
       onMoreCategories: _pickCategory,
     );
-    final enabled = _canSave;
     return Scaffold(
       body: Column(
         children: [
@@ -490,14 +468,18 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
                   ),
           ),
           if (!_isProcessing)
-            FormSubmitBar(
-              label: loc.reviewSave,
-              busy: _isSaving,
-              onPressed: enabled
-                  ? () => _saveToDatabase(ReviewExit.saved)
-                  : null,
-              secondaryLabel: loc.reviewSaveAndScan,
-              onSecondary: () => _saveToDatabase(ReviewExit.savedScanNext),
+            // Only the buttons follow the total as it is typed: the rest of the form is not rebuilt.
+            ListenableBuilder(
+              listenable: _amountController,
+              builder: (context, _) => FormSubmitBar(
+                label: loc.reviewSave,
+                busy: _isSaving,
+                onPressed: _canSave
+                    ? () => _saveToDatabase(ReviewExit.saved)
+                    : null,
+                secondaryLabel: loc.reviewSaveAndScan,
+                onSecondary: () => _saveToDatabase(ReviewExit.savedScanNext),
+              ),
             ),
         ],
       ),
