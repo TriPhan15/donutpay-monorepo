@@ -1,11 +1,13 @@
 """Unit test cho ai_service.py bang mock, khong tai model Donut vat ly."""
 
+import ast
 import asyncio
 import inspect
 import threading
 import time
 from datetime import date, timedelta
 from io import BytesIO
+from pathlib import Path
 from typing import Dict, List, Tuple
 from unittest.mock import patch
 
@@ -524,3 +526,23 @@ def test_openapi_declares_donut_scan_response_model():
     ref = schema["paths"]["/donut/scan"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
     assert ref["$ref"].endswith("/DonutScanResponse")
     assert "DonutScanResponse" in schema["components"]["schemas"]
+
+
+def test_main_block_starts_uvicorn_with_a_valid_import_string():
+    # `python ai_service.py` phai goi uvicorn bang chuoi "<module>:<attr>" hop le.
+    tree = ast.parse((Path(__file__).parent / "ai_service.py").read_text(encoding="utf-8"))
+    run_calls = [
+        node
+        for stmt in tree.body
+        if isinstance(stmt, ast.If)
+        for node in ast.walk(stmt)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "run"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "uvicorn"
+    ]
+    assert len(run_calls) == 1
+    first_arg = run_calls[0].args[0]
+    assert isinstance(first_arg, ast.Constant)
+    assert first_arg.value == "ai_service:app"
