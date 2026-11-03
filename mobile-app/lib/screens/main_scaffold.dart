@@ -1,35 +1,18 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
-import 'package:sqflite/sqflite.dart' show DatabaseException;
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
-import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/screens/dashboard/dashboard_page.dart';
 import 'package:finance_ai_app/screens/ledger/ledger_page.dart';
 import 'package:finance_ai_app/screens/main_tabs.dart';
-import 'package:finance_ai_app/models/review_exit.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
 import 'package:finance_ai_app/screens/profile/profile_page.dart';
-import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/widgets/dialogs/app_dialog.dart';
-import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
-import 'package:finance_ai_app/widgets/receipt/scan_options_sheet.dart';
-
-/// What the ML Kit document scanner throws when the user closes it without scanning: not an error to show.
-const String _scannerCancelledMessage = 'Operation cancelled';
-
-/// The size and quality the picked photos are scaled to before DONUT reads them, as for a single photo.
-const int _pickedImageQuality = 50;
-const double _pickedImageMaxSide = 1280;
+import 'package:finance_ai_app/widgets/receipt/receipt_scan_launcher.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -47,12 +30,18 @@ class _MainScaffoldState extends State<MainScaffold>
   final _ledgerKey = GlobalKey<LedgerPageState>();
   final _dashboardKey = GlobalKey<DashboardPageState>();
 
+  late final ReceiptScanLauncher _scanLauncher = ReceiptScanLauncher(
+    host: this,
+    onOpenTransaction: _openTransaction,
+    showTab: _showTab,
+  );
+
   late final List<Widget> _pages = [
     DashboardPage(
       key: _dashboardKey,
       onOpenTransaction: _openTransaction,
       // The home shortcut opens the same scan options as the scan button.
-      onScanReceipt: () => _showScannerOptions(context),
+      onScanReceipt: _scanLauncher.start,
     ),
     LedgerPage(key: _ledgerKey),
     const AITabPage(),
@@ -71,7 +60,7 @@ class _MainScaffoldState extends State<MainScaffold>
   }
 
   /// Handed to [MainTabs.attachScanner]; tear-offs of one method are equal, so detaching recognises it.
-  void _openScanner() => _showScannerOptions(context);
+  void _openScanner() => _scanLauncher.start();
 
   @override
   void initState() {
@@ -106,205 +95,6 @@ class _MainScaffoldState extends State<MainScaffold>
     unawaited(AppRepository.instance.resendUnsyncedTransactions(userId));
   }
 
-  /// The scan sheet closes itself before the picked way starts, so an error dialog of that way shows over this page.
-  Future<void> _showScannerOptions(BuildContext context) async {
-    final option = await showScanOptionsSheet(context);
-    if (option == null || !context.mounted) return;
-    switch (option) {
-      case ScanOption.cameraOne:
-        await _startAutoScanner(context);
-      case ScanOption.galleryOne:
-        await _pickImageAndScan(context, ImageSource.gallery);
-      case ScanOption.cameraMany:
-        await _startBatchScanner(context);
-      case ScanOption.galleryMany:
-        await _pickImagesForQueue(context);
-    }
-  }
-
-  Future<void> _startAutoScanner(BuildContext context) async {
-    final DocumentScanner documentScanner = DocumentScanner(
-      options: DocumentScannerOptions(
-        documentFormats: {DocumentFormat.jpeg},
-        mode: ScannerMode.base,
-        pageLimit: 1,
-        isGalleryImport: true,
-      ),
-    );
-    try {
-      final result = await documentScanner.scanDocument();
-      final images = result.images;
-      if (images != null && images.isNotEmpty && context.mounted) {
-        final saved = await Navigator.push<ReviewExit>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ReviewFormPage(
-              imagePath: images.first,
-              onOpenTransaction: _openTransaction,
-            ),
-          ),
-        );
-        if (mounted) _afterReview(saved);
-      }
-    } catch (e) {
-      if (e is PlatformException && e.message == _scannerCancelledMessage) {
-        return;
-      }
-      debugPrint('Lỗi quét tài liệu ML Kit: $e');
-      await _showScanError(
-        (loc) => loc.scanScannerFailedTitle,
-        (loc) => loc.scanScannerFailedMessage,
-      );
-    } finally {
-      documentScanner.close();
-    }
-  }
-
-  Future<void> _pickImageAndScan(
-    BuildContext context,
-    ImageSource source,
-  ) async {
-    final ImagePicker picker = ImagePicker();
-
-    final XFile? image;
-    try {
-      image = await picker.pickImage(
-        source: source,
-        imageQuality: _pickedImageQuality,
-        maxWidth: _pickedImageMaxSide,
-        maxHeight: _pickedImageMaxSide,
-      );
-    } catch (e) {
-      debugPrint('Lỗi chọn ảnh hóa đơn: $e');
-      await _showScanError(
-        (loc) => loc.scanGalleryFailedTitle,
-        (loc) => loc.scanGalleryFailedMessage,
-      );
-      return;
-    }
-
-    final imagePath = image?.path;
-    if (imagePath != null && context.mounted) {
-      final saved = await Navigator.push<ReviewExit>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ReviewFormPage(
-            imagePath: imagePath,
-            onOpenTransaction: _openTransaction,
-          ),
-        ),
-      );
-      if (mounted) _afterReview(saved);
-    }
-  }
-
-  /// After a review opened from a single scan: "Lưu & quét tiếp" opens the scan sheet again, "Lưu" shows the Ledger.
-  void _afterReview(ReviewExit? exit) {
-    switch (exit) {
-      case ReviewExit.savedScanNext:
-        _showScannerOptions(context);
-      case ReviewExit.saved:
-        setState(() => _currentIndex = _ledgerTabIndex);
-      case null:
-        break;
-    }
-  }
-
-  /// Scans up to [ReceiptScanQueue.maxBatch] receipts in one go and queues them; DONUT reads them in the background.
-  Future<void> _startBatchScanner(BuildContext context) async {
-    final DocumentScanner documentScanner = DocumentScanner(
-      options: DocumentScannerOptions(
-        documentFormats: {DocumentFormat.jpeg},
-        mode: ScannerMode.base,
-        pageLimit: ReceiptScanQueue.maxBatch,
-        isGalleryImport: true,
-      ),
-    );
-    try {
-      final result = await documentScanner.scanDocument();
-      final images = result.images;
-      if (images != null && images.isNotEmpty && context.mounted) {
-        await _enqueueBatch(images);
-      }
-    } catch (e) {
-      if (e is PlatformException && e.message == _scannerCancelledMessage) {
-        return;
-      }
-      debugPrint('Lỗi quét nhiều hóa đơn bằng ML Kit: $e');
-      await _showScanError(
-        (loc) => loc.scanScannerFailedTitle,
-        (loc) => loc.scanScannerFailedMessage,
-      );
-    } finally {
-      documentScanner.close();
-    }
-  }
-
-  /// Picks up to [ReceiptScanQueue.maxBatch] photos from the gallery and queues them.
-  Future<void> _pickImagesForQueue(BuildContext context) async {
-    final List<XFile> images;
-    try {
-      images = await ImagePicker().pickMultiImage(
-        limit: ReceiptScanQueue.maxBatch,
-        imageQuality: _pickedImageQuality,
-        maxWidth: _pickedImageMaxSide,
-        maxHeight: _pickedImageMaxSide,
-      );
-    } catch (e) {
-      debugPrint('Lỗi chọn nhiều ảnh hóa đơn: $e');
-      await _showScanError(
-        (loc) => loc.scanGalleryFailedTitle,
-        (loc) => loc.scanGalleryFailedMessage,
-      );
-      return;
-    }
-    if (images.isEmpty || !context.mounted) return;
-    await _enqueueBatch([for (final image in images) image.path]);
-  }
-
-  /// Hands [imagePaths] to the scan queue and tells how many it took, and how many it left out over the limit.
-  Future<void> _enqueueBatch(List<String> imagePaths) async {
-    final int accepted;
-    try {
-      accepted = await ReceiptScanQueue.instance.enqueue(imagePaths);
-    } on DatabaseException catch (e) {
-      debugPrint('Lỗi lưu hàng đợi quét: $e');
-      return _showQueueStorageError();
-    } on FileSystemException catch (e) {
-      debugPrint('Lỗi chép ảnh vào hàng đợi quét: $e');
-      return _showQueueStorageError();
-    }
-    if (!mounted) return;
-    // The scan strip that follows the reading sits on the home tab.
-    if (accepted > 0) setState(() => _currentIndex = MainTab.home.index);
-    final loc = context.loc;
-    final skipped = imagePaths.length - accepted;
-    if (skipped == 0) {
-      AppToast.success(context, loc.scanQueueAdded(accepted));
-    } else {
-      AppToast.info(
-        context,
-        loc.scanQueueOverLimit(accepted, skipped, ReceiptScanQueue.maxBatch),
-      );
-    }
-  }
-
-  void _showQueueStorageError() {
-    if (!mounted) return;
-    AppToast.error(context, context.loc.scanQueueStorageFailed);
-  }
-
-  /// The scan sheet is already closed: the user opens it again to pick another way.
-  /// The texts are picked only once the screen is known to be still there, in the language it shows.
-  Future<void> _showScanError(
-    String Function(AppLocalizations loc) title,
-    String Function(AppLocalizations loc) message,
-  ) async {
-    if (!mounted) return;
-    final loc = context.loc;
-    await AppDialog.error(context, title: title(loc), message: message(loc));
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -326,7 +116,7 @@ class _MainScaffoldState extends State<MainScaffold>
           ],
         ),
         child: FloatingActionButton(
-          onPressed: () => _showScannerOptions(context),
+          onPressed: _scanLauncher.start,
           elevation: 0,
           child: const Icon(Icons.document_scanner_rounded, size: 28),
         ),
