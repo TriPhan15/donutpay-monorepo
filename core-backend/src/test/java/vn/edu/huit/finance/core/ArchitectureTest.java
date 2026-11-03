@@ -6,7 +6,11 @@ import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+import jakarta.persistence.Entity;
 
 import java.util.Set;
 
@@ -56,13 +60,13 @@ class ArchitectureTest {
             methods().that().areDeclaredInClassesThat().resideInAPackage(CONTROLLER)
                     .and().haveModifier(PUBLIC)
                     .and(notLegacyMethod())
-                    .should(new com.tngtech.archunit.lang.ArchCondition<JavaMethod>("not return an @Entity type") {
+                    .should(new ArchCondition<JavaMethod>("not return an @Entity type") {
                         @Override
-                        public void check(JavaMethod m, com.tngtech.archunit.lang.ConditionEvents events) {
+                        public void check(JavaMethod m, ConditionEvents events) {
                             boolean entity = m.getRawReturnType()
-                                    .isAnnotatedWith(jakarta.persistence.Entity.class);
+                                    .isAnnotatedWith(Entity.class);
                             if (entity) {
-                                events.add(com.tngtech.archunit.lang.SimpleConditionEvent.violated(m,
+                                events.add(SimpleConditionEvent.violated(m,
                                         m.getFullName() + " returns entity " + m.getRawReturnType().getName()));
                             }
                         }
@@ -81,12 +85,12 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule no_lowercase_twin_packages =
-            classes().should(new com.tngtech.archunit.lang.ArchCondition<JavaClass>("not live in a lowercase twin package") {
+            classes().should(new ArchCondition<JavaClass>("not live in a lowercase twin package") {
                 @Override
-                public void check(JavaClass c, com.tngtech.archunit.lang.ConditionEvents events) {
+                public void check(JavaClass c, ConditionEvents events) {
                     for (String part : c.getPackageName().split("\\.")) {
                         if (LOWERCASE_TWIN_PACKAGES.contains(part)) {
-                            events.add(com.tngtech.archunit.lang.SimpleConditionEvent.violated(c,
+                            events.add(SimpleConditionEvent.violated(c,
                                     c.getName() + " lives in lowercase package '" + part + "'"));
                         }
                     }
