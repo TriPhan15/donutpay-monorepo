@@ -238,6 +238,16 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
+    // 409: a manual backup or restore while another one runs. The admin page calls these URLs with fetch, so the answer is
+    // always the JSON envelope (its URL is not under /api/ or /ajax/); nothing was started.
+    @ExceptionHandler(BackupInProgressException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBackupInProgress(BackupInProgressException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.<Void>builder()
+                .code(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .build());
+    }
+
     // 409: a savings transaction can only change through its savings goal; nothing was written.
     @ExceptionHandler(SavingsLedgerException.class)
     public Object handleSavingsLedger(SavingsLedgerException ex, HttpServletRequest request) {

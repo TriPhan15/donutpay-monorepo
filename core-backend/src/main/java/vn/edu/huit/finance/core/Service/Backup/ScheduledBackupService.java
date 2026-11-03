@@ -12,6 +12,7 @@ import vn.edu.huit.finance.core.Entity.BackupFailure;
 import vn.edu.huit.finance.core.Entity.BackupOrigin;
 import vn.edu.huit.finance.core.Entity.BackupType;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.BackupInProgressException;
 import vn.edu.huit.finance.core.Repository.Mongo.BackupRunRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.Roles;
@@ -214,6 +215,34 @@ public class ScheduledBackupService {
             deletion.run();
         } catch (RuntimeException e) {
             log.error("Could not delete the old backup {}", name, e);
+        }
+    }
+
+    // ------------------------------------------------------------------------------- manual runs (admin buttons)
+
+    /** The admin's "back up now" button: same lock as the daily run, so two pg_dump / pg_restore never overlap. */
+    public boolean backupNow(BackupType type) {
+        if (!running.tryLock()) {
+            log.warn("A backup or restore is already running, the manual {} backup is refused", type);
+            throw new BackupInProgressException();
+        }
+        try {
+            return backupService.backupDatabase(type);
+        } finally {
+            running.unlock();
+        }
+    }
+
+    /** The admin's "restore the newest FULL" button, under the same lock. */
+    public boolean restoreLatestFullNow() {
+        if (!running.tryLock()) {
+            log.warn("A backup or restore is already running, the manual restore is refused");
+            throw new BackupInProgressException();
+        }
+        try {
+            return backupService.restoreLatestFull();
+        } finally {
+            running.unlock();
         }
     }
 

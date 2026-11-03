@@ -166,7 +166,7 @@
                         fetch(`/admin/backup/execute?type=${loai}`, {
                             method: 'POST'
                         })
-                            .then(response => response.json())
+                            .then(response => response.json().catch(() => ({ success: false, message: 'Phản hồi không hợp lệ từ máy chủ.' })))
                             .then(data => {
                                 toggleLoading(false); 
                                 if (data.success) {
@@ -201,7 +201,7 @@
                         fetch(`/admin/backup/restore?type=FULL`, {
                             method: 'POST'
                         })
-                            .then(response => response.json())
+                            .then(response => response.json().catch(() => ({ success: false, message: 'Phản hồi không hợp lệ từ máy chủ.' })))
                             .then(data => {
                                 toggleLoading(false);
                                 if (data.success) {
