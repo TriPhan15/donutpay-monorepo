@@ -3,12 +3,12 @@ package vn.edu.huit.finance.core.Dto;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
+import vn.edu.huit.finance.core.Util.RealDate;
 import java.math.BigDecimal;
 
 @Data
@@ -16,8 +16,6 @@ import java.math.BigDecimal;
 public class SavingGoalDto {
 
     public static final int TITLE_MAX_LENGTH = 255;
-    /** Hạn mục tiêu mobile gửi lên: dd/MM/yyyy. */
-    public static final String DEADLINE_PATTERN = "^\\d{2}/\\d{2}/\\d{4}$";
 
     private Long id;
 
@@ -36,6 +34,7 @@ public class SavingGoalDto {
     @PositiveOrZero(message = "Số tiền đã tiết kiệm không được âm")
     private BigDecimal current;
 
-    @Pattern(regexp = DEADLINE_PATTERN, message = "Hạn mục tiêu phải có dạng dd/MM/yyyy")
+    /** Hạn mục tiêu mobile gửi lên: một ngày có thật dạng dd/MM/yyyy. */
+    @RealDate(message = "Hạn mục tiêu phải là một ngày có thật, dạng dd/MM/yyyy")
     private String deadline;
 }

@@ -48,6 +48,7 @@ import vn.edu.huit.finance.core.Service.UserService;
 
 import java.time.YearMonth;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -121,16 +122,13 @@ public class AdminController {
                 .toList());
         model.addAttribute("chartData", chart.stream().map(MonthlyTransactionCountDto::getTransactionCount).toList());
 
-        List<String> aiLabels = new java.util.ArrayList<>();
-        List<Long> aiData = new java.util.ArrayList<>();
-
+        // Nhiều trạng thái (chờ duyệt, đang đọc...) cùng hiện là "Đang xử lý": gộp theo nhãn để biểu đồ không có lát trùng tên.
+        Map<String, Long> receiptsByLabel = new LinkedHashMap<>();
         for (ReceiptStatusCountDto receiptStatus : summary.getReceiptStatuses()) {
-            aiLabels.add(ReceiptStatus.dashboardLabelOf(receiptStatus.getStatus()));
-            aiData.add(receiptStatus.getCount());
+            receiptsByLabel.merge(ReceiptStatus.dashboardLabelOf(receiptStatus.getStatus()), receiptStatus.getCount(), Long::sum);
         }
-
-        model.addAttribute("aiLabels", aiLabels);
-        model.addAttribute("aiData", aiData);
+        model.addAttribute("aiLabels", List.copyOf(receiptsByLabel.keySet()));
+        model.addAttribute("aiData", List.copyOf(receiptsByLabel.values()));
         Map<CustomerSegment, Long> segmentCounts = customerSegmentationService.countBySegment();
         model.addAttribute("segmentNames", segmentCounts.keySet().stream().map(CustomerSegment::getDisplayName).toList());
         model.addAttribute("segmentData", List.copyOf(segmentCounts.values()));
