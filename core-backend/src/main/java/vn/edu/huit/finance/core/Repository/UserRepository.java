@@ -84,6 +84,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
                              @org.springframework.data.repository.query.Param("lastActionTime") LocalDateTime lastActionTime);
 
     /**
+     * Records a sign-in: one UPDATE of last_login_time and last_action_time and of nothing else. A sign-in holds a copy
+     * of the user read before the password check, and a save of that copy would write back the wallet, the lock and the
+     * customer label it had then, over whatever another request committed meanwhile. Returns the rows changed: 0 once
+     * the account is gone.
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.lastLoginTime = :signedInAt, u.lastActionTime = :signedInAt WHERE u.id = :userId")
+    int updateLoginTimes(@org.springframework.data.repository.query.Param("userId") Long userId,
+                         @org.springframework.data.repository.query.Param("signedInAt") LocalDateTime signedInAt);
+
+    /**
      * Stores a new password hash and ends every session of the user, in ONE atomic UPDATE: the hash and
      * credentials_version + 1 are written together or not at all. The only write either column gets on an existing row
      * (neither is updatable through the entity). Matches only while the row still has {@code expectedVersion}, so it can

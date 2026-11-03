@@ -21,6 +21,7 @@ import vn.edu.huit.finance.core.Config.SecurityConfig;
 import vn.edu.huit.finance.core.Dto.AuthTokenResponseDto;
 import vn.edu.huit.finance.core.Dto.RegisterRequestDto;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.AccountAlreadyExistsException;
 import vn.edu.huit.finance.core.Exception.AuditLogWriteException;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
 import vn.edu.huit.finance.core.Exception.InvalidOtpException;
@@ -41,7 +42,6 @@ import vn.edu.huit.finance.core.Service.SocialAuthService;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
@@ -388,25 +388,24 @@ class AuthControllerPasswordTest {
 
     @Test
     void register_returns400WithTheUsualMessage_whenTheEmailIsAlreadyRegistered() throws Exception {
-        when(userRepository.findByEmail(NEW_USER_EMAIL)).thenReturn(Optional.of(new User()));
+        // The check lives in AuthService now (see AuthServiceRegisterTest); the answer the client gets is unchanged.
+        when(authService.register(any())).thenThrow(
+                new AccountAlreadyExistsException("Email đã được đăng ký. Vui lòng dùng email khác."));
 
         mockMvc.perform(registerRequest(registerBody(STRONG_PASSWORD, NEW_USER_PHONE)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Email đã được đăng ký. Vui lòng dùng email khác."));
-
-        verify(authService, never()).register(any());
     }
 
     @Test
     void register_returns400WithTheUsualMessage_whenTheUsernameIsTaken() throws Exception {
-        when(userRepository.findByUsername(NEW_USER_EMAIL)).thenReturn(Optional.of(new User()));
+        when(authService.register(any())).thenThrow(new AccountAlreadyExistsException("Tên đăng nhập đã tồn tại."));
 
         mockMvc.perform(registerRequest(registerBody(STRONG_PASSWORD, NEW_USER_PHONE)))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Tên đăng nhập đã tồn tại."));
-
-        verify(authService, never()).register(any());
     }
 
     @Test

@@ -203,12 +203,8 @@ public class SecurityConfig {
 
     private Optional<User> updateLoginAudit(String usernameOrEmail) {
         Optional<User> account = findAccount(usernameOrEmail);
-        account.ifPresent(user -> {
-            LocalDateTime now = LocalDateTime.now();
-            user.setLastLoginTime(now);
-            user.setLastActionTime(now);
-            userRepository.save(user);
-        });
+        // Two columns, not a save of the whole row: the user was read before the password check (see AuthService.markLoggedIn).
+        account.ifPresent(user -> userRepository.updateLoginTimes(user.getId(), LocalDateTime.now()));
         return account;
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.RegisterRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.AccountAlreadyExistsException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
@@ -23,6 +24,7 @@ import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -107,6 +109,30 @@ class AuthServiceRegisterTest {
         assertFalse(entry.description().contains(PASSWORD));
         assertFalse(entry.description().contains(registered.getPassword()));
         verify(eventPublisher).publishEvent(StatisticsChangedEvent.of(StatisticsChange.ACCOUNT_CREATED));
+    }
+
+    @Test
+    void anEmailAnotherAccountHas_isRefusedBeforeAnythingIsBuilt() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(new User()));
+
+        AccountAlreadyExistsException refused =
+                assertThrows(AccountAlreadyExistsException.class, () -> service.register(request()));
+
+        assertEquals("Email đã được đăng ký. Vui lòng dùng email khác.", refused.getMessage());
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(auditLogService, eventPublisher);
+    }
+
+    @Test
+    void aUsernameAnotherAccountHas_isRefusedBeforeAnythingIsBuilt() {
+        when(userRepository.findByUsername("newbie")).thenReturn(Optional.of(new User()));
+
+        AccountAlreadyExistsException refused =
+                assertThrows(AccountAlreadyExistsException.class, () -> service.register(request()));
+
+        assertEquals("Tên đăng nhập đã tồn tại.", refused.getMessage());
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(auditLogService, eventPublisher);
     }
 
     @Test
