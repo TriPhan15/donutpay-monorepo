@@ -162,7 +162,7 @@ class AdminSubscriptionPlanTest {
         plan.setPrice(99000.0);
         plan.setDurationDays(30);
         plan.setMaxAiScans(SubscriptionPlanRequestDto.UNLIMITED_AI_SCANS);
-        when(subscriptionPlanRepository.findAll()).thenReturn(List.of(plan));
+        when(subscriptionPlanService.listAll()).thenReturn(List.of(plan));
 
         String page = mockMvc.perform(get(PLANS).session(adminSession()))
                 .andExpect(status().isOk())
