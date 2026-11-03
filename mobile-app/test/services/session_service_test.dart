@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/services/sqflite_helper.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../helpers/captured_logs.dart';
 
@@ -366,5 +368,97 @@ void main() {
         expect(TransactionCategories.forType(isExpense: true), isEmpty);
       },
     );
+  });
+
+  group('clearSession and the SQLite outbox', () {
+    late Database db;
+
+    Future<void> insertRows(int userId) async {
+      for (final status in ['synced', 'pending', 'error']) {
+        await db.insert('transactions', {
+          'user_id': userId,
+          'title': '$status-$userId',
+          'category': 'Ăn uống',
+          'amount': 1000,
+          'date': '2026-09-20T08:30:00.000',
+          'is_expense': 1,
+          'client_id': '$status-$userId',
+          'sync_status': status,
+        });
+      }
+    }
+
+    Future<List<String>> remaining() async {
+      final rows = await db.query('transactions', orderBy: 'title');
+      return [for (final r in rows) '${r['user_id']}:${r['sync_status']}'];
+    }
+
+    // Everything except the synced rows of user 1.
+    const keptAfterSignOut = [
+      '1:error',
+      '2:error',
+      '1:pending',
+      '2:pending',
+      '2:synced',
+    ];
+    const signedIn = {'userId': 1, 'token': 'access', 'refreshToken': 'refresh'};
+
+    setUpAll(sqfliteFfiInit);
+
+    setUp(() async {
+      db = await SqfliteHelper.openAt(
+        databaseFactoryFfiNoIsolate,
+        inMemoryDatabasePath,
+      );
+      SessionService.outbox = () => SqfliteHelper.withDatabase(db);
+      await insertRows(1);
+      await insertRows(2);
+    });
+
+    tearDown(() async {
+      SessionService.outbox = () => SqfliteHelper.instance;
+      await db.close();
+    });
+
+    test(
+      'a sign-out drops the synced rows of the signed-out user and keeps pending, error and other users',
+      () async {
+        await startWith({_sessionKey: jsonEncode(signedIn)});
+
+        await SessionService.clearSession();
+
+        expect(await remaining(), keptAfterSignOut);
+      },
+    );
+
+    test(
+      'a session that is not remembered ends at the cold start the same way',
+      () async {
+        await startWith({
+          _sessionKey: jsonEncode({...signedIn, 'remember': false}),
+        });
+
+        expect(await remaining(), keptAfterSignOut);
+      },
+    );
+
+    test('with nobody signed in nothing is deleted', () async {
+      await startWith({});
+
+      await SessionService.clearSession();
+
+      expect(await remaining(), hasLength(6));
+    });
+
+    test('a failing cleanup never blocks the sign-out', () async {
+      await startWith({_sessionKey: jsonEncode(signedIn)});
+      SessionService.outbox = () => throw StateError('disk gone');
+
+      await SessionService.clearSession();
+
+      await expectSignedInAs(null, null, null);
+      expect(storage.containsKey(_sessionKey), isFalse);
+      expect(await remaining(), hasLength(6));
+    });
   });
 }

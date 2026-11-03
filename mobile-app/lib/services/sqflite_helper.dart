@@ -327,6 +327,17 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
     );
   }
 
+  /// Deletes the rows of the user that the server already confirmed (synced). Rows still waiting or failed (pending,
+  /// error) are never touched, nor are the rows of any other user. Returns how many rows went.
+  Future<int> deleteSyncedTransactions(int userId) async {
+    final db = await database;
+    return db.delete(
+      transactionsTable,
+      where: 'user_id = ? AND ${TransactionModel.columnSyncStatus} = ?',
+      whereArgs: [userId, SyncStatus.synced.dbValue],
+    );
+  }
+
   /// Adds a receipt image to the scan queue of [userId] as queued and returns the id of its row.
   Future<int> insertScanQueueItem({
     required int userId,

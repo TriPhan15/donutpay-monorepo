@@ -13,6 +13,7 @@ import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
+import 'package:finance_ai_app/services/sqflite_helper.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_settings_repository.dart';
@@ -38,8 +39,24 @@ class _PushCounter extends NavigatorObserver {
   }
 }
 
+/// The outbox of the sign-out without a real database (its async I/O cannot finish inside the fake-async test zone).
+class _RecordingOutbox implements SqfliteHelper {
+  final List<int> cleaned = [];
+
+  @override
+  Future<int> deleteSyncedTransactions(int userId) async {
+    cleaned.add(userId);
+    return 0;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
 void main() {
   final backend = FakeBackend();
+  late _RecordingOutbox outbox;
 
   setUpAll(() {
     RemoteApiHelper.instance.init(
@@ -51,7 +68,10 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     backend.reset();
+    outbox = _RecordingOutbox();
+    SessionService.outbox = () => outbox;
     await SessionService.clearSession();
+    outbox.cleaned.clear();
     await SessionService.setCurrentUserId(1);
     await SessionService.setTokens('access-token', 'refresh-token');
     // getInstance() hands out one shared Future: made again here, so the clean-up inside the test gets one of its own zone.
@@ -151,6 +171,23 @@ void main() {
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(TransactionCategories.forType(isExpense: true), isEmpty);
       expect(TransactionCategories.forType(isExpense: false), isEmpty);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'a session that cannot be renewed cleans the synced outbox rows of the user it belonged to',
+    (tester) async {
+      await pumpSignedInApp(tester);
+      backend.on('GET', '/api/budgets', (_) => _unauthorized());
+
+      final outcomes = <Object?>[];
+      record(RemoteApiHelper.instance.getBudgets(), outcomes);
+      await letTheRequestsRun(tester);
+
+      expect(outbox.cleaned, [1]);
 
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
