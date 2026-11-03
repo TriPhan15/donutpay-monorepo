@@ -15,6 +15,12 @@ import java.util.Optional;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
+    /**
+     * The condition every sum of income or spending adds to its WHERE (B9): only NORMAL rows count. A GOAL_REFUND or a
+     * WALLET_TRANSFER moves the balance of the wallet, but is neither income nor spending.
+     */
+    String COUNTS_IN_TOTALS = "t.source = vn.edu.huit.finance.core.Entity.TransactionSource.NORMAL";
+
     /** One transaction with its owner, category and receipt in a single query, so mapping it to a DTO adds no queries. */
     @Query("SELECT t FROM Transaction t " +
            "JOIN FETCH t.user " +
@@ -77,7 +83,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             Sort sort
     );
 
-    @Query("SELECT SUM(t.amount) FROM Transaction t")
+    /** The total of every user's transactions that count as income or spending (NORMAL rows only); null when there are none. */
+    @Query("SELECT SUM(t.amount) FROM Transaction t WHERE " + COUNTS_IN_TOTALS)
     BigDecimal sumTotalVolume();
 
     @Query("SELECT t.receipt.vendorName, COUNT(t.id) as freq " +
@@ -111,9 +118,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /**
      * Every user's spending from rangeStart, inclusive, to rangeEnd, exclusive: rows [userId, username, total], highest
-     * first. Savings contributions are left out (D1), like {@link #sumSpendingBetween}.
+     * first. Savings contributions are left out (D1) and so is money moved to a linked e-wallet (B9), like
+     * {@link #sumSpendingBetween}.
      */
     @Query("SELECT t.user.id, t.user.username, SUM(t.amount) as totalSpent FROM Transaction t WHERE t.isExpense = true " +
+           "AND " + COUNTS_IN_TOTALS + " " +
            "AND t.category.name <> :excludedCategoryName " +
            "AND t.transactionDate >= :rangeStart AND t.transactionDate < :rangeEnd " +
            "GROUP BY t.user.id, t.user.username ORDER BY totalSpent DESC")
@@ -126,10 +135,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     }
 
     /**
-     * What a user spent (expenses only, savings contributions left out) from rangeStart, inclusive, to rangeEnd,
-     * exclusive; null when there is nothing.
+     * What a user spent (expenses only, savings contributions and money moved to a linked e-wallet left out) from
+     * rangeStart, inclusive, to rangeEnd, exclusive; null when there is nothing.
      */
     @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.user.id = :userId AND t.isExpense = true " +
+           "AND " + COUNTS_IN_TOTALS + " " +
            "AND t.category.name <> :excludedCategoryName " +
            "AND t.transactionDate >= :rangeStart AND t.transactionDate < :rangeEnd")
     BigDecimal sumSpendingBetween(@Param("userId") Long userId,
@@ -143,6 +153,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     /** Same as {@link #sumSpendingBetween}, restricted to one category. */
     @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.user.id = :userId AND t.isExpense = true " +
+           "AND " + COUNTS_IN_TOTALS + " " +
            "AND t.category.id = :categoryId AND t.transactionDate >= :rangeStart AND t.transactionDate < :rangeEnd")
     BigDecimal sumExpensesInCategoryBetween(@Param("userId") Long userId,
                                             @Param("categoryId") Long categoryId,

@@ -25,6 +25,7 @@ import vn.edu.huit.finance.core.Entity.AuditResult;
 import vn.edu.huit.finance.core.Entity.AuditTargetType;
 import vn.edu.huit.finance.core.Entity.Budget;
 import vn.edu.huit.finance.core.Entity.BudgetPeriodType;
+import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.CustomerSegment;
 import vn.edu.huit.finance.core.Entity.Notification;
 import vn.edu.huit.finance.core.Entity.NotificationType;
@@ -34,6 +35,8 @@ import vn.edu.huit.finance.core.Entity.PaymentType;
 import vn.edu.huit.finance.core.Entity.ReceiptAttemptStatus;
 import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
+import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 
 import java.math.BigDecimal;
@@ -90,7 +93,8 @@ class SchemaEnumConstraintsPostgresTest {
             "budgets.period_type", "budgets_aud.period_type",
             "notifications.type", "notifications_aud.type",
             "payment_orders.type", "payment_orders_aud.type",
-            "payment_orders.status", "payment_orders_aud.status");
+            "payment_orders.status", "payment_orders_aud.status",
+            "transactions.source", "transactions_aud.source");
 
     private static final String CHECKS_OF_COLUMN = "select pg_get_constraintdef(c.oid) from pg_constraint c "
             + "join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey) "
@@ -252,6 +256,21 @@ class SchemaEnumConstraintsPostgresTest {
                             .amount(AMOUNT).type(type).status(paymentStatus).provider(PROVIDER).build());
                 }
             }
+            Category category = new Category();
+            category.setName("Schema");
+            category.setType("EXPENSE");
+            entityManager.persist(category);
+            for (TransactionSource source : TransactionSource.values()) {
+                Transaction transaction = new Transaction();
+                transaction.setUser(user);
+                transaction.setCategory(category);
+                transaction.setCategoryName(category.getName());
+                transaction.setAmount(AMOUNT);
+                transaction.setExpense(true);
+                transaction.setTransactionDate(start.atStartOfDay());
+                transaction.setSource(source);
+                entityManager.persist(transaction);
+            }
         });
 
         assertAll(
@@ -260,7 +279,9 @@ class SchemaEnumConstraintsPostgresTest {
                 () -> assertEquals(namesOf(NotificationType.class), distinct("notifications", "type")),
                 () -> assertEquals(namesOf(NotificationType.class), distinct("notifications_aud", "type")),
                 () -> assertEquals(namesOf(PaymentType.class), distinct("payment_orders", "type")),
-                () -> assertEquals(namesOf(PaymentStatus.class), distinct("payment_orders_aud", "status")));
+                () -> assertEquals(namesOf(PaymentStatus.class), distinct("payment_orders_aud", "status")),
+                () -> assertEquals(namesOf(TransactionSource.class), distinct("transactions", "source")),
+                () -> assertEquals(namesOf(TransactionSource.class), distinct("transactions_aud", "source")));
     }
 
     /** Tên bảng và cột là hằng trong test, không đến từ input. */

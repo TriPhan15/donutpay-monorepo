@@ -7,6 +7,7 @@ import vn.edu.huit.finance.core.Entity.Budget;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.NotificationType;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Repository.BudgetRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Util.SavingsContributions;
@@ -56,7 +57,7 @@ public class BudgetAlertService {
         private static final SpendingSnapshot NONE = new SpendingSnapshot(BigDecimal.ZERO, false, null, null);
 
         public static SpendingSnapshot of(Transaction transaction) {
-            return new SpendingSnapshot(transaction.getAmount(), transaction.isExpense(),
+            return new SpendingSnapshot(transaction.getAmount(), isSpending(transaction),
                     transaction.getTransactionDate().toLocalDate(), transaction.getCategory().getId());
         }
 
@@ -68,6 +69,11 @@ public class BudgetAlertService {
             Category category = budget.getCategory();
             return category == null || category.getId().equals(categoryId) ? amount : BigDecimal.ZERO;
         }
+    }
+
+    /** An expense that counts as spending: only NORMAL rows do, never money moved to a linked e-wallet (B9). */
+    private static boolean isSpending(Transaction transaction) {
+        return transaction.isExpense() && transaction.getSource() == TransactionSource.NORMAL;
     }
 
     /** For a transaction that has just been saved. */
@@ -84,8 +90,8 @@ public class BudgetAlertService {
 
     private void notifyOnCrossing(Transaction transaction, SpendingSnapshot before) {
         // Income never uses up a budget, and an expense that became an income or left every budget only lowers spending.
-        // Góp tiết kiệm trừ ví nhưng không phải chi tiêu (D1).
-        if (!transaction.isExpense() || SavingsContributions.isContribution(transaction)) {
+        // Góp tiết kiệm trừ ví nhưng không phải chi tiêu (D1); rút về ví điện tử liên kết cũng vậy (B9).
+        if (!isSpending(transaction) || SavingsContributions.isContribution(transaction)) {
             return;
         }
 

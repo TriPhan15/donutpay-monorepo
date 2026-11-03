@@ -88,9 +88,10 @@ public class Transaction extends BaseEntity {
     private String clientId;
 
     /**
-     * Where the transaction comes from. GOAL_REFUND is the money of a deleted savings goal going back to the wallet: an
-     * income for the wallet, never for the income totals. The column default lets ddl-auto=update add the column to a
-     * table that already has rows, and lets the JDBC inserts that do not name it (demo data) get NORMAL.
+     * Where the transaction comes from. Only NORMAL rows count in the income and spending totals. GOAL_REFUND is the money
+     * of a deleted savings goal going back to the wallet, WALLET_TRANSFER money moved to or from a linked e-wallet: both
+     * move the balance of the wallet, but are neither income nor spending. The column default lets ddl-auto=update add
+     * the column to a table that already has rows, and lets the JDBC inserts that do not name it (demo data) get NORMAL.
      */
     @Enumerated(EnumType.STRING)
     @ColumnDefault("'NORMAL'")
