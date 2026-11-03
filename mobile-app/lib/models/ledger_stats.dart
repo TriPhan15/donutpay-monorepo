@@ -92,6 +92,10 @@ abstract final class LedgerStats {
     );
   }
 
+  /// Income and spending of all of [txs] together (the spending leaves out money moved into savings).
+  static DayTotals totals(Iterable<TransactionModel> txs) =>
+      DayTotals(income: _income(txs), expense: _spending(txs));
+
   /// The spending of [txs] per category, the biggest first (equal amounts by name). Empty when nothing was spent.
   static List<CategoryShare> categoryShares(Iterable<TransactionModel> txs) {
     final spending = txs.where((t) => t.countsAsSpending).toList();

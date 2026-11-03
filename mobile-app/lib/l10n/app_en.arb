@@ -1548,7 +1548,7 @@
   },
   "ledgerExcelSheet": "Spending {month}",
   "@ledgerExcelSheet": {
-    "description": "Excel sheet name and share subject; month is e.g. 'October 2026'.",
+    "description": "Excel sheet name (at most 31 characters) and share subject; month is numeric, e.g. '10-2026'.",
     "placeholders": {
       "month": {
         "type": "String"
@@ -1565,7 +1565,7 @@
   },
   "ledgerExcelBudgetHeader": "BUDGETS {month}",
   "@ledgerExcelBudgetHeader": {
-    "description": "Excel heading of the budget table.",
+    "description": "Excel heading of the budget table; month is numeric, e.g. '10-2026'.",
     "placeholders": {
       "month": {
         "type": "String"
@@ -1584,9 +1584,9 @@
   "@ledgerExcelRemaining": {
     "description": "Excel column: amount left."
   },
-  "ledgerExcelFileName": "spending_{month}{date}",
+  "ledgerExcelFileName": "spending_{month}_{date}",
   "@ledgerExcelFileName": {
-    "description": "Excel file name without extension.",
+    "description": "Excel file name without extension, letters, digits, '_' and '-' only; month is numeric, e.g. '10-2026', date is ddMMyyyy.",
     "placeholders": {
       "month": {
         "type": "String"
@@ -1598,12 +1598,16 @@
   },
   "ledgerExcelShareText": "Spending report for {month}",
   "@ledgerExcelShareText": {
-    "description": "Text sent with the shared Excel file.",
+    "description": "Text sent with the shared Excel file; month is numeric, e.g. '10-2026'.",
     "placeholders": {
       "month": {
         "type": "String"
       }
     }
+  },
+  "ledgerExcelFailed": "Couldn't export the Excel file. Please try again.",
+  "@ledgerExcelFailed": {
+    "description": "Toast when the Excel report could not be created, saved or shared."
   },
   "reviewTitle": "Confirm receipt",
   "@reviewTitle": {

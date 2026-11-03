@@ -1197,13 +1197,17 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String ledgerExcelFileName(String month, String date) {
-    return 'chi_tieu_$month$date';
+    return 'chi_tieu_${month}_$date';
   }
 
   @override
   String ledgerExcelShareText(String month) {
     return 'Báo cáo chi tiêu tháng $month';
   }
+
+  @override
+  String get ledgerExcelFailed =>
+      'Không xuất được file Excel. Vui lòng thử lại.';
 
   @override
   String get reviewTitle => 'Xác nhận hóa đơn';

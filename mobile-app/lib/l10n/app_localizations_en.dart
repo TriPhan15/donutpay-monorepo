@@ -1227,13 +1227,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ledgerExcelFileName(String month, String date) {
-    return 'spending_$month$date';
+    return 'spending_${month}_$date';
   }
 
   @override
   String ledgerExcelShareText(String month) {
     return 'Spending report for $month';
   }
+
+  @override
+  String get ledgerExcelFailed =>
+      'Couldn\'t export the Excel file. Please try again.';
 
   @override
   String get reviewTitle => 'Confirm receipt';

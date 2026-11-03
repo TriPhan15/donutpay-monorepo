@@ -2216,7 +2216,7 @@ abstract class AppLocalizations {
   /// **'Couldn\'t load the list from the server. Only the unsent transactions on this device are shown. Pull down to try again.'**
   String get ledgerLoadFailedNotice;
 
-  /// Excel sheet name and share subject; month is e.g. 'October 2026'.
+  /// Excel sheet name (at most 31 characters) and share subject; month is numeric, e.g. '10-2026'.
   ///
   /// In en, this message translates to:
   /// **'Spending {month}'**
@@ -2234,7 +2234,7 @@ abstract class AppLocalizations {
   /// **'Total'**
   String get ledgerExcelTotal;
 
-  /// Excel heading of the budget table.
+  /// Excel heading of the budget table; month is numeric, e.g. '10-2026'.
   ///
   /// In en, this message translates to:
   /// **'BUDGETS {month}'**
@@ -2258,17 +2258,23 @@ abstract class AppLocalizations {
   /// **'Remaining'**
   String get ledgerExcelRemaining;
 
-  /// Excel file name without extension.
+  /// Excel file name without extension, letters, digits, '_' and '-' only; month is numeric, e.g. '10-2026', date is ddMMyyyy.
   ///
   /// In en, this message translates to:
-  /// **'spending_{month}{date}'**
+  /// **'spending_{month}_{date}'**
   String ledgerExcelFileName(String month, String date);
 
-  /// Text sent with the shared Excel file.
+  /// Text sent with the shared Excel file; month is numeric, e.g. '10-2026'.
   ///
   /// In en, this message translates to:
   /// **'Spending report for {month}'**
   String ledgerExcelShareText(String month);
+
+  /// Toast when the Excel report could not be created, saved or shared.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t export the Excel file. Please try again.'**
+  String get ledgerExcelFailed;
 
   /// Title of the receipt review form.
   ///
