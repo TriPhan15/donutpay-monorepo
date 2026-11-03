@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/payment_order.dart';
@@ -92,7 +92,7 @@ class PaymentOrderRow extends StatelessWidget {
                         child: Text(
                           createdAt == null
                               ? type
-                              : '$type · ${DateFormat('dd/MM HH:mm').format(createdAt)}',
+                              : '$type · ${AppDateFormat.dayMonthTime.format(createdAt)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

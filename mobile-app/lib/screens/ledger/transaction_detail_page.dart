@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -44,7 +44,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   static const double _cardRadius = 20;
   static const double _photoMaxHeight = 360;
   static const double _photoErrorHeight = 160;
-  static const String _timePattern = 'dd/MM/yyyy HH:mm';
 
   TransactionModel get _tx => widget.transaction;
 
@@ -303,10 +302,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       ),
       _DetailRow(
         label: loc.transactionDetailTime,
-        value: Text(
-          DateFormat(_timePattern).format(_tx.date),
-          style: valueStyle,
-        ),
+        value: Text(AppDateFormat.dateTime.format(_tx.date), style: valueStyle),
       ),
       if (_receiptStatus != null)
         _DetailRow(

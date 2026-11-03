@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
@@ -58,9 +58,6 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
   static const double _bottomPadding = 24;
   static const double _loadingHeight = 40;
   static const double _spinnerSize = 20;
-
-  /// Digits only, the same in every language, so it needs no locale data (as the other dd/MM/yyyy formats of the app).
-  static final DateFormat _displayDate = DateFormat('dd/MM/yyyy');
 
   final _amountController = TextEditingController();
   final _customCategoryController = TextEditingController();
@@ -346,7 +343,7 @@ class _BudgetFormSheetState extends State<BudgetFormSheet> {
             const SizedBox(height: 10),
             _PeriodPreview(
               text:
-                  '${_previewLabel(loc)}: ${_displayDate.format(_range.start)} – ${_displayDate.format(_range.end)}',
+                  '${_previewLabel(loc)}: ${AppDateFormat.date.format(_range.start)} – ${AppDateFormat.date.format(_range.end)}',
             ),
             const SizedBox(height: _bottomPadding),
             FormSubmitBar(

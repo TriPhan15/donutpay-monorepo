@@ -5,6 +5,7 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/theme/category_colors.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
@@ -175,6 +176,6 @@ class TransactionRow extends StatelessWidget {
     if (now.difference(date).inDays < 7) {
       return DateFormat('EEEE, HH:mm', loc.localeName).format(date);
     }
-    return DateFormat('dd/MM/yyyy, HH:mm').format(date);
+    return AppDateFormat.dateCommaTime.format(date);
   }
 }

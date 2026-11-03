@@ -2,6 +2,7 @@ import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
@@ -27,14 +28,11 @@ class LedgerExcelFile {
 
 /// Builds the Excel report of the statistics tab: the transactions of one month, their totals and the budgets.
 abstract final class LedgerExcelBuilder {
-  static const String _dateFormat = 'dd/MM/yyyy';
-
   /// The month in the sheet name and the file name: digits and '-', whatever the language ("10-2026").
   static const String _monthFormat = 'MM-yyyy';
 
   /// Excel refuses a longer sheet name and reports the file as damaged.
   static const int maxSheetNameLength = 31;
-  static const String _fileDateFormat = 'ddMMyyyy';
   static const String _fileExtension = '.xlsx';
 
   /// The report of the month of [month], drawn from [transactions] and [budgets] and named after [now]. Null when the
@@ -62,7 +60,7 @@ abstract final class LedgerExcelBuilder {
 
     final bytes = excel.encode();
     if (bytes == null) return null;
-    final date = DateFormat(_fileDateFormat).format(now);
+    final date = AppDateFormat.fileDate.format(now);
     return LedgerExcelFile(
       bytes: bytes,
       fileName: '${loc.ledgerExcelFileName(monthName, date)}$_fileExtension',
@@ -90,7 +88,7 @@ abstract final class LedgerExcelBuilder {
       final amount = DoubleCellValue(tx.amount);
       final none = TextCellValue('');
       sheet.appendRow([
-        TextCellValue(DateFormat(_dateFormat).format(tx.date)),
+        TextCellValue(AppDateFormat.date.format(tx.date)),
         TextCellValue(TransactionCategories.displayName(loc, tx.category)),
         tx.isExpense ? amount : none,
         tx.isExpense ? none : amount,

@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
 import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
@@ -313,8 +313,6 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
 
 /// "Khoản chi, 20/09/2026 08:30" and the state of the receipt: what the form does not change.
 class _SummaryFooter extends StatelessWidget {
-  static final DateFormat _displayDate = DateFormat('dd/MM/yyyy HH:mm');
-
   final TransactionModel transaction;
 
   const _SummaryFooter({required this.transaction});
@@ -331,7 +329,7 @@ class _SummaryFooter extends StatelessWidget {
             transaction.isExpense
                 ? loc.transactionExpenseKind
                 : loc.transactionIncomeKind,
-            _displayDate.format(transaction.date),
+            AppDateFormat.dateTime.format(transaction.date),
           ),
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
