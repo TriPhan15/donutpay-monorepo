@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Controller;
 
 import jakarta.servlet.ServletException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -16,6 +17,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.request.RequestContextHolder;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.SocialLoginRejectedException;
@@ -106,6 +108,15 @@ class AuthControllerBehaviourTest {
         alice.setCredentialsVersion(CHECKED_VERSION);
         when(jwtUtil.generateToken(anyString(), any())).thenAnswer(call -> "access-v" + call.getArgument(1));
         when(jwtUtil.generateRefreshToken(anyString(), any())).thenAnswer(call -> "refresh-v" + call.getArgument(1));
+    }
+
+    /**
+     * MockMvc chỉ trả lại RequestContextHolder khi request chạy xong; hai test để exception đi xuyên qua perform(),
+     * nên dọn ở đây để request giả không rò sang test chạy sau trên cùng luồng (AuditLogServiceTest).
+     */
+    @AfterEach
+    void forgetTheRequest() {
+        RequestContextHolder.resetRequestAttributes();
     }
 
     private static MockHttpServletRequestBuilder json(String url, String body) {
