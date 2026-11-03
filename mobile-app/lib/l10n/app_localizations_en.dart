@@ -1226,6 +1226,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerExcelRemaining => 'Remaining';
 
   @override
+  String get ledgerExcelNotCounted => 'Not counted';
+
+  @override
   String ledgerExcelFileName(String month, String date) {
     return 'spending_${month}_$date';
   }

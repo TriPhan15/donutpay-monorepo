@@ -360,6 +360,7 @@
   "ledgerExcelLimit": "Giới hạn",
   "ledgerExcelSpent": "Đã tiêu",
   "ledgerExcelRemaining": "Còn lại",
+  "ledgerExcelNotCounted": "Không tính thu/chi",
   "ledgerExcelFileName": "chi_tieu_{month}_{date}",
   "ledgerExcelShareText": "Báo cáo chi tiêu tháng {month}",
   "ledgerExcelFailed": "Không xuất được file Excel. Vui lòng thử lại.",

@@ -2258,6 +2258,12 @@ abstract class AppLocalizations {
   /// **'Remaining'**
   String get ledgerExcelRemaining;
 
+  /// Excel column: amount of a refund or wallet transfer, which is neither income nor spending.
+  ///
+  /// In en, this message translates to:
+  /// **'Not counted'**
+  String get ledgerExcelNotCounted;
+
   /// Excel file name without extension, letters, digits, '_' and '-' only; month is numeric, e.g. '10-2026', date is ddMMyyyy.
   ///
   /// In en, this message translates to:

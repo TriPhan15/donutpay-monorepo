@@ -228,6 +228,7 @@ void main() {
           loc.transactionCategoryLabel,
           loc.transactionExpenseMoney,
           loc.transactionIncomeMoney,
+          loc.ledgerExcelNotCounted,
         ],
         [dateText, 'Ăn uống', 45000.0],
         [dateText, 'Thu nhập', '', 1000000.0],
