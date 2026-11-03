@@ -81,6 +81,22 @@ void main() {
       expect(notified(), 0);
     });
 
+    test(
+      'an error code that is not an int is still thrown as a DioException',
+      () async {
+        backend.on(
+          'DELETE',
+          _path,
+          (_) => jsonResponse(200, {'code': '409', 'message': 'Xung đột'}),
+        );
+        await expectLater(
+          RemoteApiHelper.instance.deleteTransaction('5'),
+          throwsA(isA<DioException>()),
+        );
+        expect(notified(), 0);
+      },
+    );
+
     test('a confirmed delete announces the change exactly once', () async {
       backend.on('DELETE', _path, (_) => okResponse(null));
       await RemoteApiHelper.instance.deleteTransaction('5');

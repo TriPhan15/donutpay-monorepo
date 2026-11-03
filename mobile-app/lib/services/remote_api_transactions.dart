@@ -94,8 +94,9 @@ extension RemoteApiTransactions on RemoteApiHelper {
     final res = await _dio.delete('/api/transactions/$id');
     final body = res.data;
     if (body is Map && body['code'] != HttpStatus.ok) {
+      final code = body['code'];
       throw DioException.badResponse(
-        statusCode: (body['code'] as int?) ?? HttpStatus.badRequest,
+        statusCode: code is int ? code : HttpStatus.badRequest,
         requestOptions: res.requestOptions,
         response: res,
       );
