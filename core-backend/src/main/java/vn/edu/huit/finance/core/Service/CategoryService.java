@@ -87,7 +87,7 @@ public class CategoryService {
         Category category = new Category();
         category.setName(name);
         category.setType(type);
-        Category created = categoryRepository.save(category);
+        Category created = saveUniquelyNamed(category, name);
 
         record(AuditAction.CATEGORY_CREATED, created.getId(), String.format(AUDIT_CREATED, created.getName(), created.getType()));
         log.info("Category created, categoryId={}", created.getId());
@@ -107,7 +107,7 @@ public class CategoryService {
         refuseDefaultName(name);
         String previousName = category.getName();
         category.setName(name);
-        Category renamed = categoryRepository.save(category);
+        Category renamed = saveUniquelyNamed(category, name);
 
         List<Transaction> transactions = transactionRepository.findAllByCategory_Id(categoryId);
         Set<Long> owners = new HashSet<>();
@@ -192,6 +192,39 @@ public class CategoryService {
                 String.format(AUDIT_CREATED_BY_NAME, saved.getName(), saved.getType())));
         log.info("Category created by name, categoryId={}", saved.getId());
         return saved;
+    }
+
+    /**
+     * Writes the category at once so that the unique (owner, name) constraint answers here and not at commit: a name that
+     * is already taken becomes a 409 with the name-taken message; any other integrity violation is rethrown unchanged.
+     */
+    private Category saveUniquelyNamed(Category category, String name) {
+        try {
+            Category saved = categoryRepository.save(category);
+            categoryRepository.flush();
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            if (!violatesConstraint(e, Category.UNIQUE_OWNER_NAME)) {
+                throw e;
+            }
+            log.warn("Category name already taken for its owner");
+            throw new CategoryNameTakenException(String.format(MSG_NAME_TAKEN, name), e);
+        }
+    }
+
+    /** True when the Hibernate constraint name, or else the message, anywhere in the cause chain names the constraint. */
+    private static boolean violatesConstraint(Throwable error, String constraint) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && constraint.equalsIgnoreCase(violation.getConstraintName())) {
+                return true;
+            }
+            String message = cause.getMessage();
+            if (message != null && message.toLowerCase(java.util.Locale.ROOT).contains(constraint)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Category findVisibleCategory(Long categoryId, User owner) {
