@@ -1877,7 +1877,7 @@ class TransactionServiceTest {
         // B9: money to or from a linked e-wallet moves the balance, but is no spending for the totals.
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
         lenient().when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(alice);
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "150000");
         request.setCategoryId(FOOD_ID);
 
@@ -1891,7 +1891,7 @@ class TransactionServiceTest {
     void createTransactionKeepsTheSourceNormal() {
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
         lenient().when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(alice);
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "150000");
         request.setCategoryId(FOOD_ID);
 
