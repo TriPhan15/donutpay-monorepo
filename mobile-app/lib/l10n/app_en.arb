@@ -2505,6 +2505,14 @@
   "@aiGoalOverdue": {
     "description": "Savings tip: the urgent goal has a deadline that is already past."
   },
+  "aiLoadFailedTitle": "Couldn't load your data",
+  "@aiLoadFailedTitle": {
+    "description": "AI tab: title of the error state when the first load of the transactions failed and there is nothing to show."
+  },
+  "aiLoadFailedNotice": "Couldn't refresh your data. You are seeing what was loaded earlier.",
+  "@aiLoadFailedNotice": {
+    "description": "AI tab: notice above the cards when a refresh failed; the data shown is the one loaded before. Followed by a retry button."
+  },
   "aiSpadeLoadFailedTitle": "Couldn't load the analysis",
   "@aiSpadeLoadFailedTitle": {
     "description": "The last analysis failed."

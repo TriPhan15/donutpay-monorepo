@@ -3264,6 +3264,18 @@ abstract class AppLocalizations {
   /// **'This goal is past its deadline: set a new date or keep contributing'**
   String get aiGoalOverdue;
 
+  /// AI tab: title of the error state when the first load of the transactions failed and there is nothing to show.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your data'**
+  String get aiLoadFailedTitle;
+
+  /// AI tab: notice above the cards when a refresh failed; the data shown is the one loaded before. Followed by a retry button.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t refresh your data. You are seeing what was loaded earlier.'**
+  String get aiLoadFailedNotice;
+
   /// The last analysis failed.
   ///
   /// In en, this message translates to:
