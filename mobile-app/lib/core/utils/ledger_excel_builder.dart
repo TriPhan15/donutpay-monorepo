@@ -8,6 +8,7 @@ import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 import 'package:finance_ai_app/models/ledger_stats.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
 /// The Excel report of one month: the file's bytes and the texts that go with it.
 class LedgerExcelFile {
@@ -83,15 +84,23 @@ abstract final class LedgerExcelBuilder {
       TextCellValue(loc.transactionCategoryLabel),
       TextCellValue(loc.transactionExpenseMoney),
       TextCellValue(loc.transactionIncomeMoney),
+      TextCellValue(loc.ledgerExcelNotCounted),
     ]);
     for (final tx in transactions) {
       final amount = DoubleCellValue(tx.amount);
       final none = TextCellValue('');
+      final counted = tx.source == TransactionSource.normal;
       sheet.appendRow([
         TextCellValue(AppDateFormat.date.format(tx.date)),
-        TextCellValue(TransactionCategories.displayName(loc, tx.category)),
-        tx.isExpense ? amount : none,
-        tx.isExpense ? none : amount,
+        TextCellValue(
+          counted
+              ? TransactionCategories.displayName(loc, tx.category)
+              : tx.source.label(loc) ??
+                    TransactionCategories.displayName(loc, tx.category),
+        ),
+        counted && tx.isExpense ? amount : none,
+        counted && !tx.isExpense ? amount : none,
+        counted ? none : amount,
       ]);
     }
   }

@@ -1584,6 +1584,10 @@
   "@ledgerExcelRemaining": {
     "description": "Excel column: amount left."
   },
+  "ledgerExcelNotCounted": "Not counted",
+  "@ledgerExcelNotCounted": {
+    "description": "Excel column: amount of a refund or wallet transfer, which is neither income nor spending."
+  },
   "ledgerExcelFileName": "spending_{month}_{date}",
   "@ledgerExcelFileName": {
     "description": "Excel file name without extension, letters, digits, '_' and '-' only; month is numeric, e.g. '10-2026', date is ddMMyyyy.",

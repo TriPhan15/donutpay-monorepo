@@ -8,18 +8,21 @@ import 'package:finance_ai_app/core/utils/ledger_excel_builder.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
 TransactionModel _tx(
   double amount,
   DateTime date, {
   bool isExpense = true,
   String category = 'Ăn uống',
+  TransactionSource source = TransactionSource.normal,
 }) => TransactionModel(
   title: 'x',
   amount: amount,
   date: date,
   category: category,
   isExpense: isExpense,
+  source: source,
 );
 
 BudgetModel _budget(double amount, {String? category}) => BudgetModel(
@@ -105,6 +108,56 @@ void main() {
       ]);
       // Header, four rows of the month, total and balance, the budget heading and its header: nothing of September or November.
       expect(rows, hasLength(1 + 4 + 2 + 1 + 1));
+    },
+  );
+
+  test(
+    'refunds and wallet transfers sit in the not-counted column, so the columns add up to the totals',
+    () {
+      final file = build(
+        transactions: [
+          _tx(100000, DateTime(2026, 10, 1, 9)),
+          _tx(300000, DateTime(2026, 10, 2, 9), isExpense: false),
+          _tx(
+            50000,
+            DateTime(2026, 10, 3, 9),
+            isExpense: false,
+            source: TransactionSource.goalRefund,
+          ),
+          _tx(
+            20000,
+            DateTime(2026, 10, 4, 9),
+            source: TransactionSource.walletTransfer,
+          ),
+        ],
+      );
+
+      final rows = _rows(file);
+      expect(rows[0], hasLength(5));
+      expect(rows[0][4], loc.ledgerExcelNotCounted);
+      final txRows = rows.sublist(1, 5);
+      expect(rows[3], [
+        '03/10/2026',
+        loc.transactionSourceGoalRefund,
+        '',
+        '',
+        50000.0,
+      ]);
+      expect(rows[4], [
+        '04/10/2026',
+        loc.transactionSourceWalletTransfer,
+        '',
+        '',
+        20000.0,
+      ]);
+      double column(int i) => txRows.fold(
+        0.0,
+        (sum, r) => sum + (r.length > i && r[i] is double ? r[i] as double : 0),
+      );
+      final total = rows.firstWhere((r) => r.first == loc.ledgerExcelTotal);
+      expect(total, [loc.ledgerExcelTotal, '', 100000.0, 300000.0]);
+      expect(column(2), 100000.0);
+      expect(column(3), 300000.0);
     },
   );
 
