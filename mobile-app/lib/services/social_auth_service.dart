@@ -74,7 +74,13 @@ class SocialAuthService {
   Future<void> signOut() async {
     try {
       await _google.disconnect();
+    } catch (e) {
+      debugPrint('Google sign-out failed: ${e.runtimeType}');
+    }
+    try {
       await FacebookAuth.instance.logOut();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Facebook sign-out failed: ${e.runtimeType}');
+    }
   }
 }

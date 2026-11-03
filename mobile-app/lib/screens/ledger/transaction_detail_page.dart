@@ -4,6 +4,7 @@ import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/app_date_format.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
@@ -115,14 +116,21 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
     if (!confirmed || !mounted) return;
     setState(() => _busy = true);
-    final success = await RemoteApiHelper.instance.deleteTransaction(_tx.id!);
+    try {
+      await RemoteApiHelper.instance.deleteTransaction(_tx.id!);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      await AppDialog.error(
+        context,
+        title: loc.ledgerDeleteFailed,
+        message: UserFacingError.messageOf(e, loc),
+      );
+      return;
+    }
     if (!mounted) return;
     setState(() => _busy = false);
     // Deleted on the server for good (there is no restore endpoint), so the toast offers no undo.
-    if (!success) {
-      AppToast.error(context, loc.ledgerDeleteFailed);
-      return;
-    }
     AppToast.success(context, loc.ledgerDeleted);
     _close();
   }
