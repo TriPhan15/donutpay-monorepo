@@ -1379,6 +1379,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No payment result yet. Please check again in the sync history.';
 
   @override
+  String get linkedOpenPayUrlFailed =>
+      'Couldn\'t open the payment page. Please try again.';
+
+  @override
   String get linkedDemoWallet => 'Demo wallet';
 
   @override

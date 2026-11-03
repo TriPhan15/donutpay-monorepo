@@ -269,6 +269,73 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('a slow status answer is not asked again by the next tick', (
+    tester,
+  ) async {
+    final answered = Completer<void>();
+    backend.on(
+      'POST',
+      '/api/payment/create',
+      (_) => okResponse({'orderCode': 'O1', 'payUrl': 'https://pay.test/O1'}),
+    );
+    backend.on('GET', '/api/payment/status/O1', (_) async {
+      await answered.future;
+      return okResponse({'status': 'SUCCESS'});
+    });
+    final popped = await openFromHost(tester);
+
+    await syncFromVnpay(tester);
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(seconds: 2));
+    }
+    expect(statusCalls(), 1, reason: 'the first check is still waiting');
+
+    answered.complete();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
+
+    expect(statusCalls(), 1, reason: 'the wait is over after one answer');
+    expect(popped, [true], reason: 'one "synced" outcome, not one per tick');
+  });
+
+  testWidgets('a pay page that cannot be opened ends the wait with a toast', (
+    tester,
+  ) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_urlLauncher, (call) async {
+          if (call.method == 'launch') {
+            launched.add('${(call.arguments as Map)['url']}');
+          }
+          return call.method != 'canLaunch';
+        });
+    backend.on(
+      'POST',
+      '/api/payment/create',
+      (_) => okResponse({'orderCode': 'O1', 'payUrl': 'https://pay.test/O1'}),
+    );
+    backend.on(
+      'GET',
+      '/api/payment/status/O1',
+      (_) => okResponse({'status': 'PENDING'}),
+    );
+    await show(tester);
+
+    await syncFromVnpay(tester);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(launched, isEmpty);
+    expect(find.byType(SyncingBanner), findsNothing);
+    expect(
+      find.textContaining('Không mở được trang thanh toán'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 6));
+    expect(statusCalls(), 0, reason: 'nothing is paid, so nothing is asked');
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('leaving while the order is created starts no status checks', (
     tester,
   ) async {

@@ -22,6 +22,16 @@ class TransactionCategories {
   static const String family = 'Gia đình & Con cái'; // family
   static const String insurance = 'Bảo hiểm'; // insurance
 
+  /// The other default categories the icons and the English names are keyed by (stored name, DefaultCategory key).
+  static const String entertainment = 'Giải trí'; // entertainment
+  static const String travel = 'Du lịch'; // travel
+  static const String social = 'Hiếu hỉ'; // social
+  static const String salary = 'Lương'; // salary
+  static const String bonus = 'Thưởng'; // bonus
+  static const String business = 'Kinh doanh'; // business
+  static const String investment = 'Đầu tư'; // investment
+  static const String gift = 'Được tặng'; // gift
+
   /// Money moved from the wallet into a savings goal (POST /api/savings/{id}/contributions records it).
   static const String savings = 'Tiết kiệm'; // savings
 
@@ -56,18 +66,18 @@ class TransactionCategories {
     shopping: (loc) => loc.categoryShopping, // shopping
     health: (loc) => loc.categoryHealth, // health
     education: (loc) => loc.categoryEducation, // education
-    'Giải trí': (loc) => loc.categoryEntertainment, // entertainment
-    'Du lịch': (loc) => loc.categoryTravel, // travel
+    entertainment: (loc) => loc.categoryEntertainment, // entertainment
+    travel: (loc) => loc.categoryTravel, // travel
     family: (loc) => loc.categoryFamily, // family
-    'Hiếu hỉ': (loc) => loc.categorySocial, // social
+    social: (loc) => loc.categorySocial, // social
     insurance: (loc) => loc.categoryInsurance, // insurance
     savings: (loc) => loc.categorySavings, // savings
     otherExpense: (loc) => loc.categoryOtherExpense, // other_expense
-    'Lương': (loc) => loc.categorySalary, // salary
-    'Thưởng': (loc) => loc.categoryBonus, // bonus
-    'Kinh doanh': (loc) => loc.categoryBusiness, // business
-    'Đầu tư': (loc) => loc.categoryInvestment, // investment
-    'Được tặng': (loc) => loc.categoryGift, // gift
+    salary: (loc) => loc.categorySalary, // salary
+    bonus: (loc) => loc.categoryBonus, // bonus
+    business: (loc) => loc.categoryBusiness, // business
+    investment: (loc) => loc.categoryInvestment, // investment
+    gift: (loc) => loc.categoryGift, // gift
     'Thu khác': (loc) => loc.categoryOtherIncome, // other_income
   };
 
@@ -129,7 +139,35 @@ class TransactionCategories {
     return output;
   }
 
+  /// The icon of each default category, by the name core-backend stores. "Khác" and "Thu khác" are left out on
+  /// purpose: they show the neutral icon.
+  static const Map<String, IconData> _iconByName = {
+    food: Icons.fastfood_rounded,
+    groceries: Icons.shopping_cart_rounded,
+    transport: Icons.directions_car_rounded,
+    housing: Icons.house_rounded,
+    utilities: Icons.bolt_rounded,
+    telecom: Icons.wifi_rounded,
+    shopping: Icons.shopping_bag_rounded,
+    health: Icons.medical_services_rounded,
+    education: Icons.school_rounded,
+    entertainment: Icons.sports_esports_rounded,
+    travel: Icons.flight_takeoff_rounded,
+    family: Icons.family_restroom_rounded,
+    social: Icons.celebration_rounded,
+    insurance: Icons.shield_rounded,
+    savings: Icons.savings_rounded,
+    salary: Icons.monetization_on_rounded,
+    bonus: Icons.card_giftcard_rounded,
+    business: Icons.store_rounded,
+    investment: Icons.trending_up_rounded,
+    gift: Icons.redeem_rounded,
+  };
+
+  /// The icon of [category]: a default one by its exact name, else a guess from the words of a name the user chose.
   static IconData iconFor(String category) {
+    final exact = _iconByName[category.trim()];
+    if (exact != null) return exact;
     final c = category.toLowerCase();
 
     if (c == 'tất cả') return Icons.filter_list_rounded;

@@ -403,6 +403,7 @@
   "paymentStatusPending": "Đang chờ",
   "linkedCreateOrderFailed": "Tạo đơn đồng bộ thất bại. {reason}",
   "linkedPollTimedOut": "Chưa nhận được kết quả thanh toán. Vui lòng kiểm tra lại trong Lịch sử đồng bộ.",
+  "linkedOpenPayUrlFailed": "Không mở được trang thanh toán. Vui lòng thử lại.",
   "linkedDemoWallet": "Ví Demo",
   "linkedSync": "Đồng bộ",
   "linkedSynced": "Đã đồng bộ {amount} vào ngân sách chi tiêu.",

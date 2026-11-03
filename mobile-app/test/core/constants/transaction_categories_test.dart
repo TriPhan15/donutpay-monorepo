@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
@@ -73,6 +73,79 @@ void main() {
       expect(
         TransactionCategories.displayName(_en, TransactionCategories.all),
         _en.categoryAll,
+      );
+    });
+  });
+
+  group('TransactionCategories.iconFor', () {
+    // Every default category of the server, with the icon it must show.
+    const iconByDefault = <String, IconData>{
+      'Ăn uống': Icons.fastfood_rounded,
+      'Siêu thị & Chợ': Icons.shopping_cart_rounded,
+      'Di chuyển': Icons.directions_car_rounded,
+      'Nhà ở': Icons.house_rounded,
+      'Điện nước': Icons.bolt_rounded,
+      'Internet & Điện thoại': Icons.wifi_rounded,
+      'Mua sắm': Icons.shopping_bag_rounded,
+      'Sức khỏe': Icons.medical_services_rounded,
+      'Giáo dục': Icons.school_rounded,
+      'Giải trí': Icons.sports_esports_rounded,
+      'Du lịch': Icons.flight_takeoff_rounded,
+      'Gia đình & Con cái': Icons.family_restroom_rounded,
+      'Hiếu hỉ': Icons.celebration_rounded,
+      'Bảo hiểm': Icons.shield_rounded,
+      'Tiết kiệm': Icons.savings_rounded,
+      'Lương': Icons.monetization_on_rounded,
+      'Thưởng': Icons.card_giftcard_rounded,
+      'Kinh doanh': Icons.store_rounded,
+      'Đầu tư': Icons.trending_up_rounded,
+      'Được tặng': Icons.redeem_rounded,
+    };
+
+    test('every default category shows its own icon', () {
+      iconByDefault.forEach((name, icon) {
+        expect(TransactionCategories.iconFor(name), icon, reason: name);
+      });
+    });
+
+    test('"điện" and "đình" no longer read as the "đi" of petrol', () {
+      for (final name in [
+        'Điện nước',
+        'Internet & Điện thoại',
+        'Gia đình & Con cái',
+      ]) {
+        expect(
+          TransactionCategories.iconFor(name),
+          isNot(Icons.local_gas_station_rounded),
+          reason: name,
+        );
+      }
+    });
+
+    test('"Khác" and "Thu khác" keep the neutral icon', () {
+      expect(
+        TransactionCategories.iconFor('Khác'),
+        Icons.label_important_rounded,
+      );
+      expect(
+        TransactionCategories.iconFor('Thu khác'),
+        Icons.label_important_rounded,
+      );
+    });
+
+    test('a category the user created is still guessed from its words', () {
+      expect(TransactionCategories.iconFor('Cà phê'), Icons.fastfood_rounded);
+      expect(
+        TransactionCategories.iconFor('Gửi xe'),
+        Icons.local_gas_station_rounded,
+      );
+      expect(
+        TransactionCategories.iconFor('Nuôi mèo'),
+        Icons.label_important_rounded,
+      );
+      expect(
+        TransactionCategories.iconFor(TransactionCategories.all),
+        Icons.filter_list_rounded,
       );
     });
   });

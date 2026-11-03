@@ -1345,6 +1345,10 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chưa nhận được kết quả thanh toán. Vui lòng kiểm tra lại trong Lịch sử đồng bộ.';
 
   @override
+  String get linkedOpenPayUrlFailed =>
+      'Không mở được trang thanh toán. Vui lòng thử lại.';
+
+  @override
   String get linkedDemoWallet => 'Ví Demo';
 
   @override
