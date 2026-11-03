@@ -490,3 +490,37 @@ def test_recommend_accepts_the_source_field_and_leaves_goal_refunds_out_of_incom
             "source": "GOAL_REFUND"}]
     r = client.post("/spade/recommend", json={"transactions": txs})
     assert r.status_code == 200 and r.json()["goal"]["monthlyIncome"] == 0
+
+
+def test_scan_json_is_unchanged_by_the_response_model(mocker):
+    """Khoa la tu token2json duoc giu, khong them khoa null (seller), JSON bang dict cua code cu."""
+    fake = {
+        "menu": [{"nm": "Cafe", "price": "25.000"}],
+        "total": {"total_price": "25.000", "cashprice": "30.000"},
+        "raw_text": "abc",
+    }
+    _mock_donut(mocker, dict(fake))
+    expected = dict(fake)
+    expected["normalized"] = ai_service.normalize_receipt(
+        ai_service._raw_fields("<s_seller>x</s_seller>", dict(fake))
+    ).model_dump()
+
+    r = client.post("/donut/scan", files=_scan_files())
+
+    assert r.status_code == 200
+    assert r.json() == expected
+    assert "seller" not in r.json()
+
+
+def test_scan_json_keeps_seller_dict_and_total_cost_number(mocker):
+    _mock_donut(mocker, {"seller": {"total_cost": "100.000đ"}, "address": "1 Test"})
+    body = client.post("/donut/scan", files=_scan_files()).json()
+    assert set(body) == {"seller", "address", "normalized"}
+    assert body["seller"] == {"total_cost": "100.000đ", "total_cost_number": 100000}
+
+
+def test_openapi_declares_donut_scan_response_model():
+    schema = app.openapi()
+    ref = schema["paths"]["/donut/scan"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert ref["$ref"].endswith("/DonutScanResponse")
+    assert "DonutScanResponse" in schema["components"]["schemas"]

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Any, Dict, List, Optional
 import asyncio
 import uvicorn
@@ -162,8 +162,18 @@ def _decode_image(contents: bytes) -> Image.Image:
         raise HTTPException(status_code=400, detail=UNREADABLE_IMAGE_MESSAGE)
 
 
-@app.post("/donut/scan")
-async def extract_receipt_info(image: UploadFile = File(...)):
+class DonutScanResponse(BaseModel):
+    """Kết quả /donut/scan. Khóa lạ từ token2json (menu, total, ...) được giữ nguyên (extra=allow);
+    route dùng response_model_exclude_unset nên khóa vắng mặt không bị thêm thành null."""
+    model_config = ConfigDict(extra="allow")
+
+    seller: Optional[Any] = None
+    raw_text: Optional[str] = None
+    normalized: Optional[Dict[str, Any]] = None
+
+
+@app.post("/donut/scan", response_model=DonutScanResponse, response_model_exclude_unset=True)
+async def extract_receipt_info(image: UploadFile = File(...)) -> DonutScanResponse:
     contents = await image.read(MAX_UPLOAD_BYTES + 1)
     if not contents:
         raise HTTPException(status_code=400, detail=EMPTY_IMAGE_MESSAGE)
@@ -205,7 +215,7 @@ async def extract_receipt_info(image: UploadFile = File(...)):
     prediction["normalized"] = normalized.model_dump()
     if normalized.invalid_fields:
         logger.info("Trường cần người dùng kiểm tra: %s", normalized.invalid_fields)
-    return prediction
+    return DonutScanResponse.model_validate(prediction)
 
 
 class SpadeRequest(BaseModel):
