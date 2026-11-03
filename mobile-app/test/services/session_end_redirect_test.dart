@@ -16,6 +16,7 @@ import 'package:finance_ai_app/services/session_service.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_settings_repository.dart';
+import '../helpers/recording_outbox.dart';
 
 const String _refreshCall = 'POST /api/auth/refresh';
 const String _homeText = 'Trang chủ';
@@ -40,6 +41,7 @@ class _PushCounter extends NavigatorObserver {
 
 void main() {
   final backend = FakeBackend();
+  late RecordingOutbox outbox;
 
   setUpAll(() {
     RemoteApiHelper.instance.init(
@@ -51,7 +53,10 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     backend.reset();
+    outbox = RecordingOutbox();
+    SessionService.outbox = () => outbox;
     await SessionService.clearSession();
+    outbox.cleaned.clear();
     await SessionService.setCurrentUserId(1);
     await SessionService.setTokens('access-token', 'refresh-token');
     // getInstance() hands out one shared Future: made again here, so the clean-up inside the test gets one of its own zone.
@@ -151,6 +156,23 @@ void main() {
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(TransactionCategories.forType(isExpense: true), isEmpty);
       expect(TransactionCategories.forType(isExpense: false), isEmpty);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'a session that cannot be renewed cleans the synced outbox rows of the user it belonged to',
+    (tester) async {
+      await pumpSignedInApp(tester);
+      backend.on('GET', '/api/budgets', (_) => _unauthorized());
+
+      final outcomes = <Object?>[];
+      record(RemoteApiHelper.instance.getBudgets(), outcomes);
+      await letTheRequestsRun(tester);
+
+      expect(outbox.cleaned, [1]);
 
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();

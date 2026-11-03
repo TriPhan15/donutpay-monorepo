@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+import 'package:finance_ai_app/services/sqflite_helper.dart';
 
 /// The session could not be written to the device; the stored and the cached session are both left as they were.
 class SessionStorageException implements Exception {
@@ -47,6 +49,18 @@ class SessionService {
   static Future<SharedPreferences> Function() _preferences =
       SharedPreferences.getInstance;
 
+  static SqfliteHelper Function() _outbox = () => SqfliteHelper.instance;
+
+  static Future<void> _lastCleanup = Future.value();
+
+  /// Tests only: completes when the outbox cleanup of the latest sign-out is over.
+  @visibleForTesting
+  static Future<void> get outboxCleanupDone => _lastCleanup;
+
+  /// Tests only: the SQLite outbox that a sign-out cleans.
+  @visibleForTesting
+  static set outbox(SqfliteHelper Function() open) => _outbox = open;
+
   /// Tests only: a storage whose writes can fail.
   @visibleForTesting
   static set preferences(Future<SharedPreferences> Function() load) =>
@@ -65,7 +79,7 @@ class SessionService {
       debugPrint(
         'SessionService: the last sign-in was not remembered, the session ends with the app restart.',
       );
-      await clearSession();
+      await _end(stored.userId);
       return;
     }
     if (stored != null) {
@@ -131,13 +145,34 @@ class SessionService {
 
   /// Signs out on this device. The cache is emptied first, so no request leaves with these tokens any more; then the
   /// JSON session and every key of the old format are removed. The cached categories go too: they are the user's own,
-  /// and the next account must not see them. Every end of a session passes here: logout and an expired session.
-  static Future<void> clearSession() async {
+  /// and the next account must not see them. The rows of the SQLite outbox that the server already confirmed go as
+  /// well; the ones not sent yet stay. Every end of a session passes here: logout and an expired session.
+  static Future<void> clearSession() => _end(_session.userId);
+
+  /// [userId] is the user who signs out, read before the cache is emptied. A cold start that drops a session which was
+  /// not remembered passes the user of the stored session, as the cache is still empty then.
+  static Future<void> _end(int? userId) async {
     _session = _Session.empty;
     TransactionCategories.clear();
     final prefs = await _preferences();
     await prefs.remove(_keySession);
     await _removeLegacyKeys(prefs);
+    // Not awaited, and started in the root zone: opening the database must never hold up a sign-out, nor leave its
+    // timers in the zone of the caller.
+    _lastCleanup = Zone.root.run(() => _dropSyncedRows(userId));
+    unawaited(_lastCleanup);
+  }
+
+  /// Best effort: the sign-out is already done, so a failing database is only logged. Pending and error rows are kept
+  /// on purpose, they are the user's data that never reached the server.
+  static Future<void> _dropSyncedRows(int? userId) async {
+    if (userId == null) return;
+    try {
+      final removed = await _outbox().deleteSyncedTransactions(userId);
+      debugPrint('SessionService: $removed synced outbox rows removed.');
+    } catch (e) {
+      debugPrint('SessionService: the synced outbox rows were not removed: $e');
+    }
   }
 
   /// The email to fill in on the login screen, or null when none is remembered.

@@ -16,6 +16,7 @@ import 'package:finance_ai_app/services/social_auth_service.dart';
 import '../../helpers/app_settings_scope.dart';
 import '../../helpers/fake_backend.dart';
 import '../../helpers/fake_local_store.dart';
+import '../../helpers/recording_outbox.dart';
 
 const String _logoutPath = '/api/auth/logout';
 
@@ -57,6 +58,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     backend.reset();
+    SessionService.outbox = RecordingOutbox.new;
     await SessionService.clearSession();
     await SessionService.setCurrentUserId(1);
     await SessionService.setTokens('access-token', 'refresh-token');

@@ -191,6 +191,38 @@ void main() {
     );
 
     test(
+      'deleteSyncedTransactions removes only the synced rows of that user and keeps every unsent row',
+      () async {
+        await db.insert(
+          _transactions,
+          _row('a', clientId: 'a', syncStatus: 'synced'),
+        );
+        await db.insert(
+          _transactions,
+          _row('b', clientId: 'b', syncStatus: 'pending'),
+        );
+        await db.insert(
+          _transactions,
+          _row('c', clientId: 'c', syncStatus: 'error'),
+        );
+        await db.insert(
+          _transactions,
+          _row('d', clientId: 'd', syncStatus: 'synced', userId: _otherUserId),
+        );
+
+        final removed = await store.deleteSyncedTransactions(_userId);
+
+        expect(removed, 1);
+        final left = await db.query(_transactions, orderBy: 'title');
+        expect([for (final r in left) '${r['user_id']}:${r['sync_status']}'], [
+          '1:pending',
+          '1:error',
+          '2:synced',
+        ]);
+      },
+    );
+
+    test(
       'a pending row is stored with its client id and read back as unsynced',
       () async {
         final tx = _draft('Cà phê').withSyncStatus(SyncStatus.pending);
