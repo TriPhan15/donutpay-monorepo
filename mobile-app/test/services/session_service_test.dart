@@ -426,6 +426,7 @@ void main() {
         await startWith({_sessionKey: jsonEncode(signedIn)});
 
         await SessionService.clearSession();
+        await SessionService.outboxCleanupDone;
 
         expect(await remaining(), keptAfterSignOut);
       },
@@ -437,6 +438,7 @@ void main() {
         await startWith({
           _sessionKey: jsonEncode({...signedIn, 'remember': false}),
         });
+        await SessionService.outboxCleanupDone;
 
         expect(await remaining(), keptAfterSignOut);
       },
@@ -446,6 +448,7 @@ void main() {
       await startWith({});
 
       await SessionService.clearSession();
+      await SessionService.outboxCleanupDone;
 
       expect(await remaining(), hasLength(6));
     });
@@ -455,6 +458,7 @@ void main() {
       SessionService.outbox = () => throw StateError('disk gone');
 
       await SessionService.clearSession();
+      await SessionService.outboxCleanupDone;
 
       await expectSignedInAs(null, null, null);
       expect(storage.containsKey(_sessionKey), isFalse);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -49,6 +50,12 @@ class SessionService {
       SharedPreferences.getInstance;
 
   static SqfliteHelper Function() _outbox = () => SqfliteHelper.instance;
+
+  static Future<void> _lastCleanup = Future.value();
+
+  /// Tests only: completes when the outbox cleanup of the latest sign-out is over.
+  @visibleForTesting
+  static Future<void> get outboxCleanupDone => _lastCleanup;
 
   /// Tests only: the SQLite outbox that a sign-out cleans.
   @visibleForTesting
@@ -150,7 +157,10 @@ class SessionService {
     final prefs = await _preferences();
     await prefs.remove(_keySession);
     await _removeLegacyKeys(prefs);
-    await _dropSyncedRows(userId);
+    // Not awaited, and started in the root zone: opening the database must never hold up a sign-out, nor leave its
+    // timers in the zone of the caller.
+    _lastCleanup = Zone.root.run(() => _dropSyncedRows(userId));
+    unawaited(_lastCleanup);
   }
 
   /// Best effort: the sign-out is already done, so a failing database is only logged. Pending and error rows are kept
