@@ -26,7 +26,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new DisabledException("Account is locked");
         }
 
-        String role = user.getRole().startsWith("ROLE_") ? user.getRole() : "ROLE_" + user.getRole();
+        String role = Roles.normalize(user.getRole());
 
         return new org.springframework.security.core.userdetails.User(
                 // Email, not username: it is unique and the JWT subject, so Authentication.getName() is always the email.

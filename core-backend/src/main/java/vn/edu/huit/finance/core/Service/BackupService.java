@@ -227,7 +227,7 @@ public class BackupService {
 
             return exitCode == 0;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Không phục hồi được cơ sở dữ liệu từ file {}", fileName, e);
             return false;
         }
     }
