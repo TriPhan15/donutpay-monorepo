@@ -573,7 +573,7 @@ class LedgerPageState extends State<LedgerPage> {
           Expanded(
             child: Text(
               context.loc.ledgerLoadFailedNotice,
-              style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: AppTextSize.secondary),
             ),
           ),
         ],

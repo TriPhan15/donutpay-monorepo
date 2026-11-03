@@ -349,22 +349,24 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
     Set<int> savable,
   ) {
     final loc = context.loc;
-    Widget cards(List<ScanQueueItem> group) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final item in group)
-          Padding(
+    // Each entry builds its widget only when the list scrolls to it.
+    final rows = <Widget Function()>[];
+    void addCards(List<ScanQueueItem> group) {
+      for (final item in group) {
+        rows.add(
+          () => Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: _card(item, all, savable.contains(item.id)),
           ),
-      ],
-    );
-    final children = <Widget>[];
+        );
+      }
+    }
+
     if (view.useTabs) {
       final tab = _tab ?? view.defaultTab;
-      children
+      rows
         ..add(
-          PillSegmented<PendingTab>(
+          () => PillSegmented<PendingTab>(
             options: [
               (
                 PendingTab.ready,
@@ -383,20 +385,23 @@ class _PendingReceiptsScreenState extends State<PendingReceiptsScreen> {
             onChanged: (picked) => setState(() => _tab = picked),
           ),
         )
-        ..add(const SizedBox(height: 12))
-        ..add(cards(view.inTab(tab)));
+        ..add(() => const SizedBox(height: 12));
+      addCards(view.inTab(tab));
     } else {
       for (final (title, group) in [
         (loc.pendingGroupReady(view.ready.length), view.ready),
         (loc.pendingGroupProcessing(view.processing.length), view.processing),
       ]) {
         if (group.isEmpty) continue;
-        children
-          ..add(_GroupTitle(title))
-          ..add(cards(group));
+        rows.add(() => _GroupTitle(title));
+        addCards(group);
       }
     }
-    return ListView(padding: const EdgeInsets.all(_gutter), children: children);
+    return ListView.builder(
+      padding: const EdgeInsets.all(_gutter),
+      itemCount: rows.length,
+      itemBuilder: (_, i) => rows[i](),
+    );
   }
 
   Widget _bottomBar(PendingQueueView view) {

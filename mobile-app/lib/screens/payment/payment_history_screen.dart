@@ -10,6 +10,9 @@ import 'package:finance_ai_app/widgets/common/app_state_view.dart';
 import 'package:finance_ai_app/widgets/common/page_band.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
+/// The corner radius of the card that the rows form.
+const double _cardRadius = 16;
+
 /// "Lịch sử nạp/rút" (T9 spec 3.9, mockup R3): the blue band and the orders in one card; tapping an order opens
 /// "Chi tiết đơn", where a pending one can be cancelled.
 class PaymentHistoryScreen extends StatefulWidget {
@@ -20,8 +23,6 @@ class PaymentHistoryScreen extends StatefulWidget {
 }
 
 class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
-  static const double _cardRadius = 16;
-
   List<PaymentOrder> _orders = [];
   bool _loading = true;
 
@@ -81,7 +82,6 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final loc = context.loc;
     final error = _error;
     final Widget body;
@@ -104,36 +104,15 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         ),
       );
     } else {
-      body = ListView(
+      body = ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(_cardRadius),
-            ),
-            child: Material(
-              type: MaterialType.transparency,
-              child: Column(
-                children: [
-                  for (var i = 0; i < _orders.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: colors.outlineVariant,
-                      ),
-                    PaymentOrderRow(
-                      order: _orders[i],
-                      onTap: () => _open(_orders[i]),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
+        itemCount: _orders.length,
+        itemBuilder: (_, i) => _OrderTile(
+          order: _orders[i],
+          first: i == 0,
+          last: i == _orders.length - 1,
+          onTap: () => _open(_orders[i]),
+        ),
       );
     }
     return Scaffold(
@@ -161,6 +140,47 @@ class _StateList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(top: 48),
       children: [child],
+    );
+  }
+}
+
+/// One row of the history card: the rows of the list are joined into one rounded card by their corners and dividers.
+class _OrderTile extends StatelessWidget {
+  const _OrderTile({
+    required this.order,
+    required this.first,
+    required this.last,
+    required this.onTap,
+  });
+
+  final PaymentOrder order;
+  final bool first;
+  final bool last;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    const radius = Radius.circular(_cardRadius);
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.vertical(
+          top: first ? radius : Radius.zero,
+          bottom: last ? radius : Radius.zero,
+        ),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          children: [
+            if (!first)
+              Divider(height: 1, thickness: 1, color: colors.outlineVariant),
+            PaymentOrderRow(order: order, onTap: onTap),
+          ],
+        ),
+      ),
     );
   }
 }

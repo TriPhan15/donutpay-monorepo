@@ -19,6 +19,7 @@ import 'package:finance_ai_app/models/scan_queue_item.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/pending_receipts_screen.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/review_form_page.dart';
+import 'package:finance_ai_app/screens/receipt_scanner/widgets/pending_receipt_card.dart';
 import 'package:finance_ai_app/services/receipt_scan_queue.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
@@ -747,6 +748,37 @@ void main() {
     );
     await tester.pumpAndSettle();
   });
+
+  testWidgets(
+    '200 ready receipts are built lazily and every one can be reached',
+    (tester) async {
+      const total = 200;
+      queue.queueItems.addAll([
+        for (var i = 1; i <= total; i++)
+          _item(
+            i,
+            ScanQueueStatus.ready,
+            result: _result(storeName: 'Store $i'),
+          ),
+      ]);
+      await openScreen(tester, size: const Size(600, 900));
+
+      // Only the cards near the screen exist, not all 200.
+      expect(find.byType(PendingReceiptCard), findsWidgets);
+      expect(
+        find.byType(PendingReceiptCard).evaluate().length,
+        lessThan(total ~/ 4),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Store $total'),
+        500,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Store $total'), findsOneWidget);
+      expect(find.text('Store 1'), findsNothing);
+    },
+  );
 }
 
 /// A storage failure of the queue.

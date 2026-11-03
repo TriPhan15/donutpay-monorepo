@@ -6,6 +6,9 @@ import 'package:finance_ai_app/services/remote_api_helper.dart';
 class TransactionCategories {
   static const String all = 'Tất cả';
 
+  /// How the backend labels expense categories in GET /api/categories.
+  static const String serverExpenseType = 'EXPENSE';
+
   /// Default categories the forms preselect, by the name core-backend stores.
   static const String food = 'Ăn uống';
   static const String otherExpense = 'Khác';
@@ -106,7 +109,7 @@ class TransactionCategories {
     for (final c in cats) {
       final name = c['name'].toString();
       final type = c['type'].toString();
-      if (type == 'EXPENSE') {
+      if (type == serverExpenseType) {
         // Contributions are recorded only through a savings goal, never picked by hand.
         if (!isSavings(name)) expense.add(name);
       } else {

@@ -315,4 +315,34 @@ void main() {
     expect(find.text('Order details'), findsOneWidget);
     expect(find.text('Cancel order'), findsOneWidget);
   });
+
+  testWidgets('200 orders are built lazily and every one can be reached', (
+    tester,
+  ) async {
+    const total = 200;
+    backend.on(
+      'GET',
+      '/api/payment/mine',
+      (_) => okResponse([
+        for (var i = 0; i < total; i++)
+          _order('C$i', 'DEPOSIT', 'SUCCESS', 1000 + i, 'VNPAY'),
+      ]),
+    );
+    await show(tester);
+
+    // Only the rows near the screen exist, not all 200.
+    expect(find.byType(PaymentOrderRow), findsWidgets);
+    expect(
+      find.byType(PaymentOrderRow).evaluate().length,
+      lessThan(total ~/ 4),
+    );
+
+    await tester.scrollUntilVisible(
+      row('C${total - 1}'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(row('C${total - 1}'), findsOneWidget);
+    expect(row('C0'), findsNothing);
+  });
 }

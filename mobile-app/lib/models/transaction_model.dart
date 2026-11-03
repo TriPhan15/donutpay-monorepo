@@ -109,9 +109,6 @@ class TransactionModel {
     );
   }
 
-  Color get color =>
-      isExpense ? const Color(0xFFF43F5E) : const Color(0xFF10B981);
-
   IconData get icon => isExpense ? Icons.money_off : Icons.attach_money;
 
   /// Money moved from the wallet into a savings goal: it leaves the wallet but is not spending.
