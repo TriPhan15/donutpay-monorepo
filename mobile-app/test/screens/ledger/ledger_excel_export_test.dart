@@ -232,7 +232,7 @@ void main() {
         ],
         [dateText, 'Ăn uống', 45000.0],
         [dateText, 'Thu nhập', '', 1000000.0],
-        [dateText, loc.categorySavings, 200000.0],
+        [dateText, loc.categorySavings, '', '', 200000.0],
         [loc.ledgerExcelTotal, '', 45000.0, 1000000.0],
         [loc.ledgerBalance, '', '', 955000.0],
         [loc.ledgerExcelBudgetHeader(_monthKey(now))],
