@@ -13,10 +13,10 @@ import 'package:finance_ai_app/models/app_language.dart';
 import 'package:finance_ai_app/screens/auth/login_page.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
-import 'package:finance_ai_app/services/sqflite_helper.dart';
 
 import '../helpers/fake_backend.dart';
 import '../helpers/fake_settings_repository.dart';
+import '../helpers/recording_outbox.dart';
 
 const String _refreshCall = 'POST /api/auth/refresh';
 const String _homeText = 'Trang chủ';
@@ -39,24 +39,9 @@ class _PushCounter extends NavigatorObserver {
   }
 }
 
-/// The outbox of the sign-out without a real database (its async I/O cannot finish inside the fake-async test zone).
-class _RecordingOutbox implements SqfliteHelper {
-  final List<int> cleaned = [];
-
-  @override
-  Future<int> deleteSyncedTransactions(int userId) async {
-    cleaned.add(userId);
-    return 0;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw UnimplementedError('${invocation.memberName}');
-}
-
 void main() {
   final backend = FakeBackend();
-  late _RecordingOutbox outbox;
+  late RecordingOutbox outbox;
 
   setUpAll(() {
     RemoteApiHelper.instance.init(
@@ -68,7 +53,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     backend.reset();
-    outbox = _RecordingOutbox();
+    outbox = RecordingOutbox();
     SessionService.outbox = () => outbox;
     await SessionService.clearSession();
     outbox.cleaned.clear();
