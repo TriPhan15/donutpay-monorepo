@@ -135,6 +135,20 @@ Chưa chạy file này thì app vẫn nhận ra chủ của hóa đơn cũ qua g
 
 RB6 (hai index `idx_transactions_user_date` và `idx_receipts_status_created`) có file `indexes-migration.sql`, chạy bằng `psql` như mục 2. Server mới không cần chạy. `CREATE INDEX` khóa ghi vào bảng đang tạo index (đọc vẫn được) trong lúc tạo: DB local nhỏ thì chỉ một thoáng, bảng lớn thì dừng `core-api` trước. Chạy lại không đổi gì.
 
+B8 (chủ sở hữu danh mục) cũng có file riêng, chạy tương tự:
+
+```bash
+docker exec -i finance-postgres psql -X -v ON_ERROR_STOP=1 -U "$DB_USERNAME" -d finance_db \
+  < core-backend/src/main/resources/db/category-owner-migration.sql
+```
+
+File này thêm `categories.owner_id` (khóa ngoại tới `users`), cột phụ `owner_key`, `categories_aud.owner_id`, index của `owner_id`
+và ràng buộc tên danh mục là duy nhất theo từng chủ (`UNIQUE (owner_key, name)`: hai người dùng có thể cùng một tên, một người
+không có hai danh mục trùng tên). Mọi danh mục cũ giữ `owner_id` NULL, tức là vẫn là danh mục dùng chung như trước, vì không
+biết ai đã gõ chúng. Nếu DB cũ đã có hai danh mục trùng tên, file không thêm ràng buộc và không gộp gì, chỉ báo số tên trùng ở dòng
+NOTICE cuối: gộp tay rồi chạy lại. Chạy lại không đổi gì, chạy trước hay sau khi `core-api` khởi động đều được. Từ bản này
+`GET /api/categories` cần đăng nhập và chỉ trả danh mục chung cùng danh mục của người gọi.
+
 ## 4. Không cần chạy thử migration trên dữ liệu cũ
 
 Server deploy bắt đầu từ DB trống, nên không cần chạy thử 4 file migration trên bản sao dữ liệu cũ.

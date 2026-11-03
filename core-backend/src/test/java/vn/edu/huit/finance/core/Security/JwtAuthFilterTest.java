@@ -63,7 +63,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RecordApplicationEvents
 class JwtAuthFilterTest {
 
-    private static final String PUBLIC_URL = "/api/categories";
+    private static final String PUBLIC_URL = "/api/payment/webhook";
     private static final String PROTECTED_URL = "/api/budgets";
     private static final String ANONYMOUS = "anonymous";
     private static final long ALICE_ID = 1L;

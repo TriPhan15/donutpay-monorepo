@@ -167,7 +167,8 @@ class SavingGoalContributionRollbackTest {
         service.contributeToMySaving(alicesGoalId, new BigDecimal("100000"));
         service.contributeToMySaving(alicesGoalId, new BigDecimal("200000"));
 
-        Category savings = categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc(SAVINGS).orElseThrow();
+        Category savings = categoryRepository.findAllByOwnerIsNull().stream()
+                .filter(category -> category.getName().equalsIgnoreCase(SAVINGS)).findFirst().orElseThrow();
         assertEquals(DefaultCategory.TYPE_EXPENSE, savings.getType());
         assertEquals(1, categoryRepository.count());
         assertMoney("1300000", goalInDatabase(alicesGoalId));

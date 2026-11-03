@@ -19,7 +19,7 @@ public final class SavingsContributions {
     /** True khi danh mục là danh mục chi "Tiết kiệm"; null thì không phải. */
     public static boolean isSavingsCategory(Category category) {
         return category != null
-                && CATEGORY_NAME.equals(category.getName())
+                && CATEGORY_NAME.equals(CategoryNames.clean(category.getName()))
                 && DefaultCategory.TYPE_EXPENSE.equals(category.getType());
     }
 

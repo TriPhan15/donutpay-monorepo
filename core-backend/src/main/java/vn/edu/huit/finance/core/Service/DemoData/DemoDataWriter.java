@@ -180,7 +180,7 @@ public class DemoDataWriter {
 
     /** Danh mục mặc định nào chưa có (theo tên) thì thêm; danh mục đã có giữ nguyên. */
     private Map<DefaultCategory, Category> ensureCategories() {
-        Map<String, Category> byName = categoryRepository.findAll().stream()
+        Map<String, Category> byName = categoryRepository.findAllByOwnerIsNull().stream()
                 .collect(Collectors.toMap(Category::getName, Function.identity(), (first, second) -> first));
         Map<DefaultCategory, Category> categories = new HashMap<>();
         for (DefaultCategory category : DefaultCategory.values()) {

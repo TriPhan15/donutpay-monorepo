@@ -29,8 +29,9 @@
                         <tr>
                             <th class="text-center" style="width: 10%;">ID</th>
                             <th>Tên Danh mục</th>
-                            <th class="text-center" style="width: 20%;">Loại giao dịch</th>
-                            <th class="text-center" style="width: 20%;">Ngày tạo</th>
+                            <th class="text-center" style="width: 15%;">Loại giao dịch</th>
+                            <th>Người tạo</th>
+                            <th class="text-center" style="width: 15%;">Ngày tạo</th>
                             <th class="text-center" style="width: 20%;">Hành động</th>
                         </tr>
                         </thead>
@@ -42,6 +43,7 @@
                                 <span th:if="${cat.type == 'INCOME'}" class="badge bg-success rounded-pill px-3 py-2 w-75">Khoản Thu</span>
                                 <span th:if="${cat.type == 'EXPENSE'}" class="badge bg-danger rounded-pill px-3 py-2 w-75">Khoản Chi</span>
                             </td>
+                            <td class="text-muted" th:text="${cat.owner == null ? 'Hệ thống' : cat.owner.email}"></td>
                             <td class="text-center text-muted fw-semibold" th:text="${#temporals.format(cat.createdAt, 'dd/MM/yyyy HH:mm')}"></td>
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-info text-white px-3 rounded-pill me-1 fw-bold"
@@ -159,7 +161,7 @@
                         "pageLength": 10,
                         "order": [ [0, "desc"] ], 
                         "columnDefs": [
-                            { "orderable": false, "targets": 4 } 
+                            { "orderable": false, "targets": 5 } 
                         ],
                         "language": { "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/vi.json" }
                     });

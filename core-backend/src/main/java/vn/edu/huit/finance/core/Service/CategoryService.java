@@ -7,11 +7,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.Transaction;
+import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.CategoryInUseException;
+import vn.edu.huit.finance.core.Exception.CategoryNameTakenException;
 import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
@@ -19,16 +22,20 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+import vn.edu.huit.finance.core.Util.CategoryNames;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
- * The shared categories. createCategory, renameCategory and deleteCategory are for administrators only (the caller
- * checks that); each change and its audit row, naming the administrator, commit together. {@link #resolveOrCreate} is
- * the one place where a category a user names (in a transaction or a budget) is looked up or created.
+ * The categories. The default ones belong to nobody and every user sees them; createCategory, renameCategory and
+ * deleteCategory are for administrators only (the caller checks that), and a category an administrator adds is a default
+ * one; each change and its audit row, naming the administrator, commit together. {@link #resolveOrCreate} is the one
+ * place where a category a user names (in a transaction or a budget) is looked up or created: among the default ones and
+ * those of that user, and a new name is created for that user, so what a user types is never seen by another user.
  */
 @Slf4j
 @Service
@@ -42,6 +49,7 @@ public class CategoryService {
     private static final String MSG_CATEGORY_IN_USE = "Không thể xóa danh mục [%s] vì đang có giao dịch sử dụng nó!";
     private static final String MSG_DEFAULT_LOCKED = "Không thể đổi tên hoặc xóa danh mục mặc định [%s]";
     private static final String MSG_DEFAULT_NAME_TAKEN = "Tên [%s] là tên của một danh mục mặc định";
+    private static final String MSG_NAME_TAKEN = "Danh mục [%s] vừa được tạo bởi một yêu cầu khác, vui lòng thử lại";
     private static final String AUDIT_CREATED_BY_NAME = "Tạo danh mục \"%s\" (%s) theo tên người dùng nhập";
     private static final String AUDIT_CREATED = "Thêm danh mục \"%s\" (%s)";
     private static final String AUDIT_RENAMED = "Đổi tên danh mục \"%s\" → \"%s\"";
@@ -59,16 +67,22 @@ public class CategoryService {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
-    /** Mọi danh mục, cho trang quản trị. */
+    /** Mọi danh mục kèm người tạo (left join fetch, không N+1), cho trang quản trị. */
     @Transactional(readOnly = true)
     public List<Category> listAll() {
-        return categoryRepository.findAll();
+        return categoryRepository.findAllWithOwner();
     }
 
-    /** Thêm một danh mục; tên trùng tên danh mục mặc định (Tiết kiệm, Ăn uống...) bị từ chối. */
+    /** The default categories and those of the user, as the app lists them. */
+    @Transactional(readOnly = true)
+    public List<CategoryResponseDto> listFor(User caller) {
+        return categoryRepository.findVisibleTo(caller.getId()).stream().map(CategoryResponseDto::from).toList();
+    }
+
+    /** Thêm một danh mục mặc định (không có chủ); tên trùng tên danh mục mặc định (Tiết kiệm, Ăn uống...) bị từ chối. */
     @Transactional
     public Category createCategory(String name, String type) {
-        name = name.trim();
+        name = CategoryNames.clean(name);
         refuseDefaultName(name);
         Category category = new Category();
         category.setName(name);
@@ -87,7 +101,7 @@ public class CategoryService {
      */
     @Transactional
     public Category renameCategory(Long categoryId, String name) {
-        name = name.trim();
+        name = CategoryNames.clean(name);
         Category category = findCategory(categoryId);
         refuseDefaultCategory(category);
         refuseDefaultName(name);
@@ -127,23 +141,29 @@ public class CategoryService {
     }
 
     /**
-     * By id, or by name; the id wins when both are given. The name is trimmed and compared ignoring case, so "cà phê"
-     * reuses "Cà phê". A name that does not exist yet creates the category with the given type; a category is shared by
-     * every user, so its creation is recorded (CATEGORY_CREATED) with the actor who caused it, in the caller's transaction.
+     * By id, or by name; the id wins when both are given. Only the default categories and those of [owner] are looked at:
+     * the id of another user's category is an unknown id. The name is trimmed, composed (NFC) and compared ignoring case,
+     * so "cà phê" reuses "Cà phê", typed composed or decomposed. A name that does not exist yet creates the category with
+     * the given type, for [owner], and its creation is recorded (CATEGORY_CREATED) with [actor], in the caller's
+     * transaction. The name of a default category is the exception: it is always the shared category, in its own
+     * spelling, created without an owner if it is not there yet.
      *
      * @throws InvalidCategoryException for an unknown id, or when neither an id nor a non-blank name is given
+     * @throws CategoryNameTakenException when a request made at the same time created the same name for the same owner
      */
     @Transactional
-    public Category resolveOrCreate(Long categoryId, String categoryName, String typeIfCreated, AuditActor actor) {
+    public Category resolveOrCreate(Long categoryId, String categoryName, String typeIfCreated, User owner, AuditActor actor) {
         if (categoryId != null) {
-            return findCategory(categoryId);
+            return findVisibleCategory(categoryId, owner);
         }
         if (categoryName == null || categoryName.isBlank()) {
             throw new InvalidCategoryException(MSG_CATEGORY_REQUIRED);
         }
-        String name = categoryName.trim();
-        return categoryRepository.findFirstByNameIgnoreCaseOrderByIdAsc(name)
-                .orElseGet(() -> createByName(name, typeIfCreated, actor));
+        String typed = CategoryNames.clean(categoryName);
+        Optional<DefaultCategory> shared = defaultNamed(typed);
+        String name = shared.map(DefaultCategory::getDisplayName).orElse(typed);
+        return categoryRepository.findVisibleByName(name, owner.getId()).stream().findFirst()
+                .orElseGet(() -> createByName(name, typeIfCreated, shared.isPresent() ? null : owner, actor));
     }
 
     /** The type a category created by name gets from the direction of the money it is named for. */
@@ -151,15 +171,34 @@ public class CategoryService {
         return isExpense ? TYPE_EXPENSE : TYPE_INCOME;
     }
 
-    private Category createByName(String name, String type, AuditActor actor) {
+    /**
+     * A category with no owner is a default one. The database refuses a second category of the same owner and name; when
+     * that happens a request made at the same time has just created it, and this one is asked to be sent again.
+     */
+    private Category createByName(String name, String type, User owner, AuditActor actor) {
         Category category = new Category();
         category.setName(name);
         category.setType(type);
-        Category saved = categoryRepository.save(category);
+        category.setOwner(owner);
+        Category saved;
+        try {
+            saved = categoryRepository.save(category);
+            categoryRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Category creation lost a race with a request made at the same time");
+            throw new CategoryNameTakenException(String.format(MSG_NAME_TAKEN, name), e);
+        }
         auditLogService.record(AuditEntry.of(AuditAction.CATEGORY_CREATED, actor, saved.getId(),
                 String.format(AUDIT_CREATED_BY_NAME, saved.getName(), saved.getType())));
         log.info("Category created by name, categoryId={}", saved.getId());
         return saved;
+    }
+
+    private Category findVisibleCategory(Long categoryId, User owner) {
+        return categoryRepository.findVisibleById(categoryId, owner.getId()).orElseThrow(() -> {
+            log.warn("Category not found for the user, categoryId={}, userId={}", categoryId, owner.getId());
+            return new InvalidCategoryException(MSG_CATEGORY_NOT_FOUND);
+        });
     }
 
     private Category findCategory(Long categoryId) {
@@ -179,10 +218,14 @@ public class CategoryService {
         }
     }
 
+    /** The default category whose name is [name] (composed, ignoring case), if there is one. */
+    private static Optional<DefaultCategory> defaultNamed(String name) {
+        return Arrays.stream(DefaultCategory.values()).filter(d -> d.getDisplayName().equalsIgnoreCase(name)).findFirst();
+    }
+
     /** Tên của một danh mục mặc định (không phân biệt hoa thường) không được dùng cho danh mục khác. */
     private static void refuseDefaultName(String name) {
-        boolean taken = Arrays.stream(DefaultCategory.values()).anyMatch(d -> d.getDisplayName().equalsIgnoreCase(name));
-        if (taken) {
+        if (defaultNamed(name).isPresent()) {
             log.warn("Category name of a default category refused");
             throw new InvalidCategoryException(String.format(MSG_DEFAULT_NAME_TAKEN, name));
         }

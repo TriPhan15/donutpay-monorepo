@@ -6,30 +6,24 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
-import vn.edu.huit.finance.core.Entity.Category;
-import vn.edu.huit.finance.core.Repository.CategoryRepository;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
+import vn.edu.huit.finance.core.Service.CategoryService;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryApiController {
 
     @Autowired
-    private CategoryRepository categoryRepo;
+    private CategoryService categoryService;
 
+    @Autowired
+    private CurrentUserProvider currentUserProvider;
+
+    /** The default categories and the caller's own, as a plain JSON array (the shape the app parses). */
     @GetMapping
     public ResponseEntity<List<CategoryResponseDto>> getAllCategories() {
-        List<Category> categories = categoryRepo.findAll();
-        List<CategoryResponseDto> data = categories.stream()
-                .map(c -> CategoryResponseDto.builder()
-                        .id(c.getId())
-                        .name(c.getName())
-                        .type(c.getType())
-                        .build())
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(data);
+        return ResponseEntity.ok(categoryService.listFor(currentUserProvider.getCurrentUser()));
     }
 }

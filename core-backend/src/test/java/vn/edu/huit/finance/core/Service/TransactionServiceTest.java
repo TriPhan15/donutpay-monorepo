@@ -539,7 +539,7 @@ class TransactionServiceTest {
     void aCategoryGivenByIdReplacesTheOldOne() {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         Category transport = category(11L, "Di chuyển", "EXPENSE");
-        when(categoryRepo.findById(11L)).thenReturn(Optional.of(transport));
+        when(categoryRepo.findVisibleById(11L, ALICE_ID)).thenReturn(Optional.of(transport));
         TransactionUpdateRequestDto request = update();
         request.setCategoryId(11L);
 
@@ -554,7 +554,7 @@ class TransactionServiceTest {
     @Test
     void anUnknownCategoryIdIsRefusedBeforeAnythingIsWrittenEvenIfTheAmountChangesToo() {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
-        when(categoryRepo.findById(99L)).thenReturn(Optional.empty());
+        when(categoryRepo.findVisibleById(99L, ALICE_ID)).thenReturn(Optional.empty());
         TransactionUpdateRequestDto request = updateAmount("150000");
         request.setCategoryId(99L);
 
@@ -571,7 +571,7 @@ class TransactionServiceTest {
     void aCategoryGivenByNameIsReusedWhenItExists() {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         Category coffee = category(12L, "Cà phê", "EXPENSE");
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("Cà phê")).thenReturn(Optional.of(coffee));
+        when(categoryRepo.findVisibleByName("Cà phê", ALICE_ID)).thenReturn(List.of(coffee));
         TransactionUpdateRequestDto request = update();
         request.setCategoryName("  Cà phê ");
 
@@ -585,7 +585,7 @@ class TransactionServiceTest {
     void aCategoryNameInAnotherCaseReusesTheExistingCategory() {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         Category coffee = category(12L, "Cà phê", "EXPENSE");
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("cà phê")).thenReturn(Optional.of(coffee));
+        when(categoryRepo.findVisibleByName("cà phê", ALICE_ID)).thenReturn(List.of(coffee));
         TransactionUpdateRequestDto request = update();
         request.setCategoryName(" cà phê  ");
 
@@ -600,7 +600,7 @@ class TransactionServiceTest {
     @ValueSource(booleans = {true, false})
     void aNewCategoryNameCreatesACategoryTypedAfterTheTransactionAsItWillBe(boolean expenseAfterwards) {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, !expenseAfterwards);
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("Freelance")).thenReturn(Optional.empty());
+        when(categoryRepo.findVisibleByName("Freelance", ALICE_ID)).thenReturn(List.of());
         when(categoryRepo.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
         TransactionUpdateRequestDto request = update();
         request.setCategoryName("Freelance");
@@ -618,14 +618,14 @@ class TransactionServiceTest {
     @Test
     void whenBothAreGivenTheCategoryIdWins() {
         aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionUpdateRequestDto request = update();
         request.setCategoryId(FOOD_ID);
         request.setCategoryName("Something else");
 
         service.updateTransaction(TX_ID, request);
 
-        verify(categoryRepo, never()).findFirstByNameIgnoreCaseOrderByIdAsc(any());
+        verify(categoryRepo, never()).findVisibleByName(any(), any());
     }
 
     @Test
@@ -1155,7 +1155,7 @@ class TransactionServiceTest {
     @Test
     void aScannedCheckoutHandsTheAiJsonToTheReceiptServiceBeforeTheTransactionIsSaved() {
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleByName(food.getName(), ALICE_ID)).thenReturn(List.of(food));
 
         service.createTransaction(checkout("{\"seller\": {}}"), ALICE_ID);
 
@@ -1172,7 +1172,7 @@ class TransactionServiceTest {
     @ValueSource(strings = "   ")
     void aCheckoutWithoutAiDataHasNoReceipt(String rawReceiptData) {
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleByName(food.getName(), ALICE_ID)).thenReturn(List.of(food));
 
         service.createTransaction(checkout(rawReceiptData), ALICE_ID);
 
@@ -1183,7 +1183,7 @@ class TransactionServiceTest {
     @Test
     void whenTheReceiptCannotBeBuiltNothingIsSavedAndTheFailureIsNotSwallowed() {
         when(userRepo.findById(ALICE_ID)).thenReturn(Optional.of(alice));
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleByName(food.getName(), ALICE_ID)).thenReturn(List.of(food));
         doThrow(new IllegalStateException("cannot build")).when(receiptProcessingService).attachReceipt(any(), any(), any());
 
         assertThrows(IllegalStateException.class, () -> service.createTransaction(checkout("{\"seller\": {}}"), ALICE_ID));
@@ -1240,7 +1240,7 @@ class TransactionServiceTest {
 
     private void aliceScansFoodAs(String seller) {
         checkoutAsAlice();
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleByName(food.getName(), ALICE_ID)).thenReturn(List.of(food));
         theScanReads(seller);
     }
 
@@ -1350,7 +1350,7 @@ class TransactionServiceTest {
     @Test
     void aManualCheckoutIsNeverCheckedForDuplicates() {
         checkoutAsAlice();
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(food.getName())).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleByName(food.getName(), ALICE_ID)).thenReturn(List.of(food));
 
         service.createMyTransaction(checkout((String) null));
 
@@ -1591,7 +1591,7 @@ class TransactionServiceTest {
     @Test
     void checkoutOfAnExpenseTakesTheAmountOutOfTheCallersWalletOnly() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "150000");
         request.setCategoryId(FOOD_ID);
 
@@ -1610,7 +1610,7 @@ class TransactionServiceTest {
     @Test
     void checkoutOfAnIncomeAddsToTheWallet() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(false, "150000");
         request.setCategoryId(FOOD_ID);
 
@@ -1623,7 +1623,7 @@ class TransactionServiceTest {
     void checkoutWarnsWhenTheWalletRunsLow() {
         alice.setWalletBalance(new BigDecimal("120000"));
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "100000");
         request.setCategoryId(FOOD_ID);
 
@@ -1636,7 +1636,7 @@ class TransactionServiceTest {
     void checkoutOfAnExpenseTheWalletCannotCarryFailsWithTheSameMessageAsBefore() {
         alice.setWalletBalance(new BigDecimal("50000"));
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "50000.01");
         request.setCategoryId(FOOD_ID);
 
@@ -1652,7 +1652,7 @@ class TransactionServiceTest {
     @ValueSource(booleans = {true, false})
     void checkoutWithANewCategoryNameCreatesTheCategoryTypedAfterTheTransaction(boolean isExpense) {
         checkoutAsAlice();
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc("Freelance")).thenReturn(Optional.empty());
+        when(categoryRepo.findVisibleByName("Freelance", ALICE_ID)).thenReturn(List.of());
         when(categoryRepo.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
         TransactionRequestDto request = checkout(isExpense, "10000");
         request.setCategoryName(" Freelance ");
@@ -1668,7 +1668,7 @@ class TransactionServiceTest {
     @Test
     void checkoutWithAnUnknownCategoryIdOrNoCategoryFailsWithTheSameMessagesAsBefore() {
         checkoutAsAlice();
-        when(categoryRepo.findById(99L)).thenReturn(Optional.empty());
+        when(categoryRepo.findVisibleById(99L, ALICE_ID)).thenReturn(Optional.empty());
         TransactionRequestDto unknown = checkout(true, "10000");
         unknown.setCategoryId(99L);
 
@@ -1706,7 +1706,7 @@ class TransactionServiceTest {
     @Test
     void theFirstCheckoutWithAClientIdCreatesTheTransactionAndRemembersTheId() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
 
         Map<String, Object> result = service.createMyTransaction(checkoutWithClientId(CLIENT_ID));
 
@@ -1772,7 +1772,7 @@ class TransactionServiceTest {
     @Test
     void theWalletIsLockedBeforeTheClientIdIsLookedUpSoTwoRequestsQueueUp() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
 
         service.createMyTransaction(checkoutWithClientId(CLIENT_ID));
 
@@ -1786,7 +1786,7 @@ class TransactionServiceTest {
     @Test
     void aCheckoutWithAClientIdChargesTheBalanceReadUnderTheLockNotTheOneReadEarlier() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         // Another checkout of Alice committed -300,000 after this one first read the user.
         User reloaded = user(ALICE_ID, new BigDecimal("700000"));
         when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(reloaded);
@@ -1803,7 +1803,7 @@ class TransactionServiceTest {
     @Test
     void theClientIdIsLookedUpForTheCallerOnlySoSomebodyElsesIdIsNoDuplicate() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         // Bob used the same id for one of his own checkouts; it says nothing about Alice's.
         lenient().when(transactionRepo.findByUserIdAndClientId(BOB_ID, CLIENT_ID))
                 .thenReturn(Optional.of(transaction(bob, HUNDRED_THOUSAND, true)));
@@ -1819,7 +1819,7 @@ class TransactionServiceTest {
     @Test
     void theClientIdIsTrimmedBeforeItIsLookedUpAndStored() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
 
         service.createMyTransaction(checkoutWithClientId("  " + CLIENT_ID + "\t"));
 
@@ -1832,7 +1832,7 @@ class TransactionServiceTest {
     @ValueSource(strings = {" ", "   ", "\t"})
     void aCheckoutWithoutAClientIdIsNeverLookedUpButStillLocksTheWalletAndStoresNoId(String clientId) {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
 
         service.createMyTransaction(checkoutWithClientId(clientId));
 
@@ -1849,7 +1849,7 @@ class TransactionServiceTest {
     @Test
     void aCheckoutWithoutAClientIdChargesTheBalanceReadUnderTheLockToo() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         // Another checkout of Alice committed -900,000 after this one first read the user: 150,000 no longer fits.
         User reloaded = user(ALICE_ID, new BigDecimal("100000"));
         when(entityManager.find(User.class, ALICE_ID, LockModeType.PESSIMISTIC_WRITE)).thenReturn(reloaded);
@@ -1904,7 +1904,7 @@ class TransactionServiceTest {
     void aCheckoutTheWalletCannotCarryStaysRefusedWhateverItsClientIdAndLeavesNoTransactionBehind() {
         alice.setWalletBalance(new BigDecimal("50000"));
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
 
         RuntimeException refused = assertThrows(RuntimeException.class,
                 () -> service.createMyTransaction(checkoutWithClientId(CLIENT_ID)));
@@ -1919,7 +1919,7 @@ class TransactionServiceTest {
     @Test
     void aNewTransactionIsHandedToTheBudgetAlertRightAfterItIsSaved() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "150000");
         request.setCategoryId(FOOD_ID);
 
@@ -1935,7 +1935,7 @@ class TransactionServiceTest {
     void aCheckoutTheWalletCannotCarryRaisesNoBudgetAlert() {
         alice.setWalletBalance(new BigDecimal("50000"));
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "50000.01");
         request.setCategoryId(FOOD_ID);
 
@@ -1949,7 +1949,7 @@ class TransactionServiceTest {
         Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         LocalDateTime dateBefore = transaction.getTransactionDate();
         Category transport = category(20L, "Di chuyển", "EXPENSE");
-        when(categoryRepo.findById(20L)).thenReturn(Optional.of(transport));
+        when(categoryRepo.findVisibleById(20L, ALICE_ID)).thenReturn(Optional.of(transport));
         TransactionUpdateRequestDto request = updateAmount("250000");
         request.setCategoryId(20L);
         request.setTransactionDate(LocalDateTime.of(2026, 9, 5, 8, 0));
@@ -1998,7 +1998,7 @@ class TransactionServiceTest {
     @Test
     void aCheckoutReportsThatTheOwnersTotalsChangedAfterTheTransactionIsSaved() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "150000");
         request.setCategoryId(FOOD_ID);
 
@@ -2014,7 +2014,7 @@ class TransactionServiceTest {
     @Test
     void theCheckoutOfThePaymentWebhookReportsTheUserItNames() {
         when(userRepo.findById(BOB_ID)).thenReturn(Optional.of(bob));
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, BOB_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(false, "50000");
         request.setCategoryId(FOOD_ID);
 
@@ -2037,7 +2037,7 @@ class TransactionServiceTest {
     void aRefusedCheckoutReportsNothing() {
         alice.setWalletBalance(new BigDecimal("50000"));
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "50000.01");
         request.setCategoryId(FOOD_ID);
 
@@ -2083,7 +2083,7 @@ class TransactionServiceTest {
     void aNewCategoryOnlyChangesWhatTheOwnersDashboardShows() {
         aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         Category drinks = category(11L, "Đồ uống", "EXPENSE");
-        when(categoryRepo.findById(11L)).thenReturn(Optional.of(drinks));
+        when(categoryRepo.findVisibleById(11L, ALICE_ID)).thenReturn(Optional.of(drinks));
         TransactionUpdateRequestDto request = update();
         request.setCategoryId(11L);
 
@@ -2202,8 +2202,8 @@ class TransactionServiceTest {
     }
 
     private void savingsCategoryExistsByName() {
-        when(categoryRepo.findFirstByNameIgnoreCaseOrderByIdAsc(SavingsContributions.CATEGORY_NAME))
-                .thenReturn(Optional.of(savingsCategory()));
+        when(categoryRepo.findVisibleByName(SavingsContributions.CATEGORY_NAME, ALICE_ID))
+                .thenReturn(List.of(savingsCategory()));
     }
 
     @Test
@@ -2331,7 +2331,7 @@ class TransactionServiceTest {
     @Test
     void create_expense_publishesUpsertedWithItsMonth() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(true, "150000");
         request.setCategoryId(FOOD_ID);
 
@@ -2343,7 +2343,7 @@ class TransactionServiceTest {
     @Test
     void create_income_publishesUpsertedWithNoMonth() {
         checkoutAsAlice();
-        when(categoryRepo.findById(FOOD_ID)).thenReturn(Optional.of(food));
+        when(categoryRepo.findVisibleById(FOOD_ID, ALICE_ID)).thenReturn(Optional.of(food));
         TransactionRequestDto request = checkout(false, "150000");
         request.setCategoryId(FOOD_ID);
 

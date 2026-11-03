@@ -133,14 +133,15 @@ public class BudgetService {
 
     /**
      * Null when the budget applies to every category. Otherwise by id, or by name (the id wins), through the resolver
-     * transactions use: a new name creates an expense category, in this transaction, recorded with the caller.
+     * transactions use: among the default categories and the caller's own, and a new name creates an expense category
+     * of the caller's, in this transaction, recorded with the caller.
      */
     private Category resolveCategory(BudgetRequestDto request, User caller) {
         if (!request.hasCategory()) {
             return null;
         }
         return categoryService.resolveOrCreate(request.getCategoryId(), request.getCategoryName(),
-                CategoryService.TYPE_EXPENSE, AuditActor.of(caller));
+                CategoryService.TYPE_EXPENSE, caller, AuditActor.of(caller));
     }
 
     private static Long idOf(Category category) {

@@ -231,8 +231,9 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
-    // 409: the category is still used by a transaction or a budget, or a search reindex is already running; nothing was written.
-    @ExceptionHandler({CategoryInUseException.class, ReindexInProgressException.class})
+    // 409: the category is still used by a transaction or a budget, another request just created the same category name, or a
+    // search reindex is already running; nothing was written.
+    @ExceptionHandler({CategoryInUseException.class, CategoryNameTakenException.class, ReindexInProgressException.class})
     public Object handleConflictingState(RuntimeException ex, HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }

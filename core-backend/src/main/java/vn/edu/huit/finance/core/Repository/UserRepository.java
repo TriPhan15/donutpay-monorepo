@@ -32,7 +32,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
             + "OR EXISTS (SELECT 1 FROM saving_goals WHERE user_id = :userId) "
             + "OR EXISTS (SELECT 1 FROM notifications WHERE user_id = :userId) "
             + "OR EXISTS (SELECT 1 FROM app_reviews WHERE user_id = :userId) "
-            + "OR EXISTS (SELECT 1 FROM receipts WHERE owner_id = :userId))", nativeQuery = true)
+            + "OR EXISTS (SELECT 1 FROM receipts WHERE owner_id = :userId) "
+            + "OR EXISTS (SELECT 1 FROM categories WHERE owner_id = :userId))", nativeQuery = true)
     boolean existsLinkedRecords(@org.springframework.data.repository.query.Param("userId") Long userId);
     /**
      * Chuẩn RFM của mọi người dùng: chỉ khoản chi, từ {@code windowStart}, bỏ khoản góp tiết kiệm và khoản chuyển sang

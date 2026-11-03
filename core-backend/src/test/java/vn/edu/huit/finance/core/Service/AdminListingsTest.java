@@ -26,6 +26,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,9 +62,10 @@ class AdminListingsTest {
     @Test
     void categoriesAreAllListed() {
         List<Category> categories = List.of(new Category());
-        when(categoryRepository.findAll()).thenReturn(categories);
+        when(categoryRepository.findAllWithOwner()).thenReturn(categories);
 
         assertEquals(categories, categoryService.listAll());
+        verify(categoryRepository, never()).findAll();
     }
 
     @Test
