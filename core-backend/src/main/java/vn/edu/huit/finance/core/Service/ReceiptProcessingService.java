@@ -16,6 +16,7 @@ import vn.edu.huit.finance.core.Dto.OcrCorrectionEvent;
 import vn.edu.huit.finance.core.Dto.OcrCorrectionDiff;
 import vn.edu.huit.finance.core.Document.OcrField;
 import vn.edu.huit.finance.core.Dto.OcrProcessedEvent;
+import vn.edu.huit.finance.core.Entity.NotificationType;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptErrorCode;
 import vn.edu.huit.finance.core.Entity.ReceiptProcessingAttempt;
@@ -36,6 +37,7 @@ import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Service.Realtime.ReceiptWaitingReviewEvent;
 import vn.edu.huit.finance.core.Util.ImageUrls;
+import vn.edu.huit.finance.core.Util.ReceiptReviewMessages;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -127,6 +129,8 @@ public class ReceiptProcessingService {
     private AuditLogService auditLogService;
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private NotificationService notificationService;
 
     /**
      * Builds the receipt of {@code transaction} from the AI's JSON and links both ways. Meant to be called while the
@@ -408,6 +412,7 @@ public class ReceiptProcessingService {
      * after which its owner may retry it or send the right amount through {@link #submitFeedback}. Neither the transaction
      * nor the wallet changes, and neither does any attempt. Rejecting a receipt that is FAILED already changes nothing;
      * one that was withdrawn by its owner (or holds the reserved PROCESSING, which nothing writes) cannot be rejected.
+     * The owner of the receipt is told with a RECEIPT_PROCESSED notification in the same transaction.
      */
     @Transactional
     public void rejectReceipt(Long receiptId) {
@@ -431,6 +436,11 @@ public class ReceiptProcessingService {
         // A receipt without an owner (an old row) belongs to nobody: only the admin summary counts it.
         Transaction carrier = receipt.getTransaction();
         Long ownerId = receipt.ownerId();
+        // The owner of the receipt is told in this transaction; a receipt without an owner has nobody to tell.
+        if (receipt.getOwner() != null) {
+            notificationService.create(receipt.getOwner(), NotificationType.RECEIPT_PROCESSED,
+                    ReceiptReviewMessages.rejected(receipt), carrier != null ? carrier.getId() : null, null, receiptId);
+        }
         eventPublisher.publishEvent(StatisticsChangedEvent.of(StatisticsChange.RECEIPT_STATUS, ownerId));
         if (carrier != null) {
             // The receipt status is part of the transaction's search document: the index reads it again after the commit.

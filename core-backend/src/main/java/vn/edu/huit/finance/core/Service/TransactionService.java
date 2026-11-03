@@ -21,6 +21,7 @@ import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.Category;
+import vn.edu.huit.finance.core.Entity.NotificationType;
 import vn.edu.huit.finance.core.Entity.Receipt;
 import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.Transaction;
@@ -41,6 +42,7 @@ import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
+import vn.edu.huit.finance.core.Util.ReceiptReviewMessages;
 import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.math.BigDecimal;
@@ -144,6 +146,8 @@ public class TransactionService {
     private ReceiptProcessingService receiptProcessingService;
     @Autowired
     private BudgetAlertService budgetAlertService;
+    @Autowired
+    private NotificationService notificationService;
     @Autowired
     private UserStatisticsService userStatisticsService;
     @Autowired
@@ -454,7 +458,8 @@ public class TransactionService {
      * others. The transaction and the receipt are read again once the wallet is locked, so two requests that approve the
      * same receipt at the same time move the wallet once, and approving a receipt again changes nothing. The approval is
      * recorded with the administrator who made it (RECEIPT_APPROVED), and a change of the amount as TRANSACTION_UPDATED of
-     * the transaction it reconciled, both in this transaction.
+     * the transaction it reconciled, both in this transaction. The owner of the receipt is told with a RECEIPT_PROCESSED
+     * notification in the same transaction.
      */
     @Transactional
     public void approveReceipt(Long receiptId) {
@@ -490,6 +495,12 @@ public class TransactionService {
         receiptRepo.save(receipt);
         if (walletChange.signum() != 0) {
             budgetAlertService.notifyAfterUpdate(saved, spendingBefore);
+        }
+        // The owner of the receipt is told in this transaction, so a failed write above leaves no notification. A receipt
+        // without an owner (an old row) has nobody to tell; approving again changes nothing and tells nobody again.
+        if (receipt.getOwner() != null && !ReceiptStatus.APPROVED.matches(previousStatus)) {
+            notificationService.create(receipt.getOwner(), NotificationType.RECEIPT_PROCESSED,
+                    ReceiptReviewMessages.approved(receipt), saved.getId(), null, receiptId);
         }
         eventPublisher.publishEvent(StatisticsChangedEvent.of(walletChange.signum() != 0
                 ? StatisticsChange.TRANSACTION_TOTALS

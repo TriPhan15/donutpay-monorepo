@@ -80,6 +80,8 @@ class AuditTrailIntegrationTest {
     @MockBean private CurrentUserProvider currentUserProvider;
     // The alerts have their own end-to-end test (BudgetAlertRollbackTest).
     @MockBean private BudgetAlertService budgetAlertService;
+    // The notification of a review has its own Mockito tests; here it would only add statements.
+    @MockBean private NotificationService notificationService;
 
     private Long aliceId;
     private Long bobId;
