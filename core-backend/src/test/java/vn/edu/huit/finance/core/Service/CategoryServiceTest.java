@@ -100,6 +100,47 @@ class CategoryServiceTest {
     }
 
     @Test
+    void createCategory_nameAlreadyTaken_isAConflictWithTheNameTakenMessage() {
+        when(categoryRepository.save(any(Category.class))).thenThrow(
+                new DataIntegrityViolationException("could not execute statement", new RuntimeException("Unique index UK_CATEGORIES_OWNER_NAME violated")));
+
+        CategoryNameTakenException conflict = assertThrows(CategoryNameTakenException.class,
+                () -> service.createCategory("Thú cưng", "EXPENSE"));
+
+        assertTrue(conflict.getMessage().contains("Thú cưng"));
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void createCategory_otherIntegrityViolation_isRethrownUnchanged() {
+        DataIntegrityViolationException other = new DataIntegrityViolationException("fk_x");
+        when(categoryRepository.save(any(Category.class))).thenThrow(other);
+
+        assertSame(other, assertThrows(DataIntegrityViolationException.class, () -> service.createCategory("Thú cưng", "EXPENSE")));
+    }
+
+    @Test
+    void renameCategory_nameAlreadyTaken_isAConflictWithTheNameTakenMessage() {
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(category(12L, "Cà phê")));
+        doThrow(new DataIntegrityViolationException("... uk_categories_owner_name ...")).when(categoryRepository).flush();
+
+        CategoryNameTakenException conflict = assertThrows(CategoryNameTakenException.class,
+                () -> service.renameCategory(12L, "Thú cưng"));
+
+        assertTrue(conflict.getMessage().contains("Thú cưng"));
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void renameCategory_otherIntegrityViolation_isRethrownUnchanged() {
+        when(categoryRepository.findById(12L)).thenReturn(Optional.of(category(12L, "Cà phê")));
+        DataIntegrityViolationException other = new DataIntegrityViolationException("fk_x");
+        doThrow(other).when(categoryRepository).flush();
+
+        assertSame(other, assertThrows(DataIntegrityViolationException.class, () -> service.renameCategory(12L, "Thú cưng")));
+    }
+
+    @Test
     void aDeletionIsRecorded_onceTheDatabaseHasAcceptedIt() {
         Category food = category(12L, "Cà phê");
         when(categoryRepository.findById(12L)).thenReturn(Optional.of(food));

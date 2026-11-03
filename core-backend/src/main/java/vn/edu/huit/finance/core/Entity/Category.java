@@ -16,13 +16,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @Audited
 @Entity
 @Table(name = "categories",
-        uniqueConstraints = @UniqueConstraint(name = "uk_categories_owner_name", columnNames = {"owner_key", "name"}),
+        uniqueConstraints = @UniqueConstraint(name = Category.UNIQUE_OWNER_NAME, columnNames = {"owner_key", "name"}),
         indexes = @Index(name = "idx_categories_owner_id", columnList = "owner_id"))
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Category extends BaseEntity {
+
+    /** Name of the database constraint that keeps an owner from having two categories of the same name. */
+    public static final String UNIQUE_OWNER_NAME = "uk_categories_owner_name";
 
     /** Value of {@code owner_key} for a category that belongs to nobody; no user has id 0. */
     public static final long SYSTEM_OWNER_KEY = 0L;
