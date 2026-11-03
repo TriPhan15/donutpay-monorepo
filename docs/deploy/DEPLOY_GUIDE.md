@@ -387,8 +387,9 @@ khoản chi nào) thì ngân sách "Ăn uống" chưa vượt 80% và sẽ khôn
 
 ## Phụ lục: tiền và credit
 
-Máy chạy 24/7 nên bị tính tiền cả khi không ai dùng. Máy 4 GB RAM + ổ đĩa + IP tĩnh tốn khoảng 30–40 USD/tháng: 100 USD
-credit chỉ đủ khoảng 3 tháng (đây là lý do subscription Azure for Students cũ bị khóa). Ổ đĩa và IP tĩnh vẫn tính tiền khi
+Máy chạy 24/7 nên bị tính tiền cả khi không ai dùng. Máy t3.large 8 GB RAM (khuyến nghị ở mục 2) + ổ đĩa 30 GB + IP tĩnh
+tốn khoảng 65–85 USD/tháng theo giá on-demand (tùy vùng): 100 USD credit chỉ đủ hơn 1 tháng. Máy 4 GB RAM (t3.medium) tốn
+khoảng 30–40 USD/tháng, đủ khoảng 3 tháng (đây là lý do subscription Azure for Students cũ bị khóa). Ổ đĩa và IP tĩnh vẫn tính tiền khi
 máy đã tắt; chỉ xóa máy mới dừng hẳn. Ở nhà cung cấp nào cũng đặt **cảnh báo ngân sách** (vd. báo khi đã tiêu 50% credit).
 
 ## Phụ lục A. Oracle Cloud Always Free (máy ARM)
