@@ -349,6 +349,20 @@ void main() {
     expect(find.byType(EditTransactionPage), findsOneWidget);
   });
 
+  testWidgets('a failed delete shows an error dialog and keeps the page', (
+    tester,
+  ) async {
+    backend.on('DELETE', '/api/transactions/5', (_) => jsonResponse(500, {}));
+    await pump(tester, _tx());
+    await tester.tap(find.text('Xóa'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Xóa ngay'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Xóa thất bại, vui lòng thử lại'), findsOneWidget);
+    expect(find.byType(TransactionDetailPage), findsOneWidget);
+  });
+
   testWidgets('Back waits while a delete runs, so its outcome is still shown', (
     tester,
   ) async {

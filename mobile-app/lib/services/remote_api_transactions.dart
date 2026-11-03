@@ -88,15 +88,18 @@ extension RemoteApiTransactions on RemoteApiHelper {
     throw const FormatException('core-backend sent no link for the photo');
   }
 
-  Future<bool> deleteTransaction(String id) async {
-    try {
-      final res = await _dio.delete('/api/transactions/$id');
-      notifyDataChanged();
-
-      return res.data['code'] == 200;
-    } catch (e) {
-      debugPrint("LỖI XÓA GIAO DỊCH: $e");
-      return false;
+  /// Deletes a transaction (DELETE /api/transactions/{id}) and announces the change only once the server confirmed it.
+  /// Throws [DioException] when the request fails or core-backend answers with a code other than 200.
+  Future<void> deleteTransaction(String id) async {
+    final res = await _dio.delete('/api/transactions/$id');
+    final body = res.data;
+    if (body is Map && body['code'] != HttpStatus.ok) {
+      throw DioException.badResponse(
+        statusCode: (body['code'] as int?) ?? HttpStatus.badRequest,
+        requestOptions: res.requestOptions,
+        response: res,
+      );
     }
+    notifyDataChanged();
   }
 }
