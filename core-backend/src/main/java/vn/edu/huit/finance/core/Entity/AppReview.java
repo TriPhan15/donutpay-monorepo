@@ -1,14 +1,16 @@
 package vn.edu.huit.finance.core.Entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "app_reviews")
-@Data
+@Getter
+@Setter
 public class AppReview {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
