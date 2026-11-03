@@ -12,7 +12,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -117,9 +116,6 @@ class AuthControllerLogoutTest {
         alice.setLastActionTime(LocalDateTime.now());
         alice.setCredentialsVersion(CURRENT_VERSION);
         when(userDetailsService.loadApplicationUser(USERNAME)).thenReturn(alice);
-        when(userDetailsService.loadUserByUsername(USERNAME)).thenReturn(
-                new org.springframework.security.core.userdetails.User(
-                        USERNAME, "hash", AuthorityUtils.createAuthorityList("ROLE_USER")));
     }
 
     private void stubValidToken(String token) {
