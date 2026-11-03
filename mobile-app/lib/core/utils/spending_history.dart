@@ -19,7 +19,7 @@ class SpendingHistory {
   static DateTime _endOfToday(DateTime today) =>
       DateTime(today.year, today.month, today.day + 1);
 
-  /// The spending (no income, no savings contribution) from [windowStart] to the end of [today].
+  /// The spending (no income, no savings contribution, no wallet transfer) from [windowStart] to the end of [today].
   static List<TransactionModel> forAnalysis(
     List<TransactionModel> txs,
     DateTime today,
@@ -40,14 +40,17 @@ class SpendingHistory {
   static DateTime adviceWindowStart(DateTime today) =>
       DateTime(today.year, today.month - adviceMonths, 1);
 
-  /// Income and spending, without savings contributions, from [adviceWindowStart] on.
+  /// Income and spending, without savings contributions, goal refunds and wallet transfers, from [adviceWindowStart] on.
   static List<TransactionModel> forBudgetAdvice(
     List<TransactionModel> txs,
     DateTime today,
   ) {
     final start = adviceWindowStart(today);
     return txs
-        .where((t) => !t.isSavingsContribution && !t.date.isBefore(start))
+        .where(
+          (t) =>
+              t.isNormal && !t.isSavingsContribution && !t.date.isBefore(start),
+        )
         .toList();
   }
 }

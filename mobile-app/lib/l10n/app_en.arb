@@ -462,6 +462,14 @@
   "@receiptStatusFailed": {
     "description": "Badge of a receipt that could not be read or was rejected."
   },
+  "transactionSourceGoalRefund": "Savings goal refund",
+  "@transactionSourceGoalRefund": {
+    "description": "Label on a transaction: the money of a deleted savings goal going back to the wallet. It is not income."
+  },
+  "transactionSourceWalletTransfer": "Linked wallet transfer",
+  "@transactionSourceWalletTransfer": {
+    "description": "Label on a transaction: money moved between the wallet of the app and a linked e-wallet. It is neither income nor spending."
+  },
   "budgetPeriodWeek": "Week",
   "@budgetPeriodWeek": {
     "description": "Weekly budget period."

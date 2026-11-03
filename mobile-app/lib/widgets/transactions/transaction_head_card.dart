@@ -38,6 +38,7 @@ class TransactionHeadCard extends StatelessWidget {
     final amount = tx.isExpense
         ? CurrencyHelper.formatVND(-tx.amount, loc)
         : CurrencyHelper.formatVND(tx.amount, loc);
+    final sourceLabel = tx.source.label(loc);
     return Container(
       padding: const EdgeInsets.all(_padding),
       decoration: BoxDecoration(
@@ -74,6 +75,18 @@ class TransactionHeadCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (sourceLabel != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    sourceLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      fontSize: AppTextSize.secondary,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,

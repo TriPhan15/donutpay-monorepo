@@ -133,6 +133,48 @@ void main() {
   );
 
   testWidgets(
+    'the totals of the period leave out a goal refund and a wallet transfer, which the list still shows',
+    (tester) async {
+      Map<String, Object?> row(
+        int id,
+        num amount,
+        bool isExpense,
+        String source,
+      ) => {
+        'id': id,
+        'title': 'Khoản $id',
+        'amount': amount,
+        'date': now.toIso8601String(),
+        'category': isExpense ? 'Ăn uống' : 'Thu nhập',
+        'isExpense': isExpense,
+        'source': source,
+      };
+      backend.on(
+        'GET',
+        _mine,
+        (_) => okResponse([
+          row(1, 1000000, false, 'NORMAL'),
+          row(2, 200000, true, 'NORMAL'),
+          row(3, 500000, false, 'GOAL_REFUND'),
+          row(4, 5000000, false, 'WALLET_TRANSFER'),
+          row(5, 3000000, true, 'WALLET_TRANSFER'),
+        ]),
+      );
+
+      await pumpLedger(tester);
+      // The amounts are hidden when the tab opens: the eye shows them.
+      await tester.tap(find.byIcon(Icons.visibility_off_rounded).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Thu 1 tr'), findsOneWidget);
+      expect(find.text('Chi 200k'), findsOneWidget);
+      expect(find.text('Còn 800k'), findsOneWidget);
+      expect(find.text('Khoản 3'), findsOneWidget);
+      expect(find.text('Khoản 5'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'tapping the period label opens the date sheet and jumps to the picked month',
     (tester) async {
       await pumpLedger(tester);

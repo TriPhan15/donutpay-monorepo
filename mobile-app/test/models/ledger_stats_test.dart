@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/models/ledger_stats.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
 TransactionModel _tx(
   double amount,
@@ -10,12 +11,14 @@ TransactionModel _tx(
   bool isExpense = true,
   String category = 'Ăn uống',
   String title = 'x',
+  TransactionSource source = TransactionSource.normal,
 }) => TransactionModel(
   title: title,
   amount: amount,
   date: date,
   category: category,
   isExpense: isExpense,
+  source: source,
 );
 
 void main() {
@@ -37,6 +40,54 @@ void main() {
       expect(totals[DateTime(2026, 10, 19)]!.income, 18500000);
       expect(totals[DateTime(2026, 10, 19)]!.expense, 0);
       expect(totals.containsKey(DateTime(2026, 10, 18)), isFalse);
+    },
+  );
+
+  test(
+    'a goal refund and a wallet transfer are neither income nor spending in any total',
+    () {
+      final day = DateTime(2026, 10, 19, 9);
+      final txs = [
+        _tx(18500000, day, isExpense: false, category: 'Lương'),
+        _tx(
+          700000,
+          day,
+          isExpense: false,
+          category: TransactionCategories.savings,
+          source: TransactionSource.goalRefund,
+        ),
+        _tx(
+          5000000,
+          day,
+          isExpense: false,
+          category: 'Nạp ví điện tử',
+          source: TransactionSource.walletTransfer,
+        ),
+        _tx(
+          3000000,
+          day,
+          category: 'Rút ví điện tử',
+          source: TransactionSource.walletTransfer,
+        ),
+        _tx(55000, day),
+      ];
+
+      final totals = LedgerStats.byDay(txs)[DateTime(2026, 10, 19)]!;
+      expect(totals.income, 18500000);
+      expect(totals.expense, 55000);
+
+      final group = LedgerStats.groupByDay(txs).single;
+      expect(group.income, 18500000);
+      expect(group.expense, 55000);
+      // The rows are still listed: the wallet did move.
+      expect(group.transactions, hasLength(5));
+
+      final month = LedgerStats.chartBuckets(LedgerPeriod.month, day, txs).last;
+      expect(month.income, 18500000);
+      expect(month.expense, 55000);
+
+      final shares = LedgerStats.categoryShares(txs);
+      expect(shares.map((s) => s.category), ['Ăn uống']);
     },
   );
 

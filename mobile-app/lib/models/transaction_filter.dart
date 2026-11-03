@@ -39,8 +39,9 @@ class TransactionFilter {
 
   bool _matchesType(TransactionModel tx) => switch (type) {
     TransactionTypeFilter.all => true,
-    TransactionTypeFilter.expense => tx.isExpense,
-    TransactionTypeFilter.income => !tx.isExpense,
+    // A refund and a transfer to a linked wallet are in neither: they are listed under "all" only.
+    TransactionTypeFilter.expense => tx.isExpense && tx.isNormal,
+    TransactionTypeFilter.income => tx.countsAsIncome,
   };
 
   bool _matchesRange(TransactionModel tx) => switch (range) {

@@ -3,7 +3,8 @@ import 'package:finance_ai_app/models/transaction_model.dart';
 /// The length of the period the statistics tab shows.
 enum LedgerPeriod { week, month, year }
 
-/// Income and spending of one day. Spending leaves out money moved into savings, as every spending total does.
+/// Income and spending of one day. Spending leaves out money moved into savings, and neither counts a refund or a
+/// transfer to a linked wallet, as every total does.
 class DayTotals {
   final double income;
   final double expense;
@@ -72,7 +73,7 @@ abstract final class LedgerStats {
   static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
 
   static double _income(Iterable<TransactionModel> txs) =>
-      txs.where((t) => !t.isExpense).fold(0.0, (s, t) => s + t.amount);
+      txs.where((t) => t.countsAsIncome).fold(0.0, (s, t) => s + t.amount);
 
   static double _spending(Iterable<TransactionModel> txs) =>
       txs.where((t) => t.countsAsSpending).fold(0.0, (s, t) => s + t.amount);

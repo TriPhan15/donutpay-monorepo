@@ -132,7 +132,7 @@ class SpendingHighlights {
     final comparableDay = math.min(day.day, lastMonthLength);
 
     final income = transactions
-        .where((t) => !t.isExpense && inMonth(t, day))
+        .where((t) => t.countsAsIncome && inMonth(t, day))
         .fold(0.0, (s, t) => s + t.amount);
 
     return SpendingHighlights(

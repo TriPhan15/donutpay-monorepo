@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/models/receipt_status.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
 class TransactionModel {
   /// Columns of the local `transactions` table that only exist for the sync state (see SqfliteHelper).
@@ -61,6 +62,10 @@ class TransactionModel {
   /// transaction in the outbox, so every send of it (the first one and any resend) carries it.
   final bool allowDuplicate;
 
+  /// Where the transaction comes from. Only what the server sends can be anything but [TransactionSource.normal]: the
+  /// local table holds the transactions this device made and has not sent yet, all normal, so it has no column for it.
+  final TransactionSource source;
+
   TransactionModel({
     this.id,
     required this.title,
@@ -76,6 +81,7 @@ class TransactionModel {
     this.clientId,
     this.syncStatus = SyncStatus.synced,
     this.allowDuplicate = false,
+    this.source = TransactionSource.normal,
   });
 
   /// A new transaction of the user, not stored anywhere yet: it gets its [clientId] here, once, so every send of it
@@ -112,8 +118,15 @@ class TransactionModel {
   bool get isSavingsContribution =>
       isExpense && TransactionCategories.isSavings(category);
 
-  /// True when this counts in "spending" totals: an expense that is not a savings contribution.
-  bool get countsAsSpending => isExpense && !isSavingsContribution;
+  /// True when the user made this transaction, as opposed to the refund of a savings goal or a transfer to or from a
+  /// linked wallet: those change the balance of the wallet but are neither income nor spending.
+  bool get isNormal => source == TransactionSource.normal;
+
+  /// True when this counts in "income" totals: an income of the user, not a refund or a transfer.
+  bool get countsAsIncome => !isExpense && isNormal;
+
+  /// True when this counts in "spending" totals: an expense of the user that is not a savings contribution.
+  bool get countsAsSpending => isExpense && isNormal && !isSavingsContribution;
 
   /// True while the server has not confirmed the transaction: it is waiting to be sent, or its last send failed.
   bool get isUnsynced => syncStatus != SyncStatus.synced;
@@ -141,6 +154,7 @@ class TransactionModel {
       clientId: clientId,
       syncStatus: syncStatus ?? this.syncStatus,
       allowDuplicate: allowDuplicate ?? this.allowDuplicate,
+      source: source,
     );
   }
 
@@ -202,6 +216,7 @@ class TransactionModel {
       imageUrl: json['imageUrl']?.toString(),
       receiptStatus: ReceiptStatus.fromServer(json['receiptStatus']),
       clientId: json['clientId']?.toString(),
+      source: TransactionSource.fromServer(json['source']),
     );
   }
 

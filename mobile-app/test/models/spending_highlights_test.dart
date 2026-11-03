@@ -3,18 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/models/spending_highlights.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
 TransactionModel _tx(
   DateTime date,
   double amount, {
   String category = TransactionCategories.food,
   bool isExpense = true,
+  TransactionSource source = TransactionSource.normal,
 }) => TransactionModel(
   title: category,
   amount: amount,
   date: date,
   category: category,
   isExpense: isExpense,
+  source: source,
 );
 
 TransactionModel _income(DateTime date, double amount) =>
@@ -155,6 +158,37 @@ void main() {
       expect(h.tip.kind, SavingTipKind.surplus);
       expect(h.tip.amount, 500);
       expect(h.tip.tone, HighlightTone.good);
+    });
+
+    test('a goal refund or a wallet transfer is no part of the surplus', () {
+      final h = _of([
+        _income(DateTime(2026, 10, 1), 1000),
+        _tx(DateTime(2026, 10, 3), 300),
+        _tx(
+          DateTime(2026, 10, 4),
+          9000,
+          category: TransactionCategories.savings,
+          isExpense: false,
+          source: TransactionSource.goalRefund,
+        ),
+        _tx(
+          DateTime(2026, 10, 5),
+          5000,
+          category: 'Nạp ví điện tử',
+          isExpense: false,
+          source: TransactionSource.walletTransfer,
+        ),
+        _tx(
+          DateTime(2026, 10, 6),
+          4000,
+          category: 'Rút ví điện tử',
+          source: TransactionSource.walletTransfer,
+        ),
+      ]);
+
+      expect(h.tip.kind, SavingTipKind.surplus);
+      expect(h.tip.amount, 700);
+      expect(h.trend.thisMonth, 300);
     });
 
     test('without a goal and nothing left, add a goal', () {

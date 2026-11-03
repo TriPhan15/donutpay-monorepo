@@ -2,18 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finance_ai_app/models/transaction_filter.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
+import 'package:finance_ai_app/models/transaction_source.dart';
 
 TransactionModel _tx(
   double amount, {
   bool isExpense = true,
   DateTime? date,
   String title = 'x',
+  TransactionSource source = TransactionSource.normal,
 }) => TransactionModel(
   title: title,
   amount: amount,
   date: date ?? DateTime(2026, 10, 20),
   category: 'Ăn uống',
   isExpense: isExpense,
+  source: source,
 );
 
 void main() {
@@ -32,6 +35,45 @@ void main() {
       [20],
     );
     expect(TransactionFilter.none.apply(txs), hasLength(2));
+  });
+
+  test(
+    'the refund of a savings goal is not listed under Thu, only under all',
+    () {
+      final txs = [
+        _tx(10, isExpense: false),
+        _tx(20, isExpense: false, source: TransactionSource.goalRefund),
+      ];
+      expect(
+        const TransactionFilter(
+          type: TransactionTypeFilter.income,
+        ).apply(txs).map((t) => t.amount),
+        [10],
+      );
+      expect(TransactionFilter.none.apply(txs), hasLength(2));
+    },
+  );
+
+  test('a wallet transfer is listed under neither Thu nor Chi', () {
+    final txs = [
+      _tx(10),
+      _tx(20, isExpense: false),
+      _tx(30, source: TransactionSource.walletTransfer),
+      _tx(40, isExpense: false, source: TransactionSource.walletTransfer),
+    ];
+    expect(
+      const TransactionFilter(
+        type: TransactionTypeFilter.expense,
+      ).apply(txs).map((t) => t.amount),
+      [10],
+    );
+    expect(
+      const TransactionFilter(
+        type: TransactionTypeFilter.income,
+      ).apply(txs).map((t) => t.amount),
+      [20],
+    );
+    expect(TransactionFilter.none.apply(txs), hasLength(4));
   });
 
   test('amount ranges meet at 100k and 500k without overlap', () {

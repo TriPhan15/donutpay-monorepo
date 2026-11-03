@@ -34,6 +34,7 @@ Map<String, Object?> _tx(
   num amount, {
   required int id,
   bool isExpense = true,
+  String? source,
 }) => {
   'id': id,
   'title': 'Giao dịch $id',
@@ -41,6 +42,7 @@ Map<String, Object?> _tx(
   'date': DateTime.now().toIso8601String(),
   'category': 'Ăn uống',
   'isExpense': isExpense,
+  'source': ?source,
 };
 
 Map<String, Object?> _monthlyBudget(num amount) {
@@ -185,6 +187,24 @@ void main() {
     expect(find.text('Thu 1 tr'), findsOneWidget);
     expect(find.text('Chi 200k'), findsOneWidget);
   });
+
+  testWidgets(
+    'the month totals leave out the refund of a savings goal and the transfers of a linked wallet',
+    (tester) async {
+      transactions = [
+        _tx(1000000, id: 1, isExpense: false),
+        _tx(200000, id: 2),
+        _tx(500000, id: 3, isExpense: false, source: 'GOAL_REFUND'),
+        _tx(5000000, id: 4, isExpense: false, source: 'WALLET_TRANSFER'),
+        _tx(3000000, id: 5, source: 'WALLET_TRANSFER'),
+      ];
+
+      await pump(tester, _tabs());
+
+      expect(find.text('Thu 1 tr'), findsOneWidget);
+      expect(find.text('Chi 200k'), findsOneWidget);
+    },
+  );
 
   testWidgets('no pending note when nothing waits on the device', (
     tester,

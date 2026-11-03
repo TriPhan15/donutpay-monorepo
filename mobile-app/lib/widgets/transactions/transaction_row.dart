@@ -50,6 +50,7 @@ class TransactionRow extends StatelessWidget {
     final amount = tx.isExpense
         ? CurrencyHelper.formatVND(-tx.amount, loc)
         : CurrencyHelper.formatVND(tx.amount, loc);
+    final sourceLabel = tx.source.label(loc);
 
     return InkWell(
       onTap: onTap,
@@ -95,6 +96,19 @@ class TransactionRow extends StatelessWidget {
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: AppTextSize.secondary,
+                      ),
+                    ),
+                  ],
+                  if (sourceLabel != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      sourceLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: AppTextSize.secondary,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
                   ],

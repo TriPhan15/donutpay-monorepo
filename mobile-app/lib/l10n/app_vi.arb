@@ -107,6 +107,8 @@
   "receiptStatusProcessing": "Đang xử lý",
   "receiptStatusSuccess": "Hoàn tất",
   "receiptStatusFailed": "Lỗi · cần xác nhận lại",
+  "transactionSourceGoalRefund": "Hoàn tiền mục tiêu tiết kiệm",
+  "transactionSourceWalletTransfer": "Chuyển ví liên kết",
   "budgetPeriodWeek": "Tuần",
   "budgetPeriodMonth": "Tháng",
   "budgetAllCategories": "Tất cả danh mục",
