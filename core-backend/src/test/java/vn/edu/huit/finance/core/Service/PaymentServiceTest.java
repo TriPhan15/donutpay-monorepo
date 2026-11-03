@@ -12,6 +12,8 @@ import vn.edu.huit.finance.core.Dto.CreatePaymentRequestDto;
 import vn.edu.huit.finance.core.Dto.PaymentWebhookDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Entity.*;
+import vn.edu.huit.finance.core.Exception.PaymentOrderAccessDeniedException;
+import vn.edu.huit.finance.core.Exception.PaymentOrderNotFoundException;
 import vn.edu.huit.finance.core.Exception.PaymentWebhookRejectedException;
 import vn.edu.huit.finance.core.Repository.PaymentOrderRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
@@ -327,7 +329,7 @@ class PaymentServiceTest {
     @Test
     void cancel_pending_setsCancelled() {
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
-        when(orderRepo.findByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
         Map<String, Object> data = service.cancel("PAY123", USER_ID);
         assertEquals("CANCELLED", data.get("status"));
         AuditEntry entry = recorded();
@@ -340,9 +342,40 @@ class PaymentServiceTest {
     void cancel_nonPending_unchanged() {
         PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
         order.setStatus(PaymentStatus.SUCCESS);
-        when(orderRepo.findByOrderCode("PAY123")).thenReturn(Optional.of(order));
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
         Map<String, Object> data = service.cancel("PAY123", USER_ID);
         assertEquals("SUCCESS", data.get("status"));
+        verify(orderRepo, never()).save(any());
         verifyNoInteractions(auditLogService); // nothing changed, nothing recorded
+    }
+
+    @Test
+    void cancel_readsTheOrderUnderALock() {
+        PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
+
+        service.cancel("PAY123", USER_ID);
+
+        verify(orderRepo).findLockedByOrderCode("PAY123");
+        verify(orderRepo, never()).findByOrderCode(any());
+    }
+
+    @Test
+    void cancel_wrongUser_throwsAccessDenied_andChangesNothing() {
+        PaymentOrder order = pendingOrder(PaymentType.DEPOSIT, "50000");
+        when(orderRepo.findLockedByOrderCode("PAY123")).thenReturn(Optional.of(order));
+
+        assertThrows(PaymentOrderAccessDeniedException.class, () -> service.cancel("PAY123", 999L));
+
+        assertEquals(PaymentStatus.PENDING, order.getStatus());
+        verify(orderRepo, never()).save(any());
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    void cancel_unknownOrder_throwsNotFound() {
+        when(orderRepo.findLockedByOrderCode("NOPE")).thenReturn(Optional.empty());
+
+        assertThrows(PaymentOrderNotFoundException.class, () -> service.cancel("NOPE", USER_ID));
     }
 }
