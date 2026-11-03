@@ -8,7 +8,6 @@ import 'package:finance_ai_app/models/budget_model.dart';
 import 'package:finance_ai_app/models/budget_progress.dart';
 import 'package:finance_ai_app/models/ledger_stats.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
-import 'package:finance_ai_app/models/transaction_source.dart';
 
 /// The Excel report of one month: the file's bytes and the texts that go with it.
 class LedgerExcelFile {
@@ -89,7 +88,8 @@ abstract final class LedgerExcelBuilder {
     for (final tx in transactions) {
       final amount = DoubleCellValue(tx.amount);
       final none = TextCellValue('');
-      final counted = tx.source == TransactionSource.normal;
+      // Same rule as LedgerStats.totals, so each column adds up to its total.
+      final counted = tx.countsAsSpending || tx.countsAsIncome;
       sheet.appendRow([
         TextCellValue(AppDateFormat.date.format(tx.date)),
         TextCellValue(

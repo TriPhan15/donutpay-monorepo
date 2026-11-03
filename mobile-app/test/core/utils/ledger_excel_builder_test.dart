@@ -99,7 +99,7 @@ void main() {
       final rows = _rows(file);
       expect(rows[1], ['01/10/2026', 'Ăn uống', 45000.0]);
       expect(rows[3], ['05/10/2026', 'Thu nhập', '', 1000000.0]);
-      expect(rows[4], ['06/10/2026', loc.categorySavings, 200000.0]);
+      expect(rows[4], ['06/10/2026', loc.categorySavings, '', '', 200000.0]);
       expect(rows.where((r) => r.first == loc.ledgerExcelTotal), [
         [loc.ledgerExcelTotal, '', 100000.0, 1000000.0],
       ]);
@@ -158,6 +158,27 @@ void main() {
       expect(total, [loc.ledgerExcelTotal, '', 100000.0, 300000.0]);
       expect(column(2), 100000.0);
       expect(column(3), 300000.0);
+    },
+  );
+
+  test(
+    'a savings contribution sits in the not-counted column, so the spending column adds up to its total',
+    () {
+      final file = build(
+        transactions: [
+          _tx(100000, DateTime(2026, 10, 1, 9)),
+          _tx(
+            200000,
+            DateTime(2026, 10, 2, 9),
+            category: TransactionCategories.savings,
+          ),
+        ],
+      );
+
+      final rows = _rows(file);
+      expect(rows[2], ['02/10/2026', loc.categorySavings, '', '', 200000.0]);
+      final total = rows.firstWhere((r) => r.first == loc.ledgerExcelTotal);
+      expect(total, [loc.ledgerExcelTotal, '', 100000.0, 0.0]);
     },
   );
 
