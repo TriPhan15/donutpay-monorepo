@@ -3,6 +3,7 @@ package vn.edu.huit.finance.core.Controller;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.envers.AuditReader;
 import org.hibernate.envers.AuditReaderFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -35,7 +36,7 @@ import vn.edu.huit.finance.core.Service.AdminStatisticsService;
 import vn.edu.huit.finance.core.Service.AppReviewService;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
 import vn.edu.huit.finance.core.Service.AuditLogQueryService;
-import vn.edu.huit.finance.core.Service.BackupService;
+import vn.edu.huit.finance.core.Service.Backup.ScheduledBackupService;
 import vn.edu.huit.finance.core.Service.Cache.SpendingLeaderboardService;
 import vn.edu.huit.finance.core.Service.CategoryService;
 import vn.edu.huit.finance.core.Service.CustomerSegmentationService;
@@ -86,7 +87,7 @@ public class AdminController {
     @Autowired private CustomerSegmentationService customerSegmentationService;
     @Autowired private AdminStatisticsService adminStatisticsService;
     @Autowired private ReceiptProcessingService receiptProcessingService;
-    @Autowired private BackupService backupService;
+    @Autowired private ObjectProvider<ScheduledBackupService> scheduledBackupService;
     @Autowired private UserService userService;
     @Autowired private TransactionService transactionService;
     @Autowired private SubscriptionPlanService subscriptionPlanService;
@@ -285,7 +286,7 @@ public class AdminController {
             return response;
         }
 
-        boolean isSuccess = backupService.backupDatabase(backupType.get());
+        boolean isSuccess = scheduledBackupService.getObject().backupNow(backupType.get());
 
         response.put("success", isSuccess);
         response.put("message", isSuccess
@@ -300,7 +301,7 @@ public class AdminController {
     public Map<String, Object> executeRestore() {
         Map<String, Object> response = new HashMap<>();
 
-        boolean isSuccess = backupService.restoreLatestFull();
+        boolean isSuccess = scheduledBackupService.getObject().restoreLatestFullNow();
 
         response.put("success", isSuccess);
         response.put("message", isSuccess ? MSG_RESTORE_SUCCESS : MSG_RESTORE_FAILED);

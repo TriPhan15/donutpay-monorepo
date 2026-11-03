@@ -17,6 +17,7 @@ import vn.edu.huit.finance.core.Entity.BackupFailure;
 import vn.edu.huit.finance.core.Entity.BackupOrigin;
 import vn.edu.huit.finance.core.Entity.BackupType;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.BackupInProgressException;
 import vn.edu.huit.finance.core.Repository.Mongo.BackupRunRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.Roles;
@@ -36,10 +37,13 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -478,5 +482,85 @@ class ScheduledBackupServiceTest {
 
         assertTrue(status.hasRun());
         assertTrue(status.success());
+    }
+
+    // ---------------------------------------------------------------------------- manual runs share the lock
+
+    /** Holds the lock the way a running scheduled backup does, until the returned latch is released. */
+    private CountDownLatch holdTheLockInAScheduledRun() throws InterruptedException {
+        CountDownLatch inside = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        when(backupService.createBackup(BackupType.FULL, BackupOrigin.SCHEDULED)).thenAnswer(invocation -> {
+            inside.countDown();
+            release.await(10, TimeUnit.SECONDS);
+            return Optional.empty();
+        });
+        Thread holder = new Thread(service::runScheduledBackup);
+        holder.setDaemon(true);
+        holder.start();
+        assertTrue(inside.await(10, TimeUnit.SECONDS));
+        return release;
+    }
+
+    @Test
+    void aManualBackupWhileTheScheduledOneRunsIsRefusedAndNothingIsDumped() throws InterruptedException {
+        CountDownLatch release = holdTheLockInAScheduledRun();
+        try {
+            assertThrows(BackupInProgressException.class, () -> service.backupNow(BackupType.FULL));
+            verify(backupService, never()).backupDatabase(any());
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void aManualRestoreWhileTheScheduledOneRunsIsRefusedAndNothingIsRestored() throws InterruptedException {
+        CountDownLatch release = holdTheLockInAScheduledRun();
+        try {
+            assertThrows(BackupInProgressException.class, () -> service.restoreLatestFullNow());
+            verify(backupService, never()).restoreLatestFull();
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    void aManualBackupOnAFreeLockRunsOnceAndReturnsItsResult() {
+        when(backupService.backupDatabase(BackupType.SCHEMA_ONLY)).thenReturn(true);
+
+        assertTrue(service.backupNow(BackupType.SCHEMA_ONLY));
+
+        verify(backupService, times(1)).backupDatabase(BackupType.SCHEMA_ONLY);
+    }
+
+    @Test
+    void aManualRestoreOnAFreeLockRunsOnceAndReturnsItsResult() {
+        when(backupService.restoreLatestFull()).thenReturn(false);
+
+        assertFalse(service.restoreLatestFullNow());
+
+        verify(backupService, times(1)).restoreLatestFull();
+    }
+
+    @Test
+    void theLockIsReleasedWhenTheManualBackupThrows() {
+        when(backupService.backupDatabase(BackupType.FULL)).thenThrow(new IllegalStateException("pg_dump"));
+        when(backupService.createBackup(BackupType.FULL, BackupOrigin.SCHEDULED)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> service.backupNow(BackupType.FULL));
+        service.runScheduledBackup();
+
+        verify(backupService).createBackup(BackupType.FULL, BackupOrigin.SCHEDULED);
+    }
+
+    @Test
+    void theLockIsReleasedWhenTheManualRestoreThrows() {
+        when(backupService.restoreLatestFull()).thenThrow(new IllegalStateException("pg_restore"));
+        when(backupService.createBackup(BackupType.FULL, BackupOrigin.SCHEDULED)).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> service.restoreLatestFullNow());
+        service.runScheduledBackup();
+
+        verify(backupService).createBackup(BackupType.FULL, BackupOrigin.SCHEDULED);
     }
 }
