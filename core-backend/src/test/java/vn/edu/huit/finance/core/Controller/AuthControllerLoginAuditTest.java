@@ -18,6 +18,7 @@ import vn.edu.huit.finance.core.Config.SecurityConfig;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.GlobalExceptionHandler;
+import vn.edu.huit.finance.core.Exception.SocialLoginRejectedException;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Security.AuthPaths;
 import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
@@ -164,7 +165,7 @@ class AuthControllerLoginAuditTest {
     @Test
     void aRefusedSocialSignInIsRecordedWithoutAnyIdentity_andAProviderNameTheServerDoesNotKnowIsNotRepeated()
             throws Exception {
-        when(socialAuthService.authenticate(any(), any())).thenThrow(new RuntimeException("Provider không hỗ trợ"));
+        when(socialAuthService.authenticate(any(), any())).thenThrow(new SocialLoginRejectedException());
 
         mockMvc.perform(socialLogin("<script>evil</script>")).andExpect(status().isUnauthorized());
 
@@ -173,5 +174,28 @@ class AuthControllerLoginAuditTest {
         assertEquals(AuditActor.unauthenticated(null), row.actor());
         assertEquals("Đăng nhập qua nhà cung cấp không hỗ trợ thất bại", row.description());
         assertNoSecretIn(row, PROVIDER_TOKEN, "script");
+    }
+
+    @Test
+    void aSocialSignInOfADeactivatedAccountIsRefusedWith403AndRecordedWithTheAccount() throws Exception {
+        alice.setActive(false);
+        when(socialAuthService.authenticate("Google", PROVIDER_TOKEN)).thenReturn(alice);
+
+        mockMvc.perform(socialLogin("Google")).andExpect(status().isForbidden());
+
+        AuditEntry row = theOnlyRow();
+        assertEquals(AuditAction.AUTH_LOGIN_FAILED, row.action());
+        assertEquals(AuditActor.of(alice), row.actor());
+        assertEquals(1L, row.targetId());
+        assertNoSecretIn(row, PROVIDER_TOKEN);
+    }
+
+    @Test
+    void aFailureOfTheServerDuringASocialSignInIsAnswered500ByTheGlobalHandler_notAs401() throws Exception {
+        when(socialAuthService.authenticate(any(), any())).thenThrow(new IllegalStateException("database down"));
+
+        mockMvc.perform(socialLogin("Google")).andExpect(status().isInternalServerError());
+
+        assertEquals(0, events.stream(SecurityAuditEvent.class).count());
     }
 }
