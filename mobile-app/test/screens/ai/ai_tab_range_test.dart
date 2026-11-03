@@ -58,16 +58,30 @@ DateTime _at(int year, int month, int day) => DateTime(year, month, day, 12);
 /// Today: in this week and in this month.
 final DateTime _today = _at(_now.year, _now.month, _now.day);
 
-/// A day of this month outside this Monday-to-Sunday week: the 1st when the week starts after it, else the last day.
-final DateTime _monthOnlyDay = () {
+/// A day (12:00) of the month of [now] outside the Monday-to-Sunday week of [now] and not after [now], which is the
+/// 1st when the week starts after it. The charts draw only up to today, so a later day (the last of the month) could
+/// never show a point: when the week holds the 1st there is no such day and the result is null.
+DateTime? monthOnlyDayFor(DateTime now) {
   final monday = DateTime(
-    _now.year,
-    _now.month,
-    _now.day - (_now.weekday - DateTime.monday),
+    now.year,
+    now.month,
+    now.day - (now.weekday - DateTime.monday),
   );
-  final first = _at(_now.year, _now.month, 1);
-  return first.isBefore(monday) ? first : _at(_now.year, _now.month + 1, 0);
-}();
+  final first = _at(now.year, now.month, 1);
+  return first.isBefore(monday) ? first : null;
+}
+
+/// Null on the days when the week of today holds the 1st of the month: the tests then expect today's points only.
+final DateTime? _monthOnlyDay = monthOnlyDayFor(_now);
+
+/// The expenses the fake backend holds on the month-only day (none when there is no such day), as the page sends them.
+final List<num> _sentAmounts = [1000, if (_monthOnlyDay != null) 2000, 4000];
+
+/// The expenses of the month by day: today's, and the month-only day's when there is one.
+final Map<DateTime, double> _monthExpenses = {
+  _today: 1000,
+  ?_monthOnlyDay: 2000,
+};
 
 /// A day of last month: outside this week and this month.
 final DateTime _lastMonthDay = _at(_now.year, _now.month - 1, 15);
@@ -183,6 +197,38 @@ List<num> _amountsSent(RequestOptions request) {
 }
 
 void main() {
+  group('monthOnlyDayFor', () {
+    test('is null when the week of now holds the 1st (Sunday the 1st)', () {
+      expect(monthOnlyDayFor(DateTime(2026, 11, 1)), isNull);
+    });
+
+    test('is the 1st once the week starts after it', () {
+      expect(monthOnlyDayFor(DateTime(2026, 11, 2)), _at(2026, 11, 1));
+      expect(monthOnlyDayFor(DateTime(2026, 11, 15)), _at(2026, 11, 1));
+      expect(monthOnlyDayFor(DateTime(2026, 11, 30)), _at(2026, 11, 1));
+    });
+
+    test('holds for every day of 2026', () {
+      for (
+        var day = DateTime(2026);
+        day.year == 2026;
+        day = DateTime(day.year, day.month, day.day + 1)
+      ) {
+        final result = monthOnlyDayFor(day);
+        if (result == null) continue;
+        final monday = DateTime(
+          day.year,
+          day.month,
+          day.day - (day.weekday - 1),
+        );
+        expect(result.month, day.month, reason: '$day');
+        expect(result.year, day.year, reason: '$day');
+        expect(result.isBefore(monday), isTrue, reason: '$day');
+        expect(result.isAfter(day), isFalse, reason: '$day');
+      }
+    });
+  });
+
   final backend = FakeBackend();
   var transactions = <Map<String, Object?>>[];
   var patterns = <Map<String, Object?>>[];
@@ -205,7 +251,7 @@ void main() {
     backend.reset();
     transactions = [
       _tx(1, _today, amount: 1000),
-      _tx(2, _monthOnlyDay, amount: 2000),
+      if (_monthOnlyDay case final day?) _tx(2, day, amount: 2000),
       _tx(3, _lastMonthDay, amount: 4000),
       _tx(4, _today, amount: 9000, category: 'Thu nhập', isExpense: false),
     ];
@@ -244,7 +290,7 @@ void main() {
         expect(_selectedOption(tester), _monthLabel);
         expect(analyses(), hasLength(1));
         // Last month is inside the 26 weeks; the income never is.
-        expect(_amountsSent(analyses().single), [1000, 2000, 4000]);
+        expect(_amountsSent(analyses().single), _sentAmounts);
         expect(find.text(_foodThenTransportShown), findsOneWidget);
         expect(find.text(SpendingRange.month(_now).label), findsOneWidget);
       },
@@ -271,10 +317,7 @@ void main() {
       (tester) async {
         await pumpPage(tester);
 
-        expect(
-          _points(tester),
-          _monthPoints({_today: 1000, _monthOnlyDay: 2000}),
-        );
+        expect(_points(tester), _monthPoints(_monthExpenses));
         expect(
           _chart(tester).maxX,
           DateTime(_now.year, _now.month + 1, 0).day - 1,
@@ -344,10 +387,7 @@ void main() {
 
         expect(_selectedOption(tester), _monthLabel);
         expect(analyses(), hasLength(1));
-        expect(
-          _points(tester),
-          _monthPoints({_today: 1000, _monthOnlyDay: 2000}),
-        );
+        expect(_points(tester), _monthPoints(_monthExpenses));
       },
     );
 
@@ -376,10 +416,8 @@ void main() {
       (tester) async {
         await pumpPage(tester);
         final weeks = List.filled(4, 0.0);
-        for (final (day, amount) in [
-          (_today, 1000.0),
-          (_monthOnlyDay, 2000.0),
-        ]) {
+        for (final MapEntry(key: day, value: amount)
+            in _monthExpenses.entries) {
           weeks[math.min((day.day - 1) ~/ 7, 3)] += amount;
         }
         var best = 0;
@@ -406,7 +444,7 @@ void main() {
 
       expect(_selectedOption(tester), _weekLabel);
       expect(analyses(), hasLength(2));
-      expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
+      expect(_amountsSent(analyses().last), _sentAmounts);
     });
   });
 
@@ -540,7 +578,7 @@ void main() {
       await _tapRefresh(tester);
 
       expect(analyses(), hasLength(2));
-      expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
+      expect(_amountsSent(analyses().last), _sentAmounts);
       expect(find.text(_billsThenShoppingShown), findsOneWidget);
       expect(find.text(_foodThenTransportShown), findsNothing);
     });
@@ -553,7 +591,7 @@ void main() {
 
       expect(_selectedOption(tester), _weekLabel);
       expect(analyses(), hasLength(2));
-      expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
+      expect(_amountsSent(analyses().last), _sentAmounts);
     });
 
     testWidgets(
@@ -619,17 +657,14 @@ void main() {
         await _pumpFrames(tester);
         RemoteApiHelper.instance.dataChangedNotifier.value++;
         await tester.pumpAndSettle();
-        expect(_amountsSent(analyses().last), [1000, 2000, 4000]);
+        expect(_amountsSent(analyses().last), _sentAmounts);
         final analysesBefore = analyses().length;
 
         oldList.complete(okResponse(staleTransactions));
         await tester.pumpAndSettle();
 
         expect(analyses(), hasLength(analysesBefore));
-        expect(
-          _points(tester),
-          _monthPoints({_today: 1000, _monthOnlyDay: 2000}),
-        );
+        expect(_points(tester), _monthPoints(_monthExpenses));
       },
     );
 
