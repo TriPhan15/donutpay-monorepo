@@ -183,7 +183,9 @@ class _AITabPageState extends State<AITabPage> {
         _transactions = txs;
         _transactionsLoaded = true;
       }
-      if (goals != null) _savingsGoals = goals;
+      if (goals != null) {
+        _savingsGoals = [for (final goal in goals) goal.json];
+      }
       _loadError = transactionsResult.error ?? goalsResult.error;
       _isLoading = false;
     });

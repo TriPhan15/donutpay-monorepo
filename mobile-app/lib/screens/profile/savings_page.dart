@@ -76,7 +76,7 @@ class _SavingsPageState extends State<SavingsPage> {
       final goals = await RemoteApiHelper.instance.fetchSavings();
       if (!mounted || request != _request) return;
       setState(() {
-        _goals = [for (final g in goals) SavingsGoal.fromJson(g)];
+        _goals = goals;
         _isLoading = false;
       });
     } catch (e) {
@@ -149,11 +149,11 @@ class _SavingsPageState extends State<SavingsPage> {
   }
 
   void _create() => _openForm(
-    save: (title, target, deadline) => RemoteApiHelper.instance.addSaving({
-      'title': title,
-      'target': target,
-      'deadline': ?deadline,
-    }),
+    save: (title, target, deadline) => RemoteApiHelper.instance.addSaving(
+      title: title,
+      target: target,
+      deadline: deadline,
+    ),
     savedMessage: context.loc.savingsCreated,
   );
 
@@ -175,8 +175,8 @@ class _SavingsPageState extends State<SavingsPage> {
   Future<void> _contribute(SavingsGoal goal) async {
     // A contribution that answers after the sheet was closed (drag, barrier or close while it ran) reports itself.
     var closed = false;
-    Map<String, dynamic>? moved;
-    final popped = await showModalBottomSheet<Map<String, dynamic>>(
+    SavingsGoal? moved;
+    final popped = await showModalBottomSheet<SavingsGoal>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -196,10 +196,7 @@ class _SavingsPageState extends State<SavingsPage> {
           if (closed) _reportContribution(goal, result);
           return result;
         },
-        loadBalance: () async =>
-            ((await RemoteApiHelper.instance.fetchMe())['walletBalance']
-                    as num?)
-                ?.toDouble(),
+        loadBalance: RemoteApiHelper.instance.fetchWalletBalance,
       ),
     );
     closed = true;
@@ -207,10 +204,9 @@ class _SavingsPageState extends State<SavingsPage> {
     if (updated != null) _reportContribution(goal, updated);
   }
 
-  /// Shows [goal] as the server returned it after a contribution ([updated]) and tells the user.
-  void _reportContribution(SavingsGoal goal, Map<String, dynamic> updated) {
+  /// Shows [goal] as the server returned it after a contribution ([now]) and tells the user.
+  void _reportContribution(SavingsGoal goal, SavingsGoal now) {
     if (!mounted) return;
-    final now = SavingsGoal.fromJson(updated);
     setState(() {
       _goals = [for (final g in _goals) g.id == goal.id ? now : g];
     });

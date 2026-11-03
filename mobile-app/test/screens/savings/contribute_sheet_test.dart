@@ -44,7 +44,7 @@ void main() {
               return ContributeSheet(
                 goal: _goal(deadline: deadline),
                 today: _today,
-                onSubmit: (_) async => {},
+                onSubmit: (_) async => SavingsGoal.fromJson({}),
                 loadBalance: loadBalance,
               );
             },
