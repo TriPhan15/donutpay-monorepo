@@ -48,6 +48,11 @@ public enum ReceiptStatus {
      */
     public static final String LEGACY_SUCCESS = "SUCCESS";
 
+    /** The slices of the receipt chart of the admin dashboard: what a receipt counts as there, whatever its status. */
+    public static final String DASHBOARD_LABEL_SUCCESS = "Thành công";
+    public static final String DASHBOARD_LABEL_FAILED = "Lỗi AI";
+    public static final String DASHBOARD_LABEL_PROCESSING = "Đang xử lý";
+
     private static final Map<ReceiptStatus, Set<ReceiptStatus>> MOVES = new EnumMap<>(ReceiptStatus.class);
 
     static {
@@ -107,6 +112,21 @@ public enum ReceiptStatus {
             case COMPLETED_RAW, EDITED, APPROVED -> LEGACY_SUCCESS;
             default -> name();
         };
+    }
+
+    /**
+     * The slice of the admin dashboard a status counts in, given the name the dashboard counts it under ({@link
+     * #legacyName}, exactly: capitals, as AdminStatisticsService delivers it): SUCCESS and FAILED have a slice each, every
+     * other status, and none at all (null), is still being processed.
+     */
+    public static String dashboardLabelOf(String legacyName) {
+        if (LEGACY_SUCCESS.equals(legacyName)) {
+            return DASHBOARD_LABEL_SUCCESS;
+        }
+        if (FAILED.name().equals(legacyName)) {
+            return DASHBOARD_LABEL_FAILED;
+        }
+        return DASHBOARD_LABEL_PROCESSING;
     }
 
     /** {@link #legacyName} of a stored status; a text the lifecycle does not know is passed on as it is. */

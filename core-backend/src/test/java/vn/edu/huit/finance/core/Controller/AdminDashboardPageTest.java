@@ -99,7 +99,7 @@ class AdminDashboardPageTest {
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6))
                 .thenReturn(List.of(new MonthlyTransactionCountDto(now.minusMonths(1), 3),
                         new MonthlyTransactionCountDto(now, 17)));
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
 
         // The charts are inlined into JavaScript, where Thymeleaf writes every non-ASCII character as a \\u escape.
@@ -131,7 +131,7 @@ class AdminDashboardPageTest {
                 .thenReturn(new AdminDashboardSummaryDto(BigDecimal.ZERO, 0, 0, List.of(), List.of()));
         when(leaderboardService.topSpenders(now, 5)).thenReturn(List.of());
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
     }
 
@@ -183,7 +183,7 @@ class AdminDashboardPageTest {
         User none = new User();
         none.setId(3L);
         none.setUsername("u_none");
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(champion, old, none)));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(champion, old, none)));
 
         mockMvc.perform(get("/admin/dashboard"))
                 .andExpect(content().string(allOf(

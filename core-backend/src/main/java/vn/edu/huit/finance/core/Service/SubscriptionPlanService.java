@@ -13,6 +13,8 @@ import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 import vn.edu.huit.finance.core.Exception.SubscriptionPlanNotFoundException;
 import vn.edu.huit.finance.core.Dto.SubscriptionPlanRequestDto;
 
+import java.util.List;
+
 /**
  * Membership plans, for administrators only (the caller checks that). Each change and its audit row, naming the
  * administrator, commit together. Only the plan's own fields are taken from what the caller sends: a new plan is always
@@ -34,6 +36,12 @@ public class SubscriptionPlanService {
 
     @Autowired
     private AuditLogService auditLogService;
+
+    /** Mọi gói hội viên, cho trang quản trị. */
+    @Transactional(readOnly = true)
+    public List<SubscriptionPlan> listAll() {
+        return subscriptionPlanRepository.findAll();
+    }
 
     @Transactional
     public SubscriptionPlan createPlan(SubscriptionPlanRequestDto values) {

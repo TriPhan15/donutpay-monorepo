@@ -95,7 +95,7 @@ class AdminUserAndReceiptPagesTest {
         user.setEmail("binh@example.com");
         user.setRole("ROLE_USER");
         user.setActive(true);
-        when(userRepo.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(user)));
+        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(user)));
 
         mockMvc.perform(get("/admin/users"))
                 .andExpect(status().isOk())
@@ -108,12 +108,12 @@ class AdminUserAndReceiptPagesTest {
                         containsString("fetch(`/admin/ajax/users/${userId}`, { method: 'DELETE' })"),
                         not(containsString("/api/admin/users/")))));
 
-        verify(receiptRepo, never()).findAllByOrderByCreatedAtDesc(any());
+        verify(receiptProcessingService, never()).listNewestFirst(any());
     }
 
     @Test
     void theReceiptsPageOffersApproveAndRejectOnlyWhereTheLifecycleAllowsThem() throws Exception {
-        when(receiptRepo.findAllByOrderByCreatedAtDesc(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(
+        when(receiptProcessingService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(
                 receipt(7L, "COMPLETED_RAW"),
                 receipt(8L, "CANCELED"),
                 receipt(9L, "FAILED"),
@@ -139,6 +139,6 @@ class AdminUserAndReceiptPagesTest {
                         not(containsString("addUserModal")),
                         not(containsString("toggleUserStatus")))));
 
-        verify(userRepo, never()).findAll(any(Pageable.class));
+        verify(userService, never()).listNewestFirst(any(Pageable.class));
     }
 }

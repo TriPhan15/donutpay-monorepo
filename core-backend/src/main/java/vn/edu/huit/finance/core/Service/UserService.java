@@ -5,6 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.coyote.BadRequestException;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -63,6 +67,13 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditLogService auditLogService;
+
+    /** For the admin pages: a page of the users, the newest (highest id) first. */
+    @Transactional(readOnly = true)
+    public Page<User> listNewestFirst(Pageable pageable) {
+        return userRepository.findAll(
+                PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "id")));
+    }
 
     @Transactional
     public User createUser(UserCreateDto dto) {

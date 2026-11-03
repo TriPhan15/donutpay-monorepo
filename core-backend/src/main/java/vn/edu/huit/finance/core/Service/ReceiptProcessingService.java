@@ -3,6 +3,8 @@ package vn.edu.huit.finance.core.Service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.ExtractedReceiptDto;
@@ -405,6 +407,12 @@ public class ReceiptProcessingService {
                 String.format(AUDIT_FEEDBACK, amount.toPlainString(), ReceiptStatus.FAILED, receipt.getStatus())));
         log.info("Receipt feedback received, userId={}, receiptId={}, status={} -> {}",
                 caller.getId(), receiptId, ReceiptStatus.FAILED, receipt.getStatus());
+    }
+
+    /** For the admin page: a page of the receipts, the newest first. */
+    @Transactional(readOnly = true)
+    public Page<Receipt> listNewestFirst(Pageable pageable) {
+        return receiptRepo.findAllByOrderByCreatedAtDesc(pageable);
     }
 
     /**
