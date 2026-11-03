@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
+
 /// The session could not be written to the device; the stored and the cached session are both left as they were.
 class SessionStorageException implements Exception {
   const SessionStorageException(this.message);
@@ -128,9 +130,11 @@ class SessionService {
   }
 
   /// Signs out on this device. The cache is emptied first, so no request leaves with these tokens any more; then the
-  /// JSON session and every key of the old format are removed.
+  /// JSON session and every key of the old format are removed. The cached categories go too: they are the user's own,
+  /// and the next account must not see them. Every end of a session passes here: logout and an expired session.
   static Future<void> clearSession() async {
     _session = _Session.empty;
+    TransactionCategories.clear();
     final prefs = await _preferences();
     await prefs.remove(_keySession);
     await _removeLegacyKeys(prefs);

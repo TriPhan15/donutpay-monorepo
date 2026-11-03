@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/main.dart';
@@ -132,6 +133,27 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(find.text(_sessionEndedText), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'a session that cannot be renewed empties the cached categories of the user it belonged to',
+    (tester) async {
+      await pumpSignedInApp(tester);
+      TransactionCategories.expenseSelectable = ['Nuôi mèo'];
+      TransactionCategories.incomeSelectable = ['Lương'];
+      backend.on('GET', '/api/budgets', (_) => _unauthorized());
+
+      final outcomes = <Object?>[];
+      record(RemoteApiHelper.instance.getBudgets(), outcomes);
+      await letTheRequestsRun(tester);
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(TransactionCategories.forType(isExpense: true), isEmpty);
+      expect(TransactionCategories.forType(isExpense: false), isEmpty);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
     },
   );
 
