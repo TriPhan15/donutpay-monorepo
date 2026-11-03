@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:finance_ai_app/models/receipt_scan_result.dart';
+import 'package:finance_ai_app/core/constants/input_limits.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/theme/app_theme.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
@@ -535,6 +536,61 @@ void main() {
 
       expect(sentBodies().single.containsKey('imageUrl'), isFalse);
       expect(result, [ReviewExit.saved]);
+    },
+  );
+
+  testWidgets(
+    'a failed upload says why in a toast, whatever the answer was; the dialog still asks what to do',
+    (tester) async {
+      final reasons = {
+        413: 'Ảnh quá lớn hoặc không đúng định dạng.',
+        400: 'Ảnh không hợp lệ',
+        503: 'Máy chủ đang gặp sự cố. Vui lòng thử lại sau.',
+      };
+      var status = 413;
+      backend.on(
+        'POST',
+        _upload,
+        (_) => jsonResponse(
+          status,
+          status == 400 ? {'code': 400, 'message': 'Ảnh không hợp lệ'} : {},
+        ),
+      );
+      await openForm(tester);
+
+      for (final entry in reasons.entries) {
+        status = entry.key;
+        await tapSave(tester);
+        expect(
+          find.text('Không tải được ảnh: ${entry.value}'),
+          findsOneWidget,
+          reason: 'status ${entry.key}',
+        );
+        expect(find.text('Không tải được ảnh hóa đơn'), findsOneWidget);
+        await tester.tap(find.text('Để sau'));
+        await tester.pumpAndSettle();
+      }
+      expect(sentBodies(), isEmpty, reason: 'nothing is saved until asked');
+    },
+  );
+
+  testWidgets(
+    'a store name longer than core-backend takes is cut at 255 characters and saved so',
+    (tester) async {
+      await openForm(tester);
+
+      await tester.enterText(_store, 'S' * 300);
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(_store).controller!.text,
+        'S' * InputLimits.noteMaxLength,
+      );
+
+      await tapSave(tester);
+      expect(
+        (sentBodies().single['note'] as String).length,
+        InputLimits.noteMaxLength,
+      );
     },
   );
 

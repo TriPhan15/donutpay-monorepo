@@ -1,12 +1,15 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import 'package:finance_ai_app/core/constants/input_limits.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
+import 'package:finance_ai_app/core/utils/user_facing_error.dart';
 import 'package:finance_ai_app/models/receipt_scan_result.dart';
 import 'package:finance_ai_app/models/review_exit.dart';
 import 'package:finance_ai_app/models/sync_status.dart';
@@ -206,13 +209,30 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     );
   }
 
-  /// Uploads the photo of the receipt, once. Returns false when it failed and the user would rather not save without it.
-  /// The save button stops spinning while the user is asked.
+  /// Uploads the photo of the receipt, once. A failure is told in a toast with its reason, then the user is asked; false
+  /// when the user would rather not save without the photo. The save button stops spinning while the user is asked.
   Future<bool> _ensurePhotoUploaded() async {
-    _imageUrl ??= await RemoteApiHelper.instance.uploadImage(widget.imagePath);
-    if (_imageUrl != null || !mounted) return true;
+    if (_imageUrl != null) return true;
+    Object? failure;
+    try {
+      _imageUrl = await RemoteApiHelper.instance.uploadImage(widget.imagePath);
+    } catch (e) {
+      UserFacingError.log('Upload receipt photo', e);
+      failure = e;
+    }
+    if (failure == null || !mounted) return true;
     setState(() => _isSaving = false);
     final loc = context.loc;
+    AppToast.error(
+      context,
+      loc.reviewPhotoUploadFailedToast(
+        UserFacingError.messageOf(
+          failure,
+          loc,
+          rejectedMessage: loc.reviewPhotoRejected,
+        ),
+      ),
+    );
     final withoutPhoto = await AppDialog.confirm(
       context,
       title: loc.reviewPhotoUploadFailedTitle,
@@ -536,6 +556,9 @@ class _ReviewFields extends StatelessWidget {
             controller: storeController,
             onChanged: onStoreChanged,
             textCapitalization: TextCapitalization.words,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(InputLimits.noteMaxLength),
+            ],
             style: const TextStyle(fontSize: AppTextSize.body),
             decoration: InputDecoration(
               labelText: loc.reviewStoreName,

@@ -132,6 +132,40 @@ void main() {
     expect(opened.result, [1000]);
   });
 
+  testWidgets(
+    'above 1.000.000.000 ₫ the sheet says so and the button stays off; the limit itself is accepted',
+    (tester) async {
+      final opened = await open(tester);
+      final colors = opened.theme.colorScheme;
+
+      expect(find.byKey(TopUpSheet.maxHintKey), findsNothing);
+
+      await tester.enterText(field(), '1000000001');
+      await tester.pumpAndSettle();
+
+      expect(submit(tester).onPressed, isNull);
+      expect(find.byKey(TopUpSheet.maxHintKey), findsOneWidget);
+      expect(
+        find.text('Tối đa 1.000.000.000 đ mỗi lần đồng bộ.'),
+        findsOneWidget,
+      );
+      expect(
+        paintedColor(tester, find.byKey(TopUpSheet.maxHintKey)),
+        colors.error,
+      );
+
+      await tester.enterText(field(), '1000000000');
+      await tester.pumpAndSettle();
+
+      expect(submit(tester).onPressed, isNotNull);
+      expect(find.byKey(TopUpSheet.maxHintKey), findsNothing);
+
+      await tester.tap(find.byKey(TopUpSheet.submitKey));
+      await tester.pumpAndSettle();
+      expect(opened.result, [1000000000]);
+    },
+  );
+
   testWidgets('the button stays above the gesture bar', (tester) async {
     tester.view.padding = const FakeViewPadding(bottom: 34);
     addTearDown(tester.view.resetPadding);

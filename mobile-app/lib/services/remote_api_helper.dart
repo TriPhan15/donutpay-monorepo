@@ -411,7 +411,7 @@ class RemoteApiHelper {
       '/api/payment/create',
       data: {
         'type': type,
-        'amount': amount,
+        'amount': amount.round(),
         'provider': provider,
         'description': ?description,
       },
@@ -481,18 +481,19 @@ class RemoteApiHelper {
     return Map<String, dynamic>.from(res.data['data'] ?? {});
   }
 
+  /// Sends the transaction. A photo that cannot be uploaded does not stop it: it is saved without the photo and the
+  /// reason goes to [onImageUploadFailed], for the caller to tell the user.
   Future<void> addTransaction(
     Map<String, dynamic> data, {
     String? imagePath,
+    void Function(Object error)? onImageUploadFailed,
   }) async {
     if (imagePath != null && imagePath.isNotEmpty) {
       try {
-        final imageUrl = await uploadImage(imagePath);
-        if (imageUrl != null) {
-          data['imageUrl'] = imageUrl;
-        }
+        data['imageUrl'] = await uploadImage(imagePath);
       } catch (e) {
-        debugPrint("Lỗi upload ảnh lên Cloudinary: $e");
+        UserFacingError.log('Upload transaction photo', e);
+        onImageUploadFailed?.call(e);
       }
     }
     // No notifyDataChanged here: AppRepository announces the write once it has flagged the outbox row, otherwise a
@@ -522,33 +523,22 @@ class RemoteApiHelper {
     }
   }
 
-  Future<String?> uploadImage(String imagePath) async {
-    try {
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          imagePath,
-          filename: imagePath.split(Platform.pathSeparator).last,
-        ),
-      });
-      final res = await _dio.post('/api/upload', data: formData);
-
-      if (res.data is Map) {
-        if (res.data['url'] != null) {
-          return res.data['url'].toString();
-        } else if (res.data['data'] != null &&
-            res.data['data']['url'] != null) {
-          return res.data['data']['url'].toString();
-        }
-      }
-
-      debugPrint(
-        "FLUTTER: Backend không trả về link ảnh! Nội dung: ${res.data}",
-      );
-      return null;
-    } catch (e) {
-      debugPrint("LỖI UPLOAD ẢNH FLUTTER: $e");
-      return null;
+  /// Uploads a photo and returns its link. A refusal or a failure of the request (400, 413, 503, no network) reaches
+  /// the caller as a DioException, and an answer without a link as a FormatException: the caller tells the user.
+  Future<String> uploadImage(String imagePath) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        imagePath,
+        filename: imagePath.split(Platform.pathSeparator).last,
+      ),
+    });
+    final res = await _dio.post('/api/upload', data: formData);
+    final body = res.data;
+    if (body is Map) {
+      final url = body['url'] ?? (body['data'] as Map?)?['url'];
+      if (url != null) return url.toString();
     }
+    throw const FormatException('core-backend sent no link for the photo');
   }
 
   Future<Map<String, dynamic>> scanReceipt(String imagePath) async {

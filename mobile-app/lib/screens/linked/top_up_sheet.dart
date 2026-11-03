@@ -21,8 +21,9 @@ Future<double?> showTopUpSheet(BuildContext context, PaymentWallet wallet) {
 }
 
 /// The "Đồng bộ tiền" sheet (T9 spec 3.9, mockup M1): the wallet card, the amount field, the four quick amounts, the
-/// "Tối thiểu 1.000 ₫ … chuyển sang cổng" line (in the error colour while the amount is below it) and "Tiếp tục thanh
-/// toán", which pops the amount. Creating the order stays with the page.
+/// "Tối thiểu 1.000 ₫ … chuyển sang cổng" line (in the error colour while the amount is below it), "Tối đa
+/// 1.000.000.000 ₫" under it while the amount is above the most one order takes, and "Tiếp tục thanh toán", which pops
+/// the amount. Creating the order stays with the page.
 class TopUpSheet extends StatefulWidget {
   const TopUpSheet({super.key, required this.wallet});
 
@@ -30,6 +31,7 @@ class TopUpSheet extends StatefulWidget {
   static const Key submitKey = ValueKey('top-up-submit');
   static const Key closeKey = ValueKey('top-up-close');
   static const Key hintKey = ValueKey('top-up-hint');
+  static const Key maxHintKey = ValueKey('top-up-max-hint');
 
   final PaymentWallet wallet;
 
@@ -159,6 +161,23 @@ class _TopUpSheetState extends State<TopUpSheet> {
                 fontSize: AppTextSize.caption,
               ),
             ),
+            if (error == TopUpAmountError.aboveMaximum) ...[
+              const SizedBox(height: 4),
+              Text(
+                loc.linkedMaxAmountHint(
+                  CurrencyHelper.formatVND(
+                    TopUpAmount.maximum,
+                    loc,
+                    showSign: false,
+                  ),
+                ),
+                key: TopUpSheet.maxHintKey,
+                style: TextStyle(
+                  color: colors.error,
+                  fontSize: AppTextSize.caption,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             FormSubmitBar(
               key: TopUpSheet.submitKey,

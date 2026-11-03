@@ -163,7 +163,7 @@ class TransactionModel {
   /// ignores any difference in the rest, [allowDuplicate] included.
   Map<String, dynamic> toCheckoutJson() {
     return {
-      'amount': amount,
+      'amount': amount.round(),
       'note': title,
       'location': title.isEmpty ? defaultLocation : title,
       'paymentMethod': paymentMethodWallet,

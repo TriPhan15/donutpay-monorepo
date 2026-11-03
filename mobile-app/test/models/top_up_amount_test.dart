@@ -18,6 +18,16 @@ void main() {
       expect(TopUpAmount.validate(1000), isNull);
       expect(TopUpAmount.validate(500000), isNull);
     });
+
+    test('1.000.000.000 ₫ is the most core-backend takes at once', () {
+      expect(TopUpAmount.validate(1000000000), isNull);
+      expect(TopUpAmount.validate(1000000001), TopUpAmountError.aboveMaximum);
+      expect(TopUpAmount.validate(5e12), TopUpAmountError.aboveMaximum);
+    });
+  });
+
+  test('the maximum is 1.000.000.000 ₫', () {
+    expect(TopUpAmount.maximum, 1000000000);
   });
 
   test('the minimum is 1.000 ₫', () {

@@ -11,13 +11,14 @@ final RegExp _uuidV4 = RegExp(
   r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
 );
 
-TransactionModel _draft({String title = 'Cà phê'}) => TransactionModel.draft(
-  title: title,
-  category: 'Ăn uống',
-  amount: 45000,
-  date: DateTime(2026, 9, 20, 8, 30),
-  isExpense: true,
-);
+TransactionModel _draft({String title = 'Cà phê', double amount = 45000}) =>
+    TransactionModel.draft(
+      title: title,
+      category: 'Ăn uống',
+      amount: amount,
+      date: DateTime(2026, 9, 20, 8, 30),
+      isExpense: true,
+    );
 
 final AppLocalizations _vi = lookupAppLocalizations(const Locale('vi'));
 
@@ -396,6 +397,11 @@ void main() {
         });
       },
     );
+
+    test('the amount of the checkout is whole dong, however it was made', () {
+      expect(_draft(amount: 45000.6).toCheckoutJson()['amount'], 45001);
+      expect(_draft(amount: 45000.4).toCheckoutJson()['amount'], 45000);
+    });
 
     test(
       'a transaction without a title is sent with the default location, and one without an id sends no clientId',

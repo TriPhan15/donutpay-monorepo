@@ -2300,6 +2300,18 @@ abstract class AppLocalizations {
   /// **'The receipt photo hasn\'t been uploaded to the server. Save the transaction without the photo?'**
   String get reviewPhotoUploadFailedMessage;
 
+  /// Toast when the receipt photo could not be uploaded; reason is the user-facing text of the error.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t upload the photo: {reason}'**
+  String reviewPhotoUploadFailedToast(String reason);
+
+  /// Reason in the upload toast when the server refused the photo without saying why (400, 413).
+  ///
+  /// In en, this message translates to:
+  /// **'The photo is too large or not an image the server accepts.'**
+  String get reviewPhotoRejected;
+
   /// Confirm button: save without the photo.
   ///
   /// In en, this message translates to:
@@ -2575,6 +2587,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Minimum {amount}. You will be taken to the {wallet} gateway to pay.'**
   String linkedMinAmountHint(String amount, String wallet);
+
+  /// Error line under the amount of a wallet sync while the amount is above the limit of one payment order.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {amount} per sync.'**
+  String linkedMaxAmountHint(String amount);
 
   /// Button of the amount sheet.
   ///

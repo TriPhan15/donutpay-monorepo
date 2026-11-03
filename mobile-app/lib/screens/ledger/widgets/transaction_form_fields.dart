@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import 'package:finance_ai_app/core/constants/input_limits.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/core/utils/money_input_formatter.dart';
@@ -87,7 +89,8 @@ class AmountField extends StatelessWidget {
   }
 }
 
-/// The optional note of a transaction form, outlined with the floating label "Ghi chú (tùy chọn)".
+/// The optional note of a transaction form, outlined with the floating label "Ghi chú (tùy chọn)"; it stops at
+/// [InputLimits.noteMaxLength] characters, the longest note core-backend takes.
 class NoteField extends StatelessWidget {
   const NoteField({super.key, required this.controller, this.hintText});
 
@@ -99,6 +102,9 @@ class NoteField extends StatelessWidget {
     return TextField(
       controller: controller,
       textCapitalization: TextCapitalization.sentences,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(InputLimits.noteMaxLength),
+      ],
       style: const TextStyle(fontSize: AppTextSize.body),
       decoration: InputDecoration(
         labelText: context.loc.transactionNoteOptional,
