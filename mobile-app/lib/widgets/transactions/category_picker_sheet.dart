@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// The full list of [categories] in a bottom sheet, [selected] ticked. Returns the tapped category, or null when the
 /// sheet is dismissed.
@@ -12,13 +13,9 @@ Future<String?> showCategoryPickerSheet(
   required String? selected,
   required bool isExpense,
 }) {
-  return showModalBottomSheet<String>(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) => _CategoryPickerSheet(
+  return showAppSheet<String>(
+    context,
+    (context) => _CategoryPickerSheet(
       categories: categories,
       selected: selected,
       isExpense: isExpense,

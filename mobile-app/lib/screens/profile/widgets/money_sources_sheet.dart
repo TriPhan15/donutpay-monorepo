@@ -6,6 +6,7 @@ import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/wallet_model.dart';
 import 'package:finance_ai_app/screens/profile/widgets/profile_sheet_frame.dart';
 import 'package:finance_ai_app/widgets/common/app_state_view.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 
 /// "Nguồn tiền" (T9 spec 3.10, R1): the wallets on one grouped block, balances in grey on the right, the total on the
 /// last row, and Done in the title row.
@@ -13,10 +14,9 @@ Future<void> showMoneySourcesSheet(
   BuildContext context,
   List<WalletModel> wallets,
 ) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => _MoneySourcesSheet(wallets: wallets),
+  return showAppSheet<void>(
+    context,
+    (_) => _MoneySourcesSheet(wallets: wallets),
   );
 }
 

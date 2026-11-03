@@ -5,15 +5,15 @@ import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/models/notification_preferences.dart';
 import 'package:finance_ai_app/screens/profile/widgets/profile_sheet_frame.dart';
 import 'package:finance_ai_app/widgets/common/app_state_view.dart';
+import 'package:finance_ai_app/widgets/dialogs/app_sheet.dart';
 import 'package:finance_ai_app/widgets/feedback/app_toast.dart';
 
 /// "Cài đặt thông báo" (T9 spec 3.10, M1): two switches, each with a light blue icon box and a line saying what it does,
 /// and a Save button that keeps the choices on the device ([NotificationPreferences]).
 Future<void> showNotificationSettingsSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => _NotificationSettingsSheet(host: context),
+  return showAppSheet<void>(
+    context,
+    (_) => _NotificationSettingsSheet(host: context),
   );
 }
 
