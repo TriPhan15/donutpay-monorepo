@@ -10,10 +10,9 @@ torchvision==0.29.0
 fastapi==0.141.1
 uvicorn[standard]==0.53.0
 python-multipart==0.0.32
+pydantic>=2.13.5,<3
 
 # AI Libraries
 pillow==12.3.0
 transformers==5.17.0
 sentencepiece==0.2.2
-# 1.7.2: last scikit-learn release that supports Python 3.10 (1.8+ needs 3.11)
-scikit-learn==1.7.2
