@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+    Thanh phân trang dùng chung cho các trang admin phân trang ở server (Người dùng, Hóa đơn).
+    Tham số: page = Page của Spring Data (số trang tính từ 0), baseUrl = đường dẫn của trang,
+    pageParam = tên tham số số trang (userPage, receiptPage), size = cỡ trang để giữ nguyên khi chuyển trang.
+    Chỉ hiện khi có nhiều hơn một trang. Số trang hiển thị tính từ 1.
+*/-->
+<nav th:fragment="bar(page, baseUrl, pageParam, size)" th:if="${page.totalPages > 1}" data-pagination-bar
+     class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3" aria-label="Phân trang"
+     th:with="lastPage=${page.totalPages - 1},
+              firstShown=${T(java.lang.Math).max(0, page.number - 2)},
+              lastShown=${T(java.lang.Math).min(page.totalPages - 1, page.number + 2)}">
+    <span class="text-muted small"
+          th:text="${'Trang ' + (page.number + 1) + ' / ' + page.totalPages + ' (' + page.totalElements + ' bản ghi)'}"></span>
+    <ul class="pagination pagination-sm mb-0">
+        <li class="page-item" th:classappend="${!page.hasPrevious()} ? 'disabled'" data-page-nav="previous">
+            <a th:if="${page.hasPrevious()}" class="page-link"
+               th:href="@{${baseUrl}(${pageParam}=${page.number - 1}, size=${size})}">Trước</a>
+            <span th:unless="${page.hasPrevious()}" class="page-link">Trước</span>
+        </li>
+        <li th:if="${firstShown > 0}" class="page-item">
+            <a class="page-link" th:href="@{${baseUrl}(${pageParam}=0, size=${size})}">1</a>
+        </li>
+        <li th:if="${firstShown > 1}" class="page-item disabled"><span class="page-link">&hellip;</span></li>
+        <li th:each="n : ${#numbers.sequence(firstShown, lastShown)}" class="page-item"
+            th:classappend="${n == page.number} ? 'active'">
+            <a class="page-link" th:href="@{${baseUrl}(${pageParam}=${n}, size=${size})}" th:text="${n + 1}"></a>
+        </li>
+        <li th:if="${lastShown < lastPage - 1}" class="page-item disabled"><span class="page-link">&hellip;</span></li>
+        <li th:if="${lastShown < lastPage}" class="page-item">
+            <a class="page-link" th:href="@{${baseUrl}(${pageParam}=${lastPage}, size=${size})}" th:text="${lastPage + 1}"></a>
+        </li>
+        <li class="page-item" th:classappend="${!page.hasNext()} ? 'disabled'" data-page-nav="next">
+            <a th:if="${page.hasNext()}" class="page-link"
+               th:href="@{${baseUrl}(${pageParam}=${page.number + 1}, size=${size})}">Sau</a>
+            <span th:unless="${page.hasNext()}" class="page-link">Sau</span>
+        </li>
+    </ul>
+</nav>
+</body>
+</html>
