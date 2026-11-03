@@ -135,6 +135,14 @@ tạo mật khẩu mới cho server, đừng dùng lại mật khẩu máy dev.
 
 Tạo mật khẩu ngẫu nhiên chỉ có chữ và số (dùng được cho mọi ô trên): `openssl rand -hex 24`.
 
+**Cổng thanh toán giả lập bật ở production là có chủ đích.** Biến `MOCK_GATEWAY_ENABLED` không nằm trong bảng trên, nên
+trên EC2 nó lấy mặc định `true` (`application.yml`: `${MOCK_GATEWAY_ENABLED:true}`), và `MockGatewayController` được
+đăng ký với `matchIfMissing = true`. Lý do: để demo nạp và rút tiền khi chưa có cổng thanh toán thật. Trang
+`/mock-gateway/pay` có nút "Thanh toán THÀNH CÔNG"; bấm nút này thì webhook ghi nhận đơn thành công và cập nhật số dư ví,
+nên người dùng tự "nạp" được tiền ảo, không phải tiền thật. Khi nối cổng thật, đặt `MOCK_GATEWAY_ENABLED=false` trong `.env`. Lúc cổng giả
+bật, `ProductionSecretsGuard` bắt buộc `VNPAY_SECRET` và `ZALOPAY_SECRET` phải có giá trị, nếu không profile prod không khởi
+động; khi tắt, hai khóa này không còn bắt buộc.
+
 ### Chép model AI lên server (bắt buộc, làm một lần trước mục 6)
 
 Git chỉ chứa phần cấu hình của model DONUT V5 (`ai-service/Version5/donut_result/*.json`). File trọng số
