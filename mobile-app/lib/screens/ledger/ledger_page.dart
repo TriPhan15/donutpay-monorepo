@@ -257,7 +257,8 @@ class LedgerPageState extends State<LedgerPage> {
     return _periodAll.where((tx) {
       final localMatch =
           tx.title.toLowerCase().contains(q) ||
-          tx.category.toLowerCase().contains(q);
+          tx.category.toLowerCase().contains(q) ||
+          (tx.reviewNote?.toLowerCase().contains(q) ?? false);
       // The server only adds matches the device cannot find (no accents, typos); its ids are cleared as soon as the text
       // changes, so a row that matched the previous text is not shown under the new one. A transaction not sent yet is not
       // in the server index: only the device can match it. The id is text on the device, a number on the server.

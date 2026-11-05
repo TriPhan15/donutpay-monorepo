@@ -19,10 +19,12 @@ import 'package:finance_ai_app/widgets/receipt/receipt_detail_sheet.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_image_viewer.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
+import 'package:finance_ai_app/widgets/transactions/experience_rating_badge.dart';
 import 'package:finance_ai_app/widgets/transactions/transaction_head_card.dart';
 
 /// The details of one transaction (T9 spec, 3.4, layout B): a thin blue band, a head card with the amount, the rows
-/// Danh mục / Thời gian / Hóa đơn / Đồng bộ, the receipt photo, and "Sửa giao dịch" / "Xóa" at the bottom.
+/// Danh mục / Thời gian / Đánh giá trải nghiệm / Nhận xét trải nghiệm / Hóa đơn / Đồng bộ, the receipt photo, and
+/// "Sửa giao dịch" / "Xóa" at the bottom.
 /// Closes with true when it edited, deleted or resent the transaction, so the list behind it reloads.
 class TransactionDetailPage extends StatefulWidget {
   const TransactionDetailPage({super.key, required this.transaction});
@@ -300,6 +302,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       fontSize: AppTextSize.body,
       fontWeight: FontWeight.w600,
     );
+    final reviewNote = _tx.reviewNote?.trim();
     final rows = <Widget>[
       _DetailRow(
         label: loc.transactionDetailCategory,
@@ -312,6 +315,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         label: loc.transactionDetailTime,
         value: Text(AppDateFormat.dateTime.format(_tx.date), style: valueStyle),
       ),
+      if (_tx.isExpense && _tx.rating != null)
+        _DetailRow(
+          label: loc.transactionDetailExperience,
+          value: ExperienceRatingBadge(rating: _tx.rating, compact: false),
+        ),
+      if (_tx.isExpense && reviewNote != null && reviewNote.isNotEmpty)
+        _DetailRow(
+          label: loc.transactionDetailReviewNote,
+          value: Text(reviewNote, style: valueStyle),
+        ),
       if (_receiptStatus != null)
         _DetailRow(
           label: loc.transactionDetailReceipt,

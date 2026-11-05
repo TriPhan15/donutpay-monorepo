@@ -10,10 +10,11 @@ import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/widgets/receipt/receipt_status_badge.dart';
 import 'package:finance_ai_app/widgets/sync/sync_status_badge.dart';
+import 'package:finance_ai_app/widgets/transactions/experience_rating_badge.dart';
 
-/// One transaction in a list card (T9 spec, 3.1): category tile, title, category, receipt and sync badges, then the
-/// amount (spending in the text colour with "-", income green with "+") over its time. Shared by the home "Gần đây"
-/// card and the statistics list.
+/// One transaction in a list card (T9 spec, 3.1): category tile, title, category, experience rating badge, receipt and
+/// sync badges, then the amount (spending in the text colour with "-", income green with "+") over its time. Shared by
+/// the home "Gần đây" card and the statistics list.
 class TransactionRow extends StatelessWidget {
   static const double _tileSize = 40;
   static const double _amountMaxWidth = 140;
@@ -52,6 +53,10 @@ class TransactionRow extends StatelessWidget {
         ? CurrencyHelper.formatVND(-tx.amount, loc)
         : CurrencyHelper.formatVND(tx.amount, loc);
     final sourceLabel = tx.source.label(loc);
+    final hasExperience =
+        tx.isExpense &&
+        (tx.rating != null ||
+            (tx.reviewNote != null && tx.reviewNote!.trim().isNotEmpty));
 
     return InkWell(
       onTap: onTap,
@@ -111,6 +116,14 @@ class TransactionRow extends StatelessWidget {
                         fontSize: AppTextSize.secondary,
                         fontStyle: FontStyle.italic,
                       ),
+                    ),
+                  ],
+                  if (hasExperience) ...[
+                    const SizedBox(height: 4),
+                    ExperienceRatingBadge(
+                      rating: tx.rating,
+                      reviewNote: tx.reviewNote,
+                      compact: true,
                     ),
                   ],
                   if (tx.receiptStatus != null) ...[

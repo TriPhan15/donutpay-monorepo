@@ -18,6 +18,10 @@ class TransactionModel {
   /// Column of the "save anyway" of a scanned receipt (version 9), 0 or 1, so a resend from the outbox still carries it.
   static const String columnAllowDuplicate = 'allow_duplicate';
 
+  /// Columns of the store experience rating (0.5..5.0) and review note (version 10), so an offline resend carries them.
+  static const String columnRating = 'rating';
+  static const String columnReviewNote = 'review_note';
+
   /// The checkout field that saves a scanned receipt even when the server thinks it is already saved.
   static const String checkoutAllowDuplicate = 'allowDuplicate';
 
@@ -40,6 +44,12 @@ class TransactionModel {
   final String iconName;
   final int? walletId;
   final String? imageUrl;
+
+  /// Optional store experience rating from 0.5 to 5.0 stars in 0.5 increments.
+  final double? rating;
+
+  /// Optional personal review note about the experience at the store (max 255 characters).
+  final String? reviewNote;
 
   /// What ai-service answered for the scanned receipt, as one JSON text (rawReceiptData of the checkout). Only set on a
   /// transaction created from a scan on this device; the server does not send it back.
@@ -76,6 +86,8 @@ class TransactionModel {
     this.iconName = 'default',
     this.walletId,
     this.imageUrl,
+    this.rating,
+    this.reviewNote,
     this.rawReceiptData,
     this.receiptStatus,
     this.clientId,
@@ -95,6 +107,8 @@ class TransactionModel {
     required bool isExpense,
     String? imageUrl,
     String? rawReceiptData,
+    double? rating,
+    String? reviewNote,
   }) {
     return TransactionModel(
       title: title,
@@ -105,6 +119,8 @@ class TransactionModel {
       iconName: category,
       imageUrl: imageUrl,
       rawReceiptData: rawReceiptData,
+      rating: rating,
+      reviewNote: reviewNote,
       clientId: _uuid.v4(),
     );
   }
@@ -146,6 +162,8 @@ class TransactionModel {
       iconName: iconName,
       walletId: walletId,
       imageUrl: imageUrl,
+      rating: rating,
+      reviewNote: reviewNote,
       rawReceiptData: rawReceiptData,
       receiptStatus: receiptStatus,
       clientId: clientId,
@@ -159,6 +177,7 @@ class TransactionModel {
   /// sends exactly what the first send did; the server answers a repeated [clientId] with the first transaction and
   /// ignores any difference in the rest, [allowDuplicate] included.
   Map<String, dynamic> toCheckoutJson() {
+    final trimmedReview = reviewNote?.trim();
     return {
       'amount': amount.round(),
       'note': title,
@@ -170,6 +189,9 @@ class TransactionModel {
       if (clientId != null) 'clientId': clientId,
       if (rawReceiptData != null) 'rawReceiptData': rawReceiptData,
       if (imageUrl != null) 'imageUrl': imageUrl,
+      if (isExpense && rating != null) 'rating': rating,
+      if (isExpense && trimmedReview != null && trimmedReview.isNotEmpty)
+        'reviewNote': trimmedReview,
       if (allowDuplicate) checkoutAllowDuplicate: true,
     };
   }
@@ -182,6 +204,8 @@ class TransactionModel {
       'category': category,
       'isExpense': isExpense,
       'icon_name': iconName,
+      if (rating != null) 'rating': rating,
+      if (reviewNote != null) 'review_note': reviewNote,
     };
   }
 
@@ -194,6 +218,8 @@ class TransactionModel {
       category: map['category'] ?? TransactionCategories.otherExpense,
       isExpense: map['isExpense'] ?? true,
       iconName: map['icon_name'] ?? 'default',
+      rating: (map['rating'] as num?)?.toDouble(),
+      reviewNote: (map['review_note'] ?? map['reviewNote'])?.toString(),
     );
   }
 
@@ -211,6 +237,8 @@ class TransactionModel {
       isExpense: json['isExpense'] == true,
       iconName: (json['category'] ?? 'default').toString(),
       imageUrl: json['imageUrl']?.toString(),
+      rating: (json['rating'] as num?)?.toDouble(),
+      reviewNote: json['reviewNote']?.toString(),
       receiptStatus: ReceiptStatus.fromServer(json['receiptStatus']),
       clientId: json['clientId']?.toString(),
       source: TransactionSource.fromServer(json['source']),
@@ -232,6 +260,8 @@ class TransactionModel {
       columnImageUrl: imageUrl,
       columnRawReceiptData: rawReceiptData,
       columnAllowDuplicate: allowDuplicate ? 1 : 0,
+      columnRating: rating,
+      columnReviewNote: reviewNote,
     };
   }
 
@@ -248,6 +278,8 @@ class TransactionModel {
       iconName: map['icon_name'] ?? 'default',
       walletId: map['wallet_id'] as int?,
       imageUrl: map[columnImageUrl] as String?,
+      rating: (map[columnRating] as num?)?.toDouble(),
+      reviewNote: map[columnReviewNote] as String?,
       rawReceiptData: map[columnRawReceiptData] as String?,
       clientId: map[columnClientId] as String?,
       syncStatus: syncStatus,

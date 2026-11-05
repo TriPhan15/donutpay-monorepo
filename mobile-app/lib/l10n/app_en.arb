@@ -912,11 +912,11 @@
   "accountEditPhoneTitle": "Edit phone number",
   "@accountEditPhoneTitle": {
     "description": "Title of the sheet that edits the phone number."
-  },  "accountPhoneRequired": "Please enter a phone number.",
+  },
+  "accountPhoneRequired": "Please enter a phone number.",
   "@accountPhoneRequired": {
     "description": "Toast when the phone sheet is saved empty; the server cannot clear the phone."
   },
-
   "changePasswordDoneMessage": "Your new password is in use. Other devices need to sign in again.",
   "@changePasswordDoneMessage": {
     "description": "Message of the success view after the password change."
@@ -1409,8 +1409,12 @@
   "@editTransactionSummaryLine": {
     "description": "Footer of the edit form's summary card: the type and the moment of the transaction.",
     "placeholders": {
-      "kind": {"type": "String"},
-      "time": {"type": "String"}
+      "kind": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
     }
   },
   "editTransactionTitle": "Edit transaction",
@@ -3694,5 +3698,68 @@
   "receiptDetailPhotoFailed": "Could not download the receipt photo to read it again.",
   "@receiptDetailPhotoFailed": {
     "description": "Toast when the photo of a FAILED receipt cannot be downloaded for a new scan."
+  },
+  "experienceRatingLabel": "Experience rating (optional)",
+  "@experienceRatingLabel": {
+    "description": "Section title for the optional 0.5-5.0 star experience rating on transaction forms."
+  },
+  "experienceRatingClear": "Clear",
+  "@experienceRatingClear": {
+    "description": "Button to clear the selected star rating back to unrated."
+  },
+  "experienceRatingUnrated": "Tap or drag stars to rate (0.5 – 5.0)",
+  "@experienceRatingUnrated": {
+    "description": "Hint text shown when no star rating has been chosen yet."
+  },
+  "experienceRatingBad": "Poor experience",
+  "@experienceRatingBad": {
+    "description": "Sentiment label for a 0.5 to 1.5 star rating."
+  },
+  "experienceRatingFair": "Below average",
+  "@experienceRatingFair": {
+    "description": "Sentiment label for a 2.0 to 2.5 star rating."
+  },
+  "experienceRatingAverage": "Average",
+  "@experienceRatingAverage": {
+    "description": "Sentiment label for a 3.0 to 3.5 star rating."
+  },
+  "experienceRatingGood": "Good experience",
+  "@experienceRatingGood": {
+    "description": "Sentiment label for a 4.0 to 4.5 star rating."
+  },
+  "experienceRatingExcellent": "Excellent experience",
+  "@experienceRatingExcellent": {
+    "description": "Sentiment label for a 5.0 star rating."
+  },
+  "experienceReviewNoteLabel": "Experience review note (optional)",
+  "@experienceReviewNoteLabel": {
+    "description": "Floating label of the optional personal experience review note field."
+  },
+  "experienceReviewNoteHint": "e.g., Friendly staff, great drinks, cozy space...",
+  "@experienceReviewNoteHint": {
+    "description": "Placeholder text inside the optional personal experience review note field."
+  },
+  "transactionDetailExperience": "Experience rating",
+  "@transactionDetailExperience": {
+    "description": "Label of the experience rating row in TransactionDetailPage."
+  },
+  "transactionDetailReviewNote": "Experience note",
+  "@transactionDetailReviewNote": {
+    "description": "Label of the experience review note row in TransactionDetailPage."
+  },
+  "reviewPastStoreRating": "Past visits to {store}: avg {avg} ★ ({count} ratings)",
+  "@reviewPastStoreRating": {
+    "description": "Banner shown on the receipt review form when the store has previous rated transactions.",
+    "placeholders": {
+      "store": {
+        "type": "String"
+      },
+      "avg": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

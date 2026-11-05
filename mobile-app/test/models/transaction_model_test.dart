@@ -265,6 +265,7 @@ void main() {
             'client_id', 'sync_status', // the sync state (Task A8)
             'image_url', 'raw_receipt_data', // the receipt of the outbox (T3b)
             'allow_duplicate', // a duplicate the user chose to keep (batch 2)
+            'rating', 'review_note', // store experience rating & note (Feature 3)
           ]),
         );
         expect(
@@ -690,6 +691,58 @@ void main() {
       final expense = model(isExpense: true, source: TransactionSource.unknown);
       expect(income.countsAsIncome, isFalse);
       expect(expense.countsAsSpending, isFalse);
+    });
+  });
+
+  group('experience rating and review note', () {
+    test('fromJson reads rating and reviewNote when present', () {
+      final tx = TransactionModel.fromJson({
+        'id': 99,
+        'amount': 45000,
+        'category': 'Ăn uống',
+        'rating': 4.5,
+        'reviewNote': 'Đồ uống ngon, phục vụ nhanh',
+      });
+      expect(tx.rating, 4.5);
+      expect(tx.reviewNote, 'Đồ uống ngon, phục vụ nhanh');
+    });
+
+    test('toCheckoutJson includes rating and reviewNote only when provided', () {
+      final unrated = _draft();
+      expect(unrated.toCheckoutJson().containsKey('rating'), isFalse);
+      expect(unrated.toCheckoutJson().containsKey('reviewNote'), isFalse);
+
+      final rated = TransactionModel.draft(
+        title: 'Highlands Coffee',
+        category: 'Ăn uống',
+        amount: 55000,
+        date: DateTime(2026, 9, 20, 8, 30),
+        isExpense: true,
+        rating: 4.5,
+        reviewNote: 'Không gian thoáng mát',
+      );
+      expect(rated.toCheckoutJson()['rating'], 4.5);
+      expect(rated.toCheckoutJson()['reviewNote'], 'Không gian thoáng mát');
+    });
+
+    test('rating and reviewNote survive SQLite outbox round-trip and state transitions', () {
+      final draft = TransactionModel.draft(
+        title: 'Phúc Long',
+        category: 'Ăn uống',
+        amount: 60000,
+        date: DateTime(2026, 9, 20, 8, 30),
+        isExpense: true,
+        rating: 3.5,
+        reviewNote: 'Trà đào hơi ngọt',
+      ).withSyncStatus(SyncStatus.pending).allowingDuplicate();
+
+      final row = {...draft.toDbMap(7), 'id': 42};
+      final read = TransactionModel.fromDbMap(row);
+
+      expect(read.rating, 3.5);
+      expect(read.reviewNote, 'Trà đào hơi ngọt');
+      expect(read.toCheckoutJson()['rating'], 3.5);
+      expect(read.toCheckoutJson()['reviewNote'], 'Trà đào hơi ngọt');
     });
   });
 }

@@ -6,7 +6,9 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-apply(plugin = "com.google.gms.google-services")
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
 // Khóa ký bản release: máy dev đọc android/key.properties (không commit); CI không có file đó nên đọc biến môi trường
 // ANDROID_KEYSTORE_PATH / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD (xem .github/workflows/ci.yml).
 val keystoreProperties = Properties()
@@ -42,10 +44,13 @@ android {
 
   signingConfigs {
         getByName("debug") {
-            storeFile = file("../../keys/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            val customDebugKeystore = file("../../keys/debug.keystore")
+            if (customDebugKeystore.exists()) {
+                storeFile = customDebugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
         
         create("release") {
@@ -60,9 +65,10 @@ android {
 
     buildTypes {
         getByName("release") {
-            // Không có keystore thì không ký (build release sẽ báo lỗi) thay vì lặng lẽ ký bằng khóa debug.
             if (releaseStoreFilePath != null) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }

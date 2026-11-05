@@ -740,5 +740,18 @@
   "receiptDetailAmountSent": "Đã gửi quản trị viên duyệt",
   "receiptDetailLoadFailedTitle": "Không tải được hóa đơn",
   "receiptDetailConflict": "Hóa đơn đã thay đổi. Đã tải lại, bạn kiểm tra rồi thử lại nhé.",
-  "receiptDetailPhotoFailed": "Không tải được ảnh hóa đơn để đọc lại."
+  "receiptDetailPhotoFailed": "Không tải được ảnh hóa đơn để đọc lại.",
+  "experienceRatingLabel": "Đánh giá trải nghiệm (tùy chọn)",
+  "experienceRatingClear": "Bỏ đánh giá",
+  "experienceRatingUnrated": "Chạm hoặc vuốt sao để đánh giá (0.5 – 5.0)",
+  "experienceRatingBad": "Trải nghiệm tệ",
+  "experienceRatingFair": "Chưa hài lòng",
+  "experienceRatingAverage": "Bình thường",
+  "experienceRatingGood": "Trải nghiệm tốt",
+  "experienceRatingExcellent": "Rất hài lòng",
+  "experienceReviewNoteLabel": "Cảm nhận trải nghiệm (tùy chọn)",
+  "experienceReviewNoteHint": "VD: Nhân viên nhiệt tình, đồ uống ngon, không gian thoáng...",
+  "transactionDetailExperience": "Đánh giá trải nghiệm",
+  "transactionDetailReviewNote": "Nhận xét trải nghiệm",
+  "reviewPastStoreRating": "Trước đây tại {store}: trung bình {avg} ★ ({count} lần đánh giá)"
 }

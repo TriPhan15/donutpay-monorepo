@@ -2589,4 +2589,47 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get receiptDetailPhotoFailed =>
       'Không tải được ảnh hóa đơn để đọc lại.';
+
+  @override
+  String get experienceRatingLabel => 'Đánh giá trải nghiệm (tùy chọn)';
+
+  @override
+  String get experienceRatingClear => 'Bỏ đánh giá';
+
+  @override
+  String get experienceRatingUnrated =>
+      'Chạm hoặc vuốt sao để đánh giá (0.5 – 5.0)';
+
+  @override
+  String get experienceRatingBad => 'Trải nghiệm tệ';
+
+  @override
+  String get experienceRatingFair => 'Chưa hài lòng';
+
+  @override
+  String get experienceRatingAverage => 'Bình thường';
+
+  @override
+  String get experienceRatingGood => 'Trải nghiệm tốt';
+
+  @override
+  String get experienceRatingExcellent => 'Rất hài lòng';
+
+  @override
+  String get experienceReviewNoteLabel => 'Cảm nhận trải nghiệm (tùy chọn)';
+
+  @override
+  String get experienceReviewNoteHint =>
+      'VD: Nhân viên nhiệt tình, đồ uống ngon, không gian thoáng...';
+
+  @override
+  String get transactionDetailExperience => 'Đánh giá trải nghiệm';
+
+  @override
+  String get transactionDetailReviewNote => 'Nhận xét trải nghiệm';
+
+  @override
+  String reviewPastStoreRating(String store, String avg, int count) {
+    return 'Trước đây tại $store: trung bình $avg ★ ($count lần đánh giá)';
+  }
 }

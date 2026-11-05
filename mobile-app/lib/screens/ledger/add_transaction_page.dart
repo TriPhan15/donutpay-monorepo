@@ -8,6 +8,7 @@ import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/experience_rating_field.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_fields.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_tabs.dart';
@@ -19,8 +20,8 @@ import 'package:finance_ai_app/widgets/inputs/date_field.dart';
 import 'package:finance_ai_app/widgets/transactions/category_picker_sheet.dart';
 
 /// The add form (T9 spec, 3.3, layout 2): the band with a close button, the tabs Nhập tay / Quét hóa đơn, the card
-/// tabs Chi tiêu / Thu nhập over a white card (amount, category tiles, day, note) and the button held at the bottom,
-/// faded until the form is valid.
+/// tabs Chi tiêu / Thu nhập over a white card (amount, category tiles, day, note, optional experience rating) and the
+/// button held at the bottom, faded until the form is valid.
 ///
 /// Always opens on the current moment, whatever period the screen that opened it shows: a new transaction is most
 /// often about today, and the date field gets to another day in one tap.
@@ -41,7 +42,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   bool _isExpense = true;
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+  final TextEditingController _reviewNoteController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  double? _rating;
   bool _isSaving = false;
 
   /// The transactions the often used categories are counted from; empty until (and unless) they are read.
@@ -71,6 +74,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     _amountController.removeListener(_onAmountChanged);
     _amountController.dispose();
     _noteController.dispose();
+    _reviewNoteController.dispose();
     super.dispose();
   }
 
@@ -150,7 +154,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   bool get _hasTypedData =>
       _amountController.text.trim().isNotEmpty ||
-      _noteController.text.trim().isNotEmpty;
+      _noteController.text.trim().isNotEmpty ||
+      (_isExpense &&
+          (_rating != null ||
+              _reviewNoteController.text.trim().isNotEmpty));
 
   /// Hands over to the scan sheet of MainScaffold: the form closes first, so the review form the scan leads to is not
   /// stacked on top of it. Typed data is not dropped without asking.
@@ -188,12 +195,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
 
     final note = _noteController.text.trim();
+    final reviewNote = _reviewNoteController.text.trim();
     final transaction = TransactionModel.draft(
       title: note.isEmpty ? category : note,
       category: category,
       amount: amount,
       date: _selectedDate,
       isExpense: _isExpense,
+      rating: _isExpense ? _rating : null,
+      reviewNote: !_isExpense || reviewNote.isEmpty ? null : reviewNote,
     );
 
     setState(() => _isSaving = true);
@@ -311,6 +321,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             controller: _noteController,
                             hintText: loc.addTransactionNoteHint,
                           ),
+                          if (_isExpense) ...[
+                            const SizedBox(height: _gutter),
+                            ExperienceRatingField(
+                              rating: _rating,
+                              onRatingChanged: (value) =>
+                                  setState(() => _rating = value),
+                              reviewNoteController: _reviewNoteController,
+                            ),
+                          ],
                         ],
                       ),
                     ),
