@@ -42,6 +42,12 @@ public class TransactionSearchDocument {
     private String note;
 
     @Field(type = FieldType.Text)
+    private String reviewNote;
+
+    @Field(type = FieldType.Scaled_Float, scalingFactor = 10)
+    private BigDecimal rating;
+
+    @Field(type = FieldType.Text)
     private String categoryName;
 
     @Field(type = FieldType.Text)
@@ -76,6 +82,8 @@ public class TransactionSearchDocument {
         document.setId(String.valueOf(t.getId()));
         document.setUserId(t.getUser() != null ? t.getUser().getId() : null);
         document.setNote(t.getNote());
+        document.setReviewNote(t.getReviewNote());
+        document.setRating(t.getRating());
         document.setCategoryName(t.getCategoryName());
         document.setLocation(t.getLocation());
         document.setPaymentMethod(t.getPaymentMethod());

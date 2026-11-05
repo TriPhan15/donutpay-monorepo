@@ -41,4 +41,10 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
     boolean existsDuplicateExcluding(@Param("userId") Long userId, @Param("categoryKey") long categoryKey,
                                      @Param("periodType") BudgetPeriodType periodType,
                                      @Param("startDate") LocalDate startDate, @Param("excludedId") Long excludedId);
+
+    @Query("select b from Budget b join fetch b.user left join fetch b.category order by b.id")
+    List<Budget> findAllWithUserAndCategory();
+
+    @Query("select b from Budget b join fetch b.user left join fetch b.category where b.id = :id")
+    Optional<Budget> findByIdWithUserAndCategory(@Param("id") Long id);
 }

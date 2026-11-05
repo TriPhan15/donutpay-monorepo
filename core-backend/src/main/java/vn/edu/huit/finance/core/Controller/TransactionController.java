@@ -14,6 +14,9 @@ import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionSearchRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionSearchResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchService;
 import vn.edu.huit.finance.core.Service.TransactionService;
 
@@ -46,6 +49,15 @@ public class TransactionController {
     @Autowired
     private TransactionSearchService transactionSearchService;
 
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
+    @Autowired(required = false)
+    private MongoStandbyReadService standbyReadService;
+
+    @Autowired(required = false)
+    private CurrentUserProvider currentUserProvider;
+
     @GetMapping("/mine")
     public ResponseEntity<ApiResponse<List<TransactionResponseDto>>> myTransactions() {
         return ApiResponses.respond(HttpStatus.OK, MSG_LIST_OK, transactionService.getMyTransactions());
@@ -54,6 +66,26 @@ public class TransactionController {
     @PostMapping("/checkout")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createTransaction(
             @Valid @RequestBody TransactionRequestDto request) {
+        if (failoverService != null && standbyReadService != null && currentUserProvider != null) {
+            if (failoverService.isFailoverActive()) {
+                Map<String, Object> fallbackData = standbyReadService.createStandbyTransaction(
+                        currentUserProvider.getCurrentUser(), request);
+                failoverService.markStandbyWritePending(true);
+                return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, fallbackData);
+            }
+            try {
+                return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, transactionService.createMyTransaction(request));
+            } catch (RuntimeException ex) {
+                if (failoverService.isPostgresUnavailableException(ex)) {
+                    failoverService.recordPostgresFailure(ex);
+                    Map<String, Object> fallbackData = standbyReadService.createStandbyTransaction(
+                            currentUserProvider.getCurrentUser(), request);
+                    failoverService.markStandbyWritePending(true);
+                    return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, fallbackData);
+                }
+                throw ex;
+            }
+        }
         return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, transactionService.createMyTransaction(request));
     }
 

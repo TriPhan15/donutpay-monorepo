@@ -9,6 +9,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 
 import java.util.Collections;
 import java.util.Objects;
@@ -18,6 +20,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
+    @Autowired(required = false)
+    private MongoStandbyReadService standbyReadService;
 
     @Override
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
@@ -56,6 +64,18 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     public User loadApplicationUser(String usernameOrEmail) throws UsernameNotFoundException {
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> loadFromPostgres(usernameOrEmail),
+                    () -> standbyReadService.findUserByUsernameOrEmail(usernameOrEmail)
+                            .orElseThrow(() -> new UsernameNotFoundException("User not found in standby: " + usernameOrEmail)),
+                    "CustomUserDetailsService.loadApplicationUser"
+            );
+        }
+        return loadFromPostgres(usernameOrEmail);
+    }
+
+    private User loadFromPostgres(String usernameOrEmail) {
         // Email first: a legacy username equal to someone else's email must never win over that email's owner.
         return userRepository.findByEmail(usernameOrEmail)
                 .or(() -> userRepository.findByUsername(usernameOrEmail))

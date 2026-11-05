@@ -41,6 +41,10 @@ public class TransactionResponseDto {
      * that is no income (clients leave it out of their income totals).
      */
     private String source;
+    /** Optional user experience rating at the store (0.5 to 5.0 stars in 0.5 increments). */
+    private BigDecimal rating;
+    /** Optional user review note about the experience at the store. */
+    private String reviewNote;
 
     /** The title is the note when there is one, otherwise the name of the category. */
     public static TransactionResponseDto from(Transaction transaction) {
@@ -61,6 +65,8 @@ public class TransactionResponseDto {
                 .receiptStatus(receiptStatus)
                 .clientId(transaction.getClientId())
                 .source(transaction.getSource() == null ? TransactionSource.NORMAL.name() : transaction.getSource().name())
+                .rating(transaction.getRating())
+                .reviewNote(transaction.getReviewNote())
                 .build();
     }
 }

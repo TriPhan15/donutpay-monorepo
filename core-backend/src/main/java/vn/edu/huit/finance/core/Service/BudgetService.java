@@ -3,6 +3,7 @@ package vn.edu.huit.finance.core.Service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.BudgetRequestDto;
 import vn.edu.huit.finance.core.Dto.BudgetResponseDto;
@@ -16,6 +17,8 @@ import vn.edu.huit.finance.core.Repository.BudgetRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 
 import java.util.List;
 
@@ -50,17 +53,39 @@ public class BudgetService {
     @Autowired
     private AuditLogService auditLogService;
 
-    @Transactional(readOnly = true)
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
+    @Autowired(required = false)
+    private MongoStandbyReadService standbyReadService;
+
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<BudgetResponseDto> getMyBudgets() {
         Long userId = currentUserProvider.getCurrentUser().getId();
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> budgetRepository.findAllWithCategoryByUserId(userId).stream()
+                            .map(BudgetResponseDto::from)
+                            .toList(),
+                    () -> standbyReadService.getBudgetsByUser(userId),
+                    "BudgetService.getMyBudgets"
+            );
+        }
         return budgetRepository.findAllWithCategoryByUserId(userId).stream()
                 .map(BudgetResponseDto::from)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public BudgetResponseDto getMyBudget(Long budgetId) {
         Long userId = currentUserProvider.getCurrentUser().getId();
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> BudgetResponseDto.from(findOwnedBudget(budgetId, userId)),
+                    () -> standbyReadService.getBudgetByIdAndUser(budgetId, userId),
+                    "BudgetService.getMyBudget"
+            );
+        }
         return BudgetResponseDto.from(findOwnedBudget(budgetId, userId));
     }
 
@@ -113,7 +138,7 @@ public class BudgetService {
         record(AuditAction.BUDGET_DELETED, caller, budget, AUDIT_DELETED);
 
         log.info("Budget deleted, userId={}, budgetId={}", userId, budgetId);
-    }
+        }
 
     /** One row for a change of one of the caller's budgets: what was done, the period and the category it covers. */
     private void record(AuditAction action, User owner, Budget budget, String verb) {

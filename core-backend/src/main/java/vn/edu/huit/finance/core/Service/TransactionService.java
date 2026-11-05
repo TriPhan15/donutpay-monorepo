@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.AppDashboardResponseDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
@@ -40,6 +41,8 @@ import vn.edu.huit.finance.core.Repository.*;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Util.ReceiptReviewMessages;
@@ -118,6 +121,8 @@ public class TransactionService {
     private static final String AUDIT_CHANGE_DIRECTION = "loại %s → %s";
     private static final String AUDIT_CHANGE_CATEGORY = "danh mục #%d → #%d";
     private static final String AUDIT_CHANGE_NOTE = "ghi chú";
+    private static final String AUDIT_CHANGE_RATING = "đánh giá trải nghiệm";
+    private static final String AUDIT_CHANGE_REVIEW_NOTE = "ghi chú đánh giá";
     private static final String AUDIT_CHANGE_DATE = "ngày giao dịch";
     private static final String AUDIT_CHANGE_PAYMENT_METHOD = "phương thức thanh toán";
     private static final String AUDIT_NO_CHANGE = "không có trường nào thay đổi";
@@ -152,6 +157,10 @@ public class TransactionService {
     private UserStatisticsService userStatisticsService;
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+    @Autowired(required = false)
+    private MongoStandbyReadService standbyReadService;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -243,6 +252,10 @@ public class TransactionService {
         Transaction transaction = new Transaction();
         transaction.setAmount(finalAmount);
         transaction.setNote(request.getNote());
+        if (request.isExpense()) {
+            transaction.setRating(request.getRating());
+            transaction.setReviewNote(normalizeOptionalText(request.getReviewNote()));
+        }
         transaction.setLocation(request.getLocation());
         transaction.setPaymentMethod(request.getPaymentMethod());
 
@@ -345,6 +358,19 @@ public class TransactionService {
         }
         if (request.getNote() != null) {
             transaction.setNote(request.getNote().isBlank() ? null : request.getNote().trim());
+        }
+        if (!newExpense) {
+            transaction.setRating(null);
+            transaction.setReviewNote(null);
+        } else {
+            if (Boolean.TRUE.equals(request.getClearRating())) {
+                transaction.setRating(null);
+            } else if (request.getRating() != null) {
+                transaction.setRating(request.getRating());
+            }
+            if (request.getReviewNote() != null) {
+                transaction.setReviewNote(request.getReviewNote().isBlank() ? null : request.getReviewNote().trim());
+            }
         }
         if (request.getTransactionDate() != null) {
             transaction.setTransactionDate(request.getTransactionDate());
@@ -523,20 +549,40 @@ public class TransactionService {
                 receiptId, saved.getId(), owner.getId(), previousStatus, receipt.getStatus(), previousAmount, finalAmount, walletChange);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<TransactionResponseDto> getMyTransactions() {
         Long userId = currentUserProvider.getCurrentUser().getId();
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> transactionRepo.findByUserIdOrderByTransactionDateDesc(userId).stream()
+                            .map(TransactionResponseDto::from)
+                            .toList(),
+                    () -> standbyReadService.getTransactionsByUser(userId),
+                    "TransactionService.getMyTransactions"
+            );
+        }
         return transactionRepo.findByUserIdOrderByTransactionDateDesc(userId).stream()
                 .map(TransactionResponseDto::from)
                 .toList();
     }
 
     /** Searches the caller's own transactions; the sort field must be one of {@link TransactionSortField}. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<TransactionResponseDto> filterMyTransactions(TransactionFilterRequestDto filter) {
         Long userId = currentUserProvider.getCurrentUser().getId();
         Sort.Direction direction = Sort.Direction.fromOptionalString(filter.getSortDirection()).orElse(Sort.Direction.DESC);
         Sort sort = Sort.by(direction, TransactionSortField.fromProperty(filter.getSortBy()).getProperty());
+
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> transactionRepo.filterTransactions(userId, filter.getCategoryId(), filter.getMinPrice(),
+                                    filter.getMaxPrice(), filter.getVendorName(), sort).stream()
+                            .map(TransactionResponseDto::from)
+                            .toList(),
+                    () -> standbyReadService.filterTransactions(userId, filter),
+                    "TransactionService.filterMyTransactions"
+            );
+        }
 
         return transactionRepo.filterTransactions(userId, filter.getCategoryId(), filter.getMinPrice(),
                         filter.getMaxPrice(), filter.getVendorName(), sort).stream()
@@ -545,13 +591,13 @@ public class TransactionService {
     }
 
     /** Cached per user in Redis: the id is the caller's, from the SecurityContext, so nobody reads another user's entry. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<PopularVendorResponseDto> getMyPopularVendors() {
         return userStatisticsService.popularVendorsOf(currentUserProvider.getCurrentUser().getId());
     }
 
     /** Cached per user in Redis: the id is the caller's, from the SecurityContext, so nobody reads another user's entry. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public AppDashboardResponseDto getMyDashboard() {
         return userStatisticsService.dashboardOf(currentUserProvider.getCurrentUser().getId());
     }
@@ -560,21 +606,27 @@ public class TransactionService {
      * For administrators only (the caller of this method has to check that): the statistics of any user. The user is
      * looked up first, so an unknown or deleted user is a 404 even while an entry of theirs is still cached.
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<PopularVendorResponseDto> getPopularVendorsOf(Long userId) {
         requireExistingUser(userId);
         return userStatisticsService.popularVendorsOf(userId);
     }
 
     /** For administrators only (the caller of this method has to check that): the home page data of any user. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public AppDashboardResponseDto getDashboardOf(Long userId) {
         requireExistingUser(userId);
         return userStatisticsService.dashboardOf(userId);
     }
 
     private void requireExistingUser(Long userId) {
-        if (!userRepo.existsById(userId)) {
+        boolean exists = (failoverService != null && standbyReadService != null)
+                ? failoverService.executeReadWithFallback(
+                        () -> userRepo.existsById(userId),
+                        () -> standbyReadService.existsUserById(userId),
+                        "TransactionService.requireExistingUser")
+                : userRepo.existsById(userId);
+        if (!exists) {
             log.warn("User not found for a statistics request, userId={}", userId);
             throw new UserNotFoundException(MSG_USER_NOT_FOUND);
         }
@@ -696,6 +748,13 @@ public class TransactionService {
         return clientId.trim();
     }
 
+    private static String normalizeOptionalText(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        return text.trim();
+    }
+
     private static boolean hasCategory(TransactionUpdateRequestDto request) {
         return request.getCategoryId() != null
                 || (request.getCategoryName() != null && !request.getCategoryName().isBlank());
@@ -727,6 +786,21 @@ public class TransactionService {
             String noteAfter = request.getNote().isBlank() ? null : request.getNote().trim();
             if (!Objects.equals(noteAfter, transaction.getNote())) {
                 changes.add(AUDIT_CHANGE_NOTE);
+            }
+        }
+        if (Boolean.TRUE.equals(request.getClearRating())) {
+            if (transaction.getRating() != null) {
+                changes.add(AUDIT_CHANGE_RATING);
+            }
+        } else if (request.getRating() != null) {
+            if (transaction.getRating() == null || request.getRating().compareTo(transaction.getRating()) != 0) {
+                changes.add(AUDIT_CHANGE_RATING);
+            }
+        }
+        if (request.getReviewNote() != null) {
+            String reviewNoteAfter = request.getReviewNote().isBlank() ? null : request.getReviewNote().trim();
+            if (!Objects.equals(reviewNoteAfter, transaction.getReviewNote())) {
+                changes.add(AUDIT_CHANGE_REVIEW_NOTE);
             }
         }
         if (dateChanges) {

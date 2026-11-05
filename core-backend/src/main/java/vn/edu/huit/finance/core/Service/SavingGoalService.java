@@ -3,6 +3,7 @@ package vn.edu.huit.finance.core.Service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.SavingGoalDto;
 import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
@@ -18,6 +19,8 @@ import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -66,9 +69,25 @@ public class SavingGoalService {
     @Autowired
     private TransactionService transactionService;
 
-    @Transactional(readOnly = true)
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
+    @Autowired(required = false)
+    private MongoStandbyReadService standbyReadService;
+
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<SavingGoalDto> getMySavings() {
-        return savingGoalRepository.findByUserIdOrderByCreatedAtDesc(currentUserProvider.getCurrentUser().getId()).stream()
+        Long userId = currentUserProvider.getCurrentUser().getId();
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> savingGoalRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                            .map(SavingGoalService::toDto)
+                            .toList(),
+                    () -> standbyReadService.getSavingsByUser(userId),
+                    "SavingGoalService.getMySavings"
+            );
+        }
+        return savingGoalRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(SavingGoalService::toDto)
                 .toList();
     }

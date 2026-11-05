@@ -24,6 +24,8 @@ public class Transaction extends BaseEntity {
     public static final int CLIENT_ID_MAX_LENGTH = 64;
     /** Width of the column behind {@link #source}. */
     public static final int SOURCE_MAX_LENGTH = 16;
+    /** Width of {@link #reviewNote}. */
+    public static final int REVIEW_NOTE_MAX_LENGTH = 255;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,6 +35,14 @@ public class Transaction extends BaseEntity {
     private BigDecimal amount;
 
     private String note;
+
+    /** Optional user experience rating at the store (0.5 to 5.0 in 0.5 increments). */
+    @Column(name = "rating", precision = 2, scale = 1)
+    private BigDecimal rating;
+
+    /** Optional user review comment about the experience at the store. */
+    @Column(name = "review_note", length = REVIEW_NOTE_MAX_LENGTH)
+    private String reviewNote;
 
     @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transactionDate;

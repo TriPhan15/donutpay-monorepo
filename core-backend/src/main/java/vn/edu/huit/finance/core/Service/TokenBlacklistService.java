@@ -5,10 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Entity.RevokedToken;
 import vn.edu.huit.finance.core.Repository.RevokedTokenRepository;
 import vn.edu.huit.finance.core.Security.JwtUtil;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -17,6 +19,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HexFormat;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Blacklist of JWTs that were revoked before they expired (logout, password change). It lives in the database, so a
@@ -37,6 +41,11 @@ public class TokenBlacklistService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
+    private final Set<String> recentRevokedHashes = ConcurrentHashMap.newKeySet();
+
     // Not injected: production uses the system clock; tests replace it to control time.
     private Clock clock = Clock.systemDefaultZone();
 
@@ -53,6 +62,7 @@ public class TokenBlacklistService {
         }
 
         String hash = fingerprint(token);
+        recentRevokedHashes.add(hash);
         if (revokedTokenRepository.existsByTokenHash(hash)) {
             return;
         }
@@ -71,10 +81,26 @@ public class TokenBlacklistService {
         }
     }
 
-    /** Asked for every authenticated request, so it is one indexed lookup. */
-    @Transactional(readOnly = true)
+    /** Asked for every authenticated request, so it is one indexed lookup; gracefully degrades when PostgreSQL is down. */
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public boolean isRevoked(String token) {
-        return revokedTokenRepository.existsByTokenHash(fingerprint(token));
+        String hash = fingerprint(token);
+        if (recentRevokedHashes.contains(hash)) {
+            return true;
+        }
+        if (failoverService != null && failoverService.isFailoverActive()) {
+            return false;
+        }
+        try {
+            return revokedTokenRepository.existsByTokenHash(hash);
+        } catch (RuntimeException e) {
+            if (failoverService != null && failoverService.isPostgresUnavailableException(e)) {
+                failoverService.recordPostgresFailure(e);
+                log.warn("TokenBlacklistService degraded to in-memory check because PostgreSQL is unreachable");
+                return false;
+            }
+            throw e;
+        }
     }
 
     @Scheduled(cron = PURGE_CRON)

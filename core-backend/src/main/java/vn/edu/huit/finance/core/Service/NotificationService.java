@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.NotificationPageResponseDto;
 import vn.edu.huit.finance.core.Dto.NotificationResponseDto;
@@ -14,9 +15,11 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.NotificationNotFoundException;
 import vn.edu.huit.finance.core.Repository.NotificationRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Notifications of the authenticated caller. Reading and marking take no user id: the owner is resolved from the
@@ -39,17 +42,45 @@ public class NotificationService {
     @Autowired
     private CurrentUserProvider currentUserProvider;
 
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
     /** One page of the caller's notifications, newest first. The order is fixed here; the client only picks the page. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public NotificationPageResponseDto getMyNotifications(int page, int size) {
         Long userId = currentUserProvider.getCurrentUser().getId();
+        if (failoverService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> {
+                        Page<Notification> notifications = notificationRepository.findNewestByUserId(userId, PageRequest.of(page, size));
+                        return NotificationPageResponseDto.from(notifications);
+                    },
+                    () -> NotificationPageResponseDto.builder()
+                            .content(List.of())
+                            .page(page)
+                            .size(size)
+                            .totalElements(0L)
+                            .totalPages(0)
+                            .hasNext(false)
+                            .build(),
+                    "NotificationService.getMyNotifications"
+            );
+        }
         Page<Notification> notifications = notificationRepository.findNewestByUserId(userId, PageRequest.of(page, size));
         return NotificationPageResponseDto.from(notifications);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public long countMyUnread() {
-        return notificationRepository.countUnreadByUserId(currentUserProvider.getCurrentUser().getId());
+        Long userId = currentUserProvider.getCurrentUser().getId();
+        if (failoverService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> notificationRepository.countUnreadByUserId(userId),
+                    () -> 0L,
+                    "NotificationService.countMyUnread"
+            );
+        }
+        return notificationRepository.countUnreadByUserId(userId);
     }
 
     /**

@@ -2,6 +2,7 @@ package vn.edu.huit.finance.core.Service.Search;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,8 @@ import vn.edu.huit.finance.core.Dto.TransactionSearchResponseDto;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +40,12 @@ public class TransactionSearchService {
     private final Optional<ElasticsearchTransactionSearchEngine> elasticsearchEngine;
     /** Absent unless Elasticsearch is the configured engine. */
     private final ObjectProvider<TransactionSearchIndexer> indexer;
+
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
+    @Autowired(required = false)
+    private MongoStandbyReadService standbyReadService;
 
     public TransactionSearchService(CurrentUserProvider currentUserProvider,
                                     TransactionRepository transactionRepo,
@@ -71,7 +80,22 @@ public class TransactionSearchService {
             }
         }
         if (hits == null) {
-            hits = postgresEngine.hits(userId, q, page);
+            if (failoverService != null && standbyReadService != null) {
+                if (failoverService.isFailoverActive()) {
+                    return standbyReadService.searchTransactions(userId, request);
+                }
+                try {
+                    hits = postgresEngine.hits(userId, q, page);
+                } catch (RuntimeException e) {
+                    if (failoverService.isPostgresUnavailableException(e)) {
+                        failoverService.recordPostgresFailure(e);
+                        return standbyReadService.searchTransactions(userId, request);
+                    }
+                    throw e;
+                }
+            } else {
+                hits = postgresEngine.hits(userId, q, page);
+            }
         }
 
         return TransactionSearchResponseDto.builder()
@@ -95,6 +119,17 @@ public class TransactionSearchService {
         if (ids.isEmpty()) {
             return List.of();
         }
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> loadFromPostgres(ids, userId),
+                    () -> standbyReadService.loadTransactionsByIds(ids, userId),
+                    "TransactionSearchService.load"
+            );
+        }
+        return loadFromPostgres(ids, userId);
+    }
+
+    private List<TransactionResponseDto> loadFromPostgres(List<Long> ids, Long userId) {
         Map<Long, Transaction> byId = transactionRepo.findAllByIdInAndUserIdWithReceipt(ids, userId).stream()
                 .collect(Collectors.toMap(Transaction::getId, Function.identity()));
         return ids.stream()

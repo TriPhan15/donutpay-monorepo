@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
@@ -20,6 +21,8 @@ import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Util.CategoryNames;
@@ -67,6 +70,12 @@ public class CategoryService {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
+
+    @Autowired(required = false)
+    private MongoStandbyReadService standbyReadService;
+
     /** Mọi danh mục kèm người tạo (left join fetch, không N+1), cho trang quản trị. */
     @Transactional(readOnly = true)
     public List<Category> listAll() {
@@ -74,8 +83,15 @@ public class CategoryService {
     }
 
     /** The default categories and those of the user, as the app lists them. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<CategoryResponseDto> listFor(User caller) {
+        if (failoverService != null && standbyReadService != null) {
+            return failoverService.executeReadWithFallback(
+                    () -> categoryRepository.findVisibleTo(caller.getId()).stream().map(CategoryResponseDto::from).toList(),
+                    () -> standbyReadService.listCategoriesFor(caller.getId()),
+                    "CategoryService.listFor"
+            );
+        }
         return categoryRepository.findVisibleTo(caller.getId()).stream().map(CategoryResponseDto::from).toList();
     }
 

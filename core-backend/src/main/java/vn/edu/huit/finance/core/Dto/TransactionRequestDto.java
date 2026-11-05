@@ -1,6 +1,10 @@
 package vn.edu.huit.finance.core.Dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -83,4 +87,19 @@ public class TransactionRequestDto {
      * checkout is never checked.
      */
     private Boolean allowDuplicate;
+
+    /** Optional user experience rating at the store (0.5 to 5.0 stars in 0.5 increments). */
+    @DecimalMin(value = "0.5", message = "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao")
+    @DecimalMax(value = "5.0", message = "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao")
+    private BigDecimal rating;
+
+    /** Optional user review note about the experience at the store. */
+    @Size(max = TEXT_MAX_LENGTH, message = "Ghi chú đánh giá tối đa {max} ký tự")
+    private String reviewNote;
+
+    @JsonIgnore
+    @AssertTrue(message = "Điểm đánh giá trải nghiệm phải cách nhau 0.5 sao")
+    public boolean isRatingStepValid() {
+        return rating == null || rating.multiply(BigDecimal.valueOf(2)).stripTrailingZeros().scale() <= 0;
+    }
 }

@@ -23,4 +23,10 @@ public interface SavingGoalRepository extends JpaRepository<SavingGoal, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT g FROM SavingGoal g WHERE g.id = :id")
     Optional<SavingGoal> findLockedById(@Param("id") Long id);
+
+    @Query("SELECT g FROM SavingGoal g JOIN FETCH g.user ORDER BY g.id")
+    List<SavingGoal> findAllWithUser();
+
+    @Query("SELECT g FROM SavingGoal g JOIN FETCH g.user WHERE g.id = :id")
+    Optional<SavingGoal> findByIdWithUser(@Param("id") Long id);
 }

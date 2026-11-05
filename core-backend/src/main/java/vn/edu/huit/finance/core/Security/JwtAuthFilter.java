@@ -22,6 +22,7 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.UserRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.SecurityAuditEvent;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
 import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
 import java.io.IOException;
@@ -52,6 +53,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private UserRepository userRepository;
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
+    @Autowired(required = false)
+    private MongoStandbyFailoverService failoverService;
     // Only a signed token that may no longer be used is recorded (AUTH_TOKEN_REJECTED): one that is expired, garbage or of
     // the wrong type is routine (the app renews on 401) or can be sent by anybody, and would only flood the log.
     @Autowired
@@ -153,15 +156,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
      * it would write its old balance and profile over what another request has committed meanwhile.
      */
     private void recordActivity(User user) {
+        if (failoverService != null && failoverService.isFailoverActive()) {
+            return;
+        }
         // Chỉ ghi database nếu lần tương tác cuối đã quá 5 phút.
         LocalDateTime now = LocalDateTime.now();
         if (user.getLastActionTime() != null
                 && Duration.between(user.getLastActionTime(), now).toMinutes() <= LAST_ACTION_UPDATE_INTERVAL_MINUTES) {
             return;
         }
-        if (userRepository.updateLastActionTime(user.getId(), now) == 0) {
-            // Deleted since it was loaded: nothing to record, and the endpoint decides what that means for the request.
-            log.debug("Last action time not recorded, the account is gone: userId={}", user.getId());
+        try {
+            if (userRepository.updateLastActionTime(user.getId(), now) == 0) {
+                // Deleted since it was loaded: nothing to record, and the endpoint decides what that means for the request.
+                log.debug("Last action time not recorded, the account is gone: userId={}", user.getId());
+            }
+        } catch (RuntimeException e) {
+            if (failoverService != null && failoverService.isPostgresUnavailableException(e)) {
+                failoverService.recordPostgresFailure(e);
+                return;
+            }
+            throw e;
         }
     }
 }

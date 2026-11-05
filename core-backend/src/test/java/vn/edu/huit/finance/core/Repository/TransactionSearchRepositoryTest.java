@@ -53,6 +53,10 @@ class TransactionSearchRepositoryTest {
     }
 
     private Transaction save(User owner, String note, String vendor, LocalDateTime date) {
+        return saveWithReview(owner, note, vendor, null, null, date);
+    }
+
+    private Transaction saveWithReview(User owner, String note, String vendor, BigDecimal rating, String reviewNote, LocalDateTime date) {
         Transaction transaction = new Transaction();
         transaction.setUser(owner);
         transaction.setCategory(food);
@@ -60,6 +64,8 @@ class TransactionSearchRepositoryTest {
         transaction.setAmount(new BigDecimal("100000"));
         transaction.setExpense(true);
         transaction.setNote(note);
+        transaction.setRating(rating);
+        transaction.setReviewNote(reviewNote);
         transaction.setTransactionDate(date);
         if (vendor != null) {
             Receipt receipt = new Receipt();
@@ -88,6 +94,19 @@ class TransactionSearchRepositoryTest {
                 alice.getId(), TransactionRepository.likePattern("phở hưng"), PageRequest.of(0, 10));
 
         assertEquals(List.of(viaVendor.getId()), page.getContent());
+        assertEquals(1, page.getTotalElements());
+    }
+
+    @Test
+    void searchIdsByText_matchesReviewNote() {
+        Transaction viaReview = saveWithReview(alice, "Highlands Coffee", "Highlands Coffee",
+                new BigDecimal("1.5"), "Nhân viên thái độ tệ, đồ uống nguội", LocalDateTime.of(2026, 10, 1, 12, 0));
+        save(alice, "Phúc Long", "Phúc Long", LocalDateTime.of(2026, 10, 2, 12, 0));
+
+        Page<Long> page = transactionRepository.searchIdsByText(
+                alice.getId(), TransactionRepository.likePattern("thái độ tệ"), PageRequest.of(0, 10));
+
+        assertEquals(List.of(viaReview.getId()), page.getContent());
         assertEquals(1, page.getTotalElements());
     }
 
