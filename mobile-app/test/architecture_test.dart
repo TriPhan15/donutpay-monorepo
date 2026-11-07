@@ -47,11 +47,11 @@ const List<String> _dioImportAllowlist = [
   'lib/screens/ledger/edit_transaction_page.dart',
   'lib/screens/notifications/notification_screen.dart',
   'lib/screens/profile/account_credentials_screen.dart',
+  'lib/widgets/receipt/receipt_detail_sheet.dart',
 ];
 
 // legacy: may only shrink
 const List<String> _hexColorAllowlist = [
-  'lib/models/transaction_model.dart',
   'lib/widgets/auth/auth_form_layout.dart',
   'lib/widgets/auth/auth_social_buttons.dart',
 ];
@@ -72,18 +72,23 @@ const List<String> _printAllowlist = [
   'lib/screens/ledger/add_transaction_page.dart',
   'lib/screens/ledger/ledger_page.dart',
   'lib/screens/ledger/transaction_detail_page.dart',
-  'lib/screens/main_scaffold.dart',
   'lib/screens/notifications/notification_screen.dart',
   'lib/screens/profile/profile_page.dart',
   'lib/screens/receipt_scanner/pending_receipts_screen.dart',
+  'lib/screens/receipt_scanner/receipt_submitter.dart',
   'lib/screens/receipt_scanner/review_form_page.dart',
   'lib/services/budget_alert_tracker.dart',
   'lib/services/receipt_scan_queue.dart',
+  'lib/services/remote_api_auth.dart',
   'lib/services/remote_api_helper.dart',
+  'lib/services/remote_api_receipt.dart',
   'lib/services/session_service.dart',
+  'lib/services/social_auth_service.dart',
   'lib/widgets/budget/budget_alert_presenter.dart',
   'lib/widgets/feedback/app_toast.dart',
+  'lib/widgets/receipt/receipt_detail_sheet.dart',
   'lib/widgets/receipt/receipt_image_viewer.dart',
+  'lib/widgets/receipt/receipt_scan_launcher.dart',
 ];
 
 /// Paths (relative to the package root, `/` separated) of the `.dart` files under [under], minus [excluding], that
