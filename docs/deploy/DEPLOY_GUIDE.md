@@ -248,8 +248,12 @@ release tại máy) thì dùng chính keystore đó cho CI, đừng tạo khóa 
 ## 8. Quy trình hằng ngày
 
 - **Deploy backend:** push lên `main`. CI chạy test backend/mobile/AI; xanh hết thì job `deploy` SSH vào EC2,
-  `git reset --hard origin/main`, `docker compose build` rồi `up -d --wait`. Job dừng ngay nếu `.env` trên server thiếu
-  hoặc thiếu `JWT_SECRET`.
+  `git reset --hard <commit vừa qua test>`, `docker compose build` rồi `up -d --wait`. Job dừng ngay nếu `.env` trên server thiếu
+  hoặc thiếu `JWT_SECRET`, hoặc thiếu `model.safetensors`; healthcheck lỗi thì log core-api/ai/proxy được in trên trang Actions.
+  - Hai lần push liền nhau thì lần deploy sau đợi lần trước xong (`concurrency: deploy-production`).
+  - **Migration SQL không tự chạy.** Commit nào có file `core-backend/src/main/resources/db/*.sql` mới: chạy nó trên server
+    trước (`docker compose exec -T db sh -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d finance_db' < <file>.sql`),
+    rồi mới push `main`.
 - **Phát hành APK:**
 
   ```bash
