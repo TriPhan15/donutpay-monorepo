@@ -4553,6 +4553,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not download the receipt photo to read it again.'**
   String get receiptDetailPhotoFailed;
+
+  /// Section title for the optional 0.5-5.0 star experience rating on transaction forms.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience rating (optional)'**
+  String get experienceRatingLabel;
+
+  /// Button to clear the selected star rating back to unrated.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get experienceRatingClear;
+
+  /// Hint text shown when no star rating has been chosen yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap or drag stars to rate (0.5 – 5.0)'**
+  String get experienceRatingUnrated;
+
+  /// Sentiment label for a 0.5 to 1.5 star rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Poor experience'**
+  String get experienceRatingBad;
+
+  /// Sentiment label for a 2.0 to 2.5 star rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Below average'**
+  String get experienceRatingFair;
+
+  /// Sentiment label for a 3.0 to 3.5 star rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Average'**
+  String get experienceRatingAverage;
+
+  /// Sentiment label for a 4.0 to 4.5 star rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Good experience'**
+  String get experienceRatingGood;
+
+  /// Sentiment label for a 5.0 star rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Excellent experience'**
+  String get experienceRatingExcellent;
+
+  /// Floating label of the optional personal experience review note field.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience review note (optional)'**
+  String get experienceReviewNoteLabel;
+
+  /// Placeholder text inside the optional personal experience review note field.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g., Friendly staff, great drinks, cozy space...'**
+  String get experienceReviewNoteHint;
+
+  /// Label of the experience rating row in TransactionDetailPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience rating'**
+  String get transactionDetailExperience;
+
+  /// Label of the experience review note row in TransactionDetailPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience note'**
+  String get transactionDetailReviewNote;
+
+  /// Banner shown on the receipt review form when the store has previous rated transactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Past visits to {store}: avg {avg} ★ ({count} ratings)'**
+  String reviewPastStoreRating(String store, String avg, int count);
 }
 
 class _AppLocalizationsDelegate

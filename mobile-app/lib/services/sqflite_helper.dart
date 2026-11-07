@@ -17,7 +17,7 @@ class SqfliteHelper {
   static final SqfliteHelper instance = SqfliteHelper._();
 
   static const String _dbName = 'finance_ai_app.db';
-  static const int _dbVersion = 9;
+  static const int _dbVersion = 10;
 
   static const String usersTable = 'users';
   static const String transactionsTable = 'transactions';
@@ -42,6 +42,12 @@ class SqfliteHelper {
   /// exist did not ask for it.
   static const String _allowDuplicateColumnDef =
       '${TransactionModel.columnAllowDuplicate} INTEGER NOT NULL DEFAULT 0';
+
+  /// Column definitions of the store experience rating and review note (version 10).
+  static const String _ratingColumnDef =
+      '${TransactionModel.columnRating} REAL';
+  static const String _reviewNoteColumnDef =
+      '${TransactionModel.columnReviewNote} TEXT';
 
   /// The receipts waiting to be read or confirmed on this device (version 8).
   static const String _createReceiptScanQueueTable =
@@ -119,7 +125,9 @@ CREATE TABLE $transactionsTable (
   $_syncStatusColumnDef,
   $_imageUrlColumnDef,
   $_rawReceiptDataColumnDef,
-  $_allowDuplicateColumnDef
+  $_allowDuplicateColumnDef,
+  $_ratingColumnDef,
+  $_reviewNoteColumnDef
 )
 ''');
 
@@ -262,6 +270,23 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
       if (!hasAllowDuplicate) {
         await db.execute(
           'ALTER TABLE $transactionsTable ADD COLUMN $_allowDuplicateColumnDef',
+        );
+      }
+    }
+
+    if (oldVersion < 10) {
+      final columns = await db.rawQuery(
+        'PRAGMA table_info($transactionsTable)',
+      );
+      bool hasColumn(String name) => columns.any((c) => c['name'] == name);
+      if (!hasColumn(TransactionModel.columnRating)) {
+        await db.execute(
+          'ALTER TABLE $transactionsTable ADD COLUMN $_ratingColumnDef',
+        );
+      }
+      if (!hasColumn(TransactionModel.columnReviewNote)) {
+        await db.execute(
+          'ALTER TABLE $transactionsTable ADD COLUMN $_reviewNoteColumnDef',
         );
       }
     }

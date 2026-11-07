@@ -1,11 +1,14 @@
 package vn.edu.huit.finance.core.Service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.ExtractedReceiptDto;
 import vn.edu.huit.finance.core.Dto.ReceiptAttemptResponseDto;
@@ -35,6 +38,8 @@ import vn.edu.huit.finance.core.Repository.ReceiptRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Service.Realtime.ReceiptWaitingReviewEvent;
@@ -87,6 +92,7 @@ import java.util.Set;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class ReceiptProcessingService {
 
     private static final String MSG_RECEIPT_NOT_FOUND = "Không tìm thấy hóa đơn";
@@ -117,22 +123,28 @@ public class ReceiptProcessingService {
     private static final String MSG_RETRY_LIMIT =
             "Hóa đơn đã được đọc %d lần, không thể thử lại nữa. Bạn có thể gửi số tiền để quản trị viên duyệt";
 
-    @Autowired
-    private ReceiptRepository receiptRepo;
-    @Autowired
-    private ReceiptProcessingAttemptRepository attemptRepo;
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
-    @Autowired
-    private OcrService ocrService;
-    @Autowired
-    private OcrCorrectionDetector correctionDetector;
-    @Autowired
-    private AuditLogService auditLogService;
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
-    @Autowired
-    private NotificationService notificationService;
+    private final ReceiptRepository receiptRepo;
+    private final ReceiptProcessingAttemptRepository attemptRepo;
+    private final CurrentUserProvider currentUserProvider;
+    private final OcrService ocrService;
+    private final OcrCorrectionDetector correctionDetector;
+    private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
+
+    public ReceiptProcessingService() {
+        this(null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
+    }
 
     /**
      * Builds the receipt of {@code transaction} from the AI's JSON and links both ways. Meant to be called while the
@@ -231,15 +243,41 @@ public class ReceiptProcessingService {
     }
 
     /** One of the caller's receipts, by its own id. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public ReceiptResponseDto getMyReceipt(Long receiptId) {
-        return ReceiptResponseDto.from(findOwnedReceipt(receiptId, currentUserProvider.getCurrentUser().getId()));
+        Long callerId = currentUserProvider.getCurrentUser().getId();
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standbyRead = standbyReadService();
+        if (failover != null && standbyRead != null) {
+            return failover.executeReadWithFallback(
+                    () -> ReceiptResponseDto.from(findOwnedReceipt(receiptId, callerId)),
+                    () -> standbyRead.getReceiptForUser(receiptId, callerId),
+                    "ReceiptProcessingService.getMyReceipt"
+            );
+        }
+        return ReceiptResponseDto.from(findOwnedReceipt(receiptId, callerId));
     }
 
     /** The receipt one of the caller's transactions carries: how a client that only knows the transaction finds it. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public ReceiptResponseDto getMyReceiptOfTransaction(Long transactionId) {
         Long callerId = currentUserProvider.getCurrentUser().getId();
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standbyRead = standbyReadService();
+        if (failover != null && standbyRead != null) {
+            return failover.executeReadWithFallback(
+                    () -> {
+                        Receipt receipt = receiptRepo.findDetailedByTransactionId(transactionId).orElseThrow(() -> {
+                            log.warn("No receipt found for the transaction, userId={}, transactionId={}", callerId, transactionId);
+                            return new ReceiptNotFoundException(MSG_RECEIPT_NOT_FOUND);
+                        });
+                        requireOwner(receipt, callerId);
+                        return ReceiptResponseDto.from(receipt);
+                    },
+                    () -> standbyRead.getReceiptOfTransactionForUser(transactionId, callerId),
+                    "ReceiptProcessingService.getMyReceiptOfTransaction"
+            );
+        }
         Receipt receipt = receiptRepo.findDetailedByTransactionId(transactionId).orElseThrow(() -> {
             log.warn("No receipt found for the transaction, userId={}, transactionId={}", callerId, transactionId);
             return new ReceiptNotFoundException(MSG_RECEIPT_NOT_FOUND);
@@ -516,8 +554,8 @@ public class ReceiptProcessingService {
     /**
      * The number of the receipt's latest reading. A receipt that has none yet but still holds the answer of a reading
      * made before attempts existed gets that answer recorded first, as a LEGACY attempt, so that the reading about to be
-     * recorded comes after it and nothing of it is lost, whether or not the migration that imports such answers has run
-     * yet. The migration applies the same rule ({@link #legacyAnswersOf}) and skips a receipt that has attempts already.
+     * recorded comes after it and nothing of it is lost, whether or not the migration has imported such answers yet.
+     * The migration applies the same rule ({@link #legacyAnswersOf}) and skips a receipt that has attempts already.
      */
     private int keepLegacyReadings(Receipt receipt) {
         int last = attemptRepo.findLastAttemptNumber(receipt.getId());

@@ -1,6 +1,10 @@
 package vn.edu.huit.finance.core.Dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -49,4 +53,22 @@ public class TransactionUpdateRequestDto {
     /** True for an expense, false for an income. Changing it undoes the effect of the old type on the wallet and applies the new one. */
     @JsonProperty("isExpense")
     private Boolean expense;
+
+    /** Optional new experience rating (0.5 to 5.0 stars in 0.5 increments). Null leaves the current rating unchanged unless {@link #clearRating} is true. */
+    @DecimalMin(value = "0.5", message = "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao")
+    @DecimalMax(value = "5.0", message = "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao")
+    private BigDecimal rating;
+
+    /** True clears any existing rating back to null. */
+    private Boolean clearRating;
+
+    /** Optional personal review note about the experience. A blank string clears the existing review note. */
+    @Size(max = TEXT_MAX_LENGTH, message = "Ghi chú đánh giá tối đa {max} ký tự")
+    private String reviewNote;
+
+    @JsonIgnore
+    @AssertTrue(message = "Điểm đánh giá trải nghiệm phải cách nhau 0.5 sao")
+    public boolean isRatingStepValid() {
+        return rating == null || rating.multiply(BigDecimal.valueOf(2)).stripTrailingZeros().scale() <= 0;
+    }
 }

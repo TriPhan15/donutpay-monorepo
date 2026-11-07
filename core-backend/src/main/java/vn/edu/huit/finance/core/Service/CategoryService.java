@@ -1,14 +1,17 @@
 package vn.edu.huit.finance.core.Service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionChangedEvent;
+import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.Category;
 import vn.edu.huit.finance.core.Entity.DefaultCategory;
 import vn.edu.huit.finance.core.Entity.Transaction;
@@ -20,6 +23,8 @@ import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChange;
 import vn.edu.huit.finance.core.Service.Cache.StatisticsChangedEvent;
 import vn.edu.huit.finance.core.Util.CategoryNames;
@@ -39,6 +44,7 @@ import java.util.Set;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class CategoryService {
 
     public static final String TYPE_EXPENSE = "EXPENSE";
@@ -55,17 +61,16 @@ public class CategoryService {
     private static final String AUDIT_RENAMED = "Đổi tên danh mục \"%s\" → \"%s\"";
     private static final String AUDIT_DELETED = "Xóa danh mục \"%s\" (%s)";
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+    private final CategoryRepository categoryRepository;
+    private final AuditLogService auditLogService;
+    private final TransactionRepository transactionRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
 
-    @Autowired
-    private AuditLogService auditLogService;
-
-    @Autowired
-    private TransactionRepository transactionRepository;
-
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    public CategoryService() {
+        this(null, null, null, null, null, null);
+    }
 
     /** Mọi danh mục kèm người tạo (left join fetch, không N+1), cho trang quản trị. */
     @Transactional(readOnly = true)
@@ -74,8 +79,17 @@ public class CategoryService {
     }
 
     /** The default categories and those of the user, as the app lists them. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<CategoryResponseDto> listFor(User caller) {
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
+                    () -> categoryRepository.findVisibleTo(caller.getId()).stream().map(CategoryResponseDto::from).toList(),
+                    () -> standby.listCategoriesFor(caller.getId()),
+                    "CategoryService.listFor"
+            );
+        }
         return categoryRepository.findVisibleTo(caller.getId()).stream().map(CategoryResponseDto::from).toList();
     }
 
@@ -140,17 +154,6 @@ public class CategoryService {
         log.info("Category deleted, categoryId={}", categoryId);
     }
 
-    /**
-     * By id, or by name; the id wins when both are given. Only the default categories and those of [owner] are looked at:
-     * the id of another user's category is an unknown id. The name is trimmed, composed (NFC) and compared ignoring case,
-     * so "cà phê" reuses "Cà phê", typed composed or decomposed. A name that does not exist yet creates the category with
-     * the given type, for [owner], and its creation is recorded (CATEGORY_CREATED) with [actor], in the caller's
-     * transaction. The name of a default category is the exception: it is always the shared category, in its own
-     * spelling, created without an owner if it is not there yet.
-     *
-     * @throws InvalidCategoryException for an unknown id, or when neither an id nor a non-blank name is given
-     * @throws CategoryNameTakenException when a request made at the same time created the same name for the same owner
-     */
     @Transactional
     public Category resolveOrCreate(Long categoryId, String categoryName, String typeIfCreated, User owner, AuditActor actor) {
         if (categoryId != null) {
@@ -171,10 +174,6 @@ public class CategoryService {
         return isExpense ? TYPE_EXPENSE : TYPE_INCOME;
     }
 
-    /**
-     * A category with no owner is a default one. The database refuses a second category of the same owner and name; when
-     * that happens a request made at the same time has just created it, and this one is asked to be sent again.
-     */
     private Category createByName(String name, String type, User owner, AuditActor actor) {
         Category category = new Category();
         category.setName(name);
@@ -194,10 +193,6 @@ public class CategoryService {
         return saved;
     }
 
-    /**
-     * Writes the category at once so that the unique (owner, name) constraint answers here and not at commit: a name that
-     * is already taken becomes a 409 with the name-taken message; any other integrity violation is rethrown unchanged.
-     */
     private Category saveUniquelyNamed(Category category, String name) {
         try {
             Category saved = categoryRepository.save(category);
@@ -212,7 +207,6 @@ public class CategoryService {
         }
     }
 
-    /** True when the Hibernate constraint name, or else the message, anywhere in the cause chain names the constraint. */
     private static boolean violatesConstraint(Throwable error, String constraint) {
         for (Throwable cause = error; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
             if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
@@ -241,7 +235,6 @@ public class CategoryService {
         });
     }
 
-    /** Danh mục mặc định (cùng tên và loại với một DefaultCategory) không được đổi tên hay xóa. */
     private static void refuseDefaultCategory(Category category) {
         boolean isDefault = Arrays.stream(DefaultCategory.values()).anyMatch(d ->
                 d.getDisplayName().equals(category.getName()) && d.getType().equals(category.getType()));
@@ -251,12 +244,10 @@ public class CategoryService {
         }
     }
 
-    /** The default category whose name is [name] (composed, ignoring case), if there is one. */
     private static Optional<DefaultCategory> defaultNamed(String name) {
         return Arrays.stream(DefaultCategory.values()).filter(d -> d.getDisplayName().equalsIgnoreCase(name)).findFirst();
     }
 
-    /** Tên của một danh mục mặc định (không phân biệt hoa thường) không được dùng cho danh mục khác. */
     private static void refuseDefaultName(String name) {
         if (defaultNamed(name).isPresent()) {
             log.warn("Category name of a default category refused");
@@ -264,8 +255,15 @@ public class CategoryService {
         }
     }
 
-    /** By the administrator who called, looked up when the row is written. */
     private void record(AuditAction action, Long categoryId, String description) {
         auditLogService.record(AuditEntry.of(action, AuditActor.currentCaller(), categoryId, description));
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
     }
 }

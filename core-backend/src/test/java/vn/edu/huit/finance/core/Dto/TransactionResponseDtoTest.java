@@ -30,13 +30,27 @@ class TransactionResponseDtoTest {
 
     @Test
     void everyFieldOfTheTransactionIsCarriedOver() {
-        TransactionResponseDto dto = TransactionResponseDto.from(transaction("Bún bò"));
+        Transaction tx = transaction("Bún bò");
+        tx.setRating(new BigDecimal("4.5"));
+        tx.setReviewNote("Phục vụ nhanh, nước dùng đậm đà");
+
+        TransactionResponseDto dto = TransactionResponseDto.from(tx);
 
         assertEquals(100L, dto.getId());
         assertEquals(new BigDecimal("150000"), dto.getAmount());
         assertTrue(dto.isExpense());
         assertEquals("Ăn uống", dto.getCategory());
         assertEquals(LocalDateTime.of(2026, 9, 1, 12, 0), dto.getDate());
+        assertEquals(new BigDecimal("4.5"), dto.getRating());
+        assertEquals("Phục vụ nhanh, nước dùng đậm đà", dto.getReviewNote());
+    }
+
+    @Test
+    void ratingAndReviewNoteAreNullWhenNotSet() {
+        TransactionResponseDto dto = TransactionResponseDto.from(transaction("Bún bò"));
+
+        assertNull(dto.getRating());
+        assertNull(dto.getReviewNote());
     }
 
     @Test

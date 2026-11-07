@@ -1,10 +1,13 @@
 package vn.edu.huit.finance.core.Service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.NotificationPageResponseDto;
 import vn.edu.huit.finance.core.Dto.NotificationResponseDto;
@@ -14,9 +17,11 @@ import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.NotificationNotFoundException;
 import vn.edu.huit.finance.core.Repository.NotificationRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Notifications of the authenticated caller. Reading and marking take no user id: the owner is resolved from the
@@ -25,6 +30,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class NotificationService {
 
     private static final String MSG_NOTIFICATION_NOT_FOUND = "Không tìm thấy thông báo";
@@ -33,23 +39,52 @@ public class NotificationService {
     // replace it to control time.
     private Clock clock = Clock.systemDefaultZone();
 
-    @Autowired
-    private NotificationRepository notificationRepository;
+    private final NotificationRepository notificationRepository;
+    private final CurrentUserProvider currentUserProvider;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
 
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
+    public NotificationService() {
+        this(null, null, null);
+    }
 
     /** One page of the caller's notifications, newest first. The order is fixed here; the client only picks the page. */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public NotificationPageResponseDto getMyNotifications(int page, int size) {
         Long userId = currentUserProvider.getCurrentUser().getId();
+        MongoStandbyFailoverService failover = failoverService();
+        if (failover != null) {
+            return failover.executeReadWithFallback(
+                    () -> {
+                        Page<Notification> notifications = notificationRepository.findNewestByUserId(userId, PageRequest.of(page, size));
+                        return NotificationPageResponseDto.from(notifications);
+                    },
+                    () -> NotificationPageResponseDto.builder()
+                            .content(List.of())
+                            .page(page)
+                            .size(size)
+                            .totalElements(0L)
+                            .totalPages(0)
+                            .hasNext(false)
+                            .build(),
+                    "NotificationService.getMyNotifications"
+            );
+        }
         Page<Notification> notifications = notificationRepository.findNewestByUserId(userId, PageRequest.of(page, size));
         return NotificationPageResponseDto.from(notifications);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public long countMyUnread() {
-        return notificationRepository.countUnreadByUserId(currentUserProvider.getCurrentUser().getId());
+        Long userId = currentUserProvider.getCurrentUser().getId();
+        MongoStandbyFailoverService failover = failoverService();
+        if (failover != null) {
+            return failover.executeReadWithFallback(
+                    () -> notificationRepository.countUnreadByUserId(userId),
+                    () -> 0L,
+                    "NotificationService.countMyUnread"
+            );
+        }
+        return notificationRepository.countUnreadByUserId(userId);
     }
 
     /**
@@ -100,5 +135,9 @@ public class NotificationService {
 
         log.info("Notification created, userId={}, type={}, transactionId={}, budgetId={}, receiptId={}",
                 user.getId(), type, transactionId, budgetId, receiptId);
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
     }
 }

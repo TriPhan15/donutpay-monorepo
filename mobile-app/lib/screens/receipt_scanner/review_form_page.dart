@@ -16,6 +16,7 @@ import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/experience_rating_field.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_fields.dart';
 import 'package:finance_ai_app/screens/receipt_scanner/receipt_submitter.dart';
@@ -93,7 +94,10 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
 
   final TextEditingController _storeNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _reviewNoteController = TextEditingController();
   String _selectedCategory = TransactionCategories.food;
+  double? _rating;
+  List<TransactionModel> _history = const [];
 
   /// The fields the post-processing of the scan marked as not valid: they are shown in the error colour until the user
   /// changes them. An older ai-service sends no "normalized" block, and then nothing is marked.
@@ -104,6 +108,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   @override
   void initState() {
     super.initState();
+    _storeNameController.addListener(_onStoreTextChanged);
     final scan = widget.initialScan;
     if (scan == null) {
       _callDonutApi();
@@ -117,9 +122,43 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
 
   @override
   void dispose() {
+    _storeNameController.removeListener(_onStoreTextChanged);
     _storeNameController.dispose();
     _amountController.dispose();
+    _reviewNoteController.dispose();
     super.dispose();
+  }
+
+  void _onStoreTextChanged() => setState(() {});
+
+  Future<void> _loadHistory() async {
+    final userId = SessionService.currentUserId;
+    if (userId == null) return;
+    try {
+      final txs = await RemoteApiHelper.instance.fetchTransactions();
+      if (!mounted) return;
+      setState(() => _history = txs);
+    } catch (_) {
+      // Past store rating hint is optional; ignore network errors here.
+    }
+  }
+
+  /// Computes average rating and count for the currently typed store name from [_history].
+  ({double avg, int count})? get _pastStoreRating {
+    final store = _storeNameController.text.trim().toLowerCase();
+    if (store.isEmpty) return null;
+    var sum = 0.0;
+    var count = 0;
+    for (final tx in _history) {
+      if (tx.isExpense &&
+          tx.rating != null &&
+          tx.title.trim().toLowerCase() == store) {
+        sum += tx.rating!;
+        count++;
+      }
+    }
+    if (count == 0) return null;
+    return (avg: sum / count, count: count);
   }
 
   /// The buttons follow the total: faded while it is not a positive amount.
@@ -173,6 +212,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       _isProcessing = false;
     });
 
+    _loadHistory();
     if (amount == null) AppToast.info(context, context.loc.reviewNoTotal);
   }
 
@@ -266,6 +306,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
 
   TransactionModel _draftOf(double amount) {
     final storeName = _storeNameController.text.trim();
+    final reviewNote = _reviewNoteController.text.trim();
     final rawScan = _rawScan;
     return TransactionModel.draft(
       title: storeName.isEmpty ? _selectedCategory : storeName,
@@ -275,6 +316,8 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       isExpense: true,
       imageUrl: _imageUrl,
       rawReceiptData: rawScan == null ? null : jsonEncode(rawScan),
+      rating: _rating,
+      reviewNote: reviewNote.isEmpty ? null : reviewNote,
     );
   }
 
@@ -395,6 +438,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final pastRating = _pastStoreRating;
     final fields = _ReviewFields(
       storeController: _storeNameController,
       amountController: _amountController,
@@ -406,6 +450,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       onTotalChanged: _totalNeedsCheck
           ? (_) => setState(() => _totalNeedsCheck = false)
           : null,
+      pastStoreRating: pastRating,
       date: _selectedDate,
       dateHint: _dateHint,
       onDatePicked: _onDatePicked,
@@ -414,6 +459,9 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       category: _selectedCategory,
       onCategory: (category) => setState(() => _selectedCategory = category),
       onMoreCategories: _pickCategory,
+      rating: _rating,
+      onRatingChanged: (value) => setState(() => _rating = value),
+      reviewNoteController: _reviewNoteController,
     );
     return Scaffold(
       body: Column(
@@ -487,8 +535,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   }
 }
 
-/// The fields of the scan the user checks: store, total, date and category. A field the scan doubts keeps its dashed
-/// outline until the user changes it, in both layouts.
+/// The fields of the scan the user checks: store, total, date, category, and optional experience rating.
 class _ReviewFields extends StatelessWidget {
   const _ReviewFields({
     required this.storeController,
@@ -497,6 +544,7 @@ class _ReviewFields extends StatelessWidget {
     required this.totalNeedsCheck,
     required this.onStoreChanged,
     required this.onTotalChanged,
+    required this.pastStoreRating,
     required this.date,
     required this.dateHint,
     required this.onDatePicked,
@@ -505,6 +553,9 @@ class _ReviewFields extends StatelessWidget {
     required this.category,
     required this.onCategory,
     required this.onMoreCategories,
+    required this.rating,
+    required this.onRatingChanged,
+    required this.reviewNoteController,
   });
 
   static const double _gap = 16;
@@ -515,6 +566,7 @@ class _ReviewFields extends StatelessWidget {
   final bool totalNeedsCheck;
   final ValueChanged<String>? onStoreChanged;
   final ValueChanged<String>? onTotalChanged;
+  final ({double avg, int count})? pastStoreRating;
   final DateTime date;
   final String? dateHint;
   final ValueChanged<DateTime> onDatePicked;
@@ -523,10 +575,14 @@ class _ReviewFields extends StatelessWidget {
   final String category;
   final ValueChanged<String> onCategory;
   final VoidCallback onMoreCategories;
+  final double? rating;
+  final ValueChanged<double?> onRatingChanged;
+  final TextEditingController reviewNoteController;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final past = pastStoreRating;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -548,6 +604,14 @@ class _ReviewFields extends StatelessWidget {
             ),
           ),
         ),
+        if (past != null) ...[
+          const SizedBox(height: 8),
+          _PastStoreRatingBanner(
+            storeName: storeController.text.trim(),
+            avg: past.avg,
+            count: past.count,
+          ),
+        ],
         const SizedBox(height: _gap),
         NeedsCheckField(
           needsCheck: totalNeedsCheck,
@@ -584,7 +648,60 @@ class _ReviewFields extends StatelessWidget {
           onSelected: onCategory,
           onMore: onMoreCategories,
         ),
+        const SizedBox(height: _gap),
+        ExperienceRatingField(
+          rating: rating,
+          onRatingChanged: onRatingChanged,
+          reviewNoteController: reviewNoteController,
+        ),
       ],
+    );
+  }
+}
+
+class _PastStoreRatingBanner extends StatelessWidget {
+  const _PastStoreRatingBanner({
+    required this.storeName,
+    required this.avg,
+    required this.count,
+  });
+
+  final String storeName;
+  final double avg;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final semantic = context.colors;
+    final tone = avg <= 2.0
+        ? semantic.expenseColor
+        : (avg <= 3.5 ? semantic.warningColor : semantic.successColor);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.history_rounded, size: 16, color: tone),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              context.loc.reviewPastStoreRating(
+                storeName,
+                avg.toStringAsFixed(1),
+                count,
+              ),
+              style: TextStyle(
+                color: tone,
+                fontSize: AppTextSize.caption,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

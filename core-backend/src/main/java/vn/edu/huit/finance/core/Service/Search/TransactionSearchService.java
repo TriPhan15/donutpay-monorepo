@@ -1,7 +1,9 @@
 package vn.edu.huit.finance.core.Service.Search;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,8 @@ import vn.edu.huit.finance.core.Dto.TransactionSearchResponseDto;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +32,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class TransactionSearchService {
 
     private final CurrentUserProvider currentUserProvider;
@@ -37,6 +42,8 @@ public class TransactionSearchService {
     private final Optional<ElasticsearchTransactionSearchEngine> elasticsearchEngine;
     /** Absent unless Elasticsearch is the configured engine. */
     private final ObjectProvider<TransactionSearchIndexer> indexer;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
 
     public TransactionSearchService(CurrentUserProvider currentUserProvider,
                                     TransactionRepository transactionRepo,
@@ -44,12 +51,7 @@ public class TransactionSearchService {
                                     PostgresTransactionSearchEngine postgresEngine,
                                     Optional<ElasticsearchTransactionSearchEngine> elasticsearchEngine,
                                     ObjectProvider<TransactionSearchIndexer> indexer) {
-        this.currentUserProvider = currentUserProvider;
-        this.transactionRepo = transactionRepo;
-        this.configuredEngine = configuredEngine;
-        this.postgresEngine = postgresEngine;
-        this.elasticsearchEngine = elasticsearchEngine;
-        this.indexer = indexer;
+        this(currentUserProvider, transactionRepo, configuredEngine, postgresEngine, elasticsearchEngine, indexer, null, null);
     }
 
     public TransactionSearchResponseDto search(TransactionSearchRequestDto request) {
@@ -71,7 +73,24 @@ public class TransactionSearchService {
             }
         }
         if (hits == null) {
-            hits = postgresEngine.hits(userId, q, page);
+            MongoStandbyFailoverService failover = failoverService();
+            MongoStandbyReadService standby = standbyReadService();
+            if (failover != null && standby != null) {
+                if (failover.isFailoverActive()) {
+                    return standby.searchTransactions(userId, request);
+                }
+                try {
+                    hits = postgresEngine.hits(userId, q, page);
+                } catch (RuntimeException e) {
+                    if (failover.isPostgresUnavailableException(e)) {
+                        failover.recordPostgresFailure(e);
+                        return standby.searchTransactions(userId, request);
+                    }
+                    throw e;
+                }
+            } else {
+                hits = postgresEngine.hits(userId, q, page);
+            }
         }
 
         return TransactionSearchResponseDto.builder()
@@ -95,6 +114,19 @@ public class TransactionSearchService {
         if (ids.isEmpty()) {
             return List.of();
         }
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
+                    () -> loadFromPostgres(ids, userId),
+                    () -> standby.loadTransactionsByIds(ids, userId),
+                    "TransactionSearchService.load"
+            );
+        }
+        return loadFromPostgres(ids, userId);
+    }
+
+    private List<TransactionResponseDto> loadFromPostgres(List<Long> ids, Long userId) {
         Map<Long, Transaction> byId = transactionRepo.findAllByIdInAndUserIdWithReceipt(ids, userId).stream()
                 .collect(Collectors.toMap(Transaction::getId, Function.identity()));
         return ids.stream()
@@ -102,5 +134,13 @@ public class TransactionSearchService {
                 .filter(java.util.Objects::nonNull)
                 .map(TransactionResponseDto::from)
                 .toList();
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
     }
 }

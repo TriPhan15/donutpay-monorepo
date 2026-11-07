@@ -174,19 +174,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     }
 
     /**
-     * The ids of the user's transactions whose note, category, location, payment method or receipt seller contain the text
+     * The ids of the user's transactions whose note, review note, category, location, payment method or receipt seller contain the text
      * of {@code pattern} (built by {@link #likePattern}), newest first. Only ids: the rows are loaded by
      * {@link #findAllByIdInAndUserIdWithReceipt}, the same way as for hits of the search index.
      */
     @Query(value = "SELECT t.id FROM Transaction t LEFT JOIN t.receipt r " +
                    "WHERE t.user.id = :userId AND (" +
-                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
+                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.reviewNote) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
                    "OR LOWER(t.location) LIKE :pattern ESCAPE '\\' OR LOWER(t.paymentMethod) LIKE :pattern ESCAPE '\\' " +
                    "OR LOWER(r.vendorName) LIKE :pattern ESCAPE '\\') " +
                    "ORDER BY t.transactionDate DESC, t.id DESC",
            countQuery = "SELECT count(t) FROM Transaction t LEFT JOIN t.receipt r " +
                    "WHERE t.user.id = :userId AND (" +
-                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
+                   "LOWER(t.note) LIKE :pattern ESCAPE '\\' OR LOWER(t.reviewNote) LIKE :pattern ESCAPE '\\' " +
+                   "OR LOWER(t.categoryName) LIKE :pattern ESCAPE '\\' " +
                    "OR LOWER(t.location) LIKE :pattern ESCAPE '\\' OR LOWER(t.paymentMethod) LIKE :pattern ESCAPE '\\' " +
                    "OR LOWER(r.vendorName) LIKE :pattern ESCAPE '\\')")
     org.springframework.data.domain.Page<Long> searchIdsByText(@Param("userId") Long userId,
@@ -201,4 +203,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
            "WHERE t.id IN :ids AND t.user.id = :userId")
     List<Transaction> findAllByIdInAndUserIdWithReceipt(@Param("ids") java.util.Collection<Long> ids,
                                                         @Param("userId") Long userId);
+
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.user JOIN FETCH t.category LEFT JOIN FETCH t.receipt ORDER BY t.id")
+    List<Transaction> findAllWithDetailsForBackup();
+
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.user JOIN FETCH t.category LEFT JOIN FETCH t.receipt WHERE t.id = :id")
+    Optional<Transaction> findByIdWithDetailsForBackup(@Param("id") Long id);
 }

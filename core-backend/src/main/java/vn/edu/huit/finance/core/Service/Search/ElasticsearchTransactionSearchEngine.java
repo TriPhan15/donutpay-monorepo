@@ -18,7 +18,7 @@ import java.util.List;
  * The search in the Elasticsearch index: a fuzzy multi_match over the text fields (accent-insensitive, with prefix matching
  * through the autocomplete sub-fields), always inside a filter on the caller's user id. The text is the value of a
  * multi_match, never a query_string, so no character of it has a meaning for Elasticsearch. Only exists with
- * {@code app.search.engine=elasticsearch}; failures propagate, TransactionSearchService falls back to PostgreSQL.
+ * {@code app.search.engine=elasticsearch}; failures propagate, TransactionSearchIndexer / TransactionSearchService falls back to PostgreSQL.
  */
 @Component
 @ConditionalOnProperty(name = SearchConfig.ENGINE_PROPERTY, havingValue = SearchEngineType.ELASTICSEARCH_VALUE)
@@ -27,10 +27,10 @@ public class ElasticsearchTransactionSearchEngine implements TransactionSearchEn
     /** Whole words and prefixes: the main fields plus the edge-ngram sub-fields. Matched without fuzziness. */
     static final List<String> EXACT_FIELDS = List.of(
             "vendorName^3", "vendorName.autocomplete^2", "note^2", "note.autocomplete",
-            "categoryName", "location", "paymentMethod");
+            "reviewNote", "reviewNote.autocomplete", "categoryName", "location", "paymentMethod");
     /** Whole-word fields only: fuzziness on the edge-ngram sub-fields would match every word that shares two letters. */
     static final List<String> FUZZY_FIELDS = List.of(
-            "vendorName^3", "note^2", "categoryName", "location", "paymentMethod");
+            "vendorName^3", "note^2", "reviewNote", "categoryName", "location", "paymentMethod");
     static final float EXACT_BOOST = 2f;
     static final String MIN_SHOULD_MATCH = "1";
     static final String USER_ID_FIELD = "userId";

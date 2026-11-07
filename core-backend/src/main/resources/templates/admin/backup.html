@@ -27,20 +27,20 @@
                         <div class="alert alert-warning border-warning border-start border-4 bg-warning bg-opacity-10 mb-5">
                             <h5 class="fw-bold text-dark"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i> Lưu ý quan trọng từ Server</h5>
                             <ul class="mb-0 text-dark">
-                                <li>File sao lưu (định dạng custom của <code>pg_dump</code>, không mã hóa) được lưu trên máy chủ, trong thư mục <code class="bg-light px-2 py-1 rounded">backups/</code> của ứng dụng.</li>
-                                <li>PostgreSQL không có sao lưu vi sai (Differential) hay sao lưu nhật ký (Log) qua <code>pg_dump</code>, nên trang này chỉ có các loại <code>pg_dump</code> làm được thật.</li>
+                                <li>File sao lưu định dạng custom của <code>pg_dump</code> được lưu trên máy chủ trong thư mục <code class="bg-light px-2 py-1 rounded">backups/</code> của ứng dụng.</li>
+                                <li>PostgreSQL không hỗ trợ sao lưu vi sai hay sao lưu nhật ký qua <code>pg_dump</code>, nên trang này chỉ cung cấp các chế độ sao lưu thực tế của <code>pg_dump</code>.</li>
                                 <li>Sao lưu FULL có thể làm chậm hệ thống khi dữ liệu lớn. Vui lòng thực hiện vào giờ thấp điểm.</li>
                             </ul>
                         </div>
 
-                        <h5 class="text-primary fw-bold border-bottom pb-3 mb-4"><i class="bi bi-cloud-arrow-down-fill me-2"></i>Tiến trình Sao lưu (Backup)</h5>
+                        <h5 class="text-primary fw-bold border-bottom pb-3 mb-4"><i class="bi bi-cloud-arrow-down-fill me-2"></i>Tiến trình Sao lưu</h5>
 
-                        <div class="row g-4 mb-5">
+                        <div class="row g-4 mb-3">
                             <div class="col-md-4">
                                 <button onclick="ConfirmBackup('FULL')" class="btn btn-outline-primary btn-lg w-100 p-4 rounded-4 hover-effect">
                                     <i class="bi bi-hdd-network-fill display-4 d-block mb-3"></i>
                                     <strong class="fs-5">FULL BACKUP</strong>
-                                    <div class="small text-muted mt-2">Sao lưu toàn bộ Database</div>
+                                    <div class="small text-muted mt-2">Sao lưu toàn bộ cơ sở dữ liệu lên ổ đĩa và MongoDB</div>
                                 </button>
                             </div>
                             <div class="col-md-4">
@@ -59,46 +59,110 @@
                             </div>
                         </div>
 
-                        <h5 class="text-danger fw-bold border-bottom pb-3 mb-4"><i class="bi bi-arrow-counterclockwise me-2"></i>Phục hồi Dữ liệu (Restore)</h5>
+                        <div class="bg-light border rounded-4 p-3 mb-5 small text-dark" id="scheduledBackupCard">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div>
+                                    <i class="bi bi-clock-history text-primary me-1"></i>
+                                    <strong>Lịch tự động FULL Backup:</strong> <span id="sbSchedule">Đang tải...</span>
+                                </div>
+                                <div>
+                                    <strong>Lần chạy gần nhất:</strong> <span id="sbLastRun">Đang tải...</span>
+                                    <span class="mx-1">|</span>
+                                    <strong>Kết quả:</strong> <span id="sbResult">-</span>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 text-muted">
+                                <div>
+                                    <strong>Dung lượng:</strong> <span id="sbSize">-</span>
+                                    <span class="mx-2">|</span>
+                                    <strong>Nơi lưu:</strong> <span id="sbPlaces">-</span>
+                                </div>
+                                <div class="text-truncate" style="max-width: 100%;">
+                                    <strong>SHA-256:</strong> <code id="sbSha" class="small text-break">-</code>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 class="text-danger fw-bold border-bottom pb-3 mb-4"><i class="bi bi-arrow-counterclockwise me-2"></i>Phục hồi Dữ liệu</h5>
 
                         <div class="card border-danger border-2 bg-danger bg-opacity-10 mb-4 rounded-4">
                             <div class="card-body p-4 text-center">
                                 <h5 class="text-danger fw-bold mb-3"><i class="bi bi-radioactive me-2"></i> CẢNH BÁO RỦI RO</h5>
                                 <p class="text-dark mb-4">
-                                    Hệ thống sẽ phục hồi từ bản sao lưu <strong>FULL</strong> mới nhất (bản Schema/Data Only không dùng để phục hồi).<br>
-                                    <strong>Toàn bộ dữ liệu giao dịch mới phát sinh kể từ bản Backup cuối cùng sẽ BỊ XÓA VĨNH VIỄN.</strong>
+                                    Hệ thống sẽ phục hồi từ bản sao lưu <strong>FULL</strong> mới nhất trên ổ đĩa hoặc bản sao lưu dự phòng có kiểm tra <code>SHA-256</code> trong MongoDB.<br>
+                                    <strong>Toàn bộ dữ liệu giao dịch mới phát sinh kể từ bản sao lưu cuối cùng sẽ bị ghi đè.</strong>
                                 </p>
-                                <button onclick="ConfirmRestore()" class="btn btn-danger btn-lg px-5 fw-bold shadow">
-                                    <i class="bi bi-exclamation-octagon-fill me-2"></i> XÁC NHẬN KHÔI PHỤC TOÀN DIỆN
-                                </button>
+                                <div class="d-flex flex-wrap gap-3 justify-content-center">
+                                    <button onclick="ConfirmRestore()" class="btn btn-danger btn-lg px-4 fw-bold shadow">
+                                        <i class="bi bi-exclamation-octagon-fill me-2"></i> KHÔI PHỤC TOÀN DIỆN TỪ Ổ ĐĨA
+                                    </button>
+                                    <button id="mongoCopyRestoreBtn" onclick="ConfirmRestoreFromMongoCopy()" class="btn btn-outline-danger btn-lg px-4 fw-bold bg-white shadow-sm">
+                                        <i class="bi bi-database-fill-down me-2"></i> KHÔI PHỤC TỪ BẢN SAO MONGODB
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <h5 class="text-primary fw-bold border-bottom pb-3 mb-4 mt-5"><i class="bi bi-clock-history me-2"></i>Sao lưu tự động hằng ngày</h5>
+                        <h5 class="text-info fw-bold border-bottom pb-3 mb-4 mt-5">
+                            <i class="bi bi-shield-check me-2"></i>Sao lưu hệ thống chính
+                        </h5>
 
-                        <div class="card border-primary border-2 bg-primary bg-opacity-10 mb-4 rounded-4" id="scheduledBackupCard">
+                        <div class="card border-info border-2 bg-info bg-opacity-10 mb-4 rounded-4" id="selectiveMirrorCard">
                             <div class="card-body p-4">
-                                <dl class="row mb-3 text-dark">
-                                    <dt class="col-sm-4">Lịch</dt>
-                                    <dd class="col-sm-8" id="sbSchedule">Đang tải...</dd>
-                                    <dt class="col-sm-4">Lần chạy gần nhất</dt>
-                                    <dd class="col-sm-8" id="sbLastRun">Đang tải...</dd>
-                                    <dt class="col-sm-4">Kết quả</dt>
-                                    <dd class="col-sm-8" id="sbResult">Đang tải...</dd>
-                                    <dt class="col-sm-4">Dung lượng</dt>
-                                    <dd class="col-sm-8" id="sbSize">-</dd>
-                                    <dt class="col-sm-4">Nơi lưu</dt>
-                                    <dd class="col-sm-8" id="sbPlaces">-</dd>
-                                    <dt class="col-sm-4">SHA-256</dt>
-                                    <dd class="col-sm-8"><code id="sbSha" class="small text-break">-</code></dd>
-                                </dl>
-                                <ul class="text-dark small">
-                                    <li>Giữ <strong>7 bản hằng ngày</strong> và <strong>4 bản hằng tuần</strong> (chỉ bản tự động, không xóa bản bạn bấm tay). Mỗi bản được tính SHA-256 và kiểm tra đọc được bằng <code>pg_restore --list</code>; hỏng thì admin nhận mail.</li>
-                                    <li><strong>Giới hạn:</strong> MongoDB nằm cùng máy chủ với PostgreSQL, nên bản sao trong MongoDB chỉ chống lỗi file hoặc ổ đĩa của PostgreSQL, <strong>không chống mất cả máy chủ</strong>. Muốn chống mất máy chủ phải chép bản sao lưu ra ngoài (Google Drive/S3) khi triển khai.</li>
-                                </ul>
-                                <div class="text-center">
-                                    <button id="mongoCopyRestoreBtn" onclick="ConfirmRestoreFromMongoCopy()" class="btn btn-danger btn-lg px-5 fw-bold shadow">
-                                        <i class="bi bi-database-fill-down me-2"></i> Khôi phục từ bản trong MongoDB
+                                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                                    <div>
+                                        <span class="me-2 fw-bold text-dark">Nguồn đọc hiện tại:</span>
+                                        <span id="mirrorReadSourceBadge" class="badge bg-primary fs-6">Đang tải...</span>
+                                        <span id="mirrorPgStatusBadge" class="badge bg-secondary ms-1">PostgreSQL: ...</span>
+                                        <span id="mirrorMongoStatusBadge" class="badge bg-secondary ms-1">MongoDB: ...</span>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="forceFailoverToggle" onchange="ToggleMirrorFailover(this.checked)">
+                                        <label class="form-check-label fw-bold text-dark" for="forceFailoverToggle">
+                                            Chế độ giả lập đọc dự phòng
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <p class="text-dark small mb-3">
+                                    Đồng bộ dữ liệu tự động và chủ động từ PostgreSQL sang 5 collection dự phòng trên MongoDB. Khi PostgreSQL gặp sự cố hoặc đang bật chế độ giả lập,
+                                    ứng dụng vẫn đọc và ghi nhận giao dịch mới qua MongoDB, sau đó có thể đối soát và đồng bộ ngược về PostgreSQL mà vẫn giữ nguyên mã định danh dữ liệu.
+                                </p>
+
+                                <div class="table-responsive bg-white rounded-3 shadow-sm mb-3">
+                                    <table class="table table-sm table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Collection MongoDB</th>
+                                                <th>Bảng PostgreSQL Nguồn</th>
+                                                <th class="text-end">Số dòng PG</th>
+                                                <th class="text-end">Số Doc Mongo</th>
+                                                <th class="text-center">Trạng thái</th>
+                                                <th class="text-center">Đối soát</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mirrorCollectionTableBody">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted py-3">Đang tải trạng thái 5 Collection...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="d-flex flex-wrap justify-content-between align-items-center small text-dark mb-3">
+                                    <div>Lần đồng bộ gần nhất: <strong id="mirrorLastSyncTime">-</strong></div>
+                                    <div>Lần phục hồi gần nhất: <strong id="mirrorLastRestoreTime">-</strong></div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-3 justify-content-center">
+                                    <button id="mirrorDiffAllBtn" onclick="OpenMirrorDiffModal('ALL')" class="btn btn-warning btn-lg px-4 fw-bold text-dark shadow-sm">
+                                        <i class="bi bi-search me-2"></i> ĐỐI SOÁT DỮ LIỆU
+                                    </button>
+                                    <button id="mirrorSyncBtn" onclick="ConfirmMirrorSync()" class="btn btn-primary btn-lg px-4 fw-bold">
+                                        <i class="bi bi-arrow-repeat me-2"></i> ĐỒNG BỘ NGAY (PG &rarr; MONGO)
+                                    </button>
+                                    <button id="mirrorRestoreBtn" onclick="ConfirmMirrorRestore()" class="btn btn-danger btn-lg px-4 fw-bold">
+                                        <i class="bi bi-database-fill-up me-2"></i> Đồng bộ NGAY (MongoDB &rarr; PG)
                                     </button>
                                 </div>
                             </div>
@@ -136,6 +200,45 @@
             <p class="text-white-50">Vui lòng không tắt hoặc làm mới trình duyệt.</p>
         </div>
 
+        <div class="modal fade" id="mirrorDiffModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title fw-bold">
+                            <i class="bi bi-search me-2 text-warning"></i>Đối soát dữ liệu chênh lệch giữa PostgreSQL và MongoDB
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info small mb-3">
+                            Hệ thống liệt kê từng bản ghi đang có sự chênh lệch giữa PostgreSQL và MongoDB. Bạn có thể kiểm tra chi tiết từng dòng để chọn khôi phục về PostgreSQL, cập nhật sang MongoDB hoặc xóa dữ liệu không còn sử dụng.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Collection / Bảng</th>
+                                        <th>Bản ghi &amp; Loại Lệch</th>
+                                        <th>Trạng thái trên PostgreSQL</th>
+                                        <th>Trạng thái trên MongoDB</th>
+                                        <th class="text-center" style="min-width: 240px;">Quyết định của Admin</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mirrorDiffModalBody">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">Đang quét đối soát dữ liệu...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script>
        
             const Toast = Swal.mixin({
@@ -152,7 +255,9 @@
             function ConfirmBackup(loai) {
                 Swal.fire({
                     title: `Khởi chạy sao lưu ${loai}?`,
-                    text: "Máy chủ sẽ tốn một ít tài nguyên để nén dữ liệu.",
+                    text: loai === 'FULL'
+                        ? "Hệ thống sẽ tạo bản FULL Backup trên ổ đĩa, kiểm tra toàn vẹn SHA-256 và lưu thêm bản dự phòng vào MongoDB GridFS."
+                        : "Máy chủ sẽ tốn một ít tài nguyên để nén dữ liệu.",
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#0d6efd',
@@ -160,17 +265,16 @@
                     confirmButtonText: 'Đồng ý, chạy ngay!'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        toggleLoading(true); 
-
-                   
+                        toggleLoading(true);
                         fetch(`/admin/backup/execute?type=${loai}`, {
                             method: 'POST'
                         })
                             .then(response => response.json().catch(() => ({ success: false, message: 'Phản hồi không hợp lệ từ máy chủ.' })))
                             .then(data => {
-                                toggleLoading(false); 
+                                toggleLoading(false);
                                 if (data.success) {
                                     Toast.fire({ icon: 'success', title: data.message });
+                                    if (loai === 'FULL') loadScheduledStatus();
                                 } else {
                                     Swal.fire('Thất bại', data.message, 'error');
                                 }
@@ -239,10 +343,30 @@
                     });
             }
 
+            function ConfirmRunScheduledBackupNow() {
+                Swal.fire({
+                    title: 'Chạy sao lưu tự động ngay bây giờ?',
+                    html: 'Hệ thống sẽ chạy <b>pg_dump -F c</b>, kiểm tra toàn vẹn bằng <b>pg_restore --list</b>, tính <b>SHA-256</b> và lưu song song vào thư mục <code>backups/</code> cùng <b>MongoDB GridFS</b> mà không cần đợi tới 02:00 sáng.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Chạy sao lưu ngay!',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        runMongo('/admin/backup/scheduled/run-now', msg => {
+                            Toast.fire({ icon: 'success', title: msg });
+                            loadScheduledStatus();
+                        });
+                    }
+                });
+            }
+
             function ConfirmRestoreFromMongoCopy() {
                 Swal.fire({
                     title: 'BẠN CÓ CHẮC CHẮN?',
-                    html: "Đây là hành động <b>không thể hoàn tác</b>.<br/>Dữ liệu hiện tại sẽ bị ghi đè bằng bản sao lưu FULL mới nhất lưu trong MongoDB (sau khi kiểm tra SHA-256)!",
+                    html: "Đây là hành động <b>không thể hoàn tác</b>.<br/>Dữ liệu hiện tại sẽ bị ghi đè bằng bản sao lưu FULL mới nhất lưu trong MongoDB sau khi kiểm tra mã băm SHA-256!",
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#dc3545',
@@ -251,7 +375,10 @@
                     cancelButtonText: 'Quay xe'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        runMongo('/admin/backup/scheduled/restore-from-mongo', msg => Swal.fire('Thành công!', msg, 'success'));
+                        runMongo('/admin/backup/scheduled/restore-from-mongo', msg => {
+                            Swal.fire('Thành công!', msg, 'success');
+                            loadScheduledStatus();
+                        });
                     }
                 });
             }
@@ -269,7 +396,7 @@
                 fetch('/admin/backup/scheduled/status')
                     .then(response => response.json())
                     .then(s => {
-                        set('sbSchedule', (s.enabled ? 'Đang bật' : 'Đang tắt') + ' - cron ' + s.cron + ' (' + s.zone + ')');
+                        set('sbSchedule', (s.enabled ? 'Đang bật' : 'Đang tắt') + ' - ' + s.cron + ' - ' + s.zone);
                         if (!s.hasRun) {
                             set('sbLastRun', 'Chưa có lần chạy nào');
                             set('sbResult', '-');
@@ -291,6 +418,339 @@
                     });
             }
             loadScheduledStatus();
+
+            let lastMirrorStatus = null;
+
+            function renderMirrorStatus(s) {
+                if (!s) return;
+                lastMirrorStatus = s;
+                const readBadge = document.getElementById('mirrorReadSourceBadge');
+                const pgBadge = document.getElementById('mirrorPgStatusBadge');
+                const mongoBadge = document.getElementById('mirrorMongoStatusBadge');
+                const toggle = document.getElementById('forceFailoverToggle');
+
+                if (s.failoverActive) {
+                    readBadge.className = 'badge bg-warning text-dark fs-6';
+                    readBadge.textContent = 'MONGODB STANDBY';
+                } else {
+                    readBadge.className = 'badge bg-primary fs-6';
+                    readBadge.textContent = 'POSTGRESQL';
+                }
+
+                pgBadge.className = s.postgresUp ? 'badge bg-success ms-1' : 'badge bg-danger ms-1';
+                pgBadge.textContent = s.postgresUp ? 'PostgreSQL: Online' : 'PostgreSQL: Offline';
+
+                mongoBadge.className = s.mongoUp ? 'badge bg-success ms-1' : 'badge bg-danger ms-1';
+                mongoBadge.textContent = s.mongoUp ? 'MongoDB: Online' : 'MongoDB: Offline';
+
+                toggle.checked = Boolean(s.forceFailoverEnabled);
+
+                document.getElementById('mirrorLastSyncTime').textContent =
+                    s.lastSyncTime ? String(s.lastSyncTime).replace('T', ' ').substring(0, 19) : 'Tự động theo sự kiện';
+                document.getElementById('mirrorLastRestoreTime').textContent =
+                    s.lastRestoreTime ? String(s.lastRestoreTime).replace('T', ' ').substring(0, 19) : 'Chưa chạy';
+
+                const tbody = document.getElementById('mirrorCollectionTableBody');
+                tbody.textContent = '';
+                if (!Array.isArray(s.collections) || s.collections.length === 0) {
+                    const tr = document.createElement('tr');
+                    const td = document.createElement('td');
+                    td.colSpan = 5;
+                    td.className = 'text-center text-muted py-2';
+                    td.textContent = 'Không có dữ liệu thống kê';
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                    return;
+                }
+
+                s.collections.forEach(item => {
+                    const tr = document.createElement('tr');
+
+                    const tdCol = document.createElement('td');
+                    const codeCol = document.createElement('code');
+                    codeCol.className = 'fw-bold text-primary';
+                    codeCol.textContent = item.mongoCollection;
+                    tdCol.appendChild(codeCol);
+
+                    const tdPg = document.createElement('td');
+                    tdPg.textContent = item.postgresTable;
+
+                    const tdPgCount = document.createElement('td');
+                    tdPgCount.className = 'text-end fw-semibold';
+                    tdPgCount.textContent = item.postgresCount >= 0 ? String(item.postgresCount) : 'Offline';
+
+                    const tdMongoCount = document.createElement('td');
+                    tdMongoCount.className = 'text-end fw-semibold';
+                    tdMongoCount.textContent = item.mongoCount >= 0 ? String(item.mongoCount) : 'Offline';
+
+                    const tdStatus = document.createElement('td');
+                    tdStatus.className = 'text-center';
+                    const badge = document.createElement('span');
+                    if (!s.postgresUp && item.mongoCount >= 0) {
+                        badge.className = 'badge bg-warning text-dark';
+                        badge.textContent = 'Đang dự phòng';
+                    } else if (item.synced) {
+                        badge.className = 'badge bg-success';
+                        badge.textContent = 'Đã đồng bộ';
+                    } else {
+                        badge.className = 'badge bg-danger';
+                        badge.textContent = item.diffCount > 0 ? ('Lệch ' + item.diffCount + ' dòng') : 'Cần đồng bộ';
+                    }
+                    tdStatus.appendChild(badge);
+
+                    const tdDiff = document.createElement('td');
+                    tdDiff.className = 'text-center';
+                    const diffBtn = document.createElement('button');
+                    diffBtn.type = 'button';
+                    diffBtn.className = item.synced ? 'btn btn-sm btn-outline-secondary' : 'btn btn-sm btn-warning fw-bold text-dark';
+                    diffBtn.textContent = item.synced ? 'Kiểm tra' : 'Đối soát';
+                    diffBtn.onclick = () => OpenMirrorDiffModal(item.mongoCollection);
+                    tdDiff.appendChild(diffBtn);
+
+                    tr.appendChild(tdCol);
+                    tr.appendChild(tdPg);
+                    tr.appendChild(tdPgCount);
+                    tr.appendChild(tdMongoCount);
+                    tr.appendChild(tdStatus);
+                    tr.appendChild(tdDiff);
+                    tbody.appendChild(tr);
+                });
+            }
+
+            let currentDiffFilter = 'ALL';
+
+            function OpenMirrorDiffModal(collection) {
+                currentDiffFilter = collection || 'ALL';
+                const modalEl = document.getElementById('mirrorDiffModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+                loadMirrorDiffs(currentDiffFilter);
+            }
+
+            function loadMirrorDiffs(collection) {
+                const tbody = document.getElementById('mirrorDiffModalBody');
+                tbody.textContent = '';
+                const loadingRow = document.createElement('tr');
+                const loadingCell = document.createElement('td');
+                loadingCell.colSpan = 5;
+                loadingCell.className = 'text-center text-muted py-4';
+                loadingCell.textContent = 'Đang đối soát từng bản ghi giữa PostgreSQL và MongoDB...';
+                loadingRow.appendChild(loadingCell);
+                tbody.appendChild(loadingRow);
+
+                fetch(`/admin/backup/mirror/diffs?collection=${encodeURIComponent(collection || 'ALL')}`)
+                    .then(r => r.json())
+                    .then(diffs => {
+                        tbody.textContent = '';
+                        if (!Array.isArray(diffs) || diffs.length === 0) {
+                            const emptyRow = document.createElement('tr');
+                            const emptyCell = document.createElement('td');
+                            emptyCell.colSpan = 5;
+                            emptyCell.className = 'text-center text-success fw-bold py-4';
+                            emptyCell.textContent = '✓ Hoàn toàn khớp 100%! Không có bản ghi hay số dư nào bị chênh lệch giữa PostgreSQL và MongoDB.';
+                            emptyRow.appendChild(emptyCell);
+                            tbody.appendChild(emptyRow);
+                            return;
+                        }
+
+                        diffs.forEach(d => {
+                            const tr = document.createElement('tr');
+
+                            const tdCol = document.createElement('td');
+                            const code = document.createElement('code');
+                            code.className = 'fw-bold text-primary d-block';
+                            code.textContent = d.mongoCollection;
+                            const sub = document.createElement('small');
+                            sub.className = 'text-muted';
+                            sub.textContent = 'Bảng: ' + d.postgresTable;
+                            tdCol.appendChild(code);
+                            tdCol.appendChild(sub);
+
+                            const tdTitle = document.createElement('td');
+                            const strong = document.createElement('div');
+                            strong.className = 'fw-bold text-dark';
+                            strong.textContent = d.title;
+                            const typeBadge = document.createElement('span');
+                            if (d.diffType === 'ONLY_IN_MONGO') {
+                                typeBadge.className = 'badge bg-warning text-dark mt-1';
+                                typeBadge.textContent = 'Chỉ có trên MongoDB';
+                            } else if (d.diffType === 'ONLY_IN_POSTGRES') {
+                                typeBadge.className = 'badge bg-info text-dark mt-1';
+                                typeBadge.textContent = 'Chỉ có trên PostgreSQL';
+                            } else {
+                                typeBadge.className = 'badge bg-danger mt-1';
+                                typeBadge.textContent = 'Lệch giá trị / số dư ví';
+                            }
+                            tdTitle.appendChild(strong);
+                            tdTitle.appendChild(typeBadge);
+
+                            const tdPg = document.createElement('td');
+                            tdPg.className = 'small';
+                            tdPg.textContent = d.postgresSummary;
+
+                            const tdMongo = document.createElement('td');
+                            tdMongo.className = 'small';
+                            tdMongo.textContent = d.mongoSummary;
+
+                            const tdActions = document.createElement('td');
+                            tdActions.className = 'text-center';
+                            const btnGroup = document.createElement('div');
+                            btnGroup.className = 'd-flex flex-column gap-1';
+
+                            if (d.diffType === 'ONLY_IN_MONGO') {
+                                const btnRestore = document.createElement('button');
+                                btnRestore.className = 'btn btn-sm btn-success fw-bold';
+                                btnRestore.textContent = 'Khôi phục về PostgreSQL';
+                                btnRestore.onclick = () => ResolveMirrorDiffItem(d.mongoCollection, d.recordId, 'APPLY_MONGO_TO_PG');
+
+                                const btnDeleteMongo = document.createElement('button');
+                                btnDeleteMongo.className = 'btn btn-sm btn-outline-danger';
+                                btnDeleteMongo.textContent = 'Xóa khỏi MongoDB';
+                                btnDeleteMongo.onclick = () => ResolveMirrorDiffItem(d.mongoCollection, d.recordId, 'DELETE_FROM_MONGO');
+
+                                btnGroup.appendChild(btnRestore);
+                                btnGroup.appendChild(btnDeleteMongo);
+                            } else if (d.diffType === 'ONLY_IN_POSTGRES') {
+                                const btnSync = document.createElement('button');
+                                btnSync.className = 'btn btn-sm btn-primary fw-bold';
+                                btnSync.textContent = 'Đồng bộ sang MongoDB';
+                                btnSync.onclick = () => ResolveMirrorDiffItem(d.mongoCollection, d.recordId, 'APPLY_PG_TO_MONGO');
+
+                                const btnDeletePg = document.createElement('button');
+                                btnDeletePg.className = 'btn btn-sm btn-outline-danger';
+                                btnDeletePg.textContent = 'Xóa khỏi PostgreSQL';
+                                btnDeletePg.onclick = () => ResolveMirrorDiffItem(d.mongoCollection, d.recordId, 'DELETE_FROM_PG');
+
+                                btnGroup.appendChild(btnSync);
+                                btnGroup.appendChild(btnDeletePg);
+                            } else {
+                                const btnUseMongo = document.createElement('button');
+                                btnUseMongo.className = 'btn btn-sm btn-success fw-bold';
+                                btnUseMongo.textContent = 'Cập nhật theo MongoDB';
+                                btnUseMongo.onclick = () => ResolveMirrorDiffItem(d.mongoCollection, d.recordId, 'APPLY_MONGO_TO_PG');
+
+                                const btnUsePg = document.createElement('button');
+                                btnUsePg.className = 'btn btn-sm btn-primary fw-bold';
+                                btnUsePg.textContent = 'Cập nhật theo PostgreSQL';
+                                btnUsePg.onclick = () => ResolveMirrorDiffItem(d.mongoCollection, d.recordId, 'APPLY_PG_TO_MONGO');
+
+                                btnGroup.appendChild(btnUseMongo);
+                                btnGroup.appendChild(btnUsePg);
+                            }
+
+                            tdActions.appendChild(btnGroup);
+
+                            tr.appendChild(tdCol);
+                            tr.appendChild(tdTitle);
+                            tr.appendChild(tdPg);
+                            tr.appendChild(tdMongo);
+                            tr.appendChild(tdActions);
+                            tbody.appendChild(tr);
+                        });
+                    })
+                    .catch(() => {
+                        tbody.textContent = '';
+                        const errRow = document.createElement('tr');
+                        const errCell = document.createElement('td');
+                        errCell.colSpan = 5;
+                        errCell.className = 'text-center text-danger py-3';
+                        errCell.textContent = 'Không thể tải danh sách đối soát. Vui lòng kiểm tra kết nối cơ sở dữ liệu.';
+                        errRow.appendChild(errCell);
+                        tbody.appendChild(errRow);
+                    });
+            }
+
+            function ResolveMirrorDiffItem(collection, recordId, action) {
+                const url = `/admin/backup/mirror/resolve-diff?collection=${encodeURIComponent(collection)}&recordId=${encodeURIComponent(recordId)}&action=${encodeURIComponent(action)}`;
+                fetch(url, { method: 'POST' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            Toast.fire({ icon: 'success', title: data.message });
+                            if (data.status) renderMirrorStatus(data.status);
+                            loadMirrorDiffs(currentDiffFilter);
+                        } else {
+                            Swal.fire('Thất bại', data.message, 'error');
+                        }
+                    })
+                    .catch(() => Swal.fire('Lỗi', 'Mất kết nối máy chủ khi xử lý đối soát!', 'error'));
+            }
+
+            function loadMirrorStatus() {
+                fetch('/admin/backup/mirror/status')
+                    .then(r => r.json())
+                    .then(renderMirrorStatus)
+                    .catch(() => {});
+            }
+            loadMirrorStatus();
+
+            function ConfirmMirrorSync() {
+                const mongoHasMore = lastMirrorStatus && Array.isArray(lastMirrorStatus.collections)
+                    && lastMirrorStatus.collections.some(c => c.postgresCount >= 0 && c.mongoCount > c.postgresCount);
+
+                const dialogConfig = mongoHasMore ? {
+                    title: 'Cảnh báo: MongoDB đang có nhiều dòng hơn PostgreSQL!',
+                    html: 'Hệ thống phát hiện <b>Số Doc Mongo &gt; Số dòng PG</b>.<br/><br/>'
+                        + '• Nếu bạn <b>vừa chủ động xóa dữ liệu trên PostgreSQL</b> và muốn cập nhật xóa theo bên MongoDB, hãy bấm tiếp tục đồng bộ.<br/>'
+                        + '• Nếu <b>PostgreSQL bị thiếu dữ liệu</b> và bạn muốn khôi phục từ MongoDB, hãy bấm <b>Hủy</b> và dùng chức năng đối soát hoặc đồng bộ từ MongoDB về PostgreSQL.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Tiếp tục đồng bộ',
+                    cancelButtonText: 'Hủy để chọn Phục hồi'
+                } : {
+                    title: 'Đồng bộ ngay sang 5 Collection MongoDB?',
+                    text: 'Hệ thống sẽ quét toàn bộ 5 nhóm dữ liệu cốt lõi từ PostgreSQL và cập nhật sang MongoDB.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Đồng ý, đồng bộ ngay!'
+                };
+
+                Swal.fire(dialogConfig).then((result) => {
+                    if (result.isConfirmed) {
+                        runMongo('/admin/backup/mirror/sync', msg => {
+                            Toast.fire({ icon: 'success', title: msg });
+                            loadMirrorStatus();
+                        });
+                    }
+                });
+            }
+
+            function ConfirmMirrorRestore() {
+                Swal.fire({
+                    title: 'Phục hồi ngược từ 5 Collection MongoDB về PostgreSQL?',
+                    html: 'Hệ thống sẽ khôi phục 6 bảng <b>users, categories, receipts, transactions, budgets, saving_goals</b> theo đúng thứ tự khóa ngoại, bảo toàn ID và reset Sequences.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Xác nhận Phục hồi!',
+                    cancelButtonText: 'Hủy'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        runMongo('/admin/backup/mirror/restore', msg => {
+                            Swal.fire('Thành công!', msg, 'success');
+                            loadMirrorStatus();
+                        });
+                    }
+                });
+            }
+
+            function ToggleMirrorFailover(enabled) {
+                fetch(`/admin/backup/mirror/failover?enabled=${enabled}`, { method: 'POST' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status) renderMirrorStatus(data.status);
+                        Toast.fire({ icon: enabled ? 'warning' : 'info', title: data.message });
+                    })
+                    .catch(() => {
+                        Swal.fire('Lỗi', 'Không thể chuyển đổi chế độ Failover!', 'error');
+                        loadMirrorStatus();
+                    });
+            }
 
             function ConfirmMongoBackup() {
                 Swal.fire({

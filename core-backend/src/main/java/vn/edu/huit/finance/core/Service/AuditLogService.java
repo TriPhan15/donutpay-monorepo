@@ -1,16 +1,20 @@
 package vn.edu.huit.finance.core.Service;
 
 import io.micrometer.core.instrument.Metrics;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.huit.finance.core.Dto.StandbyEntityChangedEvent;
 import vn.edu.huit.finance.core.Entity.ActionLog;
 import vn.edu.huit.finance.core.Entity.AuditAction;
+import vn.edu.huit.finance.core.Entity.AuditTargetType;
 import vn.edu.huit.finance.core.Exception.AuditLogWriteException;
 import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.ActionLogRepository;
@@ -41,6 +45,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class AuditLogService {
 
     public static final String WRITE_FAILURES_METRIC = "audit.write.failures";
@@ -49,19 +54,69 @@ public class AuditLogService {
     private static final String POLICY_TRANSACTIONAL = "transactional";
     private static final String POLICY_INDEPENDENT = "independent";
 
-    @Autowired
-    private ActionLogRepository actionLogRepository;
-
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
+    private final ActionLogRepository actionLogRepository;
+    private final CurrentUserProvider currentUserProvider;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Not injected: the system clock is what production uses; tests replace it to control the timestamp.
     private Clock clock = Clock.systemDefaultZone();
+
+    public AuditLogService() {
+        this(null, null, null);
+    }
 
     /** Records a change made in the caller's transaction, as part of it. Requires that transaction. */
     @Transactional(propagation = Propagation.MANDATORY)
     public void record(AuditEntry entry) {
         write(entry, POLICY_TRANSACTIONAL);
+        publishStandbyMirrorEvent(entry);
+    }
+
+    private void publishStandbyMirrorEvent(AuditEntry entry) {
+        if (eventPublisher == null || entry == null || entry.action() == null) {
+            return;
+        }
+        AuditAction action = entry.action();
+        if (action == AuditAction.SYSTEM_SEGMENTATION_RUN) {
+            eventPublisher.publishEvent(StandbyEntityChangedEvent.allUsersUpdated());
+            return;
+        }
+        Long targetId = entry.targetId();
+        AuditTargetType targetType = action.getTargetType();
+        if (targetId == null || targetType == null) {
+            return;
+        }
+        switch (targetType) {
+            case USER -> {
+                // USER_DELETED may either hard-delete or soft-lock the user; syncSingleUser handles both via findById/ifPresentOrElse.
+                eventPublisher.publishEvent(StandbyEntityChangedEvent.userUpserted(targetId));
+            }
+            case CATEGORY -> {
+                if (action == AuditAction.CATEGORY_DELETED) {
+                    eventPublisher.publishEvent(StandbyEntityChangedEvent.categoryDeleted(targetId));
+                } else {
+                    eventPublisher.publishEvent(StandbyEntityChangedEvent.categoryUpserted(targetId));
+                }
+            }
+            case RECEIPT -> eventPublisher.publishEvent(StandbyEntityChangedEvent.receiptUpserted(targetId));
+            case BUDGET -> {
+                if (action == AuditAction.BUDGET_DELETED) {
+                    eventPublisher.publishEvent(StandbyEntityChangedEvent.budgetDeleted(targetId));
+                } else {
+                    eventPublisher.publishEvent(StandbyEntityChangedEvent.budgetUpserted(targetId));
+                }
+            }
+            case SAVING_GOAL -> {
+                if (action == AuditAction.SAVING_DELETED) {
+                    eventPublisher.publishEvent(StandbyEntityChangedEvent.savingGoalDeleted(targetId));
+                } else {
+                    eventPublisher.publishEvent(StandbyEntityChangedEvent.savingGoalUpserted(targetId));
+                }
+            }
+            default -> {
+                // TRANSACTION is already covered by TransactionChangedEvent; other target types are not in the 5 core collections.
+            }
+        }
     }
 
     /** Records something that is not a change of the caller's transaction, in a transaction of its own. */

@@ -2698,4 +2698,46 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get receiptDetailPhotoFailed =>
       'Could not download the receipt photo to read it again.';
+
+  @override
+  String get experienceRatingLabel => 'Experience rating (optional)';
+
+  @override
+  String get experienceRatingClear => 'Clear';
+
+  @override
+  String get experienceRatingUnrated => 'Tap or drag stars to rate (0.5 – 5.0)';
+
+  @override
+  String get experienceRatingBad => 'Poor experience';
+
+  @override
+  String get experienceRatingFair => 'Below average';
+
+  @override
+  String get experienceRatingAverage => 'Average';
+
+  @override
+  String get experienceRatingGood => 'Good experience';
+
+  @override
+  String get experienceRatingExcellent => 'Excellent experience';
+
+  @override
+  String get experienceReviewNoteLabel => 'Experience review note (optional)';
+
+  @override
+  String get experienceReviewNoteHint =>
+      'e.g., Friendly staff, great drinks, cozy space...';
+
+  @override
+  String get transactionDetailExperience => 'Experience rating';
+
+  @override
+  String get transactionDetailReviewNote => 'Experience note';
+
+  @override
+  String reviewPastStoreRating(String store, String avg, int count) {
+    return 'Past visits to $store: avg $avg ★ ($count ratings)';
+  }
 }

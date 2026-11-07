@@ -13,6 +13,7 @@ import 'package:finance_ai_app/l10n/app_localizations.dart';
 import 'package:finance_ai_app/models/category_shortcuts.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/category_shortcut_grid.dart';
+import 'package:finance_ai_app/screens/ledger/widgets/experience_rating_field.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/form_submit_bar.dart';
 import 'package:finance_ai_app/screens/ledger/widgets/transaction_form_fields.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
@@ -29,11 +30,14 @@ const String _fieldAmount = 'amount';
 const String _fieldCategory = 'categoryName';
 const String _fieldNote = 'note';
 const String _fieldDate = 'transactionDate';
+const String _fieldRating = 'rating';
+const String _fieldClearRating = 'clearRating';
+const String _fieldReviewNote = 'reviewNote';
 
-/// Form to correct the amount, category, day and note of a transaction that the server has (T9 spec, 3.3: the add form's
-/// layout with a summary card on top and "Lưu thay đổi", faded until something changed). It sends just what the user
-/// changed, which leaves the time of day, the type and the receipt alone, and pops with true once the server has saved
-/// it.
+/// Form to correct the amount, category, day, note and optional experience rating of a transaction that the server has
+/// (T9 spec, 3.3: the add form's layout with a summary card on top and "Lưu thay đổi", faded until something changed).
+/// It sends just what the user changed, which leaves the time of day, the type and the receipt alone, and pops with
+/// true once the server has saved it.
 class EditTransactionPage extends StatefulWidget {
   final TransactionModel transaction;
 
@@ -49,9 +53,11 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+  final TextEditingController _reviewNoteController = TextEditingController();
 
   late String _category;
   late DateTime _date;
+  double? _rating;
   bool _amountShown = false;
 
   /// The categories of the server for the type of the transaction; the tiles and the full list are drawn from it.
@@ -71,18 +77,23 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     return title == _original.category.trim() ? '' : title;
   }
 
+  String get _originalReviewNote => (_original.reviewNote ?? '').trim();
+
   @override
   void initState() {
     super.initState();
     _noteController.text = _originalNote;
+    _reviewNoteController.text = _originalReviewNote;
     _category = _original.category;
     _date = _original.date;
+    _rating = _original.rating;
     // The categories another screen already read give every tile in the first frame, so the tiles do not jump.
     _serverCategories = List.of(
       TransactionCategories.forType(isExpense: _original.isExpense),
     );
     _amountController.addListener(_onFieldChanged);
     _noteController.addListener(_onFieldChanged);
+    _reviewNoteController.addListener(_onFieldChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadCategories();
     });
@@ -104,8 +115,10 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   void dispose() {
     _amountController.removeListener(_onFieldChanged);
     _noteController.removeListener(_onFieldChanged);
+    _reviewNoteController.removeListener(_onFieldChanged);
     _amountController.dispose();
     _noteController.dispose();
+    _reviewNoteController.dispose();
     super.dispose();
   }
 
@@ -146,11 +159,18 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   /// The fields the user changed; empty when nothing differs from the transaction as it was opened.
   Map<String, dynamic> _changes(double amount) {
     final note = _noteController.text.trim();
+    final reviewNote = _reviewNoteController.text.trim();
     return {
       if (amount != _originalWholeAmount) _fieldAmount: amount,
       if (_category != _original.category) _fieldCategory: _category,
       if (note != _originalNote) _fieldNote: note,
       if (_date != _original.date) _fieldDate: _date.toIso8601String(),
+      if (_original.isExpense && _rating != _original.rating && _rating != null)
+        _fieldRating: _rating,
+      if (_original.isExpense && _rating == null && _original.rating != null)
+        _fieldClearRating: true,
+      if (_original.isExpense && reviewNote != _originalReviewNote)
+        _fieldReviewNote: reviewNote,
     };
   }
 
@@ -293,6 +313,15 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                         ),
                         const SizedBox(height: _gutter),
                         NoteField(controller: _noteController),
+                        if (_original.isExpense) ...[
+                          const SizedBox(height: _gutter),
+                          ExperienceRatingField(
+                            rating: _rating,
+                            onRatingChanged: (value) =>
+                                setState(() => _rating = value),
+                            reviewNoteController: _reviewNoteController,
+                          ),
+                        ],
                       ],
                     ),
                   ),

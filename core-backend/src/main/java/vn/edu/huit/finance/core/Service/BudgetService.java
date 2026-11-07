@@ -1,8 +1,11 @@
 package vn.edu.huit.finance.core.Service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Dto.BudgetRequestDto;
 import vn.edu.huit.finance.core.Dto.BudgetResponseDto;
@@ -16,6 +19,8 @@ import vn.edu.huit.finance.core.Repository.BudgetRepository;
 import vn.edu.huit.finance.core.Security.CurrentUserProvider;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyReadService;
 
 import java.util.List;
 
@@ -27,6 +32,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class BudgetService {
 
     private static final String MSG_BUDGET_NOT_FOUND = "Không tìm thấy ngân sách";
@@ -38,29 +44,48 @@ public class BudgetService {
     private static final String AUDIT_CATEGORY = "danh mục #%d";
     private static final String AUDIT_ALL_CATEGORIES = "mọi danh mục";
 
-    @Autowired
-    private BudgetRepository budgetRepository;
+    private final BudgetRepository budgetRepository;
+    private final CategoryService categoryService;
+    private final CurrentUserProvider currentUserProvider;
+    private final AuditLogService auditLogService;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
 
-    @Autowired
-    private CategoryService categoryService;
+    public BudgetService() {
+        this(null, null, null, null, null, null);
+    }
 
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
-
-    @Autowired
-    private AuditLogService auditLogService;
-
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<BudgetResponseDto> getMyBudgets() {
         Long userId = currentUserProvider.getCurrentUser().getId();
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
+                    () -> budgetRepository.findAllWithCategoryByUserId(userId).stream()
+                            .map(BudgetResponseDto::from)
+                            .toList(),
+                    () -> standby.getBudgetsByUser(userId),
+                    "BudgetService.getMyBudgets"
+            );
+        }
         return budgetRepository.findAllWithCategoryByUserId(userId).stream()
                 .map(BudgetResponseDto::from)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public BudgetResponseDto getMyBudget(Long budgetId) {
         Long userId = currentUserProvider.getCurrentUser().getId();
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
+                    () -> BudgetResponseDto.from(findOwnedBudget(budgetId, userId)),
+                    () -> standby.getBudgetByIdAndUser(budgetId, userId),
+                    "BudgetService.getMyBudget"
+            );
+        }
         return BudgetResponseDto.from(findOwnedBudget(budgetId, userId));
     }
 
@@ -160,5 +185,13 @@ public class BudgetService {
         log.warn("Budget rejected: duplicate, userId={}, categoryId={}, periodType={}, startDate={}",
                 userId, idOf(category), request.getPeriodType(), request.getStartDate());
         return new DuplicateBudgetException(MSG_DUPLICATE_BUDGET);
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
     }
 }

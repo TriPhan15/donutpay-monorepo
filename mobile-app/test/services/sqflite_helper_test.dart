@@ -9,7 +9,7 @@ import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/sqflite_helper.dart';
 
-const int _currentVersion = 9;
+const int _currentVersion = 10;
 const int _userId = 1;
 const int _otherUserId = 2;
 const String _transactions = 'transactions';
@@ -185,6 +185,8 @@ void main() {
             TransactionModel.columnImageUrl,
             TransactionModel.columnRawReceiptData,
             TransactionModel.columnAllowDuplicate,
+            TransactionModel.columnRating,
+            TransactionModel.columnReviewNote,
           ]),
         );
       },
@@ -256,6 +258,24 @@ void main() {
       final read = (await store.getUnsyncedTransactions(_userId)).single;
       expect(read.imageUrl, '/uploads/a.jpg');
       expect(read.rawReceiptData, '{"seller":"Highlands"}');
+    });
+
+    test('the rating and review note of a pending row survive the round trip', () async {
+      final tx = TransactionModel.draft(
+        title: 'Highlands',
+        category: 'Ăn uống',
+        amount: 45000,
+        date: DateTime(2026, 9, 20, 8, 30),
+        isExpense: true,
+        rating: 4.5,
+        reviewNote: 'Phục vụ nhiệt tình',
+      ).withSyncStatus(SyncStatus.pending);
+
+      await store.insertTransaction(tx, _userId);
+
+      final read = (await store.getUnsyncedTransactions(_userId)).single;
+      expect(read.rating, 4.5);
+      expect(read.reviewNote, 'Phục vụ nhiệt tình');
     });
 
     test(
@@ -526,6 +546,8 @@ void main() {
             TransactionModel.columnImageUrl,
             TransactionModel.columnRawReceiptData,
             TransactionModel.columnAllowDuplicate,
+            TransactionModel.columnRating,
+            TransactionModel.columnReviewNote,
           ]),
         );
         expect(await db.query('budgets'), isEmpty);

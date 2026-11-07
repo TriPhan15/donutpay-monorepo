@@ -138,3 +138,14 @@ ycda.txt
 # Personal study notes of team members stay local
 docs/nosql/ghi_chu_tien/
 docs/nosql/tim_hieu_tool/
+docs/THUC_TE_SOURCE_CODE.md
+THUC_TE_SOURCE_CODE.md
+
+# Compressed archives & large bundles
+*.rar
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+*.archive.gz

@@ -1,6 +1,8 @@
 package vn.edu.huit.finance.core.Controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,9 @@ import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionSearchRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionSearchResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionUpdateRequestDto;
+import vn.edu.huit.finance.core.Security.CurrentUserProvider;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
+import vn.edu.huit.finance.core.Service.Backup.MongoStandbyWriteService;
 import vn.edu.huit.finance.core.Service.Search.TransactionSearchService;
 import vn.edu.huit.finance.core.Service.TransactionService;
 
@@ -27,6 +32,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/transactions")
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class TransactionController {
 
     private static final String MSG_LIST_OK = "Lấy giao dịch thành công";
@@ -37,14 +43,17 @@ public class TransactionController {
     private static final String MSG_CANCELED = "Đã hủy hóa đơn thành công!";
     private static final String MSG_VENDORS_OK = "Lấy danh sách độ phổ biến thành công";
     private static final String MSG_DASHBOARD_OK = "Load trang chủ App thành công";
-
     private static final String MSG_SEARCH_OK = "Tìm kiếm giao dịch thành công";
 
-    @Autowired
-    private TransactionService transactionService;
+    private final TransactionService transactionService;
+    private final TransactionSearchService transactionSearchService;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyWriteService> standbyWriteServiceProvider;
+    private final ObjectProvider<CurrentUserProvider> currentUserProvider;
 
-    @Autowired
-    private TransactionSearchService transactionSearchService;
+    public TransactionController() {
+        this(null, null, null, null, null);
+    }
 
     @GetMapping("/mine")
     public ResponseEntity<ApiResponse<List<TransactionResponseDto>>> myTransactions() {
@@ -54,6 +63,30 @@ public class TransactionController {
     @PostMapping("/checkout")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createTransaction(
             @Valid @RequestBody TransactionRequestDto request) {
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyWriteService standbyWrite = standbyWriteService();
+        CurrentUserProvider currentUser = currentUser();
+        if (failover != null && standbyWrite != null && currentUser != null) {
+            if (failover.isFailoverActive()) {
+                Map<String, Object> fallbackData = standbyWrite.createStandbyTransaction(
+                        currentUser.getCurrentUser(), request);
+                failover.markStandbyWritePending(true);
+                return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, fallbackData);
+            }
+            try {
+                failover.reconcilePendingWritesIfNeeded();
+                return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, transactionService.createMyTransaction(request));
+            } catch (RuntimeException ex) {
+                if (failover.isPostgresUnavailableException(ex)) {
+                    failover.recordPostgresFailure(ex);
+                    Map<String, Object> fallbackData = standbyWrite.createStandbyTransaction(
+                            currentUser.getCurrentUser(), request);
+                    failover.markStandbyWritePending(true);
+                    return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, fallbackData);
+                }
+                throw ex;
+            }
+        }
         return ApiResponses.respond(HttpStatus.OK, MSG_CREATED, transactionService.createMyTransaction(request));
     }
 
@@ -109,5 +142,17 @@ public class TransactionController {
     @GetMapping("/app-dashboard")
     public ResponseEntity<ApiResponse<AppDashboardResponseDto>> getAppDashboardData() {
         return ApiResponses.respond(HttpStatus.OK, MSG_DASHBOARD_OK, transactionService.getMyDashboard());
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyWriteService standbyWriteService() {
+        return standbyWriteServiceProvider != null ? standbyWriteServiceProvider.getIfAvailable() : null;
+    }
+
+    private CurrentUserProvider currentUser() {
+        return currentUserProvider != null ? currentUserProvider.getIfAvailable() : null;
     }
 }

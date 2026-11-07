@@ -221,6 +221,10 @@ class TransactionControllerTest {
                 Arguments.of("a negative category id", "{\"categoryId\":-3}", "Mã danh mục không hợp lệ"),
                 Arguments.of("a category name that is too long", "{\"categoryName\":\"" + "x".repeat(256) + "\"}", "Tên danh mục tối đa"),
                 Arguments.of("a note that is too long", "{\"note\":\"" + "x".repeat(256) + "\"}", "Ghi chú tối đa"),
+                Arguments.of("a review note that is too long", "{\"reviewNote\":\"" + "x".repeat(256) + "\"}", "Ghi chú đánh giá tối đa"),
+                Arguments.of("a rating below 0.5", "{\"rating\":0.0}", "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao"),
+                Arguments.of("a rating above 5.0", "{\"rating\":5.5}", "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao"),
+                Arguments.of("a rating not in 0.5 steps", "{\"rating\":4.3}", "Điểm đánh giá trải nghiệm phải cách nhau 0.5 sao"),
                 Arguments.of("a blank payment method", "{\"paymentMethod\":\"   \"}", "Nguồn tiền không được để trống"),
                 Arguments.of("an empty payment method", "{\"paymentMethod\":\"\"}", "Nguồn tiền không được để trống"),
                 Arguments.of("a payment method that is too long", "{\"paymentMethod\":\"" + "x".repeat(256) + "\"}", "Nguồn tiền tối đa"));
@@ -251,6 +255,11 @@ class TransactionControllerTest {
                 Arguments.of("the smallest amount", "{\"amount\":0.01}"),
                 Arguments.of("the largest amount", "{\"amount\":99999999999999999.99}"),
                 Arguments.of("a note of exactly 255 characters", "{\"note\":\"" + "x".repeat(255) + "\"}"),
+                Arguments.of("a review note of exactly 255 characters", "{\"reviewNote\":\"" + "x".repeat(255) + "\"}"),
+                Arguments.of("a rating of 0.5", "{\"rating\":0.5}"),
+                Arguments.of("a rating of 4.5", "{\"rating\":4.5}"),
+                Arguments.of("a rating of 5.0", "{\"rating\":5.0}"),
+                Arguments.of("clearing the rating", "{\"clearRating\":true}"),
                 Arguments.of("a blank note, which clears it", "{\"note\":\"   \"}"),
                 Arguments.of("an income", "{\"isExpense\":false}"));
     }
@@ -331,7 +340,8 @@ class TransactionControllerTest {
     void checkoutRunsForTheSignedInUserAndKeepsItsResponse() throws Exception {
         when(transactionService.createMyTransaction(any())).thenReturn(Map.of("transactionId", 5, "finalAmount", 10000));
         String body = "{\"amount\":10000,\"location\":\"Quán A\",\"paymentMethod\":\"Ví chính\","
-                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true,\"userId\":999}";
+                + "\"transactionDate\":\"2026-09-01T08:30:00\",\"categoryId\":10,\"isExpense\":true,\"userId\":999,"
+                + "\"rating\":4.5,\"reviewNote\":\"Ngon và rẻ\"}";
 
         mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", body)))
                 .andExpect(status().isOk())
@@ -342,7 +352,20 @@ class TransactionControllerTest {
         ArgumentCaptor<TransactionRequestDto> sent = ArgumentCaptor.forClass(TransactionRequestDto.class);
         verify(transactionService).createMyTransaction(sent.capture());
         assertEquals(new BigDecimal("10000"), sent.getValue().getAmount());
+        assertEquals(new BigDecimal("4.5"), sent.getValue().getRating());
+        assertEquals("Ngon và rẻ", sent.getValue().getReviewNote());
         verify(transactionService, never()).createTransaction(any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {",\"rating\":0.0", ",\"rating\":5.5", ",\"rating\":4.3", ",\"rating\":-1.0"})
+    void checkoutRejectsInvalidRatingWith400(String invalidRatingField) throws Exception {
+        mockMvc.perform(signedIn(withBody(HttpMethod.POST, URL + "/checkout", checkoutBodyWith(invalidRatingField))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.message").value(startsWith(VALIDATION_PREFIX)));
+
+        verifyNoInteractions(transactionService);
     }
 
     @Test
@@ -452,7 +475,7 @@ class TransactionControllerTest {
     // ------------------------------------------------------------- POST /checkout: field limits (A11)
 
     @ParameterizedTest
-    @ValueSource(strings = {"note", "location", "paymentMethod", "categoryName"})
+    @ValueSource(strings = {"note", "reviewNote", "location", "paymentMethod", "categoryName"})
     void aTextLongerThanItsColumnIsRejectedWith400(String field) throws Exception {
         String tooLong = "x".repeat(256);
         String body = "{\"amount\":10000,\"location\":\"Quán A\",\"paymentMethod\":\"Ví chính\","

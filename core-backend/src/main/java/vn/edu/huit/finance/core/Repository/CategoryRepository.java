@@ -35,4 +35,7 @@ public interface CategoryRepository  extends JpaRepository<Category, Long> {
     /** Every category with its owner loaded, for the administrators' page. */
     @Query("select c from Category c left join fetch c.owner order by c.id")
     List<Category> findAllWithOwner();
+
+    @Query("select c from Category c left join fetch c.owner where c.id = :id")
+    Optional<Category> findByIdWithOwner(@Param("id") Long id);
 }
