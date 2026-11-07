@@ -26,6 +26,29 @@
 #     EventSource của trình duyệt tự kết nối lại.
 #   Chỉ thêm "flush_interval -1" cho /admin/events nếu sau này đổi sang một phiên bản Caddy không còn hành vi trên.
 
+# Trang chủ tải app (index.html ở gốc repo) cho tên miền gốc, vd. example.com. LANDING_ADDRESS để trống (máy dev) ->
+# ":8081", cổng chỉ nằm trong container, không publish và không xin chứng chỉ.
+{$LANDING_ADDRESS::8081} {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	root * /srv/landing
+	try_files {path} /index.html
+	file_server
+
+	log {
+		output stdout
+		format console
+	}
+}
+
 {$SITE_ADDRESS} {
 	encode gzip
 

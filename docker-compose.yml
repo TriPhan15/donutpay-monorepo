@@ -11,8 +11,12 @@ services:
       - "443:443/udp"
     environment:
       - SITE_ADDRESS=${SITE_ADDRESS:-:80}
+      # Landing page (index.html: APK download + QR). Server: the root domain, e.g. example.com. Empty: an internal :8081
+      # listener that no port publishes, so a dev machine never asks Let's Encrypt for it.
+      - LANDING_ADDRESS=${LANDING_ADDRESS:-:8081}
     volumes:
       - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./index.html:/srv/landing/index.html:ro
       # Certificates and ACME account: keep them, or Let's Encrypt rate limits may bite after a few rebuilds.
       - caddy_data:/data
       - caddy_config:/config
@@ -317,7 +321,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          # The JVM takes 75% of it as max heap (MaxRAMPercentage in core-backend/Dockerfile). 512M runs close to the
+          # limit once the demo data is loaded; raise CORE_API_MEMORY_LIMIT on a server with spare RAM.
+          memory: ${CORE_API_MEMORY_LIMIT:-512M}
     logging:
       driver: "json-file"
       options:

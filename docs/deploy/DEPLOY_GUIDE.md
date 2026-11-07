@@ -124,6 +124,8 @@ tạo mật khẩu mới cho server, đừng dùng lại mật khẩu máy dev.
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | `prod` | Bật kiểm tra bắt buộc `JWT_SECRET`, tắt Swagger |
 | `SITE_ADDRESS` | **[ĐIỀN]** tên miền API, không có `https://` | Để trống = chỉ HTTP cổng 80 (máy dev) |
+| `LANDING_ADDRESS` | **[ĐIỀN]** tên miền gốc, vd. `example.com` | Trang chủ tải app (`index.html`). Bản ghi A của tên miền gốc phải trỏ về máy. Để trống = không phục vụ |
+| `CORE_API_MEMORY_LIMIT` | `1G` trên máy 8 GB | Giới hạn RAM của core-api, mặc định `512M` |
 | `JWT_SECRET` | **[ĐIỀN]** kết quả `openssl rand -base64 48` | ≥ 32 ký tự. Thiếu hoặc ngắn hơn: core-api dừng lúc khởi động. Đổi khóa = mọi người phải đăng nhập lại |
 | `DB_USERNAME`, `DB_PASSWORD` | **[ĐIỀN]** | PostgreSQL được tạo mới với tài khoản này ở lần chạy đầu |
 | `REDIS_PASSWORD` | **[ĐIỀN]** | Bắt buộc |
