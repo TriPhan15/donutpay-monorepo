@@ -1,0 +1,27 @@
+# Lint gate for the served API code. Training/data folders are not part of the API.
+extend-exclude = ["Version3", "Version5", ".venv"]
+target-version = "py310"
+
+[lint]
+select = ["E", "F", "B", "SIM", "UP", "I"]
+
+[lint.per-file-ignores]
+# legacy: may only shrink
+"ai_service.py" = ["B008", "B904", "E501", "I001", "UP006", "UP035", "UP045"]
+"budget_advisor.py" = ["E501", "UP006", "UP035", "UP045"]
+"local_time.py" = ["UP045"]
+"receipt_postprocess.py" = ["E501", "UP006", "UP035", "UP045"]
+"rfm_segmentation.py" = ["B905", "E501", "UP006", "UP035"]
+"spending_analysis.py" = ["E501", "UP006", "UP035"]
+"spending_data.py" = ["I001", "UP006", "UP035", "UP045"]
+"spending_habits.py" = ["B905", "E501", "UP006", "UP035"]
+"test_budget_advisor.py" = ["E501", "I001", "SIM300"]
+"test_main.py" = ["E501", "UP006", "UP035"]
+"test_receipt_postprocess.py" = ["E501", "I001", "UP045"]
+"test_rfm_segmentation.py" = ["E501", "I001"]
+"test_spade_rules.py" = ["B023", "E501", "UP006", "UP035", "UP045"]
+"test_spending_analysis.py" = ["E501", "UP006", "UP035"]
+"test_spending_data.py" = ["E501", "I001"]
+"test_spending_habits.py" = ["E501"]
+"test_wcm_spade.py" = ["E501", "UP006", "UP035"]
+"wcm_spade.py" = ["E501", "UP006", "UP035"]
