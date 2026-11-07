@@ -23,7 +23,6 @@ class ExperienceRatingField extends StatelessWidget {
 
   static const int _starCount = 5;
   static const double _starSize = 32;
-  static const Color _activeStarColor = Color(0xFFF59E0B);
 
   final double? rating;
   final ValueChanged<double?> onRatingChanged;
@@ -51,6 +50,7 @@ class ExperienceRatingField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final starColor = context.colors.warningColor;
     final loc = context.loc;
     final currentRating = rating;
 
@@ -105,13 +105,13 @@ class ExperienceRatingField extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: _activeStarColor.withValues(alpha: 0.16),
+                        color: starColor.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         '${currentRating.toStringAsFixed(1)} ★',
-                        style: const TextStyle(
-                          color: _activeStarColor,
+                        style: TextStyle(
+                          color: starColor,
                           fontSize: AppTextSize.secondary,
                           fontWeight: FontWeight.w700,
                         ),
@@ -182,6 +182,7 @@ class _HalfStarPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inactiveColor = Theme.of(context).colorScheme.outline;
+    final activeColor = context.colors.warningColor;
     final hasRating = rating != null;
 
     return GestureDetector(
@@ -213,7 +214,7 @@ class _HalfStarPicker extends StatelessWidget {
                   _iconForStar(i),
                   size: _size - 2,
                   color: hasRating && rating! >= i - 0.5
-                      ? ExperienceRatingField._activeStarColor
+                      ? activeColor
                       : inactiveColor,
                 ),
               ),

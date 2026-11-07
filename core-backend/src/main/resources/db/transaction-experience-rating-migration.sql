@@ -9,6 +9,17 @@
 --   * Atomic: one transaction. Idempotent: a second run changes nothing.
 --   * Additive: adds nullable rating numeric(2,1) and review_note varchar(255) to transactions and transactions_aud,
 --     plus chk_transactions_rating_half_star enforcing 0.5..5.0 in 0.5 increments when rating IS NOT NULL.
+--
+-- ROLLBACK (if needed):
+--     BEGIN;
+--     ALTER TABLE transactions DROP CONSTRAINT IF EXISTS chk_transactions_rating_half_star;
+--     ALTER TABLE transactions DROP COLUMN IF EXISTS rating, DROP COLUMN IF EXISTS review_note;
+--     DO $$ BEGIN
+--         IF to_regclass('transactions_aud') IS NOT NULL THEN
+--             ALTER TABLE transactions_aud DROP COLUMN IF EXISTS rating, DROP COLUMN IF EXISTS review_note;
+--         END IF;
+--     END $$;
+--     COMMIT;
 -- =====================================================================================================================
 
 \set ON_ERROR_STOP on

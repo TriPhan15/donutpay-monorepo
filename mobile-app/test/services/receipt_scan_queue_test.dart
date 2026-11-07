@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,11 +79,23 @@ CREATE TABLE transactions (
 )
 ''';
 
+class _QueueFakeBackend extends FakeBackend {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    await requestStream?.drain<void>();
+    return super.fetch(options, null, cancelFuture);
+  }
+}
+
 void main() {
   // A 401 runs the session interceptor, which looks the navigator up through a GlobalKey: that needs a binding.
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  final backend = FakeBackend();
+  final backend = _QueueFakeBackend();
   late Directory temp;
   late Database db;
   late SqfliteHelper store;
@@ -433,7 +446,7 @@ void main() {
         );
         addTearDown(v8.close);
 
-        expect(await v8.getVersion(), 9);
+        expect(await v8.getVersion(), 10);
         final columns = await v8.rawQuery(
           'PRAGMA table_info(${SqfliteHelper.receiptScanQueueTable})',
         );
@@ -450,11 +463,14 @@ void main() {
         expect(transactions, hasLength(1));
         expect(transactions.single['client_id'], 'c-1');
         expect(transactions.single['sync_status'], 'error');
+        expect(transactions.single[TransactionModel.columnAllowDuplicate], 0);
+        expect(transactions.single[TransactionModel.columnRating], isNull);
+        expect(transactions.single[TransactionModel.columnReviewNote], isNull);
       },
     );
 
     test(
-      'opening a v8 database as v9 adds allow_duplicate (0 for the rows already there), and they can still be resent',
+      'opening a v8 database adds allow_duplicate (0 for the rows already there) and rating/review_note, and they can still be resent',
       () async {
         final path = p.join(temp.path, 'v8.db');
         final v8 = await databaseFactoryFfiNoIsolate.openDatabase(
@@ -482,14 +498,18 @@ void main() {
         );
         addTearDown(v9.close);
 
-        expect(await v9.getVersion(), 9);
+        expect(await v9.getVersion(), 10);
         final row = (await v9.query('transactions')).single;
         expect(row[TransactionModel.columnAllowDuplicate], 0);
+        expect(row[TransactionModel.columnRating], isNull);
+        expect(row[TransactionModel.columnReviewNote], isNull);
         final waiting = (await SqfliteHelper.withDatabase(
           v9,
         ).getUnsyncedTransactions(_userId)).single;
         expect(waiting.clientId, 'c-1');
         expect(waiting.allowDuplicate, isFalse);
+        expect(waiting.rating, isNull);
+        expect(waiting.reviewNote, isNull);
         expect(waiting.toCheckoutJson()['clientId'], 'c-1');
       },
     );

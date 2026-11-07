@@ -7,17 +7,23 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import vn.edu.huit.finance.core.Document.Backup.PgBackupBudgetDocument;
 import vn.edu.huit.finance.core.Document.Backup.PgBackupCategoryDocument;
+import vn.edu.huit.finance.core.Document.Backup.PgBackupRevokedTokenDocument;
 import vn.edu.huit.finance.core.Document.Backup.PgBackupSavingGoalDocument;
 import vn.edu.huit.finance.core.Document.Backup.PgBackupTransactionDocument;
 import vn.edu.huit.finance.core.Document.Backup.PgBackupUserDocument;
 import vn.edu.huit.finance.core.Dto.AppDashboardResponseDto;
 import vn.edu.huit.finance.core.Dto.BudgetResponseDto;
 import vn.edu.huit.finance.core.Dto.CategoryResponseDto;
+import vn.edu.huit.finance.core.Dto.MirrorDiffItemDto;
 import vn.edu.huit.finance.core.Dto.MirrorStatusResponseDto;
 import vn.edu.huit.finance.core.Dto.PopularVendorResponseDto;
 import vn.edu.huit.finance.core.Dto.ReceiptResponseDto;
@@ -38,25 +44,41 @@ import vn.edu.huit.finance.core.Entity.SavingGoal;
 import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
 import vn.edu.huit.finance.core.Repository.BudgetRepository;
 import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupBudgetRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupCategoryRepository;
+import vn.edu.huit.finance.core.Repository.Mongo.PgBackupRevokedTokenRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupSavingGoalRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupTransactionRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupUserRepository;
 import vn.edu.huit.finance.core.Repository.ReceiptRepository;
+import vn.edu.huit.finance.core.Repository.RevokedTokenRepository;
 import vn.edu.huit.finance.core.Repository.SavingGoalRepository;
 import vn.edu.huit.finance.core.Repository.TransactionRepository;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
+import vn.edu.huit.finance.core.Security.JwtUtil;
+import vn.edu.huit.finance.core.Service.TokenBlacklistService;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -84,19 +106,40 @@ class MongoSelectiveBackupAndFailoverTest {
     @Mock private PgBackupTransactionRepository backupTransactionRepo;
     @Mock private PgBackupBudgetRepository backupBudgetRepo;
     @Mock private PgBackupSavingGoalRepository backupSavingGoalRepo;
+    @Mock private PgBackupRevokedTokenRepository backupRevokedTokenRepo;
+    @Mock private RevokedTokenRepository revokedTokenRepo;
+    @Mock private JwtUtil jwtUtil;
 
     @Mock private JdbcTemplate jdbcTemplate;
     @Mock private MongoTemplate mongoTemplate;
 
     private MongoStandbyFailoverService failoverService;
+    private MongoStandbyWriteService standbyWriteService;
     private MongoStandbyReadService standbyReadService;
+    private MongoMirrorDiffService mirrorDiffService;
     private MongoSelectiveMirrorService mirrorService;
     private MongoSelectiveRestoreService restoreService;
+
+    private static <T> ObjectProvider<T> providerOf(T instance) {
+        return new ObjectProvider<>() {
+            @Override public T getObject(Object... args) { return instance; }
+            @Override public T getIfAvailable() { return instance; }
+            @Override public T getIfUnique() { return instance; }
+            @Override public T getObject() { return instance; }
+        };
+    }
 
     @BeforeEach
     void setUp() {
         failoverService = new MongoStandbyFailoverService();
+        standbyWriteService = new MongoStandbyWriteService(
+                backupUserRepo, backupCategoryRepo, backupTransactionRepo
+        );
         standbyReadService = new MongoStandbyReadService(
+                backupUserRepo, backupCategoryRepo, backupTransactionRepo, backupBudgetRepo, backupSavingGoalRepo
+        );
+        mirrorDiffService = new MongoMirrorDiffService(
+                userRepo, categoryRepo, transactionRepo, budgetRepo, savingGoalRepo,
                 backupUserRepo, backupCategoryRepo, backupTransactionRepo, backupBudgetRepo, backupSavingGoalRepo
         );
         mirrorService = new MongoSelectiveMirrorService(
@@ -108,6 +151,7 @@ class MongoSelectiveBackupAndFailoverTest {
                 backupUserRepo, backupCategoryRepo, backupTransactionRepo, backupBudgetRepo, backupSavingGoalRepo,
                 jdbcTemplate, failoverService, mirrorService
         );
+        restoreService.initReconciler();
     }
 
     @Test
@@ -481,5 +525,182 @@ class MongoSelectiveBackupAndFailoverTest {
         assertThat(txCaptor.getValue().getCategoryName()).isEqualTo("Ăn uống");
         assertThat(txCaptor.getValue().getRating()).isEqualByComparingTo("4.5");
         assertThat(txCaptor.getValue().getReviewNote()).isEqualTo("Ngon");
+    }
+
+    @Test
+    void tokenBlacklistService_ignoresRolledBackRevocationAndChecksMongoStandbyAfterRestartDuringFailover() {
+        TokenBlacklistService blacklistService = new TokenBlacklistService(
+                revokedTokenRepo,
+                jwtUtil,
+                providerOf(failoverService),
+                providerOf(backupRevokedTokenRepo)
+        );
+
+        String token = "eyJhbGciOiJIUzI1NiJ9.refresh.signature";
+        Date expDate = Date.from(Instant.now().plusSeconds(3600));
+        when(jwtUtil.extractExpiration(token)).thenReturn(expDate);
+
+        // 1. Khi nằm trong transaction bị rollback: không ghi vào recentRevokedTokens và không mirror sang MongoDB
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            blacklistService.revoke(token);
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+        verify(backupRevokedTokenRepo, never()).save(any());
+        when(revokedTokenRepo.existsByTokenHash(anyString())).thenReturn(false);
+        assertThat(blacklistService.isRevoked(token)).isFalse();
+
+        // 2. Khi transaction commit thành công: mirror sang MongoDB và khi server restart (clearInMemoryCache) + failover bật,
+        // isRevoked vẫn trả về true nhờ truy vấn PgBackupRevokedTokenRepository
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            blacklistService.revoke(token);
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+        verify(backupRevokedTokenRepo).save(any(PgBackupRevokedTokenDocument.class));
+
+        blacklistService.clearInMemoryCache();
+        failoverService.setForceFailoverEnabled(true);
+        when(backupRevokedTokenRepo.existsByTokenHashAndExpiresAtAfter(anyString(), any(LocalDateTime.class)))
+                .thenReturn(true);
+
+        assertThat(blacklistService.isRevoked(token)).isTrue();
+    }
+
+    @Test
+    void standbyUserSecurityAndDiffs_detectRoleActiveAndCredentialsVersionChangesAndEnforceInStandbyUserDetails() {
+        User pgUser = new User();
+        pgUser.setId(10L);
+        pgUser.setUsername("tien");
+        pgUser.setEmail("tien@huit.edu.vn");
+        pgUser.setRole("ROLE_LOCKED");
+        pgUser.setActive(false);
+        pgUser.setWalletBalance(new BigDecimal("500000.00"));
+        pgUser.setCredentialsVersion(4);
+
+        PgBackupUserDocument staleMongoUser = PgBackupUserDocument.builder()
+                .id(10L)
+                .username("tien")
+                .email("tien@huit.edu.vn")
+                .role("ROLE_USER")
+                .active(true)
+                .walletBalance(new BigDecimal("500000.00"))
+                .credentialsVersion(2)
+                .build();
+
+        when(userRepo.findAll()).thenReturn(List.of(pgUser));
+        when(backupUserRepo.findAll()).thenReturn(List.of(staleMongoUser));
+
+        List<MirrorDiffItemDto> diffs = mirrorDiffService.getCollectionDiffs("pg_backup_users");
+        assertThat(diffs).hasSize(1);
+        assertThat(diffs.get(0).getDiffType()).isEqualTo("VALUE_MISMATCH");
+        assertThat(diffs.get(0).getPostgresSummary()).contains("active=false", "role=ROLE_LOCKED", "ver=4");
+        assertThat(diffs.get(0).getMongoSummary()).contains("active=true", "role=ROLE_USER", "ver=2");
+
+        // Khi Failover đang bật và user trên MongoDB đã cập nhật trạng thái khóa / thu hồi phiên:
+        PgBackupUserDocument syncedMongoUser = PgBackupUserDocument.from(pgUser);
+        when(backupUserRepo.findByEmailIgnoreCase("tien")).thenReturn(Optional.empty());
+        when(backupUserRepo.findByUsernameIgnoreCase("tien")).thenReturn(Optional.of(syncedMongoUser));
+        failoverService.setForceFailoverEnabled(true);
+
+        CustomUserDetailsService userDetailsService = new CustomUserDetailsService(
+                userRepo,
+                providerOf(failoverService),
+                providerOf(standbyReadService)
+        );
+        User standbyLoadedUser = userDetailsService.loadApplicationUser("tien");
+        assertThat(standbyLoadedUser.isActive()).isFalse();
+        assertThat(standbyLoadedUser.getRole()).isEqualTo("ROLE_LOCKED");
+        assertThat(standbyLoadedUser.getCredentialsVersion()).isEqualTo(4);
+        assertThat(CustomUserDetailsService.isLocked(standbyLoadedUser)).isTrue();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> userDetailsService.loadUserByUsername("tien"))
+                .isInstanceOf(DisabledException.class);
+    }
+
+    @Test
+    void standbyConcurrentWalletCheckoutsAndAutoReconcile_preventOverdraftAndRestoreBeforeSyncOrRead() throws Exception {
+        User caller = new User();
+        caller.setId(10L);
+        caller.setUsername("tien");
+        caller.setWalletBalance(new BigDecimal("100000.00"));
+
+        PgBackupUserDocument sharedUserDoc = PgBackupUserDocument.builder()
+                .id(10L)
+                .username("tien")
+                .walletBalance(new BigDecimal("100000.00"))
+                .active(true)
+                .build();
+        when(backupUserRepo.findById(10L)).thenReturn(Optional.of(sharedUserDoc));
+
+        PgBackupCategoryDocument catDoc = PgBackupCategoryDocument.builder()
+                .id(1L).name("Ăn uống").type("EXPENSE").build();
+        when(backupCategoryRepo.findVisibleToUser(10L)).thenReturn(List.of(catDoc));
+        when(backupTransactionRepo.findTopByOrderByIdDesc()).thenReturn(
+                Optional.of(PgBackupTransactionDocument.builder().id(800L).build())
+        );
+
+        // Hai luồng cùng lúc rút 70,000 VNĐ trên ví chỉ có 100,000 VNĐ -> đúng 1 luồng thành công, 1 luồng bị chặn InsufficientBalanceException
+        CountDownLatch startLatch = new CountDownLatch(1);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger insufficientCount = new AtomicInteger(0);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Runnable task = () -> {
+                try {
+                    startLatch.await(5, TimeUnit.SECONDS);
+                    TransactionRequestDto req = new TransactionRequestDto();
+                    req.setAmount(new BigDecimal("70000.00"));
+                    req.setCategoryId(1L);
+                    req.setExpense(true);
+                    req.setTransactionDate(LocalDateTime.of(2026, 5, 11, 12, 0));
+                    standbyWriteService.createStandbyTransaction(caller, req);
+                    successCount.incrementAndGet();
+                } catch (InsufficientBalanceException e) {
+                    insufficientCount.incrementAndGet();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            };
+            Future<?> f1 = pool.submit(task);
+            Future<?> f2 = pool.submit(task);
+            startLatch.countDown();
+            f1.get(5, TimeUnit.SECONDS);
+            f2.get(5, TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(successCount.get()).isEqualTo(1);
+        assertThat(insufficientCount.get()).isEqualTo(1);
+        assertThat(sharedUserDoc.getWalletBalance()).isEqualByComparingTo("30000.00");
+
+        // Khi có dữ liệu ghi tạm lúc Failover (standbyWritePending = true) và PostgreSQL sống lại:
+        // executeReadWithFallback tự động gọi restoreAllFromMongoToPostgres trước khi đọc PostgreSQL
+        when(backupUserRepo.findAll()).thenReturn(List.of(sharedUserDoc));
+        when(backupCategoryRepo.findAll()).thenReturn(List.of(catDoc));
+        when(backupTransactionRepo.findAll()).thenReturn(List.of());
+        when(backupBudgetRepo.findAll()).thenReturn(List.of());
+        when(backupSavingGoalRepo.findAll()).thenReturn(List.of());
+        when(jdbcTemplate.queryForObject(anyString(), eq(Long.class))).thenReturn(1L);
+
+        failoverService.setForceFailoverEnabled(false);
+        failoverService.markStandbyWritePending(true);
+
+        String readAfterRecovery = failoverService.executeReadWithFallback(
+                () -> "PG_RECOVERED",
+                () -> "MONGO_STANDBY",
+                "checkReconcileOnRead"
+        );
+        assertThat(readAfterRecovery).isEqualTo("PG_RECOVERED");
+        assertThat(failoverService.isStandbyWritePending()).isFalse();
+        verify(jdbcTemplate, atLeastOnce()).update(contains("INSERT INTO users"), any(Object[].class));
     }
 }

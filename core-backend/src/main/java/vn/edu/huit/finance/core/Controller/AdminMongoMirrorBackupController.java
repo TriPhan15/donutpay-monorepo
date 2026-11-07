@@ -2,6 +2,7 @@ package vn.edu.huit.finance.core.Controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import vn.edu.huit.finance.core.Dto.MirrorDiffItemDto;
 import vn.edu.huit.finance.core.Dto.MirrorStatusResponseDto;
+import vn.edu.huit.finance.core.Security.Roles;
+import vn.edu.huit.finance.core.Service.Backup.MongoMirrorDiffService;
 import vn.edu.huit.finance.core.Service.Backup.MongoSelectiveMirrorService;
 import vn.edu.huit.finance.core.Service.Backup.MongoSelectiveRestoreService;
 import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
@@ -26,10 +29,12 @@ import java.util.Map;
 @Slf4j
 @Controller
 @RequestMapping("/admin/backup/mirror")
+@PreAuthorize(Roles.HAS_ADMIN)
 @RequiredArgsConstructor
 public class AdminMongoMirrorBackupController {
 
     private final MongoSelectiveMirrorService mirrorService;
+    private final MongoMirrorDiffService diffService;
     private final MongoSelectiveRestoreService restoreService;
     private final MongoStandbyFailoverService failoverService;
 
@@ -43,7 +48,7 @@ public class AdminMongoMirrorBackupController {
     @ResponseBody
     public List<MirrorDiffItemDto> getDiffs(
             @RequestParam(value = "collection", required = false, defaultValue = "ALL") String collection) {
-        return mirrorService.getCollectionDiffs(collection);
+        return diffService.getCollectionDiffs(collection);
     }
 
     @PostMapping("/resolve-diff")
@@ -91,6 +96,7 @@ public class AdminMongoMirrorBackupController {
     public Map<String, Object> syncToMongo() {
         Map<String, Object> response = new LinkedHashMap<>();
         try {
+            restoreService.reconcilePendingStandbyWritesIfNeeded();
             Map<String, Object> summary = mirrorService.syncAllFromPostgresToMongo();
             failoverService.markStandbyWritePending(false);
             long totalDocs = toLong(summary.get("users"))
@@ -146,6 +152,9 @@ public class AdminMongoMirrorBackupController {
     @ResponseBody
     public Map<String, Object> toggleFailover(@RequestParam("enabled") boolean enabled) {
         failoverService.setForceFailoverEnabled(enabled);
+        if (!enabled) {
+            restoreService.reconcilePendingStandbyWritesIfNeeded();
+        }
         MirrorStatusResponseDto status = mirrorService.getMirrorStatus();
 
         Map<String, Object> response = new LinkedHashMap<>();

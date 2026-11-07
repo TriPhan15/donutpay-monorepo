@@ -168,7 +168,7 @@
                             </div>
                         </div>
 
-                        <h5 class="text-success fw-bold border-bottom pb-3 mb-4 mt-5"><i class="bi bi-database-fill me-2"></i>Sao lưu dữ liệu OCR trên MongoDB</h5>
+                        <h5 class="text-success fw-bold border-bottom pb-3 mb-4 mt-5"><i class="bi bi-database-fill me-2"></i>MongoDB (ocr_logs, ocr_feedbacks)</h5>
 
                         <div class="card border-success border-2 bg-success bg-opacity-10 mb-4 rounded-4" id="mongoBackupCard">
                             <div class="card-body p-4">
@@ -266,11 +266,7 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         toggleLoading(true);
-                        const endpoint = loai === 'FULL'
-                            ? '/admin/backup/scheduled/run-now'
-                            : `/admin/backup/execute?type=${loai}`;
-
-                        fetch(endpoint, {
+                        fetch(`/admin/backup/execute?type=${loai}`, {
                             method: 'POST'
                         })
                             .then(response => response.json().catch(() => ({ success: false, message: 'Phản hồi không hợp lệ từ máy chủ.' })))

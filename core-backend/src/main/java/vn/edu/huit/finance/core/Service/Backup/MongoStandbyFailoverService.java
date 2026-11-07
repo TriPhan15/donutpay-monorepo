@@ -33,6 +33,12 @@ public class MongoStandbyFailoverService {
     private final AtomicBoolean forceFailoverEnabled = new AtomicBoolean(false);
     private final AtomicLong autoFailoverUntilEpochMs = new AtomicLong(0L);
     private final AtomicBoolean standbyWritePending = new AtomicBoolean(false);
+    private final AtomicBoolean reconciling = new AtomicBoolean(false);
+    private volatile Runnable pendingWriteReconciler;
+
+    public void setPendingWriteReconciler(Runnable pendingWriteReconciler) {
+        this.pendingWriteReconciler = pendingWriteReconciler;
+    }
 
     public boolean isStandbyWritePending() {
         return standbyWritePending.get();
@@ -40,6 +46,37 @@ public class MongoStandbyFailoverService {
 
     public void markStandbyWritePending(boolean pending) {
         standbyWritePending.set(pending);
+    }
+
+    /**
+     * Nếu trong thời gian PostgreSQL sập đã có giao dịch ghi tạm vào MongoDB ({@code standbyWritePending == true}),
+     * tự động đồng bộ ngược về PostgreSQL ngay khi PostgreSQL hoạt động trở lại.
+     */
+    public boolean reconcilePendingWritesIfNeeded() {
+        if (!standbyWritePending.get() || isFailoverActive()) {
+            return false;
+        }
+        Runnable reconciler = this.pendingWriteReconciler;
+        if (reconciler == null) {
+            return false;
+        }
+        if (!reconciling.compareAndSet(false, true)) {
+            return false;
+        }
+        try {
+            log.info("PostgreSQL is back online with pending standby writes; reconciling MongoDB standby -> PostgreSQL...");
+            reconciler.run();
+            standbyWritePending.set(false);
+            return true;
+        } catch (RuntimeException ex) {
+            if (isPostgresUnavailableException(ex)) {
+                recordPostgresFailure(ex);
+            }
+            log.warn("Deferred standby write reconciliation because PostgreSQL is not ready: {}", ex.getMessage());
+            return false;
+        } finally {
+            reconciling.set(false);
+        }
     }
 
     public boolean isForceFailoverEnabled() {
@@ -91,6 +128,7 @@ public class MongoStandbyFailoverService {
             return mongoFallback.get();
         }
         try {
+            reconcilePendingWritesIfNeeded();
             return postgresRead.get();
         } catch (RuntimeException ex) {
             if (isPostgresUnavailableException(ex)) {

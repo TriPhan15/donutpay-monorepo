@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
@@ -29,26 +30,28 @@ import java.util.List;
  * only works on a call that goes through the Spring proxy, never on a call from inside the same class.
  */
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class UserStatisticsService {
 
     private static final int DASHBOARD_RECENT_COUNT = 5;
 
     private final TransactionRepository transactionRepo;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
 
-    @Autowired(required = false)
-    private MongoStandbyFailoverService failoverService;
-
-    @Autowired(required = false)
-    private MongoStandbyReadService standbyReadService;
+    public UserStatisticsService(TransactionRepository transactionRepo) {
+        this(transactionRepo, null, null);
+    }
 
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     @Cacheable(cacheNames = CacheNames.USER_POPULAR_VENDORS, key = "#userId", unless = "#result == null")
     public List<PopularVendorResponseDto> popularVendorsOf(Long userId) {
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
                     () -> loadPopularVendorsFromPostgres(userId),
-                    () -> standbyReadService.popularVendorsOf(userId),
+                    () -> standby.popularVendorsOf(userId),
                     "UserStatisticsService.popularVendorsOf"
             );
         }
@@ -67,10 +70,12 @@ public class UserStatisticsService {
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     @Cacheable(cacheNames = CacheNames.USER_DASHBOARD, key = "#userId", unless = "#result == null")
     public AppDashboardResponseDto dashboardOf(Long userId) {
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
                     () -> loadDashboardFromPostgres(userId),
-                    () -> standbyReadService.dashboardOf(userId),
+                    () -> standby.dashboardOf(userId),
                     "UserStatisticsService.dashboardOf"
             );
         }
@@ -89,5 +94,13 @@ public class UserStatisticsService {
                 .saleTransactions(transactionRepo.findByUserIdAndVoucherCodeNotNull(userId).stream()
                         .map(TransactionResponseDto::from).toList())
                 .build();
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
     }
 }

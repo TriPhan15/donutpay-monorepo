@@ -6,6 +6,7 @@ import vn.edu.huit.finance.core.Document.Backup.PgBackupCategoryDocument;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface PgBackupCategoryRepository extends MongoRepository<PgBackupCategoryDocument, Long> {
 
@@ -14,6 +15,8 @@ public interface PgBackupCategoryRepository extends MongoRepository<PgBackupCate
      */
     @Query("{ '$or': [ { 'ownerId': null }, { 'ownerId': ?0 } ] }")
     List<PgBackupCategoryDocument> findVisibleToUser(Long userId);
+
+    Optional<PgBackupCategoryDocument> findTopByOrderByIdDesc();
 
     void deleteByIdNotIn(Collection<Long> ids);
 }

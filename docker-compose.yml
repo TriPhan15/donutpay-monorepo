@@ -118,7 +118,7 @@ services:
     container_name: finance-mongodb
     command: ["--wiredTigerCacheSizeGB", "0.25"]
     ports:
-      - "127.0.0.1:27018:27017"
+      - "127.0.0.1:27017:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}

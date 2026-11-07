@@ -1,6 +1,8 @@
 package vn.edu.huit.finance.core.Service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -38,6 +40,7 @@ import java.util.Optional;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class SavingGoalService {
 
     private static final String MSG_GOAL_NOT_FOUND = "Không tìm thấy mục tiêu tiết kiệm";
@@ -57,33 +60,28 @@ public class SavingGoalService {
     static final String REFUND_PAYMENT_METHOD = CONTRIBUTION_PAYMENT_METHOD;
     private static final String KEY_TRANSACTION_ID = "transactionId";
 
-    @Autowired
-    private SavingGoalRepository savingGoalRepository;
+    private final SavingGoalRepository savingGoalRepository;
+    private final CurrentUserProvider currentUserProvider;
+    private final AuditLogService auditLogService;
+    private final TransactionService transactionService;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
 
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
-
-    @Autowired
-    private AuditLogService auditLogService;
-
-    @Autowired
-    private TransactionService transactionService;
-
-    @Autowired(required = false)
-    private MongoStandbyFailoverService failoverService;
-
-    @Autowired(required = false)
-    private MongoStandbyReadService standbyReadService;
+    public SavingGoalService() {
+        this(null, null, null, null, null, null);
+    }
 
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<SavingGoalDto> getMySavings() {
         Long userId = currentUserProvider.getCurrentUser().getId();
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
                     () -> savingGoalRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                             .map(SavingGoalService::toDto)
                             .toList(),
-                    () -> standbyReadService.getSavingsByUser(userId),
+                    () -> standby.getSavingsByUser(userId),
                     "SavingGoalService.getMySavings"
             );
         }
@@ -139,14 +137,6 @@ public class SavingGoalService {
         return Objects.requireNonNullElse(goal.getCurrentAmount(), BigDecimal.ZERO);
     }
 
-    /**
-     * Moves [amount] from the caller's wallet into one of their goals, all or nothing: an expense transaction in the
-     * "Tiết kiệm" category (note = the goal's title, dated now) is recorded through TransactionService, which locks the
-     * wallet, refuses a wallet that cannot carry it (InsufficientBalanceException, 400), raises the budget alerts and
-     * reports the changed statistics; then the goal's currentAmount grows by the same amount. The goal row is locked
-     * first, so two contributions to one goal add up. A goal that does not exist is refused like everywhere here (400),
-     * one of somebody else with a 403, both before the wallet is touched.
-     */
     @Transactional
     public SavingGoalDto contributeToMySaving(Long goalId, BigDecimal amount) {
         User caller = currentUserProvider.getCurrentUser();
@@ -164,7 +154,6 @@ public class SavingGoalService {
         return toDto(saved);
     }
 
-    /** The expense a contribution records: from the wallet, now, in the savings category, noted with the goal's title. */
     private static TransactionRequestDto contributionTransaction(SavingGoal goal, BigDecimal amount) {
         TransactionRequestDto request = new TransactionRequestDto();
         request.setAmount(amount);
@@ -176,10 +165,6 @@ public class SavingGoalService {
         return request;
     }
 
-    /**
-     * Deletes a goal; the money it holds goes back to the wallet in the same transaction, as an income of "Thu khác"
-     * naming the goal. The goal row is locked first so a concurrent contribution cannot slip in between.
-     */
     @Transactional
     public void deleteSaving(Long goalId) {
         User caller = currentUserProvider.getCurrentUser();
@@ -200,7 +185,6 @@ public class SavingGoalService {
         log.info("Saving goal deleted, userId={}, goalId={}", caller.getId(), goalId);
     }
 
-    /** The income a deletion records: back into the wallet, now, as "Thu khác", noted with the goal's title. */
     private static TransactionRequestDto refundTransaction(SavingGoal goal, BigDecimal amount) {
         TransactionRequestDto request = new TransactionRequestDto();
         request.setAmount(amount);
@@ -232,5 +216,13 @@ public class SavingGoalService {
                 .current(goal.getCurrentAmount())
                 .deadline(goal.getDeadline())
                 .build();
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
     }
 }

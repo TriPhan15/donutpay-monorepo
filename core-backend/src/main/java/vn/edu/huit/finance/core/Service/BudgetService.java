@@ -1,6 +1,8 @@
 package vn.edu.huit.finance.core.Service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -30,6 +32,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class BudgetService {
 
     private static final String MSG_BUDGET_NOT_FOUND = "Không tìm thấy ngân sách";
@@ -41,33 +44,28 @@ public class BudgetService {
     private static final String AUDIT_CATEGORY = "danh mục #%d";
     private static final String AUDIT_ALL_CATEGORIES = "mọi danh mục";
 
-    @Autowired
-    private BudgetRepository budgetRepository;
+    private final BudgetRepository budgetRepository;
+    private final CategoryService categoryService;
+    private final CurrentUserProvider currentUserProvider;
+    private final AuditLogService auditLogService;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
 
-    @Autowired
-    private CategoryService categoryService;
-
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
-
-    @Autowired
-    private AuditLogService auditLogService;
-
-    @Autowired(required = false)
-    private MongoStandbyFailoverService failoverService;
-
-    @Autowired(required = false)
-    private MongoStandbyReadService standbyReadService;
+    public BudgetService() {
+        this(null, null, null, null, null, null);
+    }
 
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<BudgetResponseDto> getMyBudgets() {
         Long userId = currentUserProvider.getCurrentUser().getId();
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
                     () -> budgetRepository.findAllWithCategoryByUserId(userId).stream()
                             .map(BudgetResponseDto::from)
                             .toList(),
-                    () -> standbyReadService.getBudgetsByUser(userId),
+                    () -> standby.getBudgetsByUser(userId),
                     "BudgetService.getMyBudgets"
             );
         }
@@ -79,10 +77,12 @@ public class BudgetService {
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public BudgetResponseDto getMyBudget(Long budgetId) {
         Long userId = currentUserProvider.getCurrentUser().getId();
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
                     () -> BudgetResponseDto.from(findOwnedBudget(budgetId, userId)),
-                    () -> standbyReadService.getBudgetByIdAndUser(budgetId, userId),
+                    () -> standby.getBudgetByIdAndUser(budgetId, userId),
                     "BudgetService.getMyBudget"
             );
         }
@@ -138,7 +138,7 @@ public class BudgetService {
         record(AuditAction.BUDGET_DELETED, caller, budget, AUDIT_DELETED);
 
         log.info("Budget deleted, userId={}, budgetId={}", userId, budgetId);
-        }
+    }
 
     /** One row for a change of one of the caller's budgets: what was done, the period and the category it covers. */
     private void record(AuditAction action, User owner, Budget budget, String verb) {
@@ -185,5 +185,13 @@ public class BudgetService {
         log.warn("Budget rejected: duplicate, userId={}, categoryId={}, periodType={}, startDate={}",
                 userId, idOf(category), request.getPeriodType(), request.getStartDate());
         return new DuplicateBudgetException(MSG_DUPLICATE_BUDGET);
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
     }
 }

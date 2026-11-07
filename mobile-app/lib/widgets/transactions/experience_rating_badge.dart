@@ -18,8 +18,6 @@ class ExperienceRatingBadge extends StatelessWidget {
   final String? reviewNote;
   final bool compact;
 
-  static const Color _starGold = Color(0xFFF59E0B);
-
   Color _badgeTone(BuildContext context, double score) {
     final semantic = context.colors;
     if (score <= 2.0) return semantic.expenseColor;
@@ -90,6 +88,7 @@ class ExperienceRatingBadge extends StatelessWidget {
 
   Widget _buildFull(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final starColor = context.colors.warningColor;
     final loc = context.loc;
     final score = rating;
     if (score == null) return const SizedBox.shrink();
@@ -110,7 +109,7 @@ class ExperienceRatingBadge extends StatelessWidget {
                           ? Icons.star_half_rounded
                           : Icons.star_border_rounded),
                 size: 18,
-                color: score >= i - 0.5 ? _starGold : colors.outline,
+                color: score >= i - 0.5 ? starColor : colors.outline,
               ),
           ],
         ),

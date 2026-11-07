@@ -15,5 +15,9 @@ public interface PgBackupTransactionRepository extends MongoRepository<PgBackupT
 
     Optional<PgBackupTransactionDocument> findByReceipt_Id(Long receiptId);
 
+    Optional<PgBackupTransactionDocument> findTopByOrderByIdDesc();
+
+    Optional<PgBackupTransactionDocument> findTopByReceipt_IdIsNotNullOrderByReceipt_IdDesc();
+
     void deleteByIdNotIn(Collection<Long> ids);
 }

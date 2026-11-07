@@ -1,6 +1,7 @@
 package vn.edu.huit.finance.core.Service;
 
 import io.micrometer.core.instrument.Metrics;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -44,6 +45,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class AuditLogService {
 
     public static final String WRITE_FAILURES_METRIC = "audit.write.failures";
@@ -52,17 +54,16 @@ public class AuditLogService {
     private static final String POLICY_TRANSACTIONAL = "transactional";
     private static final String POLICY_INDEPENDENT = "independent";
 
-    @Autowired
-    private ActionLogRepository actionLogRepository;
-
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
-
-    @Autowired(required = false)
-    private ApplicationEventPublisher eventPublisher;
+    private final ActionLogRepository actionLogRepository;
+    private final CurrentUserProvider currentUserProvider;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Not injected: the system clock is what production uses; tests replace it to control the timestamp.
     private Clock clock = Clock.systemDefaultZone();
+
+    public AuditLogService() {
+        this(null, null, null);
+    }
 
     /** Records a change made in the caller's transaction, as part of it. Requires that transaction. */
     @Transactional(propagation = Propagation.MANDATORY)

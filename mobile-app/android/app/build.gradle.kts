@@ -65,10 +65,9 @@ android {
 
     buildTypes {
         getByName("release") {
+            // Không có keystore thì không ký (build release sẽ báo lỗi) thay vì lặng lẽ ký bằng khóa debug.
             if (releaseStoreFilePath != null) {
                 signingConfig = signingConfigs.getByName("release")
-            } else {
-                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }

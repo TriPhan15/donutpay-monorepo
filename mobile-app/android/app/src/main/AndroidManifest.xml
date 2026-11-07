@@ -3,7 +3,6 @@
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
-        android:usesCleartextTraffic="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="LedgerMind"
         android:name="${applicationName}"

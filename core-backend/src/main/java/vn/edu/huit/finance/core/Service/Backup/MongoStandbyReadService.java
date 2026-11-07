@@ -1,7 +1,5 @@
 package vn.edu.huit.finance.core.Service.Backup;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -22,33 +20,20 @@ import vn.edu.huit.finance.core.Dto.TransactionRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionResponseDto;
 import vn.edu.huit.finance.core.Dto.TransactionSearchRequestDto;
 import vn.edu.huit.finance.core.Dto.TransactionSearchResponseDto;
-import vn.edu.huit.finance.core.Entity.DefaultCategory;
-import vn.edu.huit.finance.core.Entity.ReceiptStatus;
 import vn.edu.huit.finance.core.Entity.TransactionSortField;
-import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.BudgetNotFoundException;
-import vn.edu.huit.finance.core.Exception.InsufficientBalanceException;
-import vn.edu.huit.finance.core.Exception.InvalidCategoryException;
 import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
-import vn.edu.huit.finance.core.Exception.SavingsLedgerException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
-import vn.edu.huit.finance.core.Exception.TransactionNotFoundException;
-import vn.edu.huit.finance.core.Exception.UserNotFoundException;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupBudgetRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupCategoryRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupSavingGoalRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupTransactionRepository;
 import vn.edu.huit.finance.core.Repository.Mongo.PgBackupUserRepository;
-import vn.edu.huit.finance.core.Util.CategoryNames;
-import vn.edu.huit.finance.core.Util.SavingsContributions;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -61,6 +46,7 @@ import java.util.stream.Collectors;
 /**
  * Thực thi các truy vấn đọc dự phòng (Read-Fallback) trực tiếp trên 5 Collection {@code pg_backup_*}
  * của MongoDB khi PostgreSQL bị sập hoặc khi bật chế độ Force MongoDB Failover.
+ * Phần ghi giao dịch dự phòng được tách sang {@link MongoStandbyWriteService}.
  */
 @Slf4j
 @Service
@@ -68,19 +54,9 @@ import java.util.stream.Collectors;
 public class MongoStandbyReadService {
 
     private static final int DASHBOARD_RECENT_COUNT = 5;
-    private static final BigDecimal LOW_BALANCE_THRESHOLD = new BigDecimal("50000");
-    private static final String MSG_LOW_BALANCE = "CẢNH BÁO: Số dư ví của bạn sắp cạn kiệt (Dưới 50,000 VNĐ)!";
-    private static final String MSG_INSUFFICIENT_BALANCE = "GIAO DỊCH THẤT BẠI: Số dư ví không đủ!";
-    private static final String MSG_SAVINGS_MANAGED_BY_GOAL =
-            "Khoản góp tiết kiệm được quản lý trong mục Mục tiêu tiết kiệm. Hãy góp thêm hoặc xóa mục tiêu ở đó.";
-    private static final String MSG_CATEGORY_NOT_FOUND = "Không tìm thấy danh mục";
-    private static final String MSG_CATEGORY_REQUIRED = "Thiếu danh mục (categoryId hoặc categoryName)";
-    private static final String MSG_USER_NOT_FOUND = "Không tìm thấy người dùng";
     private static final String MSG_BUDGET_NOT_FOUND = "Không tìm thấy ngân sách";
     private static final String MSG_RECEIPT_NOT_FOUND = "Không tìm thấy hóa đơn";
     private static final String MSG_RECEIPT_FORBIDDEN = "Bạn không có quyền thao tác trên hóa đơn này";
-    private static final String MSG_TRANSACTION_NOT_FOUND = "Không tìm thấy giao dịch";
-    private static final String MSG_TRANSACTION_FORBIDDEN = "Bạn không có quyền thao tác trên giao dịch này";
     private static final Pattern COMBINING_MARKS = Pattern.compile("\\p{M}+");
 
     private final PgBackupUserRepository backupUserRepo;
@@ -88,6 +64,8 @@ public class MongoStandbyReadService {
     private final PgBackupTransactionRepository backupTransactionRepo;
     private final PgBackupBudgetRepository backupBudgetRepo;
     private final PgBackupSavingGoalRepository backupSavingGoalRepo;
+
+    private volatile MongoStandbyWriteService delegateWriteService;
 
     public Optional<User> findUserByUsernameOrEmail(String usernameOrEmail) {
         if (usernameOrEmail == null || usernameOrEmail.isBlank()) {
@@ -294,194 +272,19 @@ public class MongoStandbyReadService {
         return txDoc.getReceipt().toReceiptResponseDto(txDoc.getId());
     }
 
-    /**
-     * Ghi giao dịch dự phòng (Write-Fallback) trực tiếp vào {@code pg_backup_transactions} và cập nhật số dư ví
-     * {@code walletBalance} trong {@code pg_backup_users} khi PostgreSQL đang sập hoặc bật chế độ Failover.
-     */
-    public synchronized Map<String, Object> createStandbyTransaction(User caller, TransactionRequestDto request) {
-        if (caller == null || caller.getId() == null) {
-            throw new UserNotFoundException(MSG_USER_NOT_FOUND);
-        }
-        Long userId = caller.getId();
-        PgBackupUserDocument userDoc = backupUserRepo.findById(userId)
-                .orElseGet(() -> PgBackupUserDocument.from(caller));
-
-        String clientId = (request.getClientId() != null && !request.getClientId().isBlank())
-                ? request.getClientId().trim()
-                : null;
-        if (clientId != null) {
-            Optional<PgBackupTransactionDocument> existing = backupTransactionRepo
-                    .findByUserIdOrderByTransactionDateDescIdDesc(userId).stream()
-                    .filter(doc -> clientId.equals(doc.getClientId()))
-                    .findFirst();
-            if (existing.isPresent()) {
-                BigDecimal currentBalance = Objects.requireNonNullElse(userDoc.getWalletBalance(), BigDecimal.ZERO);
-                return buildCheckoutResponse(existing.get().getId(), existing.get().getAmount(), currentBalance);
+    /** Ủy quyền sang {@link MongoStandbyWriteService} để tương thích ngược. */
+    public Map<String, Object> createStandbyTransaction(User caller, TransactionRequestDto request) {
+        MongoStandbyWriteService writeService = this.delegateWriteService;
+        if (writeService == null) {
+            synchronized (this) {
+                writeService = this.delegateWriteService;
+                if (writeService == null) {
+                    writeService = new MongoStandbyWriteService(backupUserRepo, backupCategoryRepo, backupTransactionRepo);
+                    this.delegateWriteService = writeService;
+                }
             }
         }
-
-        PgBackupCategoryDocument categoryDoc = resolveOrCreateStandbyCategory(
-                request.getCategoryId(), request.getCategoryName(), request.isExpense(), userId);
-
-        if (SavingsContributions.CATEGORY_NAME.equals(CategoryNames.clean(categoryDoc.getName()))
-                && DefaultCategory.TYPE_EXPENSE.equals(categoryDoc.getType())) {
-            throw new SavingsLedgerException(MSG_SAVINGS_MANAGED_BY_GOAL);
-        }
-
-        BigDecimal finalAmount = request.getAmount();
-        BigDecimal currentBalance = Objects.requireNonNullElse(userDoc.getWalletBalance(), BigDecimal.ZERO);
-        BigDecimal signedChange = request.isExpense() ? finalAmount.negate() : finalAmount;
-        BigDecimal newBalance = currentBalance.add(signedChange);
-        if (signedChange.signum() < 0 && newBalance.signum() < 0) {
-            throw new InsufficientBalanceException(MSG_INSUFFICIENT_BALANCE);
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        userDoc.setWalletBalance(newBalance);
-        userDoc.setUpdatedAt(now);
-        userDoc.setMirroredAt(now);
-        backupUserRepo.save(userDoc);
-
-        String additionalImagesJson = null;
-        if (request.getAdditionalImages() != null && !request.getAdditionalImages().isEmpty()) {
-            try {
-                additionalImagesJson = new ObjectMapper().writeValueAsString(request.getAdditionalImages());
-            } catch (JsonProcessingException e) {
-                throw new IllegalStateException("Additional images could not be written as JSON", e);
-            }
-        }
-
-        PgBackupTransactionDocument.EmbeddedReceipt embeddedReceipt = null;
-        if ((request.getRawReceiptData() != null && !request.getRawReceiptData().isBlank())
-                || (request.getImageUrl() != null && !request.getImageUrl().isBlank())) {
-            embeddedReceipt = PgBackupTransactionDocument.EmbeddedReceipt.builder()
-                    .id(nextReceiptId())
-                    .vendorName(request.getLocation())
-                    .extractedTotal(finalAmount)
-                    .extractedDate(request.getTransactionDate() != null ? request.getTransactionDate().toLocalDate() : now.toLocalDate())
-                    .imageUrl(request.getImageUrl())
-                    .status(ReceiptStatus.COMPLETED_RAW.name())
-                    .version(0L)
-                    .ownerId(userId)
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build();
-        }
-
-        long nextTxId = nextTransactionId();
-        String reviewNote = (request.isExpense() && request.getReviewNote() != null && !request.getReviewNote().isBlank())
-                ? request.getReviewNote().trim()
-                : null;
-
-        PgBackupTransactionDocument txDoc = PgBackupTransactionDocument.builder()
-                .id(nextTxId)
-                .userId(userId)
-                .categoryId(categoryDoc.getId())
-                .categoryName(categoryDoc.getName())
-                .amount(finalAmount)
-                .note(request.getNote())
-                .transactionDate(request.getTransactionDate())
-                .isExpense(request.isExpense())
-                .source(TransactionSource.NORMAL.name())
-                .clientId(clientId)
-                .additionalImages(additionalImagesJson)
-                .location(request.getLocation())
-                .paymentMethod(request.getPaymentMethod())
-                .rating(request.isExpense() ? request.getRating() : null)
-                .reviewNote(reviewNote)
-                .receipt(embeddedReceipt)
-                .createdAt(now)
-                .updatedAt(now)
-                .mirroredAt(now)
-                .build();
-        backupTransactionRepo.save(txDoc);
-
-        log.info("Standby transaction saved to MongoDB (txId={}, userId={}, amount={}, isExpense={}, newBalance={})",
-                nextTxId, userId, finalAmount, request.isExpense(), newBalance);
-
-        return buildCheckoutResponse(nextTxId, finalAmount, newBalance);
-    }
-
-    private PgBackupCategoryDocument resolveOrCreateStandbyCategory(Long categoryId,
-                                                                    String categoryName,
-                                                                    boolean isExpense,
-                                                                    Long userId) {
-        List<PgBackupCategoryDocument> visible = backupCategoryRepo.findVisibleToUser(userId);
-        if (categoryId != null) {
-            return visible.stream()
-                    .filter(c -> Objects.equals(c.getId(), categoryId))
-                    .findFirst()
-                    .orElseThrow(() -> new InvalidCategoryException(MSG_CATEGORY_NOT_FOUND));
-        }
-        if (categoryName == null || categoryName.isBlank()) {
-            throw new InvalidCategoryException(MSG_CATEGORY_REQUIRED);
-        }
-        String typed = CategoryNames.clean(categoryName);
-        Optional<DefaultCategory> shared = Arrays.stream(DefaultCategory.values())
-                .filter(d -> d.getDisplayName().equalsIgnoreCase(typed))
-                .findFirst();
-        String resolvedName = shared.map(DefaultCategory::getDisplayName).orElse(typed);
-
-        Optional<PgBackupCategoryDocument> found = visible.stream()
-                .filter(c -> c.getName() != null && c.getName().equalsIgnoreCase(resolvedName))
-                .findFirst();
-        if (found.isPresent()) {
-            return found.get();
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        Long ownerId = shared.isPresent() ? null : userId;
-        long ownerKey = ownerId != null ? ownerId : 0L;
-        PgBackupCategoryDocument created = PgBackupCategoryDocument.builder()
-                .id(nextCategoryId())
-                .name(resolvedName)
-                .type(isExpense ? DefaultCategory.TYPE_EXPENSE : DefaultCategory.TYPE_INCOME)
-                .ownerId(ownerId)
-                .ownerKey(ownerKey)
-                .createdAt(now)
-                .updatedAt(now)
-                .mirroredAt(now)
-                .build();
-        return backupCategoryRepo.save(created);
-    }
-
-    private long nextTransactionId() {
-        return backupTransactionRepo.findAll().stream()
-                .map(PgBackupTransactionDocument::getId)
-                .filter(Objects::nonNull)
-                .mapToLong(Long::longValue)
-                .max()
-                .orElse(0L) + 1L;
-    }
-
-    private long nextCategoryId() {
-        return backupCategoryRepo.findAll().stream()
-                .map(PgBackupCategoryDocument::getId)
-                .filter(Objects::nonNull)
-                .mapToLong(Long::longValue)
-                .max()
-                .orElse(0L) + 1L;
-    }
-
-    private long nextReceiptId() {
-        return backupTransactionRepo.findAll().stream()
-                .map(PgBackupTransactionDocument::getReceipt)
-                .filter(Objects::nonNull)
-                .map(PgBackupTransactionDocument.EmbeddedReceipt::getId)
-                .filter(Objects::nonNull)
-                .mapToLong(Long::longValue)
-                .max()
-                .orElse(0L) + 1L;
-    }
-
-    private static Map<String, Object> buildCheckoutResponse(Long txId, BigDecimal finalAmount, BigDecimal remainingBalance) {
-        boolean lowBalance = remainingBalance.compareTo(LOW_BALANCE_THRESHOLD) < 0;
-        Map<String, Object> responseData = new HashMap<>();
-        responseData.put("transactionId", txId);
-        responseData.put("finalAmount", finalAmount);
-        responseData.put("remainingBalance", remainingBalance);
-        responseData.put("warning", lowBalance ? MSG_LOW_BALANCE : "");
-        return responseData;
+        return writeService.createStandbyTransaction(caller, request);
     }
 
     private static boolean matchesSearchQuery(PgBackupTransactionDocument doc, String lowerQuery, String foldedQuery) {

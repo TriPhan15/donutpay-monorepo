@@ -1,5 +1,6 @@
 package vn.edu.huit.finance.core.Service.Backup;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -168,6 +169,17 @@ public class MongoSelectiveRestoreService {
     private final JdbcTemplate jdbcTemplate;
     private final MongoStandbyFailoverService failoverService;
     private final MongoSelectiveMirrorService mirrorService;
+
+    @PostConstruct
+    void initReconciler() {
+        failoverService.setPendingWriteReconciler(this::restoreAllFromMongoToPostgres);
+    }
+
+    @Transactional
+    public boolean reconcilePendingStandbyWritesIfNeeded() {
+        failoverService.setPendingWriteReconciler(this::restoreAllFromMongoToPostgres);
+        return failoverService.reconcilePendingWritesIfNeeded();
+    }
 
     @Transactional
     public Map<String, Object> restoreAllFromMongoToPostgres() {

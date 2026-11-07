@@ -5,8 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.LockModeType;
-import jakarta.persistence.PersistenceContext;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
@@ -80,6 +81,7 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class TransactionService {
 
     /** Below this a wallet runs low: a checkout warns its owner, and the admin dashboard lists the user. */
@@ -133,36 +135,33 @@ public class TransactionService {
     private static final String AUDIT_RECONCILED = "Đối soát theo hóa đơn #%d đã duyệt: số tiền %s → %s VNĐ; ví %s%s VNĐ";
     private static final String PLUS = "+";
 
-    @Autowired
-    private ReceiptRepository receiptRepo;
-    @Autowired
-    private TransactionRepository transactionRepo;
-    @Autowired
-    private UserRepository userRepo;
-    @Autowired
-    private SavingGoalRepository savingGoalRepository;
-    @Autowired
-    private CategoryService categoryService;
-    @Autowired
-    private vn.edu.huit.finance.core.Service.AuditLogService auditLogService;
-    @Autowired
-    private CurrentUserProvider currentUserProvider;
-    @Autowired
-    private ReceiptProcessingService receiptProcessingService;
-    @Autowired
-    private BudgetAlertService budgetAlertService;
-    @Autowired
-    private NotificationService notificationService;
-    @Autowired
-    private UserStatisticsService userStatisticsService;
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
-    @Autowired(required = false)
-    private MongoStandbyFailoverService failoverService;
-    @Autowired(required = false)
-    private MongoStandbyReadService standbyReadService;
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final ReceiptRepository receiptRepo;
+    private final TransactionRepository transactionRepo;
+    private final UserRepository userRepo;
+    private final SavingGoalRepository savingGoalRepository;
+    private final CategoryService categoryService;
+    private final vn.edu.huit.finance.core.Service.AuditLogService auditLogService;
+    private final CurrentUserProvider currentUserProvider;
+    private final ReceiptProcessingService receiptProcessingService;
+    private final BudgetAlertService budgetAlertService;
+    private final NotificationService notificationService;
+    private final UserStatisticsService userStatisticsService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
+    private final EntityManager entityManager;
+
+    public TransactionService() {
+        this(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
+    }
 
     /**
      * Records one transaction and moves the owner's wallet by its amount, all or nothing. A request that carries a client
@@ -552,12 +551,14 @@ public class TransactionService {
     @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
     public List<TransactionResponseDto> getMyTransactions() {
         Long userId = currentUserProvider.getCurrentUser().getId();
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standbyRead = standbyReadService();
+        if (failover != null && standbyRead != null) {
+            return failover.executeReadWithFallback(
                     () -> transactionRepo.findByUserIdOrderByTransactionDateDesc(userId).stream()
                             .map(TransactionResponseDto::from)
                             .toList(),
-                    () -> standbyReadService.getTransactionsByUser(userId),
+                    () -> standbyRead.getTransactionsByUser(userId),
                     "TransactionService.getMyTransactions"
             );
         }
@@ -573,13 +574,15 @@ public class TransactionService {
         Sort.Direction direction = Sort.Direction.fromOptionalString(filter.getSortDirection()).orElse(Sort.Direction.DESC);
         Sort sort = Sort.by(direction, TransactionSortField.fromProperty(filter.getSortBy()).getProperty());
 
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standbyRead = standbyReadService();
+        if (failover != null && standbyRead != null) {
+            return failover.executeReadWithFallback(
                     () -> transactionRepo.filterTransactions(userId, filter.getCategoryId(), filter.getMinPrice(),
                                     filter.getMaxPrice(), filter.getVendorName(), sort).stream()
                             .map(TransactionResponseDto::from)
                             .toList(),
-                    () -> standbyReadService.filterTransactions(userId, filter),
+                    () -> standbyRead.filterTransactions(userId, filter),
                     "TransactionService.filterMyTransactions"
             );
         }
@@ -620,10 +623,12 @@ public class TransactionService {
     }
 
     private void requireExistingUser(Long userId) {
-        boolean exists = (failoverService != null && standbyReadService != null)
-                ? failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standbyRead = standbyReadService();
+        boolean exists = (failover != null && standbyRead != null)
+                ? failover.executeReadWithFallback(
                         () -> userRepo.existsById(userId),
-                        () -> standbyReadService.existsUserById(userId),
+                        () -> standbyRead.existsUserById(userId),
                         "TransactionService.requireExistingUser")
                 : userRepo.existsById(userId);
         if (!exists) {

@@ -6,7 +6,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
@@ -38,6 +40,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     // The last action time is written at most once per this many minutes per user.
@@ -45,20 +48,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     // Which token was refused, and the method and path (never the query string) of the request that carried it.
     private static final String AUDIT_TOKEN_REJECTED = "Access token bị từ chối (%s): %s %s";
 
-    @Autowired
-    private JwtUtil jwtUtil;
-    @Autowired
-    private CustomUserDetailsService userDetailsService;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private TokenBlacklistService tokenBlacklistService;
-    @Autowired(required = false)
-    private MongoStandbyFailoverService failoverService;
+    private final JwtUtil jwtUtil;
+    private final CustomUserDetailsService userDetailsService;
+    private final UserRepository userRepository;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
     // Only a signed token that may no longer be used is recorded (AUTH_TOKEN_REJECTED): one that is expired, garbage or of
     // the wrong type is routine (the app renews on 401) or can be sent by anybody, and would only flood the log.
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public JwtAuthFilter() {
+        this(null, null, null, null, null, null);
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -156,7 +157,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
      * it would write its old balance and profile over what another request has committed meanwhile.
      */
     private void recordActivity(User user) {
-        if (failoverService != null && failoverService.isFailoverActive()) {
+        MongoStandbyFailoverService failover = failoverService();
+        if (failover != null && failover.isFailoverActive()) {
             return;
         }
         // Chỉ ghi database nếu lần tương tác cuối đã quá 5 phút.
@@ -171,11 +173,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 log.debug("Last action time not recorded, the account is gone: userId={}", user.getId());
             }
         } catch (RuntimeException e) {
-            if (failoverService != null && failoverService.isPostgresUnavailableException(e)) {
-                failoverService.recordPostgresFailure(e);
+            if (failover != null && failover.isPostgresUnavailableException(e)) {
+                failover.recordPostgresFailure(e);
                 return;
             }
             throw e;
         }
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
     }
 }

@@ -22,6 +22,7 @@ import vn.edu.huit.finance.core.Security.CustomUserDetailsService;
 import vn.edu.huit.finance.core.Security.JwtAuthFilter;
 import vn.edu.huit.finance.core.Security.JwtUtil;
 import vn.edu.huit.finance.core.Security.Roles;
+import vn.edu.huit.finance.core.Service.Backup.MongoMirrorDiffService;
 import vn.edu.huit.finance.core.Service.Backup.MongoSelectiveMirrorService;
 import vn.edu.huit.finance.core.Service.Backup.MongoSelectiveRestoreService;
 import vn.edu.huit.finance.core.Service.Backup.MongoStandbyFailoverService;
@@ -48,6 +49,7 @@ class AdminMongoMirrorBackupControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockBean private MongoSelectiveMirrorService mirrorService;
+    @MockBean private MongoMirrorDiffService diffService;
     @MockBean private MongoSelectiveRestoreService restoreService;
     @MockBean private MongoStandbyFailoverService failoverService;
     @MockBean private LoginAttemptService loginAttemptService;
@@ -110,7 +112,7 @@ class AdminMongoMirrorBackupControllerTest {
 
         verify(failoverService).setForceFailoverEnabled(true);
 
-        when(mirrorService.getCollectionDiffs("pg_backup_transactions")).thenReturn(List.of(
+        when(diffService.getCollectionDiffs("pg_backup_transactions")).thenReturn(List.of(
                 MirrorDiffItemDto.builder()
                         .mongoCollection("pg_backup_transactions")
                         .postgresTable("transactions")

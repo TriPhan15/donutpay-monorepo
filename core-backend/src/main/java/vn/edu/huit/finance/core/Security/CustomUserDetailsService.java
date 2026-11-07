@@ -1,5 +1,7 @@
 package vn.edu.huit.finance.core.Security;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,16 +18,16 @@ import java.util.Collections;
 import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class CustomUserDetailsService implements UserDetailsService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final ObjectProvider<MongoStandbyFailoverService> failoverServiceProvider;
+    private final ObjectProvider<MongoStandbyReadService> standbyReadServiceProvider;
 
-    @Autowired(required = false)
-    private MongoStandbyFailoverService failoverService;
-
-    @Autowired(required = false)
-    private MongoStandbyReadService standbyReadService;
+    public CustomUserDetailsService() {
+        this(null, null, null);
+    }
 
     @Override
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
@@ -64,10 +66,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     public User loadApplicationUser(String usernameOrEmail) throws UsernameNotFoundException {
-        if (failoverService != null && standbyReadService != null) {
-            return failoverService.executeReadWithFallback(
+        MongoStandbyFailoverService failover = failoverService();
+        MongoStandbyReadService standby = standbyReadService();
+        if (failover != null && standby != null) {
+            return failover.executeReadWithFallback(
                     () -> loadFromPostgres(usernameOrEmail),
-                    () -> standbyReadService.findUserByUsernameOrEmail(usernameOrEmail)
+                    () -> standby.findUserByUsernameOrEmail(usernameOrEmail)
                             .orElseThrow(() -> new UsernameNotFoundException("User not found in standby: " + usernameOrEmail)),
                     "CustomUserDetailsService.loadApplicationUser"
             );
@@ -80,5 +84,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         return userRepository.findByEmail(usernameOrEmail)
                 .or(() -> userRepository.findByUsername(usernameOrEmail))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + usernameOrEmail));
+    }
+
+    private MongoStandbyFailoverService failoverService() {
+        return failoverServiceProvider != null ? failoverServiceProvider.getIfAvailable() : null;
+    }
+
+    private MongoStandbyReadService standbyReadService() {
+        return standbyReadServiceProvider != null ? standbyReadServiceProvider.getIfAvailable() : null;
     }
 }
