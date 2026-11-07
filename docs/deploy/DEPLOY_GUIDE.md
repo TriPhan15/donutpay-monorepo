@@ -222,6 +222,9 @@ Repo trên GitHub → **Settings → Secrets and variables → Actions**.
 | `ANDROID_KEY_PASSWORD` | **[ĐIỀN]** mật khẩu khóa (thường trùng mật khẩu keystore) | job `release-apk` |
 | `GOOGLE_SERVICES_JSON_BASE64` | `base64 -w 0 mobile-app/android/app/google-services.json` | job `release-apk` (file này không được commit nhưng Gradle cần nó) |
 
+Từ khi job `deploy` chạy qua SSM (mục 14), `AWS_HOST`, `AWS_USERNAME`, `AWS_SSH_KEY` không còn dùng: job đọc
+Variables `AWS_DEPLOY_ROLE_ARN`, `AWS_REGION`, `AWS_INSTANCE_ID`.
+
 **Variables** (tab *Variables*, không bí mật):
 
 | Tên | Giá trị |
@@ -336,6 +339,91 @@ Không bao giờ chạy `docker compose down -v` trên server: `-v` xóa volume 
 - Điện thoại thật trong cùng Wi-Fi: `mobile-app/deploy.sh` build với `API_BASE=http://<IP máy>` và
   `ML_BASE=http://<IP máy>/ai`.
 - `SPRING_PROFILES_ACTIVE=dev` thì `JWT_SECRET` có thể để trống (dùng khóa dev cố định, log có cảnh báo).
+
+## 14. Deploy không mở cổng 22: SSM Run Command + GitHub OIDC (AWS)
+
+Job `deploy` không SSH nữa. GitHub Actions xin OIDC token, đổi lấy quyền tạm của IAM role (chỉ repo
+`TriPhan15/donutpay-monorepo`, nhánh `main`), rồi gửi lệnh qua **SSM Run Command** tới SSM agent trên EC2 (agent tự gọi
+ra AWS qua HTTPS, không cần cổng vào nào). Không có khóa SSH hay access key nào nằm trong GitHub. Không dùng
+self-hosted runner vì repo PUBLIC: PR từ fork có thể chạy code trên máy production.
+
+Lệnh trên server: `git fetch` + `reset --hard <github.sha>` bằng user thường (dùng deploy key của user đó), rồi
+`scripts/deploy/server-deploy.sh` chạy bằng root: kiểm tra `.env`/model, build (log đầy đủ ở
+`/var/log/ledgermind-build.log`), `up -d --wait`, in `ps` + log khi lỗi, dọn image cũ. Giới hạn thực thi 40 phút; máy đang
+Stop thì lệnh hết hạn sau 10 phút. Migration SQL vẫn **không** tự chạy.
+
+### 14.1 Dựng một lần (AWS Console, đúng region của máy)
+
+1. **IAM → Identity providers → Add provider**: OpenID Connect, URL `https://token.actions.githubusercontent.com`,
+   Audience `sts.amazonaws.com`.
+2. **IAM → Roles → Create role → Custom trust policy** (thay `<ACCOUNT_ID>`), tên `ledgermind-gha-deploy`:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Effect": "Allow",
+       "Principal": {"Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"},
+       "Action": "sts:AssumeRoleWithWebIdentity",
+       "Condition": {"StringEquals": {
+         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+         "token.actions.githubusercontent.com:sub": "repo:TriPhan15/donutpay-monorepo:ref:refs/heads/main"
+       }}
+     }]
+   }
+   ```
+
+   Nếu job `deploy` sau này có `environment:`, `sub` đổi thành `repo:TriPhan15/donutpay-monorepo:environment:<tên>`.
+3. Thêm inline policy `ssm-deploy-one-instance` cho role đó (thay `<REGION>`, `<ACCOUNT_ID>`, `<INSTANCE_ID>`):
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {"Effect": "Allow", "Action": "ssm:SendCommand", "Resource": [
+         "arn:aws:ec2:<REGION>:<ACCOUNT_ID>:instance/<INSTANCE_ID>",
+         "arn:aws:ssm:<REGION>::document/AWS-RunShellScript"]},
+       {"Effect": "Allow", "Action": ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"], "Resource": "*"}
+     ]
+   }
+   ```
+
+4. **Role cho máy**: IAM → Roles → Create role → AWS service / EC2 → policy `AmazonSSMManagedInstanceCore`, tên
+   `ledgermind-ec2-ssm`. Rồi EC2 → chọn máy → Actions → Security → **Modify IAM role** → chọn role này.
+5. Kiểm tra agent: Ubuntu AMI có sẵn `amazon-ssm-agent` (snap). Sau 1–5 phút, **Systems Manager → Fleet Manager** phải
+   thấy máy *Online* (chậm thì `sudo snap restart amazon-ssm-agent`). Thử: Systems Manager → Run Command →
+   `AWS-RunShellScript`, lệnh `whoami; docker compose version`.
+6. GitHub → Settings → Secrets and variables → Actions → **Variables**: `AWS_DEPLOY_ROLE_ARN` = ARN role bước 2,
+   `AWS_REGION` (vd. `ap-southeast-1`), `AWS_INSTANCE_ID` (vd. `i-0258cd0be41d37ec5`); `DEPLOY_USER` chỉ cần khi user
+   trên máy khác `ubuntu`. Không cần secret nào.
+
+### 14.2 Sau khi một lần deploy qua SSM xanh
+
+- EC2 → Security Group của máy: xóa rule SSH `22` từ `0.0.0.0/0` (giữ 80/443). Cần vào máy thì dùng
+  **Session Manager** (EC2 → Connect → Session Manager) hoặc tạm thêm rule 22 cho `<IP của bạn>/32` rồi xóa.
+- Xóa secret `AWS_SSH_KEY` (và `AWS_HOST`, `AWS_USERNAME`, không còn dùng). Xóa khóa công khai CI tương ứng khỏi
+  `~/.ssh/authorized_keys` trên server.
+
+### 14.3 Tương đương trên Azure (khi chuyển máy)
+
+- Thay SSM bằng **`az vm run-command`** (VM agent có sẵn trên Ubuntu image, cũng không cần cổng vào).
+- Entra ID → App registrations → New (vd. `ledgermind-gha-deploy`) → **Certificates & secrets → Federated credentials →
+  GitHub Actions**: org `TriPhan15`, repo `donutpay-monorepo`, entity *Branch* `main`. Cấp cho app đó role
+  **Virtual Machine Contributor** chỉ trên VM `ledgermind-server` (VM → Access control (IAM)). Nếu tài khoản sinh viên
+  không cho tạo App registration, dùng User-assigned managed identity + federated credential (cùng các trường).
+- GitHub Variables: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`. Job: `permissions: id-token: write`,
+  `azure/login@v2` (client-id/tenant-id/subscription-id), rồi:
+
+  ```bash
+  az vm run-command create -g ledgermind-rg --vm-name ledgermind-server --name deploy-$GITHUB_RUN_ID \
+    --timeout-in-seconds 2400 --async-execution false \
+    --script "set -eu; cd /home/azureuser/Deploy_Project; sudo -H -u azureuser git fetch origin main; \
+  sudo -H -u azureuser git reset --hard $GITHUB_SHA; bash scripts/deploy/server-deploy.sh /home/azureuser/Deploy_Project"
+  az vm run-command show -g ledgermind-rg --vm-name ledgermind-server --name deploy-$GITHUB_RUN_ID --instance-view \
+    --query 'instanceView.{state:executionState,exit:exitCode,out:output,err:error}'
+  ```
+
+  Lệnh này chưa chạy thử trên máy Azure thật (unverified): thử và chỉnh trước khi đưa vào CI. Xong thì xóa rule NSG `SSH-owner` hoặc giới hạn về IP của bạn.
 
 ## Dữ liệu demo
 
