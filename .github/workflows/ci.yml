@@ -74,15 +74,37 @@ jobs:
   deploy:
     name: Deploy to AWS VPS
     runs-on: ubuntu-latest
-    needs: [backend-ci, mobile-ci, ai-ci] 
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' 
+    timeout-minutes: 45
+    needs: [backend-ci, mobile-ci, ai-ci]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Hai lần push liền nhau: lần deploy sau đợi lần trước xong, không chạy chồng lên nhau trên cùng server.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
+      - name: Check deploy secrets
+        env:
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+          AWS_USERNAME: ${{ secrets.AWS_USERNAME }}
+          AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+        run: |
+          missing=0
+          for name in AWS_HOST AWS_USERNAME AWS_SSH_KEY; do
+            if [ -z "${!name}" ]; then echo "::error::Thiếu secret $name (xem docs/deploy/DEPLOY_GUIDE.md mục 7)"; missing=1; fi
+          done
+          exit $missing
+
       - name: Deploy to AWS EC2
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_SSH_KEY }}
+          envs: DEPLOY_SHA
+          # Mặc định 10 phút: build core-api (Maven) và data-mining-api (torch) trên máy 2 vCPU có thể lâu hơn.
+          command_timeout: 40m
           script: |
             set -e
 
@@ -91,11 +113,15 @@ jobs:
             if [ ! -f .env ]; then echo "Lỗi: Không tìm thấy file .env chứa biến môi trường!"; exit 1; fi
             # core-api ở profile prod sẽ dừng ngay nếu thiếu JWT_SECRET: báo sớm thay vì đợi healthcheck hết giờ.
             if ! grep -qE '^JWT_SECRET=.{32,}' .env; then echo "Lỗi: .env thiếu JWT_SECRET (ít nhất 32 ký tự)!"; exit 1; fi
-            
-            # 2. Xóa sạch rác local và ép đồng bộ nhánh main
-            git fetch --all
+            # Model bị .gitignore chặn nên phải chép tay lên server một lần (DEPLOY_GUIDE mục 5).
+            if [ ! -s ai-service/Version5/donut_result/model.safetensors ]; then echo "Lỗi: thiếu model.safetensors trên server!"; exit 1; fi
+
+            # 2. Đồng bộ đúng commit vừa qua test, không lấy origin/main mới hơn nếu có người push tiếp.
+            #    .env và model bị ignore nên reset --hard không đụng tới. Migration SQL KHÔNG tự chạy: chạy tay trước khi push.
+            git fetch origin main
             git checkout -f main
-            git reset --hard origin/main
+            git reset --hard "$DEPLOY_SHA"
+            echo "Deploy commit $(git log --oneline -1)"
           
             # 3. [TỐI ƯU TỐC ĐỘ] Build Image mới ngầm trong khi ứng dụng cũ vẫn chạy
             echo "Bắt đầu build Image mới..."
@@ -104,11 +130,18 @@ jobs:
             # 4. [MINIMAL DOWNTIME & NATIVE HEALTHCHECK] 
             # Cờ --wait tự động khóa luồng cho đến khi mọi service khởi động thành công và passing healthcheck.
             echo "Tráo đổi Container cũ sang mới và chờ hệ thống ổn định..."
-            sudo docker compose up -d --wait --remove-orphans
-            
-            # 5. Dọn dẹp Image rác và Build Cache ngầm để bảo vệ tuyệt đối dung lượng AWS
+            # Lỗi thì in trạng thái và log ngay trên trang Actions, không phải SSH vào xem.
+            if ! sudo docker compose up -d --wait --wait-timeout 600 --remove-orphans; then
+              sudo docker compose ps
+              sudo docker compose logs --tail=80 core-api data-mining-api proxy
+              exit 1
+            fi
+            sudo docker compose ps
+
+            # 5. Dọn image cũ; giữ build cache 7 ngày để lần build sau không phải tải lại torch và thư viện Maven
+            #    (xóa hết cache thì mỗi lần deploy build lại từ đầu, dễ vượt command_timeout).
             sudo docker image prune -f
-            sudo docker builder prune -f
+            sudo docker builder prune -f --filter until=168h
             
             echo "TOÀN BỘ HỆ THỐNG ĐÃ LÊN LIVE THÀNH CÔNG!"
 
