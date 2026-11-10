@@ -17,6 +17,9 @@ services:
     volumes:
       - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./index.html:/srv/landing/index.html:ro
+      # Search-engine files for the landing domain (without them try_files answers every path with index.html).
+      - ./deploy/landing/robots.txt:/srv/landing/robots.txt:ro
+      - ./deploy/landing/sitemap.xml:/srv/landing/sitemap.xml:ro
       # Certificates and ACME account: keep them, or Let's Encrypt rate limits may bite after a few rebuilds.
       - caddy_data:/data
       - caddy_config:/config
