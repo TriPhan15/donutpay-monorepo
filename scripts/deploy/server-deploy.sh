@@ -19,7 +19,8 @@ grep -qE '^JWT_SECRET=.{32,}' .env || { echo "Lỗi: .env thiếu JWT_SECRET (í
 # Model bị .gitignore chặn nên phải chép tay lên server một lần (DEPLOY_GUIDE mục 5).
 [ -s ai-service/Version5/donut_result/model.safetensors ] || { echo "Lỗi: thiếu model.safetensors"; exit 1; }
 
-echo "Deploy commit $(git log --oneline -1)"
+# Script chạy bằng root trong repo của user thường: Git từ chối ("dubious ownership") nếu không khai báo safe.directory.
+echo "Deploy commit $(git -c safe.directory="$APP_DIR" log --oneline -1)"
 
 # 2. Build image mới (log đầy đủ vào file, chỉ in phần cuối khi lỗi).
 echo "Build image mới (log: $BUILD_LOG)..."
