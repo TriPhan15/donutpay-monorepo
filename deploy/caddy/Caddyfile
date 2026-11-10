@@ -28,8 +28,13 @@
 
 # Trang chủ tải app (index.html ở gốc repo) cho tên miền gốc, vd. example.com. LANDING_ADDRESS để trống (máy dev) ->
 # ":8081", cổng chỉ nằm trong container, không publish và không xin chứng chỉ.
+# Muốn có cả www: đặt LANDING_ADDRESS="example.com, www.example.com" (DNS của www phải trỏ về máy trước, nếu không
+# Caddy xin chứng chỉ thất bại cho www); khối @www chuyển www.example.com/... về https://example.com/... (301).
 {$LANDING_ADDRESS::8081} {
 	encode gzip
+
+	@www expression {host}.startsWith("www.")
+	redir @www https://{http.request.host.labels.1}.{http.request.host.labels.0}{uri} permanent
 
 	header {
 		Strict-Transport-Security "max-age=31536000"
@@ -57,6 +62,8 @@
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		# API và trang admin không dành cho máy tìm kiếm; chỉ landing (LANDING_ADDRESS) được lập chỉ mục.
+		X-Robots-Tag "noindex, nofollow"
 		-Server
 	}
 

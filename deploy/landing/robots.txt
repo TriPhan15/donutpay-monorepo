@@ -1,0 +1,5 @@
+# Trang chủ ledgermind.dev (landing tải app). API ở api.ledgermind.dev trả header X-Robots-Tag noindex.
+User-agent: *
+Allow: /
+
+Sitemap: https://ledgermind.dev/sitemap.xml
