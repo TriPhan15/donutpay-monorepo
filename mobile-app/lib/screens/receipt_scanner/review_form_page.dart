@@ -232,7 +232,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     _dateNeedsCheck = false;
   }
 
-  /// A day picked in the date field; it keeps the time read from the receipt.
+  /// A day and time picked in the date field.
   void _onDatePicked(DateTime date) =>
       setState(() => _setDate(date, isFallback: false));
 
@@ -674,6 +674,7 @@ class _ReviewFields extends StatelessWidget {
           hint: dateHint,
           child: DateField(
             forTransaction: true,
+            withTime: true,
             value: date,
             onChanged: onDatePicked,
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
+import 'package:finance_ai_app/core/utils/app_date_format.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
 import 'package:finance_ai_app/di/injection_container.dart';
 import 'package:finance_ai_app/repositories/settings_repository.dart';
@@ -10,6 +11,9 @@ import 'package:finance_ai_app/widgets/inputs/date_picker_sheet.dart';
 /// The day of a form: a box that reads "Today, 27/10/2026", "Yesterday, ..." or the date, and opens the date picker
 /// sheet ([showDatePickerSheet]), which holds the quick choices. Only the day changes: the value given to [onChanged]
 /// keeps the time of [value], so a form that stores a moment (a transaction) keeps its hour.
+///
+/// With [withTime] the box also shows the hour (`dd/MM/yyyy HH:mm`) and, after the day, a time picker opens, so the
+/// value given to [onChanged] carries the time chosen there; cancelling the time picker keeps the old time.
 ///
 /// [forTransaction] titles the sheet for a transaction and offers the day of the transaction recorded last.
 ///
@@ -26,6 +30,7 @@ class DateField extends StatelessWidget {
     this.helperText,
     this.helperColor,
     this.forTransaction = false,
+    this.withTime = false,
   });
 
   static const String displayPattern = 'dd/MM/yyyy';
@@ -43,6 +48,7 @@ class DateField extends StatelessWidget {
   final String? helperText;
   final Color? helperColor;
   final bool forTransaction;
+  final bool withTime;
 
   static final DateTime defaultFirstDate = DateTime(2000);
   static final DateTime defaultLastDate = DateTime(2100);
@@ -90,7 +96,25 @@ class DateField extends StatelessWidget {
           : null,
     );
     if (picked == null || !context.mounted) return;
-    _select(picked);
+    if (!withTime) return _select(picked);
+    await _pickTime(context, picked);
+  }
+
+  /// Opens the time picker for [day]; without an answer the day keeps the time of [value].
+  Future<void> _pickTime(BuildContext context, DateTime day) async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(value),
+    );
+    if (time == null) return _select(day);
+    final moment = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      time.hour,
+      time.minute,
+    );
+    if (moment != value) onChanged(moment);
   }
 
   @override
@@ -99,7 +123,10 @@ class DateField extends StatelessWidget {
     final loc = context.loc;
     final today = _dayOf(DateTime.now());
     final yesterday = DateTime(today.year, today.month, today.day - 1);
-    final shown = DateFormat(displayPattern).format(value);
+    final shown =
+        (withTime ? AppDateFormat.dateTime : DateFormat(displayPattern)).format(
+          value,
+        );
     final label = _sameDay(value, today)
         ? loc.dateFieldTodayValue(shown)
         : _sameDay(value, yesterday)

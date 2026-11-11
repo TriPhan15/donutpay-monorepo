@@ -438,6 +438,43 @@ void main() {
     },
   );
 
+  testWidgets('the date field shows the time read by the AI', (tester) async {
+    await openForm(tester);
+
+    expect(find.text('20/09/2026 08:30'), findsOneWidget);
+    expect(tester.widget<DateField>(find.byType(DateField)).withTime, isTrue);
+  });
+
+  testWidgets('a day and time edited in the form are saved in the draft', (
+    tester,
+  ) async {
+    await openForm(tester);
+
+    await tester.tap(find.byIcon(Icons.calendar_today_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('day-21')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.keyboard_outlined));
+    await tester.pumpAndSettle();
+    final fields = find.descendant(
+      of: find.byType(TimePickerDialog),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(fields.at(0), '9');
+    await tester.enterText(fields.at(1), '15');
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<DateField>(find.byType(DateField)).value, DateTime(2026, 9, 21, 9, 15));
+    await tapSave(tester);
+    await tester.tap(find.text('Xong'));
+    await tester.pumpAndSettle();
+    expect(
+      sentBodies().single['transactionDate'],
+      DateTime(2026, 9, 21, 9, 15).toIso8601String(),
+    );
+  });
+
   testWidgets(
     'a receipt of another month says it still counts in the current balance',
     (tester) async {
@@ -1054,7 +1091,7 @@ void main() {
         );
         await openForm(tester);
         expect(find.text('Highlands'), findsOneWidget);
-        expect(find.text('20/09/2026'), findsOneWidget);
+        expect(find.textContaining('20/09/2026'), findsOneWidget);
         expect(find.text(_dateFallbackHint), findsNothing);
         expect(find.text(_needsCheck), findsNothing);
       },
@@ -1094,7 +1131,7 @@ void main() {
           find.descendant(of: _total, matching: find.text('60.000')),
           findsOneWidget,
         );
-        expect(find.text('15/09/2026'), findsOneWidget);
+        expect(find.textContaining('15/09/2026'), findsOneWidget);
         expect(find.text(_needsCheck), findsOneWidget);
         expect(_dashed(_store), isTrue);
         expect(_dashed(_total), isFalse);
