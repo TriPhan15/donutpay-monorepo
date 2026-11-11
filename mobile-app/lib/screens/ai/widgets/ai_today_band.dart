@@ -7,29 +7,27 @@ import 'package:finance_ai_app/core/utils/currency_helper.dart';
 import 'package:finance_ai_app/models/today_allowance.dart';
 
 /// The thin blue band at the top of the AI tab (T9 spec 3.1): "Hôm nay tiêu được 180.000 ₫ · còn 11 ngày" with a bar
-/// of what is spent and left of it today. The round button on the right runs the analysis again.
+/// of what is spent and left of it today. A small spinner on the right shows while the analysis runs.
 class AiTodayBand extends StatelessWidget {
   const AiTodayBand({
     super.key,
     required this.allowance,
     required this.isRefreshing,
-    required this.onRefresh,
   });
 
   @visibleForTesting
-  static const Key refreshKey = ValueKey('ai-refresh');
+  static const Key loadingKey = ValueKey('ai-loading');
   @visibleForTesting
   static const Key barKey = ValueKey('ai-today-bar');
 
   static const double _radius = 28;
-  static const double _buttonSize = 36;
+  static const double _spinnerSize = 18;
   static const double _barHeight = 6;
 
   final TodayAllowance allowance;
 
-  /// True while the analysis runs: the button then shows a spinner and cannot be pressed.
+  /// True while the analysis runs: the band then shows a spinner in its corner.
   final bool isRefreshing;
-  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +113,10 @@ class AiTodayBand extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              _refreshButton(loc.commonRefresh),
+              if (isRefreshing) ...[
+                const SizedBox(width: 12),
+                _loadingIndicator(),
+              ],
             ],
           ),
           if (a.hasIncome && !a.isOver) ...[
@@ -156,32 +156,15 @@ class AiTodayBand extends StatelessWidget {
     );
   }
 
-  Widget _refreshButton(String label) {
-    return Material(
-      color: BandColors.tint,
-      shape: const CircleBorder(),
-      child: InkWell(
-        key: refreshKey,
-        customBorder: const CircleBorder(),
-        onTap: isRefreshing ? null : onRefresh,
-        child: SizedBox.square(
-          dimension: _buttonSize,
-          child: Center(
-            child: isRefreshing
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: BandColors.primary,
-                    ),
-                  )
-                : Icon(
-                    Icons.refresh_rounded,
-                    color: BandColors.primary,
-                    size: 20,
-                    semanticLabel: label,
-                  ),
-          ),
+  Widget _loadingIndicator() {
+    return const Padding(
+      padding: EdgeInsets.all(9),
+      child: SizedBox.square(
+        dimension: _spinnerSize,
+        child: CircularProgressIndicator(
+          key: loadingKey,
+          strokeWidth: 2,
+          color: BandColors.primary,
         ),
       ),
     );

@@ -373,7 +373,6 @@ class _AITabPageState extends State<AITabPage> {
         today: today,
       ),
       isRefreshing: _spadeLoading,
-      onRefresh: () => _loadSpadePatterns(reportErrors: true),
     );
     final advice = AiBalanceCard(
       balance: _transactions.isEmpty

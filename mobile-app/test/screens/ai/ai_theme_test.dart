@@ -12,7 +12,6 @@ import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/spending_group_colors.dart';
 import 'package:finance_ai_app/repositories/app_repository.dart';
 import 'package:finance_ai_app/screens/ai/ai_tab_page.dart';
-import 'package:finance_ai_app/screens/ai/widgets/ai_today_band.dart';
 import 'package:finance_ai_app/services/remote_api_helper.dart';
 import 'package:finance_ai_app/services/session_service.dart';
 
@@ -126,7 +125,7 @@ void main() {
           final context = tester.element(find.byType(AITabPage));
 
           expect(
-            boxDecoration(tester, find.byKey(AiTodayBand.refreshKey)).gradient,
+            boxDecoration(tester, find.text('Hôm nay tiêu được')).gradient,
             context.colors.headerGradient,
           );
           expect(boxColor(tester, find.text('Chi nhiều nhất')), colors.surface);

@@ -101,15 +101,8 @@ void main() {
   });
 
   group('AiTodayBand', () {
-    Widget band(
-      TodayAllowance a, {
-      bool refreshing = false,
-      VoidCallback? onRefresh,
-    }) => AiTodayBand(
-      allowance: a,
-      isRefreshing: refreshing,
-      onRefresh: onRefresh ?? () {},
-    );
+    Widget band(TodayAllowance a, {bool refreshing = false}) =>
+        AiTodayBand(allowance: a, isRefreshing: refreshing);
 
     testWidgets('shows the allowance, the days left and today\'s bar', (
       tester,
@@ -202,23 +195,23 @@ void main() {
       },
     );
 
-    testWidgets('the refresh button reports a tap, but not while refreshing', (
+    testWidgets('shows a spinner only while refreshing, never a button', (
       tester,
     ) async {
-      var taps = 0;
       const a = TodayAllowance(
         hasIncome: true,
         perDay: 1,
         spentToday: 0,
         daysLeft: 1,
       );
-      await _pump(tester, band(a, onRefresh: () => taps++));
-      await tester.tap(find.byKey(AiTodayBand.refreshKey));
-      expect(taps, 1);
+      await _pump(tester, band(a));
+      expect(find.byKey(AiTodayBand.loadingKey), findsNothing);
+      expect(find.byType(InkWell), findsNothing);
+      expect(find.byIcon(Icons.refresh_rounded), findsNothing);
 
-      await _pump(tester, band(a, refreshing: true, onRefresh: () => taps++));
-      await tester.tap(find.byKey(AiTodayBand.refreshKey));
-      expect(taps, 1);
+      await _pump(tester, band(a, refreshing: true));
+      expect(find.byKey(AiTodayBand.loadingKey), findsOneWidget);
+      expect(find.byType(InkWell), findsNothing);
     });
   });
 
