@@ -191,7 +191,7 @@ void main() {
     // The file is written with real IO: let it finish, then let the page go on with the fake clock.
     for (var i = 0; i < exportPolls && !shared.isCompleted; i++) {
       await tester.runAsync(() => Future<void>.delayed(exportPollStep));
-      await tester.pump();
+      await tester.pump(exportPollStep);
     }
     if (!shared.isCompleted) return null;
     if (failShare) {
@@ -211,10 +211,6 @@ void main() {
       );
     });
   }
-
-  String today() =>
-      '${now.day.toString().padLeft(2, '0')}'
-      '${now.month.toString().padLeft(2, '0')}${now.year}';
 
   testWidgets(
     'the export holds the month, its totals, the balance and the budgets',
@@ -247,6 +243,23 @@ void main() {
     },
   );
 
+  testWidgets('the file name carries the user name without diacritics', (
+    tester,
+  ) async {
+    backend.on(
+      'GET',
+      '/api/users/me',
+      (_) => okResponse({
+        'id': 1,
+        'email': 'tri@example.com',
+        'username': 'Phan Thanh Trí',
+      }),
+    );
+    final shared = (await export(tester))!;
+
+    expect(shared.fileName, 'ChiTieu_PhanThanhTri_Thang${_monthKey(now)}.xlsx');
+  });
+
   testWidgets('the export is named after the month and shared with its texts', (
     tester,
   ) async {
@@ -258,7 +271,8 @@ void main() {
       'Sheet1',
       'Chi tiêu tháng $month',
     ]);
-    expect(shared.fileName, 'chi_tieu_${month}_${today()}.xlsx');
+    // /api/users/me is not answered here, so the file has no name in it.
+    expect(shared.fileName, 'ChiTieu_Thang$month.xlsx');
     expect(shared.subject, 'Chi tiêu tháng $month');
     expect(shared.text, 'Báo cáo chi tiêu tháng $month');
   });

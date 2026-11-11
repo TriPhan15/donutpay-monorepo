@@ -26,7 +26,4 @@ class AppDateFormat {
 
   /// 03/03/26
   static final DateFormat dayMonthShortYear = DateFormat('dd/MM/yy');
-
-  /// 03032026, for a file name.
-  static final DateFormat fileDate = DateFormat('ddMMyyyy');
 }

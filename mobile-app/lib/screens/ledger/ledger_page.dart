@@ -582,6 +582,18 @@ class LedgerPageState extends State<LedgerPage> {
     );
   }
 
+  /// The name for the file of the export; null when it cannot be had, the export then goes on without it.
+  Future<String?> _currentUserName() async {
+    final userId = SessionService.currentUserId;
+    if (userId == null) return null;
+    try {
+      return (await AppRepository.instance.getCurrentUser(userId))?.fullName;
+    } catch (e) {
+      debugPrint('Không lấy được tên người dùng: $e');
+      return null;
+    }
+  }
+
   Future<void> _exportToExcel() async {
     final loc = context.loc;
     try {
@@ -590,7 +602,7 @@ class LedgerPageState extends State<LedgerPage> {
         month: _selectedDate,
         transactions: _transactions,
         budgets: _budgets,
-        now: DateTime.now(),
+        userName: await _currentUserName(),
       );
       if (report == null) throw StateError('The workbook could not be encoded');
 
