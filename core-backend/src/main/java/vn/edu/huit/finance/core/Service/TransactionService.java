@@ -87,6 +87,7 @@ public class TransactionService {
     /** Below this a wallet runs low: a checkout warns its owner, and the admin dashboard lists the user. */
     public static final BigDecimal LOW_BALANCE_THRESHOLD = new BigDecimal("50000");
 
+    private static final String DEFAULT_LOCATION = "Trong ứng dụng";
     private static final String KEY_TRANSACTION_ID = "transactionId";
     private static final String KEY_FINAL_AMOUNT = "finalAmount";
     private static final String KEY_REMAINING_BALANCE = "remainingBalance";
@@ -373,6 +374,9 @@ public class TransactionService {
         }
         if (request.getTransactionDate() != null) {
             transaction.setTransactionDate(request.getTransactionDate());
+        }
+        if (request.getLocation() != null) {
+            transaction.setLocation(request.getLocation().isBlank() ? DEFAULT_LOCATION : request.getLocation().trim());
         }
         if (request.getPaymentMethod() != null) {
             transaction.setPaymentMethod(request.getPaymentMethod().trim());

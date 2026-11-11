@@ -252,10 +252,20 @@ class TransactionModel {
       imageUrl: json['imageUrl']?.toString(),
       rating: (json['rating'] as num?)?.toDouble(),
       reviewNote: json['reviewNote']?.toString(),
+      location: json['location']?.toString(),
       receiptStatus: ReceiptStatus.fromServer(json['receiptStatus']),
       clientId: json['clientId']?.toString(),
       source: TransactionSource.fromServer(json['source']),
     );
+  }
+
+  /// The address a person typed or the receipt gave, or null when there is none worth showing: the app fills an empty
+  /// location with [defaultLocation] or with the title, and those are no address.
+  String? get address {
+    final trimmed = location?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    if (trimmed == defaultLocation || trimmed == title.trim()) return null;
+    return trimmed;
   }
 
   Map<String, dynamic> toDbMap(int userId) {

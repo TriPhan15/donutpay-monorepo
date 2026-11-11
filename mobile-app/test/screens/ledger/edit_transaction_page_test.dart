@@ -38,6 +38,7 @@ TransactionModel _tx({
   String category = 'Ăn uống',
   bool isExpense = true,
   ReceiptStatus? receiptStatus,
+  String? location,
 }) {
   return TransactionModel(
     id: id,
@@ -47,6 +48,7 @@ TransactionModel _tx({
     category: category,
     isExpense: isExpense,
     receiptStatus: receiptStatus,
+    location: location,
   );
 }
 
@@ -315,6 +317,34 @@ void main() {
         expect(find.text('Sửa giao dịch'), findsNothing);
       },
     );
+
+    testWidgets('the address is prefilled and a corrected one is PUT', (
+      tester,
+    ) async {
+      backend.on('PUT', _putPath, (_) => okResponse({'id': 5}));
+      await openForm(tester, _tx(location: '12 Nguyễn Văn Bảo'));
+
+      final field = find.byKey(EditTransactionPage.addressFieldKey);
+      expect(
+        tester.widget<TextField>(field).controller?.text,
+        '12 Nguyễn Văn Bảo',
+      );
+      await tester.enterText(field, '  34 Quang Trung  ');
+      await tester.pump();
+      await tapText(tester, _saveLabel);
+      await tapText(tester, 'Xong');
+
+      expect(puts().single.data, {'location': '34 Quang Trung'});
+    });
+
+    testWidgets('the default location shows as an empty address field', (
+      tester,
+    ) async {
+      await openForm(tester, _tx(location: TransactionModel.defaultLocation));
+
+      final field = find.byKey(EditTransactionPage.addressFieldKey);
+      expect(tester.widget<TextField>(field).controller?.text, isEmpty);
+    });
 
     testWidgets('a new category and note are PUT without the amount', (
       tester,

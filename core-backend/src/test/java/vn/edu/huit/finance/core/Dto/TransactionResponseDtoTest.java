@@ -54,6 +54,14 @@ class TransactionResponseDtoTest {
     }
 
     @Test
+    void theLocationOfTheTransactionIsCarriedOver() {
+        Transaction tx = transaction("Bún bò");
+        tx.setLocation("12 Nguyễn Văn Bảo, Gò Vấp");
+
+        assertEquals("12 Nguyễn Văn Bảo, Gò Vấp", TransactionResponseDto.from(tx).getLocation());
+    }
+
+    @Test
     void theClientIdTheAppGaveTheTransactionIsCarriedOver() {
         Transaction fromTheApp = transaction("Bún bò");
         fromTheApp.setClientId("3f2b8c1e-7a4d-4e9b-9c1a-2d5e6f7a8b9c");

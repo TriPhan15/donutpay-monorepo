@@ -122,6 +122,24 @@ void main() {
   });
 
   group('TransactionModel.fromJson', () {
+    test('reads the location, and the address hides the default and the title', () {
+      TransactionModel parse(Object? location) => TransactionModel.fromJson({
+        'id': 1,
+        'title': 'Highlands',
+        'amount': 1,
+        'category': 'Ăn uống',
+        'location': location,
+      });
+
+      expect(parse('12 Nguyễn Văn Bảo').location, '12 Nguyễn Văn Bảo');
+      expect(parse('12 Nguyễn Văn Bảo').address, '12 Nguyễn Văn Bảo');
+      expect(parse(null).location, isNull);
+      expect(parse(null).address, isNull);
+      expect(parse('  ').address, isNull);
+      expect(parse(TransactionModel.defaultLocation).address, isNull);
+      expect(parse('Highlands').address, isNull);
+    });
+
     test(
       'reads the source of the server, and defaults to NORMAL without one',
       () {

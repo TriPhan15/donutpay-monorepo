@@ -236,6 +236,40 @@ class TransactionServiceTest {
     }
 
     @Test
+    void updatingTheLocationChangesItAndTrimsIt() {
+        Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        transaction.setLocation("Trong ứng dụng");
+        TransactionUpdateRequestDto request = update();
+        request.setLocation("  12 Nguyễn Văn Bảo  ");
+
+        service.updateTransaction(TX_ID, request);
+
+        assertEquals("12 Nguyễn Văn Bảo", transaction.getLocation());
+    }
+
+    @Test
+    void updatingWithoutALocationKeepsTheCurrentOne() {
+        Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        transaction.setLocation("12 Nguyễn Văn Bảo");
+
+        service.updateTransaction(TX_ID, updateAmount("60000"));
+
+        assertEquals("12 Nguyễn Văn Bảo", transaction.getLocation());
+    }
+
+    @Test
+    void aBlankLocationResetsItToTheDefault() {
+        Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        transaction.setLocation("12 Nguyễn Văn Bảo");
+        TransactionUpdateRequestDto request = update();
+        request.setLocation("   ");
+
+        service.updateTransaction(TX_ID, request);
+
+        assertEquals("Trong ứng dụng", transaction.getLocation());
+    }
+
+    @Test
     void sendingTheSameAmountAndTypeAgainDoesNotMoveTheWallet() {
         aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         TransactionUpdateRequestDto request = updateAmount("100000.00");

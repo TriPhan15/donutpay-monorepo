@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import 'package:finance_ai_app/core/constants/input_limits.dart';
 import 'package:finance_ai_app/core/constants/transaction_categories.dart';
 import 'package:finance_ai_app/core/extensions/build_context_extension.dart';
 import 'package:finance_ai_app/core/theme/app_typography.dart';
@@ -33,12 +35,16 @@ const String _fieldDate = 'transactionDate';
 const String _fieldRating = 'rating';
 const String _fieldClearRating = 'clearRating';
 const String _fieldReviewNote = 'reviewNote';
+const String _fieldLocation = 'location';
 
 /// Form to correct the amount, category, day, note and optional experience rating of a transaction that the server has
 /// (T9 spec, 3.3: the add form's layout with a summary card on top and "Lưu thay đổi", faded until something changed).
 /// It sends just what the user changed, which leaves the time of day, the type and the receipt alone, and pops with
 /// true once the server has saved it.
 class EditTransactionPage extends StatefulWidget {
+  /// The address field, for tests.
+  static const Key addressFieldKey = Key('editTransactionAddress');
+
   final TransactionModel transaction;
 
   const EditTransactionPage({super.key, required this.transaction});
@@ -54,6 +60,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
   final TextEditingController _reviewNoteController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
 
   late String _category;
   late DateTime _date;
@@ -79,11 +86,14 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
 
   String get _originalReviewNote => (_original.reviewNote ?? '').trim();
 
+  String get _originalAddress => _original.address ?? '';
+
   @override
   void initState() {
     super.initState();
     _noteController.text = _originalNote;
     _reviewNoteController.text = _originalReviewNote;
+    _addressController.text = _originalAddress;
     _category = _original.category;
     _date = _original.date;
     _rating = _original.rating;
@@ -94,6 +104,7 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     _amountController.addListener(_onFieldChanged);
     _noteController.addListener(_onFieldChanged);
     _reviewNoteController.addListener(_onFieldChanged);
+    _addressController.addListener(_onFieldChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadCategories();
     });
@@ -116,9 +127,11 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     _amountController.removeListener(_onFieldChanged);
     _noteController.removeListener(_onFieldChanged);
     _reviewNoteController.removeListener(_onFieldChanged);
+    _addressController.removeListener(_onFieldChanged);
     _amountController.dispose();
     _noteController.dispose();
     _reviewNoteController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -160,10 +173,12 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   Map<String, dynamic> _changes(double amount) {
     final note = _noteController.text.trim();
     final reviewNote = _reviewNoteController.text.trim();
+    final address = _addressController.text.trim();
     return {
       if (amount != _originalWholeAmount) _fieldAmount: amount,
       if (_category != _original.category) _fieldCategory: _category,
       if (note != _originalNote) _fieldNote: note,
+      if (address != _originalAddress) _fieldLocation: address,
       if (_date != _original.date) _fieldDate: _date.toIso8601String(),
       if (_original.isExpense && _rating != _original.rating && _rating != null)
         _fieldRating: _rating,
@@ -313,6 +328,22 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
                         ),
                         const SizedBox(height: _gutter),
                         NoteField(controller: _noteController),
+                        const SizedBox(height: _gutter),
+                        TextField(
+                          key: EditTransactionPage.addressFieldKey,
+                          controller: _addressController,
+                          textCapitalization: TextCapitalization.sentences,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(
+                              InputLimits.noteMaxLength,
+                            ),
+                          ],
+                          style: const TextStyle(fontSize: AppTextSize.body),
+                          decoration: InputDecoration(
+                            labelText: loc.reviewAddress,
+                            prefixIcon: const Icon(Icons.place_outlined),
+                          ),
+                        ),
                         if (_original.isExpense) ...[
                           const SizedBox(height: _gutter),
                           ExperienceRatingField(

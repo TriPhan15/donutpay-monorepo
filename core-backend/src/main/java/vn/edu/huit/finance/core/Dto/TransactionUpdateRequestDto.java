@@ -66,6 +66,10 @@ public class TransactionUpdateRequestDto {
     @Size(max = TEXT_MAX_LENGTH, message = "Ghi chú đánh giá tối đa {max} ký tự")
     private String reviewNote;
 
+    /** Optional new address. Null leaves it unchanged; a blank string resets it to the default "Trong ứng dụng" (create requires a non-blank location). */
+    @Size(max = TEXT_MAX_LENGTH, message = "Địa chỉ giao dịch tối đa {max} ký tự")
+    private String location;
+
     @JsonIgnore
     @AssertTrue(message = "Điểm đánh giá trải nghiệm phải cách nhau 0.5 sao")
     public boolean isRatingStepValid() {
