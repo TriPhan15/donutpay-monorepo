@@ -184,7 +184,7 @@ class AdminReceiptReviewTest {
 
     @Test
     void theListShowsAReceiptThatWasReadAsSuccessWhateverBecameOfItSinceAndKeepsItsOtherTwoBadges() throws Exception {
-        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listEndUsersNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(receiptProcessingService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(
                 receipt(1, "COMPLETED_RAW"), receipt(2, "EDITED"), receipt(3, "APPROVED"), receipt(4, "SUCCESS"),
                 receipt(5, "FAILED"), receipt(6, "WAITING_FOR_REVIEW"), receipt(7, "PENDING"))));

@@ -29,6 +29,7 @@ import vn.edu.huit.finance.core.Entity.Transaction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Exception.ReceiptConflictException;
 import vn.edu.huit.finance.core.Exception.TransactionAccessDeniedException;
+import vn.edu.huit.finance.core.Exception.ReceiptNotFoundException;
 import vn.edu.huit.finance.core.Repository.CategoryRepository;
 import vn.edu.huit.finance.core.Repository.ReceiptProcessingAttemptRepository;
 import vn.edu.huit.finance.core.Repository.ReceiptRepository;
@@ -629,7 +630,7 @@ class ReceiptWorkflowIntegrationTest {
                 () -> receiptService.editMyReceipt(readId, edit(0L, "Của Bob", "1", null)));
         assertThrows(TransactionAccessDeniedException.class, () -> receiptService.retryMyReceipt(failedId, retry(NEW_SCAN, "bob-1")));
         assertThrows(TransactionAccessDeniedException.class, () -> receiptService.submitFeedback(failedId, new BigDecimal("1")));
-        assertThrows(TransactionAccessDeniedException.class, () -> transactionService.cancelMyReceipt(readId));
+        assertThrows(ReceiptNotFoundException.class, () -> transactionService.cancelMyReceipt(readId));
 
         Receipt read = stored(readId);
         assertEquals("COMPLETED_RAW", read.getStatus());

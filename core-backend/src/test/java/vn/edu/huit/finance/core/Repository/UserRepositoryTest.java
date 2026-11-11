@@ -157,4 +157,19 @@ class UserRepositoryTest {
         assertEquals(nonAdmins, userRepository.countByRoleNot(Roles.ADMIN));
         assertEquals(userRepository.count() - 1, userRepository.countByRoleNot(Roles.ADMIN));
     }
+
+    @Test
+    void findByRoleNot_returnsOnlyNonAdminsNewestFirstAndPaged() {
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+        persistWith("carol", "0900000003", Roles.USER, null);
+        persistWith("dave", "0900000004", Roles.USER, null);
+
+        org.springframework.data.domain.Page<User> page = userRepository.findByRoleNot(Roles.ADMIN,
+                org.springframework.data.domain.PageRequest.of(0, 2,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id")));
+
+        assertEquals(2, page.getContent().size());
+        assertEquals(userRepository.countByRoleNot(Roles.ADMIN), page.getTotalElements());
+        assertEquals(java.util.List.of("dave", "carol"), page.getContent().stream().map(User::getUsername).toList());
+    }
 }

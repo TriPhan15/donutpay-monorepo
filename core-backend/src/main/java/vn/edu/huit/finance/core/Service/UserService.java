@@ -75,6 +75,13 @@ public class UserService {
                 PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "id")));
     }
 
+    /** For the admin dashboard: a page of the end users (administrators left out), the newest first. */
+    @Transactional(readOnly = true)
+    public Page<User> listEndUsersNewestFirst(Pageable pageable) {
+        return userRepository.findByRoleNot(Roles.ADMIN,
+                PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "id")));
+    }
+
     @Transactional
     public User createUser(UserCreateDto dto) {
         User user = new User();

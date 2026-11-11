@@ -27,7 +27,7 @@
                         <thead class="table-light">
                         <tr>
                             <th class="text-center" style="width: 8%;">ID</th>
-                            <th>Username</th>
+                            <th>Tên đăng nhập</th>
                             <th>Email</th>
                             <th>Số điện thoại</th>
                             <th class="text-center">Phân quyền</th>
@@ -36,12 +36,12 @@
                         </thead>
                         <tbody>
                         <tr th:each="user : ${users}">
-                            <td class="text-center fw-bold text-secondary" th:text="${'#' + user.id}"></td>
+                            <td class="text-center fw-bold text-secondary" th:attr="data-order=${user.id}" th:text="${'#' + user.id}"></td>
                             <td class="fw-bold text-dark fs-6" th:text="${user.username}"></td>
                             <td class="text-muted fw-medium" th:text="${user.email}"></td>
                             <td class="text-muted fw-medium font-monospace" th:text="${user.phone}"></td>
                             <td class="text-center">
-                                <span th:classappend="${user.role == 'ROLE_ADMIN' ? 'bg-danger' : 'bg-secondary'}" class="badge rounded-pill px-3 py-2" th:text="${user.role}"></span>
+                                <span th:classappend="${user.role == 'ROLE_ADMIN' ? 'bg-danger' : 'bg-secondary'}" class="badge rounded-pill px-3 py-2" th:text="${user.role == 'ROLE_ADMIN' ? 'Quản trị viên' : 'Người dùng'}"></span>
                             </td>
                             <td class="text-center">
                                 <div th:if="${user.role == 'ROLE_ADMIN'}">
@@ -85,7 +85,7 @@
             <div class="modal-body p-4">
                 <form id="addUserForm">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Username</label>
+                        <label class="form-label fw-bold">Tên đăng nhập</label>
                         <input type="text" class="form-control" name="username" required>
                     </div>
                     <div class="mb-3">
@@ -103,8 +103,8 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold">Phân quyền</label>
                         <select class="form-select" name="role">
-                            <option value="USER">USER (Người dùng)</option>
-                            <option value="ADMIN">ADMIN (Quản trị viên)</option>
+                            <option value="USER">Người dùng</option>
+                            <option value="ADMIN">Quản trị viên</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary fw-bold w-100 py-2">Tạo Tài Khoản</button>
@@ -125,7 +125,7 @@
                 <form id="editUserForm">
                     <input type="hidden" id="editUserId" name="id">
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Username</label>
+                        <label class="form-label fw-bold">Tên đăng nhập</label>
                         <input type="text" class="form-control" id="editUsername" name="username" required>
                     </div>
                     <div class="mb-3">

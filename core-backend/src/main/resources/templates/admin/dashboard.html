@@ -25,7 +25,7 @@
                     <div class="card-body d-flex align-items-center">
                         <i class="bi bi-people-fill text-success fs-1 me-3"></i>
                         <div>
-                            <h6 class="card-title text-muted mb-1">Tổng User</h6>
+                            <h6 class="card-title text-muted mb-1">Tổng người dùng</h6>
                             <p class="card-text fw-bold fs-4 mb-0" th:text="${totalUsers != null ? totalUsers : '0'}">0</p>
                         </div>
                     </div>
@@ -49,7 +49,7 @@
                     <div class="card-body d-flex align-items-center">
                         <i class="bi bi-exclamation-triangle-fill fs-1 me-3"></i>
                         <div>
-                            <h6 class="card-title mb-1">User sắp cạn ví (< 50k)</h6>
+                            <h6 class="card-title mb-1">Người dùng sắp cạn ví (< 50k)</h6>
                             <p class="card-text fw-bold fs-4 mb-0" th:text="${lowBalanceUsers != null ? lowBalanceUsers.size() : '0'}">0 user</p>
                         </div>
                     </div>
@@ -61,7 +61,7 @@
             <div class="col-lg-7 mb-4">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white border-bottom pt-3 pb-2">
-                        <h5 class="card-title text-danger fw-bold"><i class="bi bi-bell-fill me-2"></i>Cần chú ý: Danh sách User sắp cạn ví</h5>
+                        <h5 class="card-title text-danger fw-bold"><i class="bi bi-bell-fill me-2"></i>Cần chú ý: Danh sách người dùng sắp cạn ví</h5>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -69,7 +69,7 @@
                                 <thead class="table-light">
                                 <tr>
                                     <th class="ps-3">ID</th>
-                                    <th>Tên User</th>
+                                    <th>Tên người dùng</th>
                                     <th>Số điện thoại</th>
                                     <th class="text-end pe-3">Số dư hiện tại</th>
                                 </tr>
@@ -91,7 +91,7 @@
                                 <tr th:if="${lowBalanceUsers == null or lowBalanceUsers.isEmpty()}">
                                     <td colspan="4" class="text-center py-4 text-success fw-bold">
                                         <i class="bi bi-check-circle fs-3 d-block mb-2"></i>
-                                        Tuyệt vời! Không có User nào sắp cạn ví.
+                                        Tuyệt vời! Không có người dùng nào sắp cạn ví.
                                     </td>
                                 </tr>
                                 </tbody>
@@ -129,7 +129,7 @@
                                 <thead class="table-light">
                                 <tr>
                                     <th class="ps-3 text-center">Top</th>
-                                    <th>Thông tin User</th>
+                                    <th>Thông tin người dùng</th>
                                     <th class="text-end pe-4">Tổng chi tiêu</th>
                                 </tr>
                                 </thead>
@@ -202,7 +202,7 @@
                                 <thead class="table-light">
                                 <tr>
                                     <th class="ps-3">ID</th>
-                                    <th>Tên User</th>
+                                    <th>Tên người dùng</th>
                                     <th>Email</th>
                                     <th class="text-end pe-4">Nhãn AI</th>
                                 </tr>

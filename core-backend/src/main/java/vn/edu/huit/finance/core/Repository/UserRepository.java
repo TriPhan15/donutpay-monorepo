@@ -1,6 +1,8 @@
 package vn.edu.huit.finance.core.Repository;
 
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import vn.edu.huit.finance.core.Entity.TransactionSource;
@@ -21,6 +23,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     /** Số tài khoản không mang vai trò {@code role} (tổng người dùng cuối trên dashboard: truyền Roles.ADMIN). */
     long countByRoleNot(String role);
+
+    /** Một trang tài khoản không mang vai trò {@code role} (bảng phân lớp khách hàng trên dashboard: truyền Roles.ADMIN). */
+    Page<User> findByRoleNot(String role, Pageable pageable);
 
     Optional<User> findByEmail(String email);
 

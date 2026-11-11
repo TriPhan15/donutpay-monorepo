@@ -100,7 +100,6 @@ public class TransactionService {
     private static final String MSG_TRANSACTION_NOT_FOUND = "Không tìm thấy giao dịch";
     private static final String MSG_TRANSACTION_FORBIDDEN = "Bạn không có quyền thao tác trên giao dịch này";
     private static final String MSG_RECEIPT_NOT_FOUND = "Không tìm thấy hóa đơn";
-    private static final String MSG_RECEIPT_FORBIDDEN = "Bạn không có quyền hủy hóa đơn này";
     private static final String MSG_RECEIPT_NOT_PENDING = "Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý";
     private static final String MSG_RECEIPT_UNLINKED = "Hóa đơn chưa gắn với giao dịch nào nên không thể xác nhận";
     private static final String MSG_RECEIPT_CANCELED = "Hóa đơn đã bị hủy nên không thể xác nhận";
@@ -459,8 +458,9 @@ public class TransactionService {
         // The owner column decides (A7); a receipt without an owner (an old row) can only be handled by an administrator.
         Transaction owningTransaction = receipt.getTransaction();
         if (!userId.equals(receipt.ownerId())) {
+            // Same answer as an unknown id, so an outsider cannot learn which receipt ids exist.
             log.warn("Receipt access denied, userId={}, receiptId={}", userId, receiptId);
-            throw new TransactionAccessDeniedException(MSG_RECEIPT_FORBIDDEN);
+            throw new ReceiptNotFoundException(MSG_RECEIPT_NOT_FOUND);
         }
         if (!ReceiptStatus.PENDING.matches(receipt.getStatus())) {
             throw new ReceiptConflictException(MSG_RECEIPT_NOT_PENDING);
