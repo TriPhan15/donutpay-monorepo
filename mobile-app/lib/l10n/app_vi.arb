@@ -390,6 +390,8 @@
   "reviewAnalyzing": "Đang phân tích hóa đơn...",
   "reviewPleaseWait": "Vui lòng đợi trong giây lát",
   "reviewStoreName": "Tên cửa hàng",
+  "reviewAddress": "Địa chỉ",
+  "reviewAddressHint": "Chưa chắc địa chỉ, hãy sửa nếu sai.",
   "paymentHistoryTitle": "Lịch sử nạp/rút",
   "paymentHistoryLoadFailed": "Không tải được lịch sử. {reason}",
   "paymentHistoryEmpty": "Chưa có giao dịch nạp/rút.",

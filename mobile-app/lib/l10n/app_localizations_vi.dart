@@ -1297,6 +1297,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get reviewStoreName => 'Tên cửa hàng';
 
   @override
+  String get reviewAddress => 'Địa chỉ';
+
+  @override
+  String get reviewAddressHint => 'Chưa chắc địa chỉ, hãy sửa nếu sai.';
+
+  @override
   String get paymentHistoryTitle => 'Lịch sử nạp/rút';
 
   @override

@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -17,7 +18,7 @@ class SqfliteHelper {
   static final SqfliteHelper instance = SqfliteHelper._();
 
   static const String _dbName = 'finance_ai_app.db';
-  static const int _dbVersion = 10;
+  static const int _dbVersion = 11;
 
   static const String usersTable = 'users';
   static const String transactionsTable = 'transactions';
@@ -48,6 +49,10 @@ class SqfliteHelper {
       '${TransactionModel.columnRating} REAL';
   static const String _reviewNoteColumnDef =
       '${TransactionModel.columnReviewNote} TEXT';
+
+  /// Column definition of the location of a transaction that waits to be sent (version 11). Null: the title stands in.
+  static const String _locationColumnDef =
+      '${TransactionModel.columnLocation} TEXT';
 
   /// The receipts waiting to be read or confirmed on this device (version 8).
   static const String _createReceiptScanQueueTable =
@@ -127,7 +132,8 @@ CREATE TABLE $transactionsTable (
   $_rawReceiptDataColumnDef,
   $_allowDuplicateColumnDef,
   $_ratingColumnDef,
-  $_reviewNoteColumnDef
+  $_reviewNoteColumnDef,
+  $_locationColumnDef
 )
 ''');
 
@@ -287,6 +293,17 @@ CREATE TABLE IF NOT EXISTS $budgetsTable (
       if (!hasColumn(TransactionModel.columnReviewNote)) {
         await db.execute(
           'ALTER TABLE $transactionsTable ADD COLUMN $_reviewNoteColumnDef',
+        );
+      }
+    }
+
+    if (oldVersion < 11) {
+      final columns = await db.rawQuery(
+        'PRAGMA table_info($transactionsTable)',
+      );
+      if (!columns.any((c) => c['name'] == TransactionModel.columnLocation)) {
+        await db.execute(
+          'ALTER TABLE $transactionsTable ADD COLUMN $_locationColumnDef',
         );
       }
     }

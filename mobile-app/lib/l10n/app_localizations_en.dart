@@ -1331,6 +1331,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewStoreName => 'Store name';
 
   @override
+  String get reviewAddress => 'Address';
+
+  @override
+  String get reviewAddressHint => 'Address may be wrong, please correct it.';
+
+  @override
   String get paymentHistoryTitle => 'Deposit/withdrawal history';
 
   @override

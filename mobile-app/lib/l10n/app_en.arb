@@ -1726,6 +1726,14 @@
   "@reviewStoreName": {
     "description": "Label of the store name field."
   },
+  "reviewAddress": "Address",
+  "@reviewAddress": {
+    "description": "Label of the optional store address field of the review form."
+  },
+  "reviewAddressHint": "Address may be wrong, please correct it.",
+  "@reviewAddressHint": {
+    "description": "Hint under an unsure store address."
+  },
   "paymentHistoryTitle": "Deposit/withdrawal history",
   "@paymentHistoryTitle": {
     "description": "Title of the payment history page."

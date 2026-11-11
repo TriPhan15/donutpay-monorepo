@@ -23,6 +23,7 @@ const List<String> _scannedDateFormats = [
 abstract final class _RawScan {
   static const String seller = 'seller';
   static const String sellerName = 'seller_name';
+  static const String address = 'address';
   static const String timestamp = 'timestamp';
   static const String totalCostNumber = 'total_cost_number';
   static const String totalCost = 'total_cost';
@@ -40,18 +41,26 @@ abstract final class _NormalizedScan {
 /// review form and the batch confirmation both save.
 class ReceiptScanResult {
   /// The fields of the "normalized" block the review form shows; only these can be marked as needing a check, since
-  /// the user could not correct any other one (the address, for instance) before saving.
+  /// the user could not correct any other one before saving.
   static const String sellerField = 'seller';
+  static const String addressField = 'address';
   static const String timestampField = 'timestamp';
   static const String totalCostField = 'total_cost';
   static const Set<String> checkedFields = {
     sellerField,
+    addressField,
     timestampField,
     totalCostField,
   };
 
+  /// The longest location core-backend takes (TEXT_MAX_LENGTH).
+  static const int maxAddressLength = 255;
+
   /// '' when the receipt gave no store name.
   final String storeName;
+
+  /// '' when the receipt gave no address; at most [maxAddressLength] characters.
+  final String address;
 
   /// Null when the total could not be read or is not above zero.
   final double? amount;
@@ -71,6 +80,7 @@ class ReceiptScanResult {
 
   const ReceiptScanResult({
     required this.storeName,
+    this.address = '',
     required this.amount,
     required this.date,
     required this.category,
@@ -92,11 +102,21 @@ class ReceiptScanResult {
       sellerField,
       _NormalizedScan.value,
     );
+    final normalizedAddress = _normalizedString(
+      normalized,
+      addressField,
+      _NormalizedScan.value,
+    );
     final total = _totalOf(seller);
     return ReceiptScanResult(
       storeName: normalizedStore.isNotEmpty
           ? normalizedStore
           : seller[_RawScan.sellerName]?.toString() ?? '',
+      address: _capped(
+        normalizedAddress.isNotEmpty
+            ? normalizedAddress
+            : seller[_RawScan.address]?.toString() ?? '',
+      ),
       amount: total > 0 ? total : null,
       date:
           DateTime.tryParse(
@@ -112,9 +132,10 @@ class ReceiptScanResult {
     );
   }
 
-  /// True when the receipt can be saved as it is, without a review.
+  /// True when the receipt can be saved as it is, without a review. A doubtful or missing address does not count: it
+  /// is optional.
   bool get allValid =>
-      invalidFields.isEmpty &&
+      invalidFields.difference({addressField}).isEmpty &&
       amount != null &&
       date != null &&
       storeName.isNotEmpty;
@@ -132,6 +153,7 @@ class ReceiptScanResult {
     isExpense: true,
     imageUrl: imageUrl,
     rawReceiptData: jsonEncode(raw),
+    location: address.isEmpty ? null : address,
   );
 
   /// The total of the raw seller block: the number ai-service read, else the digits of the printed total, else 0.
@@ -142,6 +164,13 @@ class ReceiptScanResult {
     // Dong are whole: "." and "," group thousands ("52.000đ", "1,011,780"); only a 1-2 digit tail ("30,200.00") is cents.
     final withoutCents = printed.replaceFirst(RegExp(r'[.,]\d{1,2}\D*$'), '');
     return double.tryParse(withoutCents.replaceAll(RegExp(r'\D'), '')) ?? 0.0;
+  }
+
+  static String _capped(String text) {
+    final trimmed = text.trim();
+    return trimmed.length <= maxAddressLength
+        ? trimmed
+        : trimmed.substring(0, maxAddressLength).trim();
   }
 
   /// `normalized[field][key]` as text, or '' when the scan has no such value.

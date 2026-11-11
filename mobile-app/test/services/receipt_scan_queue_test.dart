@@ -446,7 +446,7 @@ void main() {
         );
         addTearDown(v8.close);
 
-        expect(await v8.getVersion(), 10);
+        expect(await v8.getVersion(), 11);
         final columns = await v8.rawQuery(
           'PRAGMA table_info(${SqfliteHelper.receiptScanQueueTable})',
         );
@@ -498,7 +498,7 @@ void main() {
         );
         addTearDown(v9.close);
 
-        expect(await v9.getVersion(), 10);
+        expect(await v9.getVersion(), 11);
         final row = (await v9.query('transactions')).single;
         expect(row[TransactionModel.columnAllowDuplicate], 0);
         expect(row[TransactionModel.columnRating], isNull);

@@ -266,6 +266,7 @@ void main() {
             'image_url', 'raw_receipt_data', // the receipt of the outbox (T3b)
             'allow_duplicate', // a duplicate the user chose to keep (batch 2)
             'rating', 'review_note', // store experience rating & note (Feature 3)
+            'location', // the store address of a scanned receipt (v11)
           ]),
         );
         expect(
@@ -691,6 +692,46 @@ void main() {
       final expense = model(isExpense: true, source: TransactionSource.unknown);
       expect(income.countsAsIncome, isFalse);
       expect(expense.countsAsSpending, isFalse);
+    });
+  });
+
+  group('location', () {
+    TransactionModel withLocation(
+      String? location, {
+      String title = 'Highlands',
+    }) => TransactionModel.draft(
+      title: title,
+      category: 'Ăn uống',
+      amount: 45000,
+      date: DateTime(2026, 9, 20, 8, 30),
+      isExpense: true,
+      location: location,
+    );
+
+    test('is sent as the location of the checkout, trimmed', () {
+      final json = withLocation('  12 Lê Lợi ').toCheckoutJson();
+
+      expect(json['location'], '12 Lê Lợi');
+    });
+
+    test('null or blank keeps the old location', () {
+      expect(withLocation(null).toCheckoutJson()['location'], 'Highlands');
+      expect(withLocation('   ').toCheckoutJson()['location'], 'Highlands');
+      expect(
+        withLocation(null, title: '').toCheckoutJson()['location'],
+        'Trong ứng dụng',
+      );
+    });
+
+    test('survives the SQLite outbox round trip', () {
+      final draft = withLocation(
+        '12 Lê Lợi',
+      ).withSyncStatus(SyncStatus.pending);
+
+      final read = TransactionModel.fromDbMap({...draft.toDbMap(7), 'id': 1});
+
+      expect(read.location, '12 Lê Lợi');
+      expect(read.toCheckoutJson(), draft.toCheckoutJson());
     });
   });
 

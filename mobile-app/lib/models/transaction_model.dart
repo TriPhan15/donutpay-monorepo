@@ -22,6 +22,9 @@ class TransactionModel {
   static const String columnRating = 'rating';
   static const String columnReviewNote = 'review_note';
 
+  /// Column of the location (version 11): the address of the store, when the receipt gave one.
+  static const String columnLocation = 'location';
+
   /// The checkout field that saves a scanned receipt even when the server thinks it is already saved.
   static const String checkoutAllowDuplicate = 'allowDuplicate';
 
@@ -50,6 +53,9 @@ class TransactionModel {
 
   /// Optional personal review note about the experience at the store (max 255 characters).
   final String? reviewNote;
+
+  /// Where the transaction was made (the store address of a scanned receipt). Null or blank: the title stands in for it.
+  final String? location;
 
   /// What ai-service answered for the scanned receipt, as one JSON text (rawReceiptData of the checkout). Only set on a
   /// transaction created from a scan on this device; the server does not send it back.
@@ -88,6 +94,7 @@ class TransactionModel {
     this.imageUrl,
     this.rating,
     this.reviewNote,
+    this.location,
     this.rawReceiptData,
     this.receiptStatus,
     this.clientId,
@@ -109,6 +116,7 @@ class TransactionModel {
     String? rawReceiptData,
     double? rating,
     String? reviewNote,
+    String? location,
   }) {
     return TransactionModel(
       title: title,
@@ -121,6 +129,7 @@ class TransactionModel {
       rawReceiptData: rawReceiptData,
       rating: rating,
       reviewNote: reviewNote,
+      location: location,
       clientId: _uuid.v4(),
     );
   }
@@ -164,6 +173,7 @@ class TransactionModel {
       imageUrl: imageUrl,
       rating: rating,
       reviewNote: reviewNote,
+      location: location,
       rawReceiptData: rawReceiptData,
       receiptStatus: receiptStatus,
       clientId: clientId,
@@ -178,10 +188,13 @@ class TransactionModel {
   /// ignores any difference in the rest, [allowDuplicate] included.
   Map<String, dynamic> toCheckoutJson() {
     final trimmedReview = reviewNote?.trim();
+    final trimmedLocation = location?.trim();
     return {
       'amount': amount.round(),
       'note': title,
-      'location': title.isEmpty ? defaultLocation : title,
+      'location': trimmedLocation != null && trimmedLocation.isNotEmpty
+          ? trimmedLocation
+          : (title.isEmpty ? defaultLocation : title),
       'paymentMethod': paymentMethodWallet,
       'transactionDate': date.toIso8601String(),
       'categoryName': category,
@@ -262,6 +275,7 @@ class TransactionModel {
       columnAllowDuplicate: allowDuplicate ? 1 : 0,
       columnRating: rating,
       columnReviewNote: reviewNote,
+      columnLocation: location,
     };
   }
 
@@ -280,6 +294,7 @@ class TransactionModel {
       imageUrl: map[columnImageUrl] as String?,
       rating: (map[columnRating] as num?)?.toDouble(),
       reviewNote: map[columnReviewNote] as String?,
+      location: map[columnLocation] as String?,
       rawReceiptData: map[columnRawReceiptData] as String?,
       clientId: map[columnClientId] as String?,
       syncStatus: syncStatus,

@@ -48,6 +48,8 @@ const String _dateFallbackHint =
 const String _dateDoubtHint = 'Chưa chắc ngày, hãy so với ảnh.';
 const String _storeHint = 'Chưa chắc tên cửa hàng, hãy sửa nếu sai.';
 const String _totalHint = 'Chưa chắc tổng tiền, hãy so với ảnh.';
+const String _addressHint = 'Chưa chắc địa chỉ, hãy sửa nếu sai.';
+const String _scannedAddress = '56 Nguyễn Huệ, Quận 1';
 
 const String _duplicateMessage = 'Hóa đơn này có vẻ đã được lưu trước đó';
 const String _duplicateTitle = 'Hóa đơn này có vẻ đã lưu ngày 27/05/2026 10:30';
@@ -68,6 +70,7 @@ const String _needsCheck = 'Cần kiểm tra';
 
 final Finder _store = find.byKey(ReviewFormPage.storeFieldKey);
 final Finder _total = find.byKey(ReviewFormPage.totalFieldKey);
+final Finder _address = find.byKey(ReviewFormPage.addressFieldKey);
 
 /// Whether the field found by [field] is outlined in dashes (the AI doubts it).
 bool _dashed(Finder field) => find
@@ -87,10 +90,12 @@ ResponseBody _scanned({
   Object total = 45000,
   String timestamp = '20/09/2026 08:30',
   String sellerName = 'Highlands',
+  String address = '',
   Map<String, dynamic>? normalized,
 }) => jsonResponse(200, {
   'seller': {
     'seller_name': sellerName,
+    'address': address,
     'timestamp': timestamp,
     'total_cost_number': total,
   },
@@ -101,13 +106,15 @@ ResponseBody _scanned({
 Map<String, dynamic> _normalized({
   String seller = 'Highlands',
   bool sellerValid = true,
+  String address = '',
+  bool addressValid = true,
   String? iso = '2026-09-20T08:30:00',
   bool timestampValid = true,
   int? total = 45000,
   bool totalValid = true,
 }) => {
   'seller': {'raw': seller, 'value': seller, 'valid': sellerValid},
-  'address': {'raw': '', 'value': '', 'valid': false},
+  'address': {'raw': address, 'value': address, 'valid': addressValid},
   'timestamp': {'raw': '', 'value': '', 'iso': iso, 'valid': timestampValid},
   'total_cost': {'raw': '$total', 'value': total, 'valid': totalValid},
   'invalid_fields': <String>[],
@@ -839,6 +846,98 @@ void main() {
     await settle(tester, () => find.text('Thành công').evaluate().isNotEmpty);
     await tester.tap(find.text('Xong'));
     await tester.pumpAndSettle();
+  });
+
+  group('the optional address', () {
+    testWidgets('is shown under the store and prefilled with the scanned one', (
+      tester,
+    ) async {
+      backend.on('POST', _scan, (_) => _scanned(address: _scannedAddress));
+      await openForm(tester);
+
+      expect(
+        find.descendant(of: _address, matching: find.text(_scannedAddress)),
+        findsOneWidget,
+      );
+      expect(find.text('Địa chỉ'), findsOneWidget);
+      expect(
+        tester.getTopLeft(_address).dy,
+        greaterThan(tester.getTopLeft(_store).dy),
+      );
+      expect(_dashed(_address), isFalse);
+    });
+
+    testWidgets('an edited address is saved as the location', (tester) async {
+      backend.on('POST', _scan, (_) => _scanned(address: _scannedAddress));
+      await openForm(tester);
+
+      await tester.enterText(_address, '  12 Lê Lợi, Quận 1  ');
+      await tester.pump();
+      await tapSave(tester);
+
+      expect(sentBodies().single['location'], '12 Lê Lợi, Quận 1');
+    });
+
+    testWidgets(
+      'a blank address does not block saving and keeps the old location',
+      (tester) async {
+        await openForm(tester);
+
+        expect(_save, findsOneWidget);
+        await tester.enterText(_address, '   ');
+        await tester.pump();
+        await tapSave(tester);
+
+        expect(
+          sentBodies().single['location'],
+          'Highlands',
+          reason: 'a blank address keeps the old fallback, the store name',
+        );
+      },
+    );
+
+    testWidgets('an address the scan doubts is marked until it is changed', (
+      tester,
+    ) async {
+      backend.on(
+        'POST',
+        _scan,
+        (_) => _scanned(
+          address: _scannedAddress,
+          normalized: _normalized(
+            address: _scannedAddress,
+            addressValid: false,
+          ),
+        ),
+      );
+      await openForm(tester);
+      expect(find.text(_needsCheck), findsOneWidget);
+      expect(find.text(_addressHint), findsOneWidget);
+      expect(_dashed(_address), isTrue);
+      expect(_dashed(_store), isFalse);
+
+      await tester.enterText(_address, '12 Lê Lợi');
+      await tester.pump();
+      expect(find.text(_needsCheck), findsNothing);
+      expect(_dashed(_address), isFalse);
+    });
+
+    testWidgets('the address is capped at the length the backend takes', (
+      tester,
+    ) async {
+      await openForm(tester);
+
+      await tester.enterText(
+        _address,
+        'a' * (ReceiptScanResult.maxAddressLength + 20),
+      );
+      await tester.pump();
+
+      expect(
+        tester.widget<TextField>(_address).controller!.text.length,
+        ReceiptScanResult.maxAddressLength,
+      );
+    });
   });
 
   group('fields the post-processing marked as not valid', () {

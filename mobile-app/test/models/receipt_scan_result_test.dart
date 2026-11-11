@@ -27,9 +27,11 @@ Map<String, dynamic> _normalized({
   String? iso = '2026-09-20T08:30:00',
   bool timestampValid = true,
   bool totalValid = true,
+  String address = '',
+  bool addressValid = true,
 }) => {
   'seller': {'raw': seller, 'value': seller, 'valid': sellerValid},
-  'address': {'raw': '', 'value': '', 'valid': false},
+  'address': {'raw': address, 'value': address, 'valid': addressValid},
   'timestamp': {'raw': '', 'value': '', 'iso': iso, 'valid': timestampValid},
   'total_cost': {'raw': '45000', 'value': 45000, 'valid': totalValid},
   'invalid_fields': <String>[],
@@ -133,6 +135,74 @@ void main() {
     expect(draft.category, TransactionCategories.food);
     expect(draft.amount, 45000);
     expect(draft.date, DateTime(2026, 9, 20, 8, 30));
+  });
+
+  group('address', () {
+    Map<String, dynamic> withRawAddress(
+      String address, {
+      Map<String, dynamic>? normalized,
+    }) {
+      final response = _response(normalized: normalized);
+      (response['seller'] as Map<String, dynamic>)['address'] = address;
+      return response;
+    }
+
+    test('is read from the normalized block, trimmed', () {
+      final scan = ReceiptScanResult.fromResponse(
+        _response(
+          normalized: _normalized(
+            address: '  12 Lê Lợi, Q1 ',
+            addressValid: true,
+          ),
+        ),
+      );
+
+      expect(scan.address, '12 Lê Lợi, Q1');
+    });
+
+    test('falls back to the raw seller address without a normalized value', () {
+      final scan = ReceiptScanResult.fromResponse(
+        withRawAddress(' 5 Hai Bà Trưng ', normalized: _normalized()),
+      );
+
+      expect(scan.address, '5 Hai Bà Trưng');
+    });
+
+    test('is empty when the receipt gave none', () {
+      final scan = ReceiptScanResult.fromResponse(_response());
+
+      expect(scan.address, isEmpty);
+      expect(scan.toDraft().location, isNull);
+    });
+
+    test('is cut to 255 characters', () {
+      final scan = ReceiptScanResult.fromResponse(
+        _response(
+          normalized: _normalized(address: 'a' * 300, addressValid: true),
+        ),
+      );
+
+      expect(scan.address, hasLength(ReceiptScanResult.maxAddressLength));
+    });
+
+    test('is marked invalid when the scan says so, without blocking allValid', () {
+      final scan = ReceiptScanResult.fromResponse(
+        _response(normalized: _normalized(addressValid: false)),
+      );
+
+      expect(scan.invalidFields, {ReceiptScanResult.addressField});
+      expect(scan.allValid, isTrue);
+    });
+
+    test('becomes the location of the draft', () {
+      final scan = ReceiptScanResult.fromResponse(
+        _response(
+          normalized: _normalized(address: '12 Lê Lợi', addressValid: true),
+        ),
+      );
+
+      expect(scan.toDraft().location, '12 Lê Lợi');
+    });
   });
 
   test(

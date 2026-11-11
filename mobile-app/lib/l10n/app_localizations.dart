@@ -2438,6 +2438,18 @@ abstract class AppLocalizations {
   /// **'Store name'**
   String get reviewStoreName;
 
+  /// Label of the optional store address field of the review form.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get reviewAddress;
+
+  /// Hint under an unsure store address.
+  ///
+  /// In en, this message translates to:
+  /// **'Address may be wrong, please correct it.'**
+  String get reviewAddressHint;
+
   /// Title of the payment history page.
   ///
   /// In en, this message translates to:
