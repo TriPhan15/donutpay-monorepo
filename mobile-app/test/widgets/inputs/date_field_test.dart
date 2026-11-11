@@ -17,12 +17,14 @@ class _Host extends StatefulWidget {
     required this.initial,
     required this.changes,
     this.forTransaction = false,
+    this.withTime = false,
     this.errorText,
   });
 
   final DateTime initial;
   final List<DateTime> changes;
   final bool forTransaction;
+  final bool withTime;
   final String? errorText;
 
   @override
@@ -40,6 +42,7 @@ class _HostState extends State<_Host> {
         child: DateField(
           value: _value,
           forTransaction: widget.forTransaction,
+          withTime: widget.withTime,
           errorText: widget.errorText,
           onChanged: (date) {
             widget.changes.add(date);
@@ -64,6 +67,7 @@ void main() {
     DateTime initial, {
     Locale locale = const Locale('vi'),
     bool forTransaction = false,
+    bool withTime = false,
     String? errorText,
   }) async {
     await tester.pumpWidget(
@@ -75,6 +79,7 @@ void main() {
           initial: initial,
           changes: changes,
           forTransaction: forTransaction,
+          withTime: withTime,
           errorText: errorText,
         ),
       ),
@@ -131,6 +136,57 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(changes, isEmpty);
+  });
+
+  group('with time', () {
+    final moment = DateTime(2026, 3, 15, 9, 34);
+
+    Future<void> pickDay(WidgetTester tester) async {
+      await tester.tap(find.text('15/03/2026 09:34'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('day-20')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows dd/MM/yyyy HH:mm only in time mode', (tester) async {
+      await pump(tester, moment, withTime: true);
+      expect(find.text('15/03/2026 09:34'), findsOneWidget);
+
+      await pump(tester, moment);
+      expect(find.text('15/03/2026'), findsOneWidget);
+      expect(find.text('15/03/2026 09:34'), findsNothing);
+    });
+
+    testWidgets('a picked day then a picked time update the value', (
+      tester,
+    ) async {
+      await pump(tester, moment, withTime: true);
+      await pickDay(tester);
+
+      expect(find.byType(TimePickerDialog), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.keyboard_outlined));
+      await tester.pumpAndSettle();
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), '7');
+      await tester.enterText(fields.at(1), '5');
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(changes.single, DateTime(2026, 3, 20, 7, 5));
+      expect(find.text('20/03/2026 07:05'), findsOneWidget);
+    });
+
+    testWidgets('cancelling the time keeps the picked day and the old time', (
+      tester,
+    ) async {
+      await pump(tester, moment, withTime: true);
+      await pickDay(tester);
+
+      await tester.tap(find.byType(TextButton).first);
+      await tester.pumpAndSettle();
+
+      expect(changes.single, DateTime(2026, 3, 20, 9, 34));
+    });
   });
 
   group('with settings', () {
