@@ -1,5 +1,6 @@
 package vn.edu.huit.finance.core.Config;
 
+import vn.edu.huit.finance.core.Security.Roles;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -238,7 +239,7 @@ class RedisStatisticsCacheIntegrationTest {
             lowOnMoney.setUsername("an");
             lowOnMoney.setPhone("0900000007");
             lowOnMoney.setWalletBalance(new BigDecimal("12000.00"));
-            when(context.getBean(UserRepository.class).findByWalletBalanceLessThan(THRESHOLD)).thenReturn(List.of(lowOnMoney));
+            when(context.getBean(UserRepository.class).findByWalletBalanceLessThanAndRoleNot(THRESHOLD, Roles.ADMIN)).thenReturn(List.of(lowOnMoney));
             when(context.getBean(UserRepository.class).count()).thenReturn(42L);
             when(transactions(context).sumTotalVolume()).thenReturn(new BigDecimal("1250000.50"));
             when(transactions(context).countByTransactionDateBetween(any(), any())).thenReturn(17L);

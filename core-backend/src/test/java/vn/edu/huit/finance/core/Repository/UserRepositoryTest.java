@@ -6,8 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Security.Roles;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -105,5 +107,44 @@ class UserRepositoryTest {
         assertEquals(OLD_HASH, stored.getPassword());
         assertEquals(VERSION, stored.getCredentialsVersion());
         assertEquals(0, new BigDecimal("1000.00").compareTo(stored.getWalletBalance()), "the other columns are written");
+    }
+
+    private User persistWith(String name, String phone, String role, String aiLabel) {
+        User user = persist(name, phone);
+        user.setRole(role);
+        user.setAiLabel(aiLabel);
+        user.setWalletBalance(BigDecimal.ZERO);
+        entityManager.flush();
+        return user;
+    }
+
+    @Test
+    void lowBalanceList_leavesAnAdminOut() {
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+
+        List<User> low = userRepository.findByWalletBalanceLessThanAndRoleNot(new BigDecimal("50000"), Roles.ADMIN);
+
+        assertTrue(low.stream().noneMatch(u -> "root".equals(u.getUsername())));
+    }
+
+    @Test
+    void lowBalanceList_keepsANormalUser() {
+        persistWith("carol", "0900000003", Roles.USER, null);
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+
+        List<User> low = userRepository.findByWalletBalanceLessThanAndRoleNot(new BigDecimal("50000"), Roles.ADMIN);
+
+        assertTrue(low.stream().anyMatch(u -> "carol".equals(u.getUsername())));
+    }
+
+    @Test
+    void aiLabelCount_doesNotCountAnAdminWithAnOldLabel() {
+        persistWith("root", "0900000009", Roles.ADMIN, "Churned");
+        persistWith("carol", "0900000003", Roles.USER, "Churned");
+
+        List<Object[]> counts = userRepository.countUsersByAiLabel();
+
+        assertEquals(1, counts.size());
+        assertEquals(1L, ((Number) counts.get(0)[1]).longValue());
     }
 }

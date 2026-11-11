@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import vn.edu.huit.finance.core.Entity.TransactionSource;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Security.Roles;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.math.BigDecimal;
@@ -16,6 +17,9 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByWalletBalanceLessThan(BigDecimal amount);
+
+    /** Như {@link #findByWalletBalanceLessThan}, bỏ tài khoản có vai trò {@code role} (dashboard không đếm admin như người dùng cuối). */
+    List<User> findByWalletBalanceLessThanAndRoleNot(BigDecimal amount, String role);
 
     Optional<User> findByEmail(String email);
 
@@ -36,7 +40,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             + "OR EXISTS (SELECT 1 FROM categories WHERE owner_id = :userId))", nativeQuery = true)
     boolean existsLinkedRecords(@org.springframework.data.repository.query.Param("userId") Long userId);
     /**
-     * Chuẩn RFM của mọi người dùng: chỉ khoản chi, từ {@code windowStart}, bỏ khoản góp tiết kiệm và khoản chuyển sang
+     * Chuẩn RFM của mọi người dùng (trừ tài khoản có vai trò {@code excludedRole}): chỉ khoản chi, từ {@code windowStart}, bỏ khoản góp tiết kiệm và khoản chuyển sang
      * ví điện tử liên kết (chỉ source = {@code countedSource} mới tính, B9); ngày ở tương lai
      * tính là hôm nay (LEAST của PostgreSQL bỏ qua NULL nên dòng không có khoản chi
      * phải được loại bằng CASE). Người không có khoản chi nào nhận recency = {@code noActivityDays}, frequency 0, monetary 0.
@@ -49,17 +53,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "FROM users u LEFT JOIN transactions t ON t.user_id = u.id AND t.is_expense = TRUE " +
             "AND t.transaction_date >= :windowStart AND t.source = :countedSource " +
             "AND NOT EXISTS (SELECT 1 FROM categories c WHERE c.id = t.category_id AND c.name = :excludedCategoryName) " +
+            "WHERE u.role <> :excludedRole " +
             "GROUP BY u.id", nativeQuery = true)
     List<UserRfmRow> calculateAllUsersRfm(@org.springframework.data.repository.query.Param("windowStart") LocalDateTime windowStart,
                                           @org.springframework.data.repository.query.Param("now") LocalDateTime now,
                                           @org.springframework.data.repository.query.Param("excludedCategoryName") String excludedCategoryName,
                                           @org.springframework.data.repository.query.Param("noActivityDays") int noActivityDays,
-                                          @org.springframework.data.repository.query.Param("countedSource") String countedSource);
+                                          @org.springframework.data.repository.query.Param("countedSource") String countedSource,
+                                          @org.springframework.data.repository.query.Param("excludedRole") String excludedRole);
 
-    /** {@link #calculateAllUsersRfm(LocalDateTime, LocalDateTime, String, int, String)} over the NORMAL transactions. */
+    /** {@link #calculateAllUsersRfm(LocalDateTime, LocalDateTime, String, int, String, String)} over the NORMAL transactions, without admin accounts. */
     default List<UserRfmRow> calculateAllUsersRfm(LocalDateTime windowStart, LocalDateTime now, String excludedCategoryName,
                                                   int noActivityDays) {
-        return calculateAllUsersRfm(windowStart, now, excludedCategoryName, noActivityDays, TransactionSource.NORMAL.name());
+        return calculateAllUsersRfm(windowStart, now, excludedCategoryName, noActivityDays, TransactionSource.NORMAL.name(), Roles.ADMIN);
     }
 
     /** Gán một nhãn cho nhiều người dùng bằng một UPDATE; chạy trong giao dịch của người gọi (CustomerSegmentationService). */
@@ -73,7 +79,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("UPDATE User u SET u.aiLabel = NULL WHERE u.id IN :ids")
     int clearAiLabelForUsers(@org.springframework.data.repository.query.Param("ids") Collection<Long> ids);
 
-    @Query("SELECT u.aiLabel, COUNT(u) FROM User u WHERE u.aiLabel IS NOT NULL GROUP BY u.aiLabel")
+    @Query("SELECT u.aiLabel, COUNT(u) FROM User u WHERE u.aiLabel IS NOT NULL AND u.role <> vn.edu.huit.finance.core.Security.Roles.ADMIN GROUP BY u.aiLabel")
     List<Object[]> countUsersByAiLabel();
 
     /**
