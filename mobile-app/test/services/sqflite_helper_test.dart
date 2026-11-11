@@ -9,7 +9,7 @@ import 'package:finance_ai_app/models/sync_status.dart';
 import 'package:finance_ai_app/models/transaction_model.dart';
 import 'package:finance_ai_app/services/sqflite_helper.dart';
 
-const int _currentVersion = 10;
+const int _currentVersion = 11;
 const int _userId = 1;
 const int _otherUserId = 2;
 const String _transactions = 'transactions';
@@ -187,6 +187,7 @@ void main() {
             TransactionModel.columnAllowDuplicate,
             TransactionModel.columnRating,
             TransactionModel.columnReviewNote,
+            TransactionModel.columnLocation,
           ]),
         );
       },
@@ -258,6 +259,22 @@ void main() {
       final read = (await store.getUnsyncedTransactions(_userId)).single;
       expect(read.imageUrl, '/uploads/a.jpg');
       expect(read.rawReceiptData, '{"seller":"Highlands"}');
+    });
+
+    test('the location of a pending row survives the round trip', () async {
+      final tx = TransactionModel.draft(
+        title: 'Highlands',
+        category: 'Ăn uống',
+        amount: 45000,
+        date: DateTime(2026, 9, 20, 8, 30),
+        isExpense: true,
+        location: '12 Lê Lợi',
+      ).withSyncStatus(SyncStatus.pending);
+
+      await store.insertTransaction(tx, _userId);
+
+      final read = (await store.getUnsyncedTransactions(_userId)).single;
+      expect(read.location, '12 Lê Lợi');
     });
 
     test('the rating and review note of a pending row survive the round trip', () async {
@@ -711,6 +728,21 @@ void main() {
       final row = (await db.query(_transactions)).single;
       expect(row[TransactionModel.columnImageUrl], isNull);
       expect(row[TransactionModel.columnRawReceiptData], isNull);
+    });
+
+    test('from version 10: the location column is added and rows stay', () async {
+      final db = await upgraded(
+        10,
+        (db) => db.execute(_transactionsV6),
+        fill: (db) => db.insert(
+          _transactions,
+          _row('Cà phê', clientId: 'c-1', syncStatus: 'pending'),
+        ),
+      );
+
+      final row = (await db.query(_transactions)).single;
+      expect(row['title'], 'Cà phê');
+      expect(row[TransactionModel.columnLocation], isNull);
     });
 
     test('a column that is already there is not added twice', () async {

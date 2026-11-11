@@ -57,7 +57,6 @@ List<List<Object>> _rows(LedgerExcelFile file) => [
 
 void main() {
   final month = DateTime(2026, 10, 14);
-  final now = DateTime(2026, 11, 1, 8);
   final loc = lookupAppLocalizations(const Locale('vi'));
 
   setUpAll(initializeDateFormatting);
@@ -65,12 +64,14 @@ void main() {
   LedgerExcelFile build({
     List<TransactionModel> transactions = const [],
     List<BudgetModel> budgets = const [],
+    String? userName,
+    AppLocalizations? localizations,
   }) => LedgerExcelBuilder.build(
-    loc: loc,
+    loc: localizations ?? loc,
     month: month,
     transactions: transactions,
     budgets: budgets,
-    now: now,
+    userName: userName,
   )!;
 
   test(
@@ -222,15 +223,121 @@ void main() {
     ]);
   });
 
-  test(
-    'the texts of the share come from the month, the file is dated today',
-    () {
-      final file = build();
-      expect(file.title, 'Chi tiêu tháng 10-2026');
-      expect(file.shareText, 'Báo cáo chi tiêu tháng 10-2026');
-      expect(file.fileName, 'chi_tieu_10-2026_01112026.xlsx');
-    },
-  );
+  test('the texts of the share come from the month', () {
+    final file = build();
+    expect(file.title, 'Chi tiêu tháng 10-2026');
+    expect(file.shareText, 'Báo cáo chi tiêu tháng 10-2026');
+  });
+
+  group('file name', () {
+    test(
+      'holds the user name without diacritics and spaces, then the month',
+      () {
+        expect(
+          build(userName: 'Phan Thanh Trí').fileName,
+          'ChiTieu_PhanThanhTri_Thang10-2026.xlsx',
+        );
+      },
+    );
+
+    test('drops the name and its underscore when no name is known', () {
+      expect(build().fileName, 'ChiTieu_Thang10-2026.xlsx');
+      expect(build(userName: '  ').fileName, 'ChiTieu_Thang10-2026.xlsx');
+    });
+
+    test('is Spending_<name>_<month> in English', () {
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(
+        build(userName: 'John Doe', localizations: en).fileName,
+        'Spending_JohnDoe_10-2026.xlsx',
+      );
+      expect(build(localizations: en).fileName, 'Spending_10-2026.xlsx');
+    });
+  });
+
+  group('blank rows between sections', () {
+    bool isEmpty(List<Data?> row) => row.every((c) => _cell(c) == '');
+    String? first(List<Data?> row) =>
+        row.isEmpty ? null : _cell(row.first).toString();
+
+    test('one empty row sits before the totals and before the budgets', () {
+      final sheet = _sheet(
+        build(
+          transactions: [
+            _tx(45000, DateTime(2026, 10, 1, 9)),
+            _tx(30000, DateTime(2026, 10, 2, 9)),
+          ],
+          budgets: [_budget(500000, category: 'Ăn uống')],
+        ),
+      );
+      final rows = sheet.rows;
+      // Header + 2 transactions, then the blank row, then the totals.
+      expect(isEmpty(rows[3]), isTrue);
+      expect(first(rows[4]), loc.ledgerExcelTotal);
+      expect(first(rows[5]), loc.ledgerBalance);
+      expect(isEmpty(rows[6]), isTrue);
+      expect(first(rows[7]), loc.ledgerExcelBudgetHeader('10-2026'));
+    });
+
+    test('the amounts after a blank row keep their number format', () {
+      final sheet = _sheet(
+        build(transactions: [_tx(45000, DateTime(2026, 10, 1))]),
+      );
+      final totals = sheet.rows.firstWhere(
+        (r) => first(r) == loc.ledgerExcelTotal,
+      );
+      expect(
+        totals[2]?.cellStyle?.numberFormat,
+        LedgerExcelBuilder.amountStyle.numberFormat,
+      );
+    });
+  });
+
+  group('readable amounts', () {
+    final amountFormat = LedgerExcelBuilder.amountStyle.numberFormat;
+
+    test('every amount cell carries the #,##0 format, text cells do not', () {
+      final file = build(
+        transactions: [
+          _tx(45000, DateTime(2026, 10, 3)),
+          _tx(1000000, DateTime(2026, 10, 4), isExpense: false),
+          _tx(
+            200000,
+            DateTime(2026, 10, 5),
+            category: TransactionCategories.savings,
+          ),
+        ],
+        budgets: [_budget(500000, category: 'Ăn uống')],
+      );
+      var amounts = 0;
+      for (final row in _sheet(file).rows) {
+        for (final cell in row) {
+          final value = cell?.value;
+          if (value is DoubleCellValue || value is IntCellValue) {
+            amounts++;
+            expect(cell!.cellStyle?.numberFormat, amountFormat);
+            expect(amountFormat.formatCode, '#,##0');
+          } else if (value is TextCellValue) {
+            expect(cell!.cellStyle?.numberFormat, isNot(amountFormat));
+          }
+        }
+      }
+      // 3 transactions + 2 totals + balance + 3 budget figures.
+      expect(amounts, greaterThanOrEqualTo(9));
+    });
+
+    test('the columns are wide enough for date, category and amounts', () {
+      final sheet = _sheet(
+        build(transactions: [_tx(45000, DateTime(2026, 10, 3))]),
+      );
+      for (var i = 0; i < LedgerExcelBuilder.columnWidths.length; i++) {
+        expect(sheet.getColumnWidth(i), LedgerExcelBuilder.columnWidths[i]);
+      }
+      expect(sheet.getColumnWidth(0), LedgerExcelBuilder.dateColumnWidth);
+      expect(sheet.getColumnWidth(1), LedgerExcelBuilder.categoryColumnWidth);
+      expect(sheet.getColumnWidth(2), LedgerExcelBuilder.amountColumnWidth);
+    });
+  });
 
   for (final locale in AppLocalizations.supportedLocales) {
     group('in ${locale.languageCode}', () {
@@ -243,7 +350,6 @@ void main() {
             month: DateTime(2026, m, 15),
             transactions: const [],
             budgets: const [],
-            now: DateTime(2026, 11, 1),
           )!;
           final sheetName = Excel.decodeBytes(file.bytes).tables.keys.last;
           final monthKey = '${m.toString().padLeft(2, '0')}-2026';
@@ -256,8 +362,8 @@ void main() {
             isFalse,
           );
           expect(RegExp(r'[\/*?:\[\]]').hasMatch(sheetName), isFalse);
-          expect(file.fileName, matches(RegExp(r'^[a-z0-9_-]+\.xlsx$')));
-          expect(file.fileName, contains('_${monthKey}_01112026'));
+          expect(file.fileName, matches(RegExp(r'^[A-Za-z0-9_-]+\.xlsx$')));
+          expect(file.fileName, contains(monthKey));
         });
       }
     });

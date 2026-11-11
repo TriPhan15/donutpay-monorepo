@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
@@ -36,7 +37,7 @@ class MonthlyJobServiceTest {
 
     @Test
     void everyAccountBelowTheThresholdGetsOneRowBySystem_aboutItself() {
-        when(userRepository.findByWalletBalanceLessThan(TransactionService.LOW_BALANCE_THRESHOLD))
+        when(userRepository.findByWalletBalanceLessThanAndRoleNot(TransactionService.LOW_BALANCE_THRESHOLD, Roles.ADMIN))
                 .thenReturn(List.of(lowOn(3L, "12000"), lowOn(4L, "49999.99")));
 
         service.checkMonthlyBudgets();
@@ -54,8 +55,22 @@ class MonthlyJobServiceTest {
     }
 
     @Test
+    void theScanAsksForLowWalletsWithoutAdminsSoAnAdminGetsNoRow() {
+        when(userRepository.findByWalletBalanceLessThanAndRoleNot(TransactionService.LOW_BALANCE_THRESHOLD, Roles.ADMIN))
+                .thenReturn(List.of(lowOn(3L, "12000")));
+
+        service.checkMonthlyBudgets();
+
+        verify(userRepository).findByWalletBalanceLessThanAndRoleNot(TransactionService.LOW_BALANCE_THRESHOLD, Roles.ADMIN);
+        verify(userRepository, never()).findAll();
+        ArgumentCaptor<AuditEntry> entries = ArgumentCaptor.forClass(AuditEntry.class);
+        verify(auditLogService).record(entries.capture());
+        assertEquals(3L, entries.getValue().targetId());
+    }
+
+    @Test
     void noAccountBelowTheThresholdMeansNoRow() {
-        when(userRepository.findByWalletBalanceLessThan(TransactionService.LOW_BALANCE_THRESHOLD)).thenReturn(List.of());
+        when(userRepository.findByWalletBalanceLessThanAndRoleNot(TransactionService.LOW_BALANCE_THRESHOLD, Roles.ADMIN)).thenReturn(List.of());
 
         service.checkMonthlyBudgets();
 

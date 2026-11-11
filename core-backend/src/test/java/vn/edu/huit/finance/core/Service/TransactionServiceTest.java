@@ -236,6 +236,40 @@ class TransactionServiceTest {
     }
 
     @Test
+    void updatingTheLocationChangesItAndTrimsIt() {
+        Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        transaction.setLocation("Trong ứng dụng");
+        TransactionUpdateRequestDto request = update();
+        request.setLocation("  12 Nguyễn Văn Bảo  ");
+
+        service.updateTransaction(TX_ID, request);
+
+        assertEquals("12 Nguyễn Văn Bảo", transaction.getLocation());
+    }
+
+    @Test
+    void updatingWithoutALocationKeepsTheCurrentOne() {
+        Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        transaction.setLocation("12 Nguyễn Văn Bảo");
+
+        service.updateTransaction(TX_ID, updateAmount("60000"));
+
+        assertEquals("12 Nguyễn Văn Bảo", transaction.getLocation());
+    }
+
+    @Test
+    void aBlankLocationResetsItToTheDefault() {
+        Transaction transaction = aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
+        transaction.setLocation("12 Nguyễn Văn Bảo");
+        TransactionUpdateRequestDto request = update();
+        request.setLocation("   ");
+
+        service.updateTransaction(TX_ID, request);
+
+        assertEquals("Trong ứng dụng", transaction.getLocation());
+    }
+
+    @Test
     void sendingTheSameAmountAndTypeAgainDoesNotMoveTheWallet() {
         aliceHasOwnTransaction(HUNDRED_THOUSAND, true);
         TransactionUpdateRequestDto request = updateAmount("100000.00");
@@ -750,7 +784,7 @@ class TransactionServiceTest {
         Receipt receipt = receipt("PENDING", transaction(bob, HUNDRED_THOUSAND, true));
         when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt));
 
-        assertThrows(TransactionAccessDeniedException.class, () -> service.cancelMyReceipt(7L));
+        assertThrows(ReceiptNotFoundException.class, () -> service.cancelMyReceipt(7L));
 
         assertEquals("PENDING", receipt.getStatus());
         verify(receiptRepo, never()).save(any());
@@ -762,7 +796,7 @@ class TransactionServiceTest {
         Receipt orphan = receipt("PENDING", null);
         when(receiptRepo.findById(7L)).thenReturn(Optional.of(orphan));
 
-        assertThrows(TransactionAccessDeniedException.class, () -> service.cancelMyReceipt(7L));
+        assertThrows(ReceiptNotFoundException.class, () -> service.cancelMyReceipt(7L));
 
         verify(receiptRepo, never()).save(any());
     }
@@ -788,7 +822,7 @@ class TransactionServiceTest {
         receipt.setOwner(bob);
         when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt));
 
-        assertThrows(TransactionAccessDeniedException.class, () -> service.cancelMyReceipt(7L));
+        assertThrows(ReceiptNotFoundException.class, () -> service.cancelMyReceipt(7L));
 
         verify(receiptRepo, never()).save(any());
     }
@@ -2146,7 +2180,7 @@ class TransactionServiceTest {
         signedInAsAlice();
         when(receiptRepo.findById(7L)).thenReturn(Optional.of(receipt("PENDING", transaction(bob, HUNDRED_THOUSAND, true))));
 
-        assertThrows(TransactionAccessDeniedException.class, () -> service.cancelMyReceipt(7L));
+        assertThrows(ReceiptNotFoundException.class, () -> service.cancelMyReceipt(7L));
 
         verifyNoInteractions(eventPublisher);
     }

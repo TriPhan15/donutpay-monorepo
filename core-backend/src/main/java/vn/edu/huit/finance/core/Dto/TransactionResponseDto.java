@@ -45,6 +45,8 @@ public class TransactionResponseDto {
     private BigDecimal rating;
     /** Optional user review note about the experience at the store. */
     private String reviewNote;
+    /** Where the transaction took place (an address or "Trong ứng dụng"); null for rows without one. */
+    private String location;
 
     /** The title is the note when there is one, otherwise the name of the category. */
     public static TransactionResponseDto from(Transaction transaction) {
@@ -67,6 +69,7 @@ public class TransactionResponseDto {
                 .source(transaction.getSource() == null ? TransactionSource.NORMAL.name() : transaction.getSource().name())
                 .rating(transaction.getRating())
                 .reviewNote(transaction.getReviewNote())
+                .location(transaction.getLocation())
                 .build();
     }
 }

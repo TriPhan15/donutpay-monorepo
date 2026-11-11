@@ -40,10 +40,6 @@ void main() {
       expect(AppDateFormat.dayMonthShortYear.format(date), '03/03/26');
     });
 
-    test('fileDate is ddMMyyyy', () {
-      expect(AppDateFormat.fileDate.format(date), '03032026');
-    });
-
     test('the hour is on 24 hours, the afternoon included', () {
       final afternoon = DateTime(2026, 12, 31, 23, 59);
       expect(AppDateFormat.dateTime.format(afternoon), '31/12/2026 23:59');
@@ -79,7 +75,6 @@ void main() {
       'dayMonth': () => AppDateFormat.dayMonth,
       'dayMonthTime': () => AppDateFormat.dayMonthTime,
       'dayMonthShortYear': () => AppDateFormat.dayMonthShortYear,
-      'fileDate': () => AppDateFormat.fileDate,
     };
     final patterns = <String, String>{
       'date': 'dd/MM/yyyy',
@@ -88,7 +83,6 @@ void main() {
       'dayMonth': 'dd/MM',
       'dayMonthTime': 'dd/MM HH:mm',
       'dayMonthShortYear': 'dd/MM/yy',
-      'fileDate': 'ddMMyyyy',
     };
 
     test(

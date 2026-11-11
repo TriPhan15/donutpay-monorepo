@@ -87,6 +87,7 @@ public class TransactionService {
     /** Below this a wallet runs low: a checkout warns its owner, and the admin dashboard lists the user. */
     public static final BigDecimal LOW_BALANCE_THRESHOLD = new BigDecimal("50000");
 
+    private static final String DEFAULT_LOCATION = "Trong ứng dụng";
     private static final String KEY_TRANSACTION_ID = "transactionId";
     private static final String KEY_FINAL_AMOUNT = "finalAmount";
     private static final String KEY_REMAINING_BALANCE = "remainingBalance";
@@ -99,7 +100,6 @@ public class TransactionService {
     private static final String MSG_TRANSACTION_NOT_FOUND = "Không tìm thấy giao dịch";
     private static final String MSG_TRANSACTION_FORBIDDEN = "Bạn không có quyền thao tác trên giao dịch này";
     private static final String MSG_RECEIPT_NOT_FOUND = "Không tìm thấy hóa đơn";
-    private static final String MSG_RECEIPT_FORBIDDEN = "Bạn không có quyền hủy hóa đơn này";
     private static final String MSG_RECEIPT_NOT_PENDING = "Chỉ có thể hủy hóa đơn đang ở trạng thái Chờ xử lý";
     private static final String MSG_RECEIPT_UNLINKED = "Hóa đơn chưa gắn với giao dịch nào nên không thể xác nhận";
     private static final String MSG_RECEIPT_CANCELED = "Hóa đơn đã bị hủy nên không thể xác nhận";
@@ -374,6 +374,9 @@ public class TransactionService {
         if (request.getTransactionDate() != null) {
             transaction.setTransactionDate(request.getTransactionDate());
         }
+        if (request.getLocation() != null) {
+            transaction.setLocation(request.getLocation().isBlank() ? DEFAULT_LOCATION : request.getLocation().trim());
+        }
         if (request.getPaymentMethod() != null) {
             transaction.setPaymentMethod(request.getPaymentMethod().trim());
         }
@@ -455,8 +458,9 @@ public class TransactionService {
         // The owner column decides (A7); a receipt without an owner (an old row) can only be handled by an administrator.
         Transaction owningTransaction = receipt.getTransaction();
         if (!userId.equals(receipt.ownerId())) {
+            // Same answer as an unknown id, so an outsider cannot learn which receipt ids exist.
             log.warn("Receipt access denied, userId={}, receiptId={}", userId, receiptId);
-            throw new TransactionAccessDeniedException(MSG_RECEIPT_FORBIDDEN);
+            throw new ReceiptNotFoundException(MSG_RECEIPT_NOT_FOUND);
         }
         if (!ReceiptStatus.PENDING.matches(receipt.getStatus())) {
             throw new ReceiptConflictException(MSG_RECEIPT_NOT_PENDING);

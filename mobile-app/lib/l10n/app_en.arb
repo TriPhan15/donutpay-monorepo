@@ -1592,14 +1592,14 @@
   "@ledgerExcelNotCounted": {
     "description": "Excel column: amount of a refund or wallet transfer, which is neither income nor spending."
   },
-  "ledgerExcelFileName": "spending_{month}_{date}",
+  "ledgerExcelFileName": "Spending{name}_{month}",
   "@ledgerExcelFileName": {
-    "description": "Excel file name without extension, letters, digits, '_' and '-' only; month is numeric, e.g. '10-2026', date is ddMMyyyy.",
+    "description": "Excel file name without extension, letters, digits, '_' and '-' only; name is '_' plus the user's name without diacritics or spaces, or empty when unknown, e.g. '_JohnDoe'; month is numeric, e.g. '10-2026'.",
     "placeholders": {
-      "month": {
+      "name": {
         "type": "String"
       },
-      "date": {
+      "month": {
         "type": "String"
       }
     }
@@ -1725,6 +1725,14 @@
   "reviewStoreName": "Store name",
   "@reviewStoreName": {
     "description": "Label of the store name field."
+  },
+  "reviewAddress": "Address",
+  "@reviewAddress": {
+    "description": "Label of the optional store address field of the review form."
+  },
+  "reviewAddressHint": "Address may be wrong, please correct it.",
+  "@reviewAddressHint": {
+    "description": "Hint under an unsure store address."
   },
   "paymentHistoryTitle": "Deposit/withdrawal history",
   "@paymentHistoryTitle": {
@@ -1925,10 +1933,6 @@
   "commonApply": "Apply",
   "@commonApply": {
     "description": "Button that applies a choice (e.g. a date range)."
-  },
-  "commonRefresh": "Refresh",
-  "@commonRefresh": {
-    "description": "Button that runs an analysis again."
   },
   "periodThisWeek": "This week",
   "@periodThisWeek": {

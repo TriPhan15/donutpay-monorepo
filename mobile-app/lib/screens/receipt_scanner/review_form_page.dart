@@ -48,6 +48,8 @@ class ReviewFormPage extends StatefulWidget {
   @visibleForTesting
   static const Key storeFieldKey = ValueKey('review-store');
   @visibleForTesting
+  static const Key addressFieldKey = ValueKey('review-address');
+  @visibleForTesting
   static const Key totalFieldKey = ValueKey('review-total');
 
   final String imagePath;
@@ -93,6 +95,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   bool _dateIsFallback = false;
 
   final TextEditingController _storeNameController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _reviewNoteController = TextEditingController();
   String _selectedCategory = TransactionCategories.food;
@@ -102,6 +105,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   /// The fields the post-processing of the scan marked as not valid: they are shown in the error colour until the user
   /// changes them. An older ai-service sends no "normalized" block, and then nothing is marked.
   bool _storeNeedsCheck = false;
+  bool _addressNeedsCheck = false;
   bool _totalNeedsCheck = false;
   bool _dateNeedsCheck = false;
 
@@ -124,6 +128,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
   void dispose() {
     _storeNameController.removeListener(_onStoreTextChanged);
     _storeNameController.dispose();
+    _addressController.dispose();
     _amountController.dispose();
     _reviewNoteController.dispose();
     super.dispose();
@@ -193,6 +198,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       _rawScan = scan.raw;
       _selectedCategory = scan.category;
       if (scan.storeName.isNotEmpty) _storeNameController.text = scan.storeName;
+      _addressController.text = scan.address;
       _setDate(date ?? DateTime.now(), isFallback: date == null);
       if (amount != null) {
         _amountController.text = MoneyInputFormatter.format(
@@ -202,6 +208,9 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       }
       _storeNeedsCheck = scan.invalidFields.contains(
         ReceiptScanResult.sellerField,
+      );
+      _addressNeedsCheck = scan.invalidFields.contains(
+        ReceiptScanResult.addressField,
       );
       _totalNeedsCheck = scan.invalidFields.contains(
         ReceiptScanResult.totalCostField,
@@ -306,6 +315,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
 
   TransactionModel _draftOf(double amount) {
     final storeName = _storeNameController.text.trim();
+    final address = _addressController.text.trim();
     final reviewNote = _reviewNoteController.text.trim();
     final rawScan = _rawScan;
     return TransactionModel.draft(
@@ -318,6 +328,7 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
       rawReceiptData: rawScan == null ? null : jsonEncode(rawScan),
       rating: _rating,
       reviewNote: reviewNote.isEmpty ? null : reviewNote,
+      location: address.isEmpty ? null : address,
     );
   }
 
@@ -442,10 +453,15 @@ class _ReviewFormPageState extends State<ReviewFormPage> {
     final fields = _ReviewFields(
       storeController: _storeNameController,
       amountController: _amountController,
+      addressController: _addressController,
       storeNeedsCheck: _storeNeedsCheck,
+      addressNeedsCheck: _addressNeedsCheck,
       totalNeedsCheck: _totalNeedsCheck,
       onStoreChanged: _storeNeedsCheck
           ? (_) => setState(() => _storeNeedsCheck = false)
+          : null,
+      onAddressChanged: _addressNeedsCheck
+          ? (_) => setState(() => _addressNeedsCheck = false)
           : null,
       onTotalChanged: _totalNeedsCheck
           ? (_) => setState(() => _totalNeedsCheck = false)
@@ -540,9 +556,12 @@ class _ReviewFields extends StatelessWidget {
   const _ReviewFields({
     required this.storeController,
     required this.amountController,
+    required this.addressController,
     required this.storeNeedsCheck,
+    required this.addressNeedsCheck,
     required this.totalNeedsCheck,
     required this.onStoreChanged,
+    required this.onAddressChanged,
     required this.onTotalChanged,
     required this.pastStoreRating,
     required this.date,
@@ -562,9 +581,12 @@ class _ReviewFields extends StatelessWidget {
 
   final TextEditingController storeController;
   final TextEditingController amountController;
+  final TextEditingController addressController;
   final bool storeNeedsCheck;
+  final bool addressNeedsCheck;
   final bool totalNeedsCheck;
   final ValueChanged<String>? onStoreChanged;
+  final ValueChanged<String>? onAddressChanged;
   final ValueChanged<String>? onTotalChanged;
   final ({double avg, int count})? pastStoreRating;
   final DateTime date;
@@ -612,6 +634,27 @@ class _ReviewFields extends StatelessWidget {
             count: past.count,
           ),
         ],
+        const SizedBox(height: _gap),
+        NeedsCheckField(
+          needsCheck: addressNeedsCheck,
+          hint: loc.reviewAddressHint,
+          child: TextField(
+            key: ReviewFormPage.addressFieldKey,
+            controller: addressController,
+            onChanged: onAddressChanged,
+            textCapitalization: TextCapitalization.sentences,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(
+                ReceiptScanResult.maxAddressLength,
+              ),
+            ],
+            style: const TextStyle(fontSize: AppTextSize.body),
+            decoration: InputDecoration(
+              labelText: loc.reviewAddress,
+              prefixIcon: const Icon(Icons.place_outlined),
+            ),
+          ),
+        ),
         const SizedBox(height: _gap),
         NeedsCheckField(
           needsCheck: totalNeedsCheck,

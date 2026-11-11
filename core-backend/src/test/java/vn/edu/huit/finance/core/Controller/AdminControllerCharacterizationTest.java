@@ -92,7 +92,7 @@ class AdminControllerCharacterizationTest {
         when(adminStatisticsService.getDashboardSummary(now, TransactionService.LOW_BALANCE_THRESHOLD)).thenReturn(summary);
         when(leaderboardService.topSpenders(now, 5)).thenReturn(List.of());
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
-        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listEndUsersNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(new EnumMap<>(CustomerSegment.class));
     }
 

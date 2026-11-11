@@ -6,8 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Security.Roles;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -105,5 +107,69 @@ class UserRepositoryTest {
         assertEquals(OLD_HASH, stored.getPassword());
         assertEquals(VERSION, stored.getCredentialsVersion());
         assertEquals(0, new BigDecimal("1000.00").compareTo(stored.getWalletBalance()), "the other columns are written");
+    }
+
+    private User persistWith(String name, String phone, String role, String aiLabel) {
+        User user = persist(name, phone);
+        user.setRole(role);
+        user.setAiLabel(aiLabel);
+        user.setWalletBalance(BigDecimal.ZERO);
+        entityManager.flush();
+        return user;
+    }
+
+    @Test
+    void lowBalanceList_leavesAnAdminOut() {
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+
+        List<User> low = userRepository.findByWalletBalanceLessThanAndRoleNot(new BigDecimal("50000"), Roles.ADMIN);
+
+        assertTrue(low.stream().noneMatch(u -> "root".equals(u.getUsername())));
+    }
+
+    @Test
+    void lowBalanceList_keepsANormalUser() {
+        persistWith("carol", "0900000003", Roles.USER, null);
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+
+        List<User> low = userRepository.findByWalletBalanceLessThanAndRoleNot(new BigDecimal("50000"), Roles.ADMIN);
+
+        assertTrue(low.stream().anyMatch(u -> "carol".equals(u.getUsername())));
+    }
+
+    @Test
+    void aiLabelCount_doesNotCountAnAdminWithAnOldLabel() {
+        persistWith("root", "0900000009", Roles.ADMIN, "Churned");
+        persistWith("carol", "0900000003", Roles.USER, "Churned");
+
+        List<Object[]> counts = userRepository.countUsersByAiLabel();
+
+        assertEquals(1, counts.size());
+        assertEquals(1L, ((Number) counts.get(0)[1]).longValue());
+    }
+
+    @Test
+    void countByRoleNot_countsOnlyNonAdmins() {
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+        persistWith("carol", "0900000003", Roles.USER, null);
+        long nonAdmins = userRepository.findAll().stream().filter(u -> !Roles.ADMIN.equals(u.getRole())).count();
+
+        assertEquals(nonAdmins, userRepository.countByRoleNot(Roles.ADMIN));
+        assertEquals(userRepository.count() - 1, userRepository.countByRoleNot(Roles.ADMIN));
+    }
+
+    @Test
+    void findByRoleNot_returnsOnlyNonAdminsNewestFirstAndPaged() {
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+        persistWith("carol", "0900000003", Roles.USER, null);
+        persistWith("dave", "0900000004", Roles.USER, null);
+
+        org.springframework.data.domain.Page<User> page = userRepository.findByRoleNot(Roles.ADMIN,
+                org.springframework.data.domain.PageRequest.of(0, 2,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id")));
+
+        assertEquals(2, page.getContent().size());
+        assertEquals(userRepository.countByRoleNot(Roles.ADMIN), page.getTotalElements());
+        assertEquals(java.util.List.of("dave", "carol"), page.getContent().stream().map(User::getUsername).toList());
     }
 }

@@ -1199,8 +1199,8 @@ class AppLocalizationsVi extends AppLocalizations {
   String get ledgerExcelNotCounted => 'Không tính thu/chi';
 
   @override
-  String ledgerExcelFileName(String month, String date) {
-    return 'chi_tieu_${month}_$date';
+  String ledgerExcelFileName(String name, String month) {
+    return 'ChiTieu${name}_Thang$month';
   }
 
   @override
@@ -1295,6 +1295,12 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get reviewStoreName => 'Tên cửa hàng';
+
+  @override
+  String get reviewAddress => 'Địa chỉ';
+
+  @override
+  String get reviewAddressHint => 'Chưa chắc địa chỉ, hãy sửa nếu sai.';
 
   @override
   String get paymentHistoryTitle => 'Lịch sử nạp/rút';
@@ -1426,9 +1432,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get commonApply => 'Áp dụng';
-
-  @override
-  String get commonRefresh => 'Làm mới';
 
   @override
   String get periodThisWeek => 'Tuần này';

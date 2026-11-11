@@ -2264,11 +2264,11 @@ abstract class AppLocalizations {
   /// **'Not counted'**
   String get ledgerExcelNotCounted;
 
-  /// Excel file name without extension, letters, digits, '_' and '-' only; month is numeric, e.g. '10-2026', date is ddMMyyyy.
+  /// Excel file name without extension, letters, digits, '_' and '-' only; name is '_' plus the user's name without diacritics or spaces, or empty when unknown, e.g. '_JohnDoe'; month is numeric, e.g. '10-2026'.
   ///
   /// In en, this message translates to:
-  /// **'spending_{month}_{date}'**
-  String ledgerExcelFileName(String month, String date);
+  /// **'Spending{name}_{month}'**
+  String ledgerExcelFileName(String name, String month);
 
   /// Text sent with the shared Excel file; month is numeric, e.g. '10-2026'.
   ///
@@ -2437,6 +2437,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Store name'**
   String get reviewStoreName;
+
+  /// Label of the optional store address field of the review form.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get reviewAddress;
+
+  /// Hint under an unsure store address.
+  ///
+  /// In en, this message translates to:
+  /// **'Address may be wrong, please correct it.'**
+  String get reviewAddressHint;
 
   /// Title of the payment history page.
   ///
@@ -2653,12 +2665,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Apply'**
   String get commonApply;
-
-  /// Button that runs an analysis again.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh'**
-  String get commonRefresh;
 
   /// The current calendar week.
   ///

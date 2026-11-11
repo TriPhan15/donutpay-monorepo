@@ -175,11 +175,12 @@ String _selectedOption(WidgetTester tester) => switch (tester
   SpendingPeriod.custom => _customLabel,
 };
 
-bool _refreshEnabled(WidgetTester tester) =>
-    tester.widget<InkWell>(find.byKey(AiTodayBand.refreshKey)).onTap != null;
+bool _isRefreshing(WidgetTester tester) =>
+    find.byKey(AiTodayBand.loadingKey).evaluate().isNotEmpty;
 
-Future<void> _tapRefresh(WidgetTester tester) async {
-  await tester.tap(find.byKey(AiTodayBand.refreshKey));
+/// Pull-to-refresh: drags the page down far enough (the test drag is damped by overscroll friction) to start the refresh.
+Future<void> _pullToRefresh(WidgetTester tester) async {
+  await tester.drag(find.byType(ListView), const Offset(0, 1200));
   await tester.pumpAndSettle();
 }
 
@@ -567,7 +568,7 @@ void main() {
     });
   });
 
-  group('refresh button', () {
+  group('pull to refresh', () {
     testWidgets('analyses the same 26 weeks again and shows the new patterns', (
       tester,
     ) async {
@@ -575,7 +576,7 @@ void main() {
       expect(find.text(_foodThenTransportShown), findsOneWidget);
 
       patterns = [_pattern(_billsThenShopping)];
-      await _tapRefresh(tester);
+      await _pullToRefresh(tester);
 
       expect(analyses(), hasLength(2));
       expect(_amountsSent(analyses().last), _sentAmounts);
@@ -587,7 +588,7 @@ void main() {
       await pumpPage(tester);
       await _tap(tester, _weekLabel);
 
-      await _tapRefresh(tester);
+      await _pullToRefresh(tester);
 
       expect(_selectedOption(tester), _weekLabel);
       expect(analyses(), hasLength(2));
@@ -595,14 +596,14 @@ void main() {
     });
 
     testWidgets(
-      'cannot be pressed while the analysis runs, and works again once it is over',
+      'shows the spinner while the analysis runs and hides it once it is over',
       (tester) async {
         final answer = Completer<ResponseBody>();
         backend.on('POST', '/spade/analyze', (_) => answer.future);
 
         await pumpPageWhileLoading(tester);
 
-        expect(_refreshEnabled(tester), isFalse);
+        expect(_isRefreshing(tester), isTrue);
         expect(
           find.descendant(
             of: find.byType(AiTodayBand),
@@ -614,7 +615,7 @@ void main() {
         answer.complete(_patternsResponse(patterns));
         await tester.pumpAndSettle();
 
-        expect(_refreshEnabled(tester), isTrue);
+        expect(_isRefreshing(tester), isFalse);
         expect(find.byType(CircularProgressIndicator), findsNothing);
         expect(analyses(), hasLength(1));
       },
@@ -676,7 +677,7 @@ void main() {
         gates[1].complete(_patternsResponse([_pattern(_billsThenShopping)]));
         await _pumpFrames(tester);
         expect(find.text(_billsThenShoppingShown), findsOneWidget);
-        expect(_refreshEnabled(tester), isTrue);
+        expect(_isRefreshing(tester), isFalse);
 
         gates[0].complete(_patternsResponse([_pattern(_foodThenTransport)]));
         await _pumpFrames(tester);
@@ -696,8 +697,8 @@ void main() {
 
         expect(find.text(_foodThenTransportShown), findsNothing);
         expect(
-          _refreshEnabled(tester),
-          isFalse,
+          _isRefreshing(tester),
+          isTrue,
           reason: 'the newer analysis is still running',
         );
 
@@ -705,7 +706,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text(_billsThenShoppingShown), findsOneWidget);
-        expect(_refreshEnabled(tester), isTrue);
+        expect(_isRefreshing(tester), isFalse);
       },
     );
 
@@ -776,7 +777,7 @@ void main() {
           );
           expect(logs.where((l) => l.contains(_failureLog)), hasLength(1));
 
-          await _tapRefresh(tester);
+          await _pullToRefresh(tester);
 
           expect(find.text(_errorTitle), findsOneWidget);
           expect(find.text(_networkMessage), findsOneWidget);
@@ -790,7 +791,7 @@ void main() {
             '/spade/analyze',
             (_) => _patternsResponse(patterns),
           );
-          await _tapRefresh(tester);
+          await _pullToRefresh(tester);
 
           expect(find.text(_errorCardTitle), findsNothing);
           expect(find.text(_foodThenTransportShown), findsOneWidget);
@@ -811,7 +812,7 @@ void main() {
             '/spade/analyze',
             (_) => jsonResponse(503, {'detail': 'down'}),
           );
-          await _tapRefresh(tester);
+          await _pullToRefresh(tester);
 
           expect(find.text(_errorTitle), findsOneWidget);
           expect(find.text(_serverMessage), findsOneWidget);
@@ -838,7 +839,7 @@ void main() {
           '/spade/analyze',
           (_) => jsonResponse(422, {'detail': 'bad'}),
         );
-        await _tapRefresh(tester);
+        await _pullToRefresh(tester);
 
         expect(find.text(_errorTitle), findsOneWidget);
         expect(find.text(_rejectedMessage), findsOneWidget);

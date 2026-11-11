@@ -78,7 +78,7 @@ public class AdminController {
     private static final String AUDIT_SEGMENTATION = "Chạy phân lớp khách hàng RFM (ngũ phân vị): %d người dùng được gán nhãn";
     private static final String MSG_FILTER_FIELD_INVALID = "Giá trị của %s không hợp lệ";
     private static final String TYPE_MISMATCH = "typeMismatch";
-    private static final String MSG_BACKUP_TYPE_INVALID = "Loại sao lưu không hợp lệ (chỉ hỗ trợ FULL, SCHEMA_ONLY, DATA_ONLY).";
+    private static final String MSG_BACKUP_TYPE_INVALID = "Loại sao lưu không hợp lệ (chỉ hỗ trợ: toàn bộ, chỉ cấu trúc, chỉ dữ liệu).";
     private static final String MSG_BACKUP_SUCCESS = "Đã sao lưu %s thành công!";
     private static final String MSG_BACKUP_FAILED = "Lỗi sao lưu! Kiểm tra lại đường dẫn PostgreSQL.";
     private static final String MSG_RESTORE_SUCCESS = "Đã phục hồi từ bản sao lưu FULL mới nhất!";
@@ -135,7 +135,7 @@ public class AdminController {
         model.addAttribute("segmentData", List.copyOf(segmentCounts.values()));
         model.addAttribute("segmentDisplayNames", Arrays.stream(CustomerSegment.values())
                 .collect(Collectors.toMap(CustomerSegment::name, CustomerSegment::getDisplayName)));
-        Page<User> segmentedUsers = userService.listNewestFirst(PageRequest.of(0, SEGMENTED_USERS_LIMIT));
+        Page<User> segmentedUsers = userService.listEndUsersNewestFirst(PageRequest.of(0, SEGMENTED_USERS_LIMIT));
         model.addAttribute("segmentedUsers", segmentedUsers.getContent());
         return "admin/dashboard";
     }

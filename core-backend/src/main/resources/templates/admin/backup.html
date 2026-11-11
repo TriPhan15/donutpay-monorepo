@@ -29,7 +29,7 @@
                             <ul class="mb-0 text-dark">
                                 <li>File sao lưu định dạng custom của <code>pg_dump</code> được lưu trên máy chủ trong thư mục <code class="bg-light px-2 py-1 rounded">backups/</code> của ứng dụng.</li>
                                 <li>PostgreSQL không hỗ trợ sao lưu vi sai hay sao lưu nhật ký qua <code>pg_dump</code>, nên trang này chỉ cung cấp các chế độ sao lưu thực tế của <code>pg_dump</code>.</li>
-                                <li>Sao lưu FULL có thể làm chậm hệ thống khi dữ liệu lớn. Vui lòng thực hiện vào giờ thấp điểm.</li>
+                                <li>Sao lưu toàn bộ có thể làm chậm hệ thống khi dữ liệu lớn. Vui lòng thực hiện vào giờ thấp điểm.</li>
                             </ul>
                         </div>
 
@@ -39,7 +39,7 @@
                             <div class="col-md-4">
                                 <button onclick="ConfirmBackup('FULL')" class="btn btn-outline-primary btn-lg w-100 p-4 rounded-4 hover-effect">
                                     <i class="bi bi-hdd-network-fill display-4 d-block mb-3"></i>
-                                    <strong class="fs-5">FULL BACKUP</strong>
+                                    <strong class="fs-5">SAO LƯU TOÀN BỘ</strong>
                                     <div class="small text-muted mt-2">Sao lưu toàn bộ cơ sở dữ liệu lên ổ đĩa và MongoDB</div>
                                 </button>
                             </div>
@@ -63,7 +63,7 @@
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                 <div>
                                     <i class="bi bi-clock-history text-primary me-1"></i>
-                                    <strong>Lịch tự động FULL Backup:</strong> <span id="sbSchedule">Đang tải...</span>
+                                    <strong>Lịch sao lưu toàn bộ tự động:</strong> <span id="sbSchedule">Đang tải...</span>
                                 </div>
                                 <div>
                                     <strong>Lần chạy gần nhất:</strong> <span id="sbLastRun">Đang tải...</span>
@@ -89,7 +89,7 @@
                             <div class="card-body p-4 text-center">
                                 <h5 class="text-danger fw-bold mb-3"><i class="bi bi-radioactive me-2"></i> CẢNH BÁO RỦI RO</h5>
                                 <p class="text-dark mb-4">
-                                    Hệ thống sẽ phục hồi từ bản sao lưu <strong>FULL</strong> mới nhất trên ổ đĩa hoặc bản sao lưu dự phòng có kiểm tra <code>SHA-256</code> trong MongoDB.<br>
+                                    Hệ thống sẽ phục hồi từ bản sao lưu <strong>toàn bộ</strong> mới nhất trên ổ đĩa hoặc bản sao lưu dự phòng có kiểm tra <code>SHA-256</code> trong MongoDB.<br>
                                     <strong>Toàn bộ dữ liệu giao dịch mới phát sinh kể từ bản sao lưu cuối cùng sẽ bị ghi đè.</strong>
                                 </p>
                                 <div class="d-flex flex-wrap gap-3 justify-content-center">

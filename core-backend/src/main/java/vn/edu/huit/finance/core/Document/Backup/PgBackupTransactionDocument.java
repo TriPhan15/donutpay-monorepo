@@ -183,6 +183,7 @@ public class PgBackupTransactionDocument {
                 .source(this.source != null ? this.source : TransactionSource.NORMAL.name())
                 .rating(this.rating)
                 .reviewNote(this.reviewNote)
+                .location(this.location)
                 .build();
     }
 }

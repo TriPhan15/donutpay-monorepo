@@ -303,6 +303,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       fontWeight: FontWeight.w600,
     );
     final reviewNote = _tx.reviewNote?.trim();
+    final address = _tx.address;
     final rows = <Widget>[
       _DetailRow(
         label: loc.transactionDetailCategory,
@@ -315,6 +316,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         label: loc.transactionDetailTime,
         value: Text(AppDateFormat.dateTime.format(_tx.date), style: valueStyle),
       ),
+      if (address != null)
+        _DetailRow(
+          label: loc.reviewAddress,
+          value: Text(address, style: valueStyle),
+        ),
       if (_tx.isExpense && _tx.rating != null)
         _DetailRow(
           label: loc.transactionDetailExperience,

@@ -18,12 +18,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import vn.edu.huit.finance.core.Entity.User;
+import vn.edu.huit.finance.core.Security.Roles;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Câu RFM chuẩn chạy trên PostgreSQL 15 thật: chỉ khoản chi, không tính khoản góp tiết kiệm, chỉ 12 tháng gần nhất, ngày
@@ -91,7 +93,12 @@ class UserRfmQueryPostgresTest {
     }
 
     private long insertUser(String name, String phone) {
+        return insertUser(name, phone, Roles.USER);
+    }
+
+    private long insertUser(String name, String phone, String role) {
         User user = new User();
+        user.setRole(role);
         user.setUsername(name);
         user.setEmail(name + "@example.com");
         user.setPhone(phone);
@@ -208,6 +215,25 @@ class UserRfmQueryPostgresTest {
         assertEquals(366, r.getRecency());
         assertEquals(0L, r.getFrequency());
         assertEquals(0, BigDecimal.ZERO.compareTo(r.getMonetary()));
+    }
+
+    @Test
+    void anAdminAccountIsLeftOutOfTheRows() {
+        long admin = insertUser("root", "0900000009", Roles.ADMIN);
+
+        List<UserRfmRow> rows = userRepository.calculateAllUsersRfm(WINDOW_START, NOW, SAVINGS, NO_ACTIVITY_DAYS);
+
+        assertTrue(rows.stream().noneMatch(r -> r.getUserId() == admin));
+    }
+
+    @Test
+    void aNormalUserStaysInTheRowsNextToAnAdmin() {
+        insertUser("root", "0900000009", Roles.ADMIN);
+
+        List<UserRfmRow> rows = userRepository.calculateAllUsersRfm(WINDOW_START, NOW, SAVINGS, NO_ACTIVITY_DAYS);
+
+        assertEquals(3, rows.size());
+        assertTrue(rows.stream().anyMatch(r -> r.getUserId() == alice));
     }
 
     @Test

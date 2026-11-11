@@ -1,5 +1,6 @@
 package vn.edu.huit.finance.core.Service;
 
+import vn.edu.huit.finance.core.Security.Roles;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -52,11 +53,11 @@ class AdminStatisticsServiceTest {
     }
 
     @Test
-    void theSummaryHoldsTheTotalsOfEveryUserAndTheCountOfTheMonthItWasAskedFor() {
+    void theSummaryHoldsTheTotalsOfEveryEndUserWithoutAdminsAndTheCountOfTheMonthItWasAskedFor() {
         when(transactionRepo.sumTotalVolume()).thenReturn(new BigDecimal("1250000.50"));
-        when(userRepo.count()).thenReturn(42L);
+        when(userRepo.countByRoleNot(Roles.ADMIN)).thenReturn(42L);
         when(transactionRepo.countByTransactionDateBetween(any(), any())).thenReturn(17L);
-        when(userRepo.findByWalletBalanceLessThan(THRESHOLD)).thenReturn(List.of(user(7L, "an", "0900000007", "12000")));
+        when(userRepo.findByWalletBalanceLessThanAndRoleNot(THRESHOLD, Roles.ADMIN)).thenReturn(List.of(user(7L, "an", "0900000007", "12000")));
         when(receiptRepo.getReceiptStatusStatistics()).thenReturn(List.of(
                 new Object[]{"SUCCESS", 5L}, new Object[]{"FAILED", 2L}));
 
@@ -100,7 +101,7 @@ class AdminStatisticsServiceTest {
 
     @Test
     void theLowBalanceListCarriesOnlyWhatThePageShows() {
-        when(userRepo.findByWalletBalanceLessThan(THRESHOLD)).thenReturn(List.of(user(7L, "an", "0900000007", "12000")));
+        when(userRepo.findByWalletBalanceLessThanAndRoleNot(THRESHOLD, Roles.ADMIN)).thenReturn(List.of(user(7L, "an", "0900000007", "12000")));
 
         LowBalanceUserDto listed = service.getDashboardSummary(SEPTEMBER, THRESHOLD).getLowBalanceUsers().get(0);
 

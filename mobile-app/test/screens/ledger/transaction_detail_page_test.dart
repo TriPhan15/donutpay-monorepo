@@ -38,6 +38,7 @@ TransactionModel _tx({
   SyncStatus syncStatus = SyncStatus.synced,
   String? imageUrl,
   String? clientId,
+  String? location,
 }) => TransactionModel(
   id: id,
   title: title,
@@ -49,6 +50,7 @@ TransactionModel _tx({
   syncStatus: syncStatus,
   imageUrl: imageUrl,
   clientId: clientId,
+  location: location,
 );
 
 void main() {
@@ -210,6 +212,26 @@ void main() {
       Theme.of(context).semanticColors.successColor,
     );
   });
+
+  testWidgets('shows the address row only for a real address', (tester) async {
+    await pump(tester, _tx(location: '12 Nguyễn Văn Bảo, Gò Vấp'));
+    expect(find.text('Địa chỉ'), findsOneWidget);
+    expect(find.text('12 Nguyễn Văn Bảo, Gò Vấp'), findsOneWidget);
+  });
+
+  for (final location in [
+    null,
+    '',
+    TransactionModel.defaultLocation,
+    'Highlands Coffee',
+  ]) {
+    testWidgets('hides the address row for location "$location"', (
+      tester,
+    ) async {
+      await pump(tester, _tx(location: location));
+      expect(find.text('Địa chỉ'), findsNothing);
+    });
+  }
 
   testWidgets(
     'rows: category and time always, receipt only with a receipt, sync only while unsent',

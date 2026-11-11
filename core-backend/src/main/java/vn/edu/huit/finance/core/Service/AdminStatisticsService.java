@@ -1,5 +1,6 @@
 package vn.edu.huit.finance.core.Service;
 
+import vn.edu.huit.finance.core.Security.Roles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -47,9 +48,9 @@ public class AdminStatisticsService {
         BigDecimal totalVolume = transactionRepo.sumTotalVolume();
         return AdminDashboardSummaryDto.builder()
                 .totalVolume(totalVolume != null ? totalVolume : BigDecimal.ZERO)
-                .totalUsers(userRepo.count())
+                .totalUsers(userRepo.countByRoleNot(Roles.ADMIN))
                 .transactionsInPeriod(countTransactionsIn(period))
-                .lowBalanceUsers(userRepo.findByWalletBalanceLessThan(lowBalanceThreshold).stream()
+                .lowBalanceUsers(userRepo.findByWalletBalanceLessThanAndRoleNot(lowBalanceThreshold, Roles.ADMIN).stream()
                         .map(LowBalanceUserDto::from)
                         .toList())
                 .receiptStatuses(countReceiptsByStatus())

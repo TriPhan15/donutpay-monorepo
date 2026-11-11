@@ -1229,8 +1229,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ledgerExcelNotCounted => 'Not counted';
 
   @override
-  String ledgerExcelFileName(String month, String date) {
-    return 'spending_${month}_$date';
+  String ledgerExcelFileName(String name, String month) {
+    return 'Spending${name}_$month';
   }
 
   @override
@@ -1329,6 +1329,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reviewStoreName => 'Store name';
+
+  @override
+  String get reviewAddress => 'Address';
+
+  @override
+  String get reviewAddressHint => 'Address may be wrong, please correct it.';
 
   @override
   String get paymentHistoryTitle => 'Deposit/withdrawal history';
@@ -1460,9 +1466,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonApply => 'Apply';
-
-  @override
-  String get commonRefresh => 'Refresh';
 
   @override
   String get periodThisWeek => 'This week';

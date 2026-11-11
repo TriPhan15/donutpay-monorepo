@@ -46,6 +46,7 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -99,7 +100,7 @@ class AdminDashboardPageTest {
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6))
                 .thenReturn(List.of(new MonthlyTransactionCountDto(now.minusMonths(1), 3),
                         new MonthlyTransactionCountDto(now, 17)));
-        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listEndUsersNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
 
         // The charts are inlined into JavaScript, where Thymeleaf writes every non-ASCII character as a \\u escape.
@@ -137,7 +138,7 @@ class AdminDashboardPageTest {
                                 new ReceiptStatusCountDto("PENDING", 3))));
         when(leaderboardService.topSpenders(now, 5)).thenReturn(List.of());
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
-        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listEndUsersNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
 
         mockMvc.perform(get("/admin/dashboard"))
@@ -155,7 +156,7 @@ class AdminDashboardPageTest {
                 .thenReturn(new AdminDashboardSummaryDto(BigDecimal.ZERO, 0, 0, List.of(), List.of()));
         when(leaderboardService.topSpenders(now, 5)).thenReturn(List.of());
         when(adminStatisticsService.getMonthlyTransactionCounts(now, 6)).thenReturn(List.of());
-        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+        when(userService.listEndUsersNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         when(customerSegmentationService.countBySegment()).thenReturn(sevenCounts());
     }
 
@@ -207,7 +208,7 @@ class AdminDashboardPageTest {
         User none = new User();
         none.setId(3L);
         none.setUsername("u_none");
-        when(userService.listNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(champion, old, none)));
+        when(userService.listEndUsersNewestFirst(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(champion, old, none)));
 
         mockMvc.perform(get("/admin/dashboard"))
                 .andExpect(content().string(allOf(
@@ -236,5 +237,14 @@ class AdminDashboardPageTest {
                         containsString("/admin/backup/mongo/restore"),
                         containsString("/admin/backup/execute?type="),
                         containsString("/admin/backup/restore?type=FULL"))));
+    }
+
+    @Test
+    void segmentedCustomerListIsFilledFromTheEndUsersOnly() throws Exception {
+        stubEmptyDashboard();
+        mockMvc.perform(get("/admin/dashboard")).andExpect(status().isOk());
+
+        verify(userService).listEndUsersNewestFirst(any(Pageable.class));
+        verify(userService, never()).listNewestFirst(any(Pageable.class));
     }
 }

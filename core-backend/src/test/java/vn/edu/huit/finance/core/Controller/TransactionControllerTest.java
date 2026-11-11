@@ -221,6 +221,7 @@ class TransactionControllerTest {
                 Arguments.of("a negative category id", "{\"categoryId\":-3}", "Mã danh mục không hợp lệ"),
                 Arguments.of("a category name that is too long", "{\"categoryName\":\"" + "x".repeat(256) + "\"}", "Tên danh mục tối đa"),
                 Arguments.of("a note that is too long", "{\"note\":\"" + "x".repeat(256) + "\"}", "Ghi chú tối đa"),
+                Arguments.of("a location that is too long", "{\"location\":\"" + "x".repeat(256) + "\"}", "Địa chỉ giao dịch tối đa"),
                 Arguments.of("a review note that is too long", "{\"reviewNote\":\"" + "x".repeat(256) + "\"}", "Ghi chú đánh giá tối đa"),
                 Arguments.of("a rating below 0.5", "{\"rating\":0.0}", "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao"),
                 Arguments.of("a rating above 5.0", "{\"rating\":5.5}", "Điểm đánh giá trải nghiệm phải từ 0.5 đến 5.0 sao"),

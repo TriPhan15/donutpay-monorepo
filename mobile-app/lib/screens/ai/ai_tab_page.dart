@@ -275,7 +275,7 @@ class _AITabPageState extends State<AITabPage> {
   }
 
   /// Mines the spending habits of the last 26 weeks, whatever period the charts show. Only a call the user asked for
-  /// ([reportErrors]: the refresh button, a pull to refresh) opens an error dialog. The tab is built at start-up behind
+  /// ([reportErrors]: a pull to refresh, the retry of the card) opens an error dialog. The tab is built at start-up behind
   /// the others, so a failure of a background load is logged and shown on the card only.
   Future<void> _loadSpadePatterns({bool reportErrors = false}) async {
     final requestId = ++_spadeRequestId;
@@ -373,7 +373,6 @@ class _AITabPageState extends State<AITabPage> {
         today: today,
       ),
       isRefreshing: _spadeLoading,
-      onRefresh: () => _loadSpadePatterns(reportErrors: true),
     );
     final advice = AiBalanceCard(
       balance: _transactions.isEmpty
