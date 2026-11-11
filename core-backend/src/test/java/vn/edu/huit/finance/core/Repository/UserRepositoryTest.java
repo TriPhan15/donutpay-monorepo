@@ -147,4 +147,14 @@ class UserRepositoryTest {
         assertEquals(1, counts.size());
         assertEquals(1L, ((Number) counts.get(0)[1]).longValue());
     }
+
+    @Test
+    void countByRoleNot_countsOnlyNonAdmins() {
+        persistWith("root", "0900000009", Roles.ADMIN, null);
+        persistWith("carol", "0900000003", Roles.USER, null);
+        long nonAdmins = userRepository.findAll().stream().filter(u -> !Roles.ADMIN.equals(u.getRole())).count();
+
+        assertEquals(nonAdmins, userRepository.countByRoleNot(Roles.ADMIN));
+        assertEquals(userRepository.count() - 1, userRepository.countByRoleNot(Roles.ADMIN));
+    }
 }

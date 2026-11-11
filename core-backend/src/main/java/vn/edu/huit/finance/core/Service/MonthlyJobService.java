@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.huit.finance.core.Entity.AuditAction;
 import vn.edu.huit.finance.core.Entity.User;
 import vn.edu.huit.finance.core.Repository.UserRepository;
+import vn.edu.huit.finance.core.Security.Roles;
 import vn.edu.huit.finance.core.Service.Audit.AuditActor;
 import vn.edu.huit.finance.core.Service.Audit.AuditEntry;
 
@@ -34,7 +35,8 @@ public class MonthlyJobService {
     @Transactional
     public void checkMonthlyBudgets() {
         log.info("Monthly wallet scan started");
-        List<User> usersAtRisk = userRepository.findByWalletBalanceLessThan(TransactionService.LOW_BALANCE_THRESHOLD);
+        List<User> usersAtRisk = userRepository.findByWalletBalanceLessThanAndRoleNot(
+                TransactionService.LOW_BALANCE_THRESHOLD, Roles.ADMIN);
         String description = String.format(AUDIT_LOW_BALANCE, TransactionService.LOW_BALANCE_THRESHOLD.toPlainString());
         for (User user : usersAtRisk) {
             auditLogService.record(AuditEntry.of(AuditAction.SYSTEM_LOW_BALANCE_WARNING, AuditActor.system(), user.getId(),

@@ -16,10 +16,11 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    List<User> findByWalletBalanceLessThan(BigDecimal amount);
-
-    /** Như {@link #findByWalletBalanceLessThan}, bỏ tài khoản có vai trò {@code role} (dashboard không đếm admin như người dùng cuối). */
+    /** Tài khoản có ví dưới {@code amount}, bỏ vai trò {@code role} (admin không phải người dùng cuối: dashboard và thông báo đầu tháng). */
     List<User> findByWalletBalanceLessThanAndRoleNot(BigDecimal amount, String role);
+
+    /** Số tài khoản không mang vai trò {@code role} (tổng người dùng cuối trên dashboard: truyền Roles.ADMIN). */
+    long countByRoleNot(String role);
 
     Optional<User> findByEmail(String email);
 

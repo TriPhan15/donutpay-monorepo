@@ -227,7 +227,7 @@ class RedisStatisticsCacheIntegrationTest {
                     key(ADMIN_DASHBOARD_SUMMARY, "2026-09:100000"),
                     key(ADMIN_STATISTICS, "monthly-transactions:2026-09:6"),
                     key(ADMIN_STATISTICS, "monthly-transactions:2026-09:3")), ownKeys(context));
-            verify(context.getBean(UserRepository.class), times(3)).count();
+            verify(context.getBean(UserRepository.class), times(3)).countByRoleNot(Roles.ADMIN);
         });
     }
 
@@ -240,7 +240,7 @@ class RedisStatisticsCacheIntegrationTest {
             lowOnMoney.setPhone("0900000007");
             lowOnMoney.setWalletBalance(new BigDecimal("12000.00"));
             when(context.getBean(UserRepository.class).findByWalletBalanceLessThanAndRoleNot(THRESHOLD, Roles.ADMIN)).thenReturn(List.of(lowOnMoney));
-            when(context.getBean(UserRepository.class).count()).thenReturn(42L);
+            when(context.getBean(UserRepository.class).countByRoleNot(Roles.ADMIN)).thenReturn(42L);
             when(transactions(context).sumTotalVolume()).thenReturn(new BigDecimal("1250000.50"));
             when(transactions(context).countByTransactionDateBetween(any(), any())).thenReturn(17L);
             when(context.getBean(ReceiptRepository.class).getReceiptStatusStatistics())

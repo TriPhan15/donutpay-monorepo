@@ -48,7 +48,7 @@ public class AdminStatisticsService {
         BigDecimal totalVolume = transactionRepo.sumTotalVolume();
         return AdminDashboardSummaryDto.builder()
                 .totalVolume(totalVolume != null ? totalVolume : BigDecimal.ZERO)
-                .totalUsers(userRepo.count())
+                .totalUsers(userRepo.countByRoleNot(Roles.ADMIN))
                 .transactionsInPeriod(countTransactionsIn(period))
                 .lowBalanceUsers(userRepo.findByWalletBalanceLessThanAndRoleNot(lowBalanceThreshold, Roles.ADMIN).stream()
                         .map(LowBalanceUserDto::from)

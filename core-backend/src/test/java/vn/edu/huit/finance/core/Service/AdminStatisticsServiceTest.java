@@ -53,9 +53,9 @@ class AdminStatisticsServiceTest {
     }
 
     @Test
-    void theSummaryHoldsTheTotalsOfEveryUserAndTheCountOfTheMonthItWasAskedFor() {
+    void theSummaryHoldsTheTotalsOfEveryEndUserWithoutAdminsAndTheCountOfTheMonthItWasAskedFor() {
         when(transactionRepo.sumTotalVolume()).thenReturn(new BigDecimal("1250000.50"));
-        when(userRepo.count()).thenReturn(42L);
+        when(userRepo.countByRoleNot(Roles.ADMIN)).thenReturn(42L);
         when(transactionRepo.countByTransactionDateBetween(any(), any())).thenReturn(17L);
         when(userRepo.findByWalletBalanceLessThanAndRoleNot(THRESHOLD, Roles.ADMIN)).thenReturn(List.of(user(7L, "an", "0900000007", "12000")));
         when(receiptRepo.getReceiptStatusStatistics()).thenReturn(List.of(
