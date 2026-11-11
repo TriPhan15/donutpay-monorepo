@@ -66,7 +66,10 @@ abstract final class LedgerExcelBuilder {
     final monthName = DateFormat(_monthFormat).format(month);
     final title = loc.ledgerExcelSheet(monthName);
     final excel = Excel.createExcel();
-    final sheet = excel[_sheetName(title)];
+    final name = _sheetName(title);
+    // A new workbook comes with an empty default sheet: the report takes its place, so the file opens on the report.
+    excel.rename(excel.getDefaultSheet()!, name);
+    final sheet = excel[name];
 
     final inMonth = transactions
         .where(

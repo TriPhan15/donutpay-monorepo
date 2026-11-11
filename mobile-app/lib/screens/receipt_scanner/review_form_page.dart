@@ -47,6 +47,7 @@ class ReviewFormPage extends StatefulWidget {
 
   @visibleForTesting
   static const Key storeFieldKey = ValueKey('review-store');
+  @visibleForTesting
   static const Key addressFieldKey = ValueKey('review-address');
   @visibleForTesting
   static const Key totalFieldKey = ValueKey('review-total');

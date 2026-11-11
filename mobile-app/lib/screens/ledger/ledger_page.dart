@@ -82,6 +82,7 @@ class LedgerPageState extends State<LedgerPage> {
   /// What the "Lọc" sheet chose; it narrows the transaction list only, never the totals.
   TransactionFilter _filter = TransactionFilter.none;
   bool _isSearching = false;
+  bool _isExporting = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -595,7 +596,10 @@ class LedgerPageState extends State<LedgerPage> {
   }
 
   Future<void> _exportToExcel() async {
+    if (_isExporting) return;
+    _isExporting = true;
     final loc = context.loc;
+    File? file;
     try {
       final report = LedgerExcelBuilder.build(
         loc: loc,
@@ -606,7 +610,7 @@ class LedgerPageState extends State<LedgerPage> {
       );
       if (report == null) throw StateError('The workbook could not be encoded');
 
-      final file = File('${Directory.systemTemp.path}/${report.fileName}');
+      file = File('${Directory.systemTemp.path}/${report.fileName}');
       await file.writeAsBytes(report.bytes);
       if (!mounted) return;
       await SharePlus.instance.share(
@@ -621,6 +625,19 @@ class LedgerPageState extends State<LedgerPage> {
       debugPrint('Lỗi xuất Excel: $e');
       if (!mounted) return;
       AppToast.error(context, loc.ledgerExcelFailed);
+    } finally {
+      _isExporting = false;
+      await _deleteQuietly(file);
+    }
+  }
+
+  /// The copy of the report in the temp folder is of no use once the share sheet is gone; a failure here is only logged.
+  Future<void> _deleteQuietly(File? file) async {
+    if (file == null) return;
+    try {
+      await file.delete();
+    } catch (e) {
+      debugPrint('Không xóa được file Excel tạm: $e');
     }
   }
 }

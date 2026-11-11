@@ -83,6 +83,11 @@ class _Shared {
 }
 
 void main() {
+  /// What the share sheet saw of the last export, read while the file was still there.
+  var shareCalls = 0;
+  String? sharedPath;
+  List<int>? sharedBytes;
+
   final backend = FakeBackend();
   final now = DateTime.now();
   final firstOfMonth = DateTime(now.year, now.month, 1, 9);
@@ -154,7 +159,12 @@ void main() {
   });
 
   /// Opens the ledger, taps the export button and returns what reached the share sheet (null when nothing did).
-  Future<_Shared?> export(WidgetTester tester, {bool failShare = false}) async {
+  Future<_Shared?> export(
+    WidgetTester tester, {
+    bool failShare = false,
+    int taps = 1,
+  }) async {
+    shareCalls = 0;
     tester.view.physicalSize = const Size(600, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -163,7 +173,11 @@ void main() {
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel(_shareChannel),
       (call) async {
-        shared.complete(call.arguments as Map<Object?, Object?>);
+        shareCalls++;
+        final args = call.arguments as Map<Object?, Object?>;
+        sharedPath = (args['paths']! as List).single as String;
+        sharedBytes = File(sharedPath!).readAsBytesSync();
+        if (!shared.isCompleted) shared.complete(args);
         if (failShare) throw PlatformException(code: 'share-failed');
         return 'dev.fluttercommunity.plus/share/unavailable';
       },
@@ -186,7 +200,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(StatsHeaderBand.exportKey));
+    for (var i = 0; i < taps; i++) {
+      await tester.tap(find.byKey(StatsHeaderBand.exportKey));
+    }
 
     // The file is written with real IO: let it finish, then let the page go on with the fake clock.
     for (var i = 0; i < exportPolls && !shared.isCompleted; i++) {
@@ -201,13 +217,11 @@ void main() {
     }
     final args = await shared.future;
     return tester.runAsync(() async {
-      final path = (args['paths']! as List).single as String;
-      final bytes = await File(path).readAsBytes();
       return _Shared(
-        path.split(RegExp(r'[\\/]')).last,
+        sharedPath!.split(RegExp(r'[\\/]')).last,
         args['subject'] as String?,
         args['text'] as String?,
-        Excel.decodeBytes(bytes),
+        Excel.decodeBytes(sharedBytes!),
       );
     });
   }
@@ -266,15 +280,34 @@ void main() {
     final shared = (await export(tester))!;
     final month = _monthKey(now);
 
-    // The empty default sheet of a new workbook is still in the file, in front of the month.
-    expect(shared.excel.tables.keys.toList(), [
-      'Sheet1',
-      'Chi tiêu tháng $month',
-    ]);
+    expect(shared.excel.tables.keys.toList(), ['Chi tiêu tháng $month']);
+    expect(shared.excel.getDefaultSheet(), 'Chi tiêu tháng $month');
     // /api/users/me is not answered here, so the file has no name in it.
     expect(shared.fileName, 'ChiTieu_Thang$month.xlsx');
     expect(shared.subject, 'Chi tiêu tháng $month');
     expect(shared.text, 'Báo cáo chi tiêu tháng $month');
+  });
+
+  testWidgets('a second tap during the export does not share twice', (
+    tester,
+  ) async {
+    await export(tester, taps: 2);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+
+    expect(shareCalls, 1);
+  });
+
+  testWidgets('the temp file is removed once the share sheet returns', (
+    tester,
+  ) async {
+    await export(tester);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 300)),
+    );
+
+    expect(File(sharedPath!).existsSync(), isFalse);
   });
 
   testWidgets('when the file cannot be shared the user gets a message', (
