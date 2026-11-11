@@ -112,6 +112,10 @@ abstract final class LedgerExcelBuilder {
     }
   }
 
+  /// A real empty row: `appendRow([])` does nothing in excel 4.x, so the row holds one empty text cell.
+  static void _appendBlankRow(Sheet sheet) =>
+      sheet.appendRow([TextCellValue('')]);
+
   static String _sheetName(String title) => title.length <= maxSheetNameLength
       ? title
       : title.substring(0, maxSheetNameLength);
@@ -153,7 +157,7 @@ abstract final class LedgerExcelBuilder {
     AppLocalizations loc,
     DayTotals totals,
   ) {
-    sheet.appendRow([]);
+    _appendBlankRow(sheet);
     _appendStyledRow(sheet, [
       TextCellValue(loc.ledgerExcelTotal),
       TextCellValue(''),
@@ -176,7 +180,7 @@ abstract final class LedgerExcelBuilder {
     Iterable<BudgetModel> budgets,
     Iterable<TransactionModel> transactions,
   ) {
-    sheet.appendRow([]);
+    _appendBlankRow(sheet);
     sheet.appendRow([TextCellValue(loc.ledgerExcelBudgetHeader(monthName))]);
     sheet.appendRow([
       TextCellValue(loc.transactionCategoryLabel),

@@ -255,6 +255,44 @@ void main() {
     });
   });
 
+  group('blank rows between sections', () {
+    bool isEmpty(List<Data?> row) => row.every((c) => _cell(c) == '');
+    String? first(List<Data?> row) =>
+        row.isEmpty ? null : _cell(row.first).toString();
+
+    test('one empty row sits before the totals and before the budgets', () {
+      final sheet = _sheet(
+        build(
+          transactions: [
+            _tx(45000, DateTime(2026, 10, 1, 9)),
+            _tx(30000, DateTime(2026, 10, 2, 9)),
+          ],
+          budgets: [_budget(500000, category: 'Ăn uống')],
+        ),
+      );
+      final rows = sheet.rows;
+      // Header + 2 transactions, then the blank row, then the totals.
+      expect(isEmpty(rows[3]), isTrue);
+      expect(first(rows[4]), loc.ledgerExcelTotal);
+      expect(first(rows[5]), loc.ledgerBalance);
+      expect(isEmpty(rows[6]), isTrue);
+      expect(first(rows[7]), loc.ledgerExcelBudgetHeader('10-2026'));
+    });
+
+    test('the amounts after a blank row keep their number format', () {
+      final sheet = _sheet(
+        build(transactions: [_tx(45000, DateTime(2026, 10, 1))]),
+      );
+      final totals = sheet.rows.firstWhere(
+        (r) => first(r) == loc.ledgerExcelTotal,
+      );
+      expect(
+        totals[2]?.cellStyle?.numberFormat,
+        LedgerExcelBuilder.amountStyle.numberFormat,
+      );
+    });
+  });
+
   group('readable amounts', () {
     final amountFormat = LedgerExcelBuilder.amountStyle.numberFormat;
 
