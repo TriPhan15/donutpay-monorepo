@@ -20,9 +20,12 @@ import 'package:finance_ai_app/widgets/receipt/scan_options_sheet.dart';
 /// What the ML Kit document scanner throws when the user closes it without scanning: not an error to show.
 const String _scannerCancelledMessage = 'Operation cancelled';
 
-/// The size and quality the picked photos are scaled to before DONUT reads them, as for a single photo.
-const int _pickedImageQuality = 50;
-const double _pickedImageMaxSide = 1280;
+/// The size and quality gallery photos are kept at. DONUT reads 1920x1440, so a smaller or heavily compressed photo
+/// loses the small text (address, date); 2560 px at quality 90 stays far under the server's 15 MB upload limit.
+@visibleForTesting
+const int pickedImageQuality = 90;
+@visibleForTesting
+const double pickedImageMaxSide = 2560;
 
 /// The whole "bring a receipt in" flow behind the scan button: the options sheet, the ML Kit scanner, the gallery
 /// picker, the review page of a single receipt and the hand-over of many receipts to [ReceiptScanQueue].
@@ -99,9 +102,9 @@ class ReceiptScanLauncher {
     try {
       image = await picker.pickImage(
         source: source,
-        imageQuality: _pickedImageQuality,
-        maxWidth: _pickedImageMaxSide,
-        maxHeight: _pickedImageMaxSide,
+        imageQuality: pickedImageQuality,
+        maxWidth: pickedImageMaxSide,
+        maxHeight: pickedImageMaxSide,
       );
     } catch (e) {
       debugPrint('Lỗi chọn ảnh hóa đơn: $e');
@@ -178,9 +181,9 @@ class ReceiptScanLauncher {
     try {
       images = await ImagePicker().pickMultiImage(
         limit: ReceiptScanQueue.maxBatch,
-        imageQuality: _pickedImageQuality,
-        maxWidth: _pickedImageMaxSide,
-        maxHeight: _pickedImageMaxSide,
+        imageQuality: pickedImageQuality,
+        maxWidth: pickedImageMaxSide,
+        maxHeight: pickedImageMaxSide,
       );
     } catch (e) {
       debugPrint('Lỗi chọn nhiều ảnh hóa đơn: $e');
